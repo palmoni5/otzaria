@@ -7,6 +7,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   isar_flutter_libs
   printing
   screen_retriever_linux
+  sentry_flutter
   sqlite3_flutter_libs
   super_native_extensions
   url_launcher_linux
@@ -14,6 +15,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
+  jni
   pdfium_flutter
   search_engine
 )
