@@ -33,22 +33,29 @@ class AppWindowListener extends WindowListener {
       print('Window close requested');
     }
 
+    // מנגנון סגירה כפויה: אם האפליקציה לא נסגרת תוך 5 שניות, נסגור אותה בכוח
+    Future.delayed(const Duration(seconds: 5), () {
+      if (kDebugMode) {
+        print('Force exiting: Shutdown took too long');
+      }
+      exit(0);
+    });
+
     try {
-      // Perform cleanup operations here if needed
+      // ביצוע פעולות הניקוי הקיימות
       await MyDatabase().close();
 
-      // Close the window properly
       if (!kIsWeb &&
           (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
-        // שמירת מצב החלון וסגירה
+        // שמירת מצב החלון
         await WindowPersistence.saveNow();
+        // ניסיון סגירה רגיל דרך ה-WindowManager
         await windowManager.destroy();
       }
     } catch (e) {
       if (kDebugMode) {
         print('Error during window close: $e');
       }
-      // Force exit if cleanup fails - but only as last resort
       exit(0);
     }
   }
