@@ -44,7 +44,7 @@ class FileSyncRepository {
   ///
   /// Handles three cases:
   /// 1. Paths containing 'אוצריא/' - extracts from 'אוצריא/' onwards
-  ///    Example: 'otzaria-library/sefariaToOtzaria/sefaria_export/ספרים/אוצריא/תנך/תורה/בראשית.txt'
+  ///    Example: 'otzaria-library/sefariaToOtzaria/sefaria_export/ספרים/ספרייה/תנך/תורה/בראשית.txt'
   ///    Returns: 'אוצריא/תנך/תורה/בראשית.txt'
   ///
   /// 2. Paths containing 'links/' - extracts from 'links/' onwards

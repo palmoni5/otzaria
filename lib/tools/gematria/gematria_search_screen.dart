@@ -150,11 +150,11 @@ class GematriaSearchScreenState extends State<GematriaSearchScreen> {
 
       // חיפוש בתיקיות ספציפיות בלבד (for fallback file search)
       final searchPaths = torahOnly
-          ? ['$libraryPath/אוצריא/תנך/תורה']
+          ? ['$libraryPath/ספרייה/תנך/תורה']
           : [
-              '$libraryPath/אוצריא/תנך/תורה',
-              '$libraryPath/אוצריא/תנך/נביאים',
-              '$libraryPath/אוצריא/תנך/כתובים',
+              '$libraryPath/ספרייה/תנך/תורה',
+              '$libraryPath/ספרייה/תנך/נביאים',
+              '$libraryPath/ספרייה/תנך/כתובים',
             ];
 
       final List<SearchResult> allResults = [];

@@ -119,7 +119,7 @@ final toc = await sqliteProvider.getBookTocFromDb('שם הספר');
 
 ## הערות חשובות
 
-- מסד הנתונים נוצר ב-`{library_path}/אוצריא/otzaria.db`
+- מסד הנתונים נוצר ב-`{library_path}/ספרייה/otzaria.db`
 - המערכת תומכת בתאימות לאחור - ספרים שלא במסד ייקראו מקבצים
 - כל הפעולות מבוצעות בצורה אסינכרונית
 - יש תמיכה מלאה ב-transactions לביצועים מיטביים

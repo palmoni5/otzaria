@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -214,29 +213,8 @@ class _PdfBookScreenState extends State<PdfBookScreen>
       initialIndex: _currentLeftPaneTabIndex,
     );
 
-    // הוספת listener ל-PDF View Focus להחזרה אוטומטית
-    _pdfViewFocusNode.addListener(() {
-      if (!_pdfViewFocusNode.hasFocus) {
-        final currentFocus = FocusManager.instance.primaryFocus;
-
-        // אם הפוקוס עבר ל-Root Focus Scope או null (כלומר אין פוקוס ספציפי),
-        // והחלונית השמאלית סגורה, החזר את הפוקוס ל-PDF
-        if ((currentFocus != _searchFieldFocusNode &&
-                currentFocus != _navigationFieldFocusNode) &&
-            !widget.tab.showLeftPane.value) {
-          // שימוש ב-SchedulerBinding למהירות מקסימלית
-          SchedulerBinding.instance.addPostFrameCallback((_) {
-            if (mounted &&
-                !_pdfViewFocusNode.hasFocus &&
-                !widget.tab.showLeftPane.value) {
-              _pdfViewFocusNode.requestFocus();
-            }
-          });
-        }
-      }
-    });
-
-    // הוספת listeners לשדות טקסט
+    // הוספת listeners לשדות טקסט - ללא החזרה אוטומטית של פוקוס ל-PDF
+    // כדי לאפשר לדיאלוגים וחלוניות אחרות לקבל פוקוס
     _searchFieldFocusNode.addListener(() {});
     _navigationFieldFocusNode.addListener(() {});
 
@@ -673,7 +651,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
   Widget _buildPdfViewerFromFile(String filePath) {
     return KeyboardListener(
       focusNode: _pdfViewFocusNode,
-      autofocus: true,
+      autofocus: false,
       onKeyEvent: (KeyEvent event) {
         if (event is KeyDownEvent) {
           if (_pressedKeys.contains(event.logicalKey)) return;

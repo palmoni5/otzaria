@@ -4,7 +4,7 @@ void main() {
   group('FileSyncRepository path normalization', () {
     test('normalizes אוצריא paths correctly', () {
       const input =
-          'otzaria-library/sefariaToOtzaria/sefaria_export/ספרים/אוצריא/תנך/תורה/בראשית.txt';
+          'otzaria-library/sefariaToOtzaria/sefaria_export/ספרים/ספרייה/תנך/תורה/בראשית.txt';
       const expected = 'אוצריא/תנך/תורה/בראשית.txt';
 
       // Since _normalizeFilePath is private, we test it through downloadFile
@@ -42,7 +42,7 @@ void main() {
 
     test('handles complex אוצריא paths', () {
       const input =
-          'Ben-YehudaToOtzaria/ספרים/אוצריא/מדרש/הלכה/חפץ חיים על ספרא.txt';
+          'Ben-YehudaToOtzaria/ספרים/ספרייה/מדרש/הלכה/חפץ חיים על ספרא.txt';
       const expected = 'אוצריא/מדרש/הלכה/חפץ חיים על ספרא.txt';
 
       expect(
@@ -54,16 +54,16 @@ void main() {
     test('handles paths from different sources', () {
       final testCases = [
         {
-          'input': 'OraytaToOtzaria/ספרים/אוצריא/משנה/זרעים/ברכות/פרק א.txt',
-          'expected': 'אוצריא/משנה/זרעים/ברכות/פרק א.txt',
+          'input': 'OraytaToOtzaria/ספרים/ספרייה/משנה/זרעים/ברכות/פרק א.txt',
+          'expected': 'ספרייה/משנה/זרעים/ברכות/פרק א.txt',
         },
         {
-          'input': 'DictaToOtzaria/ספרים/ערוך/אוצריא/תלמוד/בבלי/ברכות.txt',
-          'expected': 'אוצריא/תלמוד/בבלי/ברכות.txt',
+          'input': 'DictaToOtzaria/ספרים/ערוך/ספרייה/תלמוד/בבלי/ברכות.txt',
+          'expected': 'ספרייה/תלמוד/בבלי/ברכות.txt',
         },
         {
-          'input': 'tashmaToOtzaria/ספרים/אוצריא/שו"ת/אגרות משה.txt',
-          'expected': 'אוצריא/שו"ת/אגרות משה.txt',
+          'input': 'tashmaToOtzaria/ספרים/ספרייה/שו"ת/אגרות משה.txt',
+          'expected': 'ספרייה/שו"ת/אגרות משה.txt',
         },
       ];
 
@@ -80,15 +80,15 @@ void main() {
 
     test('handles all book sources correctly', () {
       final bookSources = [
-        'Ben-YehudaToOtzaria/ספרים/אוצריא/test.txt',
-        'DictaToOtzaria/ספרים/ערוך/אוצריא/test.txt',
-        'OnYourWayToOtzaria/ספרים/אוצריא/test.txt',
-        'OraytaToOtzaria/ספרים/אוצריא/test.txt',
-        'tashmaToOtzaria/ספרים/אוצריא/test.txt',
-        'sefariaToOtzaria/sefaria_export/ספרים/אוצריא/test.txt',
-        'sefariaToOtzaria/sefaria_api/ספרים/אוצריא/test.txt',
-        'MoreBooks/ספרים/אוצריא/test.txt',
-        'wiki_jewish_books/ספרים/אוצריא/test.txt',
+        'Ben-YehudaToOtzaria/ספרים/ספרייה/test.txt',
+        'DictaToOtzaria/ספרים/ערוך/ספרייה/test.txt',
+        'OnYourWayToOtzaria/ספרים/ספרייה/test.txt',
+        'OraytaToOtzaria/ספרים/ספרייה/test.txt',
+        'tashmaToOtzaria/ספרים/ספרייה/test.txt',
+        'sefariaToOtzaria/sefaria_export/ספרים/ספרייה/test.txt',
+        'sefariaToOtzaria/sefaria_api/ספרים/ספרייה/test.txt',
+        'MoreBooks/ספרים/ספרייה/test.txt',
+        'wiki_jewish_books/ספרים/ספרייה/test.txt',
       ];
 
       for (final source in bookSources) {

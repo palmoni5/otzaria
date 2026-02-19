@@ -697,17 +697,18 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
               previous.currentTabIndex != current.currentTabIndex,
           listener: (context, tabsState) {
             // בקשת focus כשהטאב הנוכחי הוא הטאב של הספר הזה
-            final currentTab = tabsState.tabs.isNotEmpty &&
-                    tabsState.currentTabIndex < tabsState.tabs.length
-                ? tabsState.tabs[tabsState.currentTabIndex]
-                : null;
-            if (currentTab == widget.tab && mounted) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted && !_bookContentFocusNode.hasFocus) {
-                  _bookContentFocusNode.requestFocus();
-                }
-              });
-            }
+            // הסרת החזרה אוטומטית של פוקוס כדי לאפשר לדיאלוגים וחלוניות לקבל פוקוס
+            // final currentTab = tabsState.tabs.isNotEmpty &&
+            //         tabsState.currentTabIndex < tabsState.tabs.length
+            //     ? tabsState.tabs[tabsState.currentTabIndex]
+            //     : null;
+            // if (currentTab == widget.tab && mounted) {
+            //   WidgetsBinding.instance.addPostFrameCallback((_) {
+            //     if (mounted && !_bookContentFocusNode.hasFocus) {
+            //       _bookContentFocusNode.requestFocus();
+            //     }
+            //   });
+            // }
           },
           builder: (context, tabsState) {
             // סגירת חלונית הצד כשנמצאים במצב side-by-side
@@ -982,7 +983,7 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
                           (MediaQuery.of(context).size.width >= 600);
                       return KeyboardListener(
                         focusNode: _bookContentFocusNode,
-                        autofocus: true,
+                        autofocus: false,
                         onKeyEvent: (event) => _handleGlobalKeyEvent(
                             event, context, state, widget.tab),
                         child: Scaffold(
