@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'dart:math' as math;
+import 'package:path/path.dart' as p;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:otzaria/indexing/bloc/indexing_bloc.dart';
 import 'package:otzaria/indexing/bloc/indexing_event.dart';
 import 'package:otzaria/indexing/bloc/indexing_state.dart';
@@ -18,6 +20,7 @@ import 'package:otzaria/widgets/shortcut_dropdown_tile.dart';
 import 'package:otzaria/settings/protected_mode_settings.dart';
 import 'package:otzaria/settings/protected_settings_wrapper.dart';
 import 'package:otzaria/settings/settings_card.dart';
+import 'package:otzaria/core/app_paths.dart';
 
 /// טאב הגדרות מתקדמות
 class AdvancedSettingsTab extends StatefulWidget {
@@ -521,7 +524,171 @@ class _AdvancedSettingsTabState extends State<AdvancedSettingsTab> {
             }
           },
         ),
+        ListTile(
+          leading: const Icon(FluentIcons.delete_24_regular),
+          title: const Text('הסרת התוכנה', style: TextStyle(fontSize: 16)),
+          subtitle: const Text(
+              'מחיקת כל ההגדרות ותיקיית ההתקנה. ניתן לבחור האם למחוק גם את הספרייה',
+              style: TextStyle(fontSize: 13)),
+          onTap: () => _uninstallApp(context),
+        ),
       ],
     );
+  }
+
+  /// הסרת התוכנה - מחיקת הגדרות ותיקיית התקנה
+  Future<void> _uninstallApp(BuildContext context) async {
+    // בדיקה אם במצב מוגן - אם כן, דרוש אימות סיסמה
+    if (shouldProtectSettings(context)) {
+      final verified = await verifyPasswordForAction(context);
+      if (!verified || !context.mounted) {
+        return;
+      }
+    }
+
+    if (!context.mounted) return;
+
+    // אישור ראשוני
+    final confirmed = await showConfirmationDialog(
+      context: context,
+      title: 'הסרת התוכנה?',
+      content:
+          'פעולה זו תמחק את כל ההגדרות ואת תיקיית ההתקנה של התוכנה. פעולה זו אינה הפיכה!\n\nהאם להמשיך?',
+      isDangerous: true,
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    // שאלה לגבי מחיקת הספרייה
+    final deleteLibrary = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('מחיקת הספרייה?'),
+        content: const Text(
+          'האם למחוק גם את ספריית הספרים?\n\n'
+          'אם תבחר "כן", כל הספרים שהורדת יימחקו.\n'
+          'אם תבחר "לא", הספרייה תישאר במחשב.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('לא, השאר את הספרייה'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('כן, מחק את הספרייה'),
+          ),
+        ],
+      ),
+    );
+
+    if (!context.mounted) return;
+
+    try {
+      // מחיקת ההגדרות
+      Settings.clearCache();
+
+      // קבלת נתיבי התיקיות
+      final appSupportDir = await getApplicationSupportDirectory();
+      final libraryPath = await AppPaths.getLibraryPath();
+      final libraryDir = Directory(libraryPath);
+
+      // בדיקה אם הספרייה נמצאת בתוך תיקיית ההתקנה
+      final isLibraryInAppSupport = libraryPath.startsWith(appSupportDir.path);
+
+      // אם הספרייה בתוך תיקיית ההתקנה והמשתמש לא רוצה למחוק אותה,
+      // נעתיק אותה החוצה לפני מחיקת תיקיית ההתקנה
+      String? tempLibraryPath;
+      if (isLibraryInAppSupport &&
+          deleteLibrary != true &&
+          await libraryDir.exists()) {
+        // יצירת תיקייה זמנית להעתקת הספרייה
+        final tempDir =
+            await Directory.systemTemp.createTemp('otzaria_library_');
+        tempLibraryPath = p.join(tempDir.path, 'library');
+
+        // העתקת הספרייה לתיקייה זמנית
+        await _copyDirectory(libraryDir, Directory(tempLibraryPath));
+      }
+
+      // מחיקת תיקיית ההתקנה (Application Support)
+      if (await appSupportDir.exists()) {
+        await appSupportDir.delete(recursive: true);
+      }
+
+      // טיפול בספרייה
+      if (deleteLibrary == true) {
+        // מחיקת הספרייה אם היא מחוץ לתיקיית ההתקנה
+        if (!isLibraryInAppSupport && await libraryDir.exists()) {
+          await libraryDir.delete(recursive: true);
+        }
+      } else if (tempLibraryPath != null) {
+        // החזרת הספרייה ממיקום זמני למיקום המקורי
+        await Directory(libraryPath).create(recursive: true);
+        await _copyDirectory(Directory(tempLibraryPath), libraryDir);
+
+        // מחיקת התיקייה הזמנית
+        await Directory(tempLibraryPath).parent.delete(recursive: true);
+      }
+
+      if (!context.mounted) return;
+
+      // הודעה על הצלחה וסגירת התוכנה
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('התוכנה הוסרה'),
+          content: Text(
+            deleteLibrary == true
+                ? 'כל ההגדרות, תיקיית ההתקנה והספרייה נמחקו בהצלחה.\n\nהתוכנה תיסגר כעת.'
+                : 'כל ההגדרות ותיקיית ההתקנה נמחקו בהצלחה. הספרייה נשמרה.\n\nהתוכנה תיסגר כעת.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                if (Platform.isAndroid || Platform.isIOS) {
+                  SystemNavigator.pop();
+                } else {
+                  windowManager.close();
+                }
+              },
+              child: const Text('סגור'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('שגיאה'),
+          content: Text('אירעה שגיאה במחיקת התוכנה: $e'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('סגור'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  /// העתקת תיקייה רקורסיבית
+  Future<void> _copyDirectory(Directory source, Directory destination) async {
+    await destination.create(recursive: true);
+
+    await for (final entity in source.list(recursive: false)) {
+      if (entity is Directory) {
+        final newDirectory =
+            Directory(p.join(destination.path, p.basename(entity.path)));
+        await _copyDirectory(entity, newDirectory);
+      } else if (entity is File) {
+        await entity.copy(p.join(destination.path, p.basename(entity.path)));
+      }
+    }
   }
 }
