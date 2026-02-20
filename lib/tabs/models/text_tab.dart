@@ -42,6 +42,9 @@ class TextBookTab extends OpenedTab {
   final ScrollOffsetController mainOffsetController = ScrollOffsetController();
   final ScrollOffsetController auxOffsetController = ScrollOffsetController();
 
+  /// הכותרת הנוכחית של המיקום בספר (למשל "בראשית פרק ד")
+  final currentTitle = ValueNotifier<String>("");
+
   List<String>? commentators;
 
   // StreamSubscription לניהול ה-listener
@@ -104,6 +107,10 @@ class TextBookTab extends OpenedTab {
     _stateSubscription = bloc.stream.listen((state) {
       if (state is TextBookLoaded && state.visibleIndices.isNotEmpty) {
         index = state.visibleIndices.first;
+        // עדכון הכותרת הנוכחית
+        if (state.currentTitle != null && state.currentTitle!.isNotEmpty) {
+          currentTitle.value = state.currentTitle!;
+        }
       }
     });
   }
@@ -112,6 +119,7 @@ class TextBookTab extends OpenedTab {
   @override
   void dispose() {
     _stateSubscription?.cancel();
+    currentTitle.dispose();
     bloc.close();
     super.dispose();
   }

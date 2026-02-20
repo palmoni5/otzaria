@@ -13,6 +13,7 @@ import 'package:otzaria/settings/settings_bloc.dart';
 import 'package:otzaria/settings/settings_state.dart';
 import 'package:otzaria/widgets/scrollable_tab_bar.dart';
 import 'package:otzaria/tabs/models/tab.dart';
+import 'package:otzaria/tabs/models/text_tab.dart';
 import 'package:otzaria/history/history_dialog.dart';
 import 'package:otzaria/bookmarks/bookmarks_dialog.dart';
 import 'package:otzaria/workspaces/view/workspace_switcher_dialog.dart';
@@ -367,13 +368,15 @@ class _CustomTitleBarState extends State<CustomTitleBar>
                 onWillAcceptWithDetails: (details) => state.tabs.length > 1,
                 onAcceptWithDetails: (details) {
                   // מקבלים את רוחב המסך הכולל ואת מיקום העכבר בעת העזיבה
-                  final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                  final RenderBox renderBox =
+                      context.findRenderObject() as RenderBox;
                   final localOffset = renderBox.globalToLocal(details.offset);
-                  final isLeftHalf = localOffset.dx < (renderBox.size.width / 2);
-                  
+                  final isLeftHalf =
+                      localOffset.dx < (renderBox.size.width / 2);
+
                   // בודקים אם כיוון האפליקציה הוא מימין לשמאל (RTL) - אוצריא בעברית
                   final isRtl = Directionality.of(context) == TextDirection.rtl;
-                  
+
                   // חישוב האינדקס החדש
                   int newIndex;
                   if (isRtl) {
@@ -384,7 +387,7 @@ class _CustomTitleBarState extends State<CustomTitleBar>
 
                   final draggedTab = details.data;
                   final currentIndex = state.tabs.indexOf(draggedTab);
-                  
+
                   // מבצעים את ההעברה רק אם הטאב באמת שינה מיקום
                   if (currentIndex != -1 && currentIndex != newIndex) {
                     context.read<TabsBloc>().add(MoveTab(draggedTab, newIndex));
@@ -397,7 +400,8 @@ class _CustomTitleBarState extends State<CustomTitleBar>
                       tabAlignment: settingsState.alignTabsToRight
                           ? TabAlignment.start
                           : TabAlignment.center,
-                      hideArrowsWhenNotScrollable: settingsState.alignTabsToRight,
+                      hideArrowsWhenNotScrollable:
+                          settingsState.alignTabsToRight,
                       onOverflowChanged: (overflow) {
                         if (mounted && _tabsOverflow != overflow) {
                           setState(() => _tabsOverflow = overflow);
@@ -493,7 +497,7 @@ class _CustomTitleBarState extends State<CustomTitleBar>
     final isSelected = index == state.currentTabIndex;
     final closeTabShortcut =
         Settings.getValue<String>('key-shortcut-close-tab') ?? 'ctrl+w';
-    
+
     // מזהים את כיוון השפה כדי לדעת מאיזה צד לפתוח את הרווח
     final isRtl = Directionality.of(context) == TextDirection.rtl;
 
@@ -573,24 +577,43 @@ class _CustomTitleBarState extends State<CustomTitleBar>
                             ),
                           )
                         else if (tab is PdfBookTab)
-                          Tooltip(
-                            message: tab.title,
-                            child: Row(
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.all(8.0),
-                                  child: Icon(
-                                      FluentIcons.document_pdf_24_regular,
-                                      size: 16),
+                          ValueListenableBuilder<String>(
+                            valueListenable: tab.currentTitle,
+                            builder: (context, currentTitleValue, child) {
+                              final tooltipMessage =
+                                  currentTitleValue.isNotEmpty
+                                      ? '${tab.title}, $currentTitleValue'
+                                      : tab.title;
+                              return Tooltip(
+                                message: tooltipMessage,
+                                child: Row(
+                                  children: [
+                                    const Padding(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: Icon(
+                                          FluentIcons.document_pdf_24_regular,
+                                          size: 16),
+                                    ),
+                                    Text(truncate(tab.title, 12)),
+                                  ],
                                 ),
-                                Text(truncate(tab.title, 12)),
-                              ],
-                            ),
+                              );
+                            },
                           )
                         else
-                          Tooltip(
-                              message: tab.title,
-                              child: Text(truncate(tab.title, 12))),
+                          ValueListenableBuilder<String>(
+                            valueListenable: (tab as TextBookTab).currentTitle,
+                            builder: (context, currentTitleValue, child) {
+                              final tooltipMessage =
+                                  currentTitleValue.isNotEmpty
+                                      ? '${tab.title}, $currentTitleValue'
+                                      : tab.title;
+                              return Tooltip(
+                                message: tooltipMessage,
+                                child: Text(truncate(tab.title, 12)),
+                              );
+                            },
+                          ),
                         Tooltip(
                           preferBelow: false,
                           message: closeTabShortcut.toUpperCase(),
@@ -736,7 +759,8 @@ class _CustomTitleBarState extends State<CustomTitleBar>
             },
             builder: (context, candidateData, rejectedData) {
               // בודקים אם יש טאב אחר שמרחף מעלינו כרגע
-              final isHovered = candidateData.isNotEmpty && candidateData.first != tab;
+              final isHovered =
+                  candidateData.isNotEmpty && candidateData.first != tab;
 
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
