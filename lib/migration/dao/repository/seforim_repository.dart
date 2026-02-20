@@ -998,7 +998,8 @@ class SeforimRepository {
       includeHebrewBooks: true,
     );
 
-   final bb = booksWithRelations.where((row) {
+    final bb = booksWithRelations
+        .where((row) {
           final raw = row['externalLibraryId'];
           if (raw is String) return raw.trim().isNotEmpty;
           return raw != null;
@@ -1529,6 +1530,59 @@ class SeforimRepository {
               linkCount: row['linkCount'] as int,
             ))
         .toList();
+  }
+
+  /// מחזיר את מידע הדור של ספר לפי ה-ID שלו
+  ///
+  /// [bookId] - מזהה הספר
+  /// מחזיר [BookGenerationInfo] עם שם הדור וסדר המיון, או null אם לא נמצא
+  Future<BookGenerationInfo?> getBookGenerationInfo(int bookId) async {
+    final db = await _database.database;
+    final result = await db.rawQuery('''
+      SELECT g.id, g.name
+      FROM book b
+      LEFT JOIN book_author ba ON b.id = ba.bookId
+      LEFT JOIN author a ON ba.authorId = a.id
+      LEFT JOIN generation g ON a.generationId = g.id
+      WHERE b.id = ?
+      LIMIT 1
+    ''', [bookId]);
+
+    if (result.isEmpty || result.first['id'] == null) {
+      return null;
+    }
+
+    return BookGenerationInfo(
+      generationId: result.first['id'] as int,
+      generationName: result.first['name'] as String,
+    );
+  }
+
+  /// מחזיר את מידע הדור של ספר לפי שם הספר
+  ///
+  /// [bookTitle] - שם הספר
+  /// מחזיר [BookGenerationInfo] עם שם הדור וסדר המיון, או null אם לא נמצא
+  Future<BookGenerationInfo?> getBookGenerationInfoByTitle(
+      String bookTitle) async {
+    final db = await _database.database;
+    final result = await db.rawQuery('''
+      SELECT g.id, g.name
+      FROM book b
+      LEFT JOIN book_author ba ON b.id = ba.bookId
+      LEFT JOIN author a ON ba.authorId = a.id
+      LEFT JOIN generation g ON a.generationId = g.id
+      WHERE b.title = ?
+      LIMIT 1
+    ''', [bookTitle]);
+
+    if (result.isEmpty || result.first['id'] == null) {
+      return null;
+    }
+
+    return BookGenerationInfo(
+      generationId: result.first['id'] as int,
+      generationName: result.first['name'] as String,
+    );
   }
 
   // New paginated methods for per-commentator pagination use cases
@@ -2396,6 +2450,24 @@ class CommentatorInfo {
     this.author,
     required this.linkCount,
   });
+}
+
+/// מידע על הדור של ספר
+///
+/// @property generationId מזהה הדור
+/// @property generationName שם הדור (תורה שבכתב, חז"ל, ראשונים, אחרונים, מחברי זמננו)
+class BookGenerationInfo {
+  final int generationId;
+  final String generationName;
+
+  const BookGenerationInfo({
+    required this.generationId,
+    required this.generationName,
+  });
+
+  @override
+  String toString() =>
+      'BookGenerationInfo(id: $generationId, name: $generationName)';
 }
 
 /// A commentary with its text content.

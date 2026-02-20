@@ -1,5 +1,6 @@
 import 'package:otzaria/models/links.dart';
 import 'package:otzaria/utils/text_manipulation.dart' as utils;
+import 'package:otzaria/data/data_providers/sqlite_data_provider.dart';
 
 /// מייצג קבוצת קטעי פירוש רצופים מאותו ספר
 ///
@@ -94,18 +95,42 @@ class CommentaryService {
   ///
   /// מחזיר את הדור המתאים, או [CommentaryEra.other] אם לא נמצא
   static Future<CommentaryEra> getBookEra(String bookTitle) async {
-    if (await utils.hasTopic(bookTitle, 'תורה שבכתב')) {
-      return CommentaryEra.torahShebichtav;
-    } else if (await utils.hasTopic(bookTitle, 'חז"ל')) {
-      return CommentaryEra.chazal;
-    } else if (await utils.hasTopic(bookTitle, 'ראשונים')) {
-      return CommentaryEra.rishonim;
-    } else if (await utils.hasTopic(bookTitle, 'אחרונים')) {
-      return CommentaryEra.acharonim;
-    } else if (await utils.hasTopic(bookTitle, 'מחברי זמננו')) {
-      return CommentaryEra.modern;
-    } else {
+    try {
+      final repo = SqliteDataProvider.instance.repository;
+      if (repo == null) {
+        // אם ה-DB לא מאותחל, נחזיר "שאר מפרשים"
+        return CommentaryEra.other;
+      }
+
+      final generationInfo = await repo.getBookGenerationInfoByTitle(bookTitle);
+
+      if (generationInfo == null) {
+        return CommentaryEra.other;
+      }
+
+      // מיפוי שם הדור ל-CommentaryEra
+      return _mapGenerationNameToEra(generationInfo.generationName);
+    } catch (e) {
+      // במקרה של שגיאה, מחזירים "שאר מפרשים"
       return CommentaryEra.other;
+    }
+  }
+
+  /// ממפה שם דור מה-DB ל-CommentaryEra enum
+  static CommentaryEra _mapGenerationNameToEra(String generationName) {
+    switch (generationName) {
+      case 'תורה שבכתב':
+        return CommentaryEra.torahShebichtav;
+      case 'חז"ל':
+        return CommentaryEra.chazal;
+      case 'ראשונים':
+        return CommentaryEra.rishonim;
+      case 'אחרונים':
+        return CommentaryEra.acharonim;
+      case 'מחברי זמננו':
+        return CommentaryEra.modern;
+      default:
+        return CommentaryEra.other;
     }
   }
 

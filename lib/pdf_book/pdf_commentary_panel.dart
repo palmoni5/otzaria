@@ -19,54 +19,18 @@ import 'package:otzaria/settings/settings_state.dart';
 import 'package:otzaria/utils/text_manipulation.dart' as utils;
 import 'package:otzaria/utils/context_menu_utils.dart';
 import 'package:otzaria/widgets/rtl_text_field.dart';
+import 'package:otzaria/services/commentary_service.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'dart:async'; // Added for Timer
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
-/// מייצג קבוצת קטעי פירוש רצופים מאותו ספר
-class CommentaryGroup {
-  final String bookTitle;
-  final List<Link> links;
-
-  CommentaryGroup({required this.bookTitle, required this.links});
-}
+/// Type alias לתאימות - משתמש ב-LinkGroup מה-Service
+typedef CommentaryGroup = LinkGroup;
 
 /// מקבץ רשימת קישורים לקבוצות לפי שם הספר (רק קטעים רצופים)
+/// משתמש ב-CommentaryService
 List<CommentaryGroup> _groupConsecutiveLinks(List<Link> links) {
-  if (links.isEmpty) return [];
-
-  final groups = <CommentaryGroup>[];
-  String? currentTitle;
-  List<Link> currentGroup = [];
-
-  for (final link in links) {
-    final title = utils.getTitleFromPath(link.path2);
-
-    if (currentTitle == null || currentTitle != title) {
-      // ספר חדש - שומר את הקבוצה הקודמת ומתחיל קבוצה חדשה
-      if (currentGroup.isNotEmpty) {
-        groups.add(CommentaryGroup(
-          bookTitle: currentTitle!,
-          links: List.from(currentGroup),
-        ));
-      }
-      currentTitle = title;
-      currentGroup = [link];
-    } else {
-      // אותו ספר - מוסיף לקבוצה הנוכחית
-      currentGroup.add(link);
-    }
-  }
-
-  // מוסיף את הקבוצה האחרונה
-  if (currentGroup.isNotEmpty) {
-    groups.add(CommentaryGroup(
-      bookTitle: currentTitle!,
-      links: List.from(currentGroup),
-    ));
-  }
-
-  return groups;
+  return CommentaryService.groupConsecutiveLinks(links);
 }
 
 /// Widget שמציג מפרשים וקישורים עבור PDF
@@ -705,9 +669,9 @@ class _PdfCommentaryPanelState extends State<PdfCommentaryPanel>
     // קיבוץ המפרשים לפי ספר
     final groups = _groupConsecutiveLinks(relevantLinks);
 
-    // מיון הקבוצות לפי סדר הדורות
+    // מיון הקבוצות לפי סדר הדורות באמצעות CommentaryService
     return FutureBuilder<List<CommentaryGroup>>(
-      future: _sortGroupsByEra(groups),
+      future: CommentaryService.sortGroupsByEra(groups),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
@@ -880,48 +844,6 @@ class _PdfCommentaryPanelState extends State<PdfCommentaryPanel>
         }
       }
     });
-  }
-
-  /// ממיין קבוצות מפרשים לפי סדר הדורות
-  Future<List<CommentaryGroup>> _sortGroupsByEra(
-      List<CommentaryGroup> groups) async {
-    // יצירת מפה של כל שם ספר לדור שלו
-    final Map<String, int> eraOrder = {};
-
-    for (final group in groups) {
-      final title = group.bookTitle;
-
-      // בדיקה לאיזה דור שייך הספר
-      if (await utils.hasTopic(title, 'תורה שבכתב')) {
-        eraOrder[title] = 0;
-      } else if (await utils.hasTopic(title, 'חז"ל')) {
-        eraOrder[title] = 1;
-      } else if (await utils.hasTopic(title, 'ראשונים')) {
-        eraOrder[title] = 2;
-      } else if (await utils.hasTopic(title, 'אחרונים')) {
-        eraOrder[title] = 3;
-      } else if (await utils.hasTopic(title, 'מחברי זמננו')) {
-        eraOrder[title] = 4;
-      } else {
-        eraOrder[title] = 5; // שאר מפרשים
-      }
-    }
-
-    // מיון הקבוצות לפי הדור
-    final sortedGroups = List<CommentaryGroup>.from(groups);
-    sortedGroups.sort((a, b) {
-      final orderA = eraOrder[a.bookTitle] ?? 5;
-      final orderB = eraOrder[b.bookTitle] ?? 5;
-
-      if (orderA != orderB) {
-        return orderA.compareTo(orderB);
-      }
-
-      // אם שני הספרים באותו דור, ממיינים לפי שם
-      return a.bookTitle.compareTo(b.bookTitle);
-    });
-
-    return sortedGroups;
   }
 
   Widget _buildCommentaryGroupTile(CommentaryGroup group) {
