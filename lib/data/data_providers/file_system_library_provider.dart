@@ -74,6 +74,16 @@ class FileSystemLibraryProvider implements LibraryProvider {
     // We can populate the key map here as well to ensure it's accurate
     final map = await _keyToPath;
 
+    // Load books from the main library folder (אוצריא or custom folder name)
+    final folderName = Settings.getValue<String>('key-library-folder-name') ?? 'אוצריא';
+    final mainLibraryPath = '$_libraryPath${Platform.pathSeparator}$folderName';
+    final mainLibraryDir = Directory(mainLibraryPath);
+    
+    if (await mainLibraryDir.exists()) {
+      await _loadBooksRecursively(
+          mainLibraryDir, metadata, booksByCategory, [], map);
+    }
+
     // Load books from the built-in personal folder (אוצריא/אישי)
     // This is NOT a custom folder, but a built-in location for personal books
     final personalBooksPath = getPersonalBooksPath();
@@ -87,8 +97,6 @@ class FileSystemLibraryProvider implements LibraryProvider {
     // The main library is now stored in the database, so we don't scan the אוצריא folder
     await _loadCustomFoldersBooks(metadata, booksByCategory, map);
 
-    debugPrint(
-        '📁 FileSystem loaded ${booksByCategory.values.expand((b) => b).length} books from personal and custom folders');
     return booksByCategory;
   }
 
@@ -314,6 +322,17 @@ class FileSystemLibraryProvider implements LibraryProvider {
       keyToPath[key] = path;
     }
 
+    // Load from the main library folder (אוצריא or custom folder name)
+    final folderName = Settings.getValue<String>('key-library-folder-name') ?? 'אוצריא';
+    final mainLibraryPath = '$_libraryPath${Platform.pathSeparator}$folderName';
+    
+    if (await Directory(mainLibraryPath).exists()) {
+      final mainPaths = await _getAllBookPaths(mainLibraryPath);
+      for (var path in mainPaths) {
+        addPath(path, mainLibraryPath);
+      }
+    }
+
     // Load from the built-in personal folder (אוצריא/אישי)
     // This is NOT a custom folder, but a built-in location for personal books
     final personalBooksPath = getPersonalBooksPath();
@@ -324,8 +343,7 @@ class FileSystemLibraryProvider implements LibraryProvider {
       }
     }
 
-    // Don't load from main library path (אוצריא) - those books are now in the database
-    // Only load from custom folders (those NOT marked for DB sync)
+    // Load from custom folders (those NOT marked for DB sync)
     final customFoldersJson =
         Settings.getValue<String>(SettingsRepository.keyCustomFolders);
     final customFolders = CustomFoldersManager.loadFolders(customFoldersJson);

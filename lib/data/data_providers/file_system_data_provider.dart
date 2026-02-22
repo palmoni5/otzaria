@@ -177,11 +177,14 @@ class FileSystemData {
       return Library(categories: []);
     }
 
-    // בדיקה שתיקיית אוצריא קיימת
-    final otzariaPath = '$libraryPath${Platform.pathSeparator}אוצריא';
+    // קבלת שם התיקייה מההגדרות (אם לא קיים, השתמש ב-"אוצריא")
+    final folderName = Settings.getValue<String>('key-library-folder-name') ?? 'אוצריא';
+
+    // בדיקה שתיקיית הספרים קיימת
+    final otzariaPath = '$libraryPath${Platform.pathSeparator}$folderName';
     final otzariaDir = Directory(otzariaPath);
     if (!otzariaDir.existsSync()) {
-      debugPrint('Otzaria directory does not exist: $otzariaPath');
+      debugPrint('Books directory does not exist: $otzariaPath');
       return Library(categories: []);
     }
 

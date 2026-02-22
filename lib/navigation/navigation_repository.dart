@@ -15,7 +15,7 @@ class NavigationRepository {
       return true;
     }
 
-    // בדיקה שקובץ seforim.db קיים בנתיב המתאים
+    // בדיקה שקובץ seforim.db קיים בנתיח המתאים
     final databasePath = DatabaseConstants.getDatabasePath();
     final databaseFile = File(databasePath);
     

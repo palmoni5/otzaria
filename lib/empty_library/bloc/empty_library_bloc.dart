@@ -39,37 +39,49 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
     // 2. המשתמש בחר ישירות את תיקיית "אוצריא" (למשל: C:\Library\אוצריא שמכילה seforim.db)
 
     String libraryPath;
+    String folderName;
 
-    // נתיב אפשרות 1: התיקייה שנבחרה מכילה את תיקיית אוצריא
+    // בדיקה אפשרות 1: התיקייה שנבחרה מכילה תיקייה בשם "אוצריא" עם seforim.db
     final databasePathWithOtzaria =
         DatabaseConstants.getDatabasePathForLibrary(selectedDirectory);
     final databaseFileWithOtzaria = File(databasePathWithOtzaria);
 
-    // נתיב אפשרות 2: התיקייה שנבחרה היא תיקיית אוצריא עצמה (seforim.db ישירות בתוכה)
+    // בדיקה אפשרות 2: התיקייה שנבחרה היא תיקייה עם seforim.db ישירות בתוכה
     final databasePathDirect =
         path.join(selectedDirectory, DatabaseConstants.databaseFileName);
     final databaseFileDirect = File(databasePathDirect);
 
+    // בדיקה אפשרות 3: התיקייה שנבחרה היא תיקייה שמכילה תיקייה אחרת עם seforim.db
+    final dirName = path.basename(selectedDirectory);
+    final databasePathInSelectedDir =
+        path.join(selectedDirectory, DatabaseConstants.databaseFileName);
+    final databaseFileInSelectedDir = File(databasePathInSelectedDir);
+
     if (databaseFileWithOtzaria.existsSync()) {
-      // אפשרות 1: נבחרה תיקייה שמכילה את תיקיית אוצריא
+      // אפשרות 1: נבחרה תיקייה שמכילה תיקייה בשם "אוצריא" עם seforim.db
       libraryPath = selectedDirectory;
-      // שמירת שם התיקייה (אוצריא)
-      await Settings.setValue(SettingsRepository.keyLibraryFolderName, DatabaseConstants.otzariaFolderName);
+      folderName = DatabaseConstants.otzariaFolderName;
     } else if (databaseFileDirect.existsSync()) {
       // אפשרות 2: נבחרה ישירות תיקייה שיש בה seforim.db
-      final dirName = path.basename(selectedDirectory);
       libraryPath = path.dirname(selectedDirectory);
-      // שמירת שם התיקייה (כל שם שהמשתמש בחר)
-      await Settings.setValue(SettingsRepository.keyLibraryFolderName, dirName);
+      folderName = dirName;
+    } else if (databaseFileInSelectedDir.existsSync()) {
+      // אפשרות 3: התיקייה שנבחרה מכילה seforim.db ישירות
+      libraryPath = selectedDirectory;
+      folderName = '';
     } else {
       emit(EmptyLibraryError(
         errorMessage: 'הקובץ ${DatabaseConstants.databaseFileName} לא נמצא.\n'
-            'יש לבחור את התיקייה המכילה את הקובץ ${DatabaseConstants.databaseFileName} או את תיקיית "${DatabaseConstants.otzariaFolderName}" עם הקובץ ${DatabaseConstants.databaseFileName},\n'
-            'או לבחור ישירות את תיקיית "${DatabaseConstants.otzariaFolderName}".',
+            'יש לבחור את התיקייה המכילה את הקובץ ${DatabaseConstants.databaseFileName}.\n'
+            'לדוגמה: C:\\אוצריא\\3אוצריא (אם seforim.db נמצא בתוכה)',
         selectedPath: selectedDirectory,
       ));
       return;
     }
+
+    // שמירת הגדרות
+    await Settings.setValue(SettingsRepository.keyLibraryFolderName, folderName);
+    await Settings.setValue(SettingsRepository.keyLibraryPath, libraryPath);
 
     // שמירת הנתיב בהגדרות
     await Settings.setValue(SettingsRepository.keyLibraryPath, libraryPath);
@@ -267,6 +279,7 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
   Future<void> _checkAndSaveLibraryPath(
       String selectedDirectory, Emitter<EmptyLibraryState> emit) async {
     String libraryPath;
+    String folderName;
 
     final databasePathWithOtzaria =
         DatabaseConstants.getDatabasePathForLibrary(selectedDirectory);
@@ -276,27 +289,33 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
         path.join(selectedDirectory, DatabaseConstants.databaseFileName);
     final databaseFileDirect = File(databasePathDirect);
 
+    final dirName = path.basename(selectedDirectory);
+    final databasePathInSelectedDir =
+        path.join(selectedDirectory, DatabaseConstants.databaseFileName);
+    final databaseFileInSelectedDir = File(databasePathInSelectedDir);
+
     if (databaseFileWithOtzaria.existsSync()) {
-      // המשתמש בחר תיקייה שמכילה את תיקיית "אוצריא" עם seforim.db
+      // אפשרות 1: נבחרה תיקייה שמכילה תיקייה בשם "אוצריא" עם seforim.db
       libraryPath = selectedDirectory;
-      // שמירת שם התיקייה (אוצריא)
-      await Settings.setValue(SettingsRepository.keyLibraryFolderName, DatabaseConstants.otzariaFolderName);
+      folderName = DatabaseConstants.otzariaFolderName;
     } else if (databaseFileDirect.existsSync()) {
-      // המשתמש בחר תיקייה שיש בה seforim.db ישירות
-      final dirName = path.basename(selectedDirectory);
+      // אפשרות 2: נבחרה ישירות תיקייה שיש בה seforim.db
       libraryPath = path.dirname(selectedDirectory);
-      // שמירת שם התיקייה (כל שם שהמשתמש בחר)
-      await Settings.setValue(SettingsRepository.keyLibraryFolderName, dirName);
+      folderName = dirName;
+    } else if (databaseFileInSelectedDir.existsSync()) {
+      // אפשרות 3: התיקייה שנבחרה מכילה seforim.db ישירות
+      libraryPath = selectedDirectory;
+      folderName = '';
     } else {
       emit(EmptyLibraryError(
         errorMessage: 'הקובץ ${DatabaseConstants.databaseFileName} לא נמצא.\n'
-            'יש לבחור את התיקייה המכילה את תיקיית "${DatabaseConstants.otzariaFolderName}" עם הקובץ ${DatabaseConstants.databaseFileName},\n'
-            'או לבחור ישירות את תיקיית "${DatabaseConstants.otzariaFolderName}".',
+            'יש לבחור את התיקייה המכילה את הקובץ ${DatabaseConstants.databaseFileName}.',
         selectedPath: selectedDirectory,
       ));
       return;
     }
 
+    await Settings.setValue(SettingsRepository.keyLibraryFolderName, folderName);
     await Settings.setValue(SettingsRepository.keyLibraryPath, libraryPath);
     emit(EmptyLibraryDirectorySelected(selectedPath: libraryPath));
   }
