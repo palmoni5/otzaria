@@ -23,7 +23,7 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
     // אם יש נתיב שהועבר, נשתמש בו (מהUI שכבר עשה חילוץ)
     // אחרת, נבקש מהמשתמש לבחור
     String? selectedDirectory = event.path;
-    
+
     if (selectedDirectory == null) {
       selectedDirectory = await FilePicker.platform.getDirectoryPath();
       if (selectedDirectory == null) {
@@ -80,7 +80,8 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
     }
 
     // שמירת הגדרות
-    await Settings.setValue(SettingsRepository.keyLibraryFolderName, folderName);
+    await Settings.setValue(
+        SettingsRepository.keyLibraryFolderName, folderName);
     await Settings.setValue(SettingsRepository.keyLibraryPath, libraryPath);
 
     // שמירת הנתיב בהגדרות
@@ -90,7 +91,8 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
   }
 
   Future<void> _onPickDirectoryWithZipRequested(
-      PickDirectoryWithZipRequested event, Emitter<EmptyLibraryState> emit) async {
+      PickDirectoryWithZipRequested event,
+      Emitter<EmptyLibraryState> emit) async {
     try {
       emit(const EmptyLibraryExtracting(
         selectedPath: '',
@@ -106,7 +108,7 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
               entity is File && entity.path.toLowerCase().endsWith('.zip'))
           .cast<File>()
           .toList();
-      
+
       final zipPath = zipFiles.isNotEmpty ? zipFiles.first.path : '';
 
       final extractionResult =
@@ -119,10 +121,7 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
             message: m,
           ));
         },
-        onAskDeleteZip: () async {
-          // לא נמחק כאן - נשאל את המשתמש אחרי החילוץ
-          return false;
-        },
+        onAskDeleteZip: () async => false,
       );
 
       if (!extractionResult.success) {
@@ -139,7 +138,6 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
           zipPath: zipPath,
           extractedPath: event.path,
         ));
-        // נעצור כאן - המשתמש יענה דרך אירוע DeleteZipAnswered
         return;
       }
 
@@ -155,7 +153,7 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
   Future<void> _onDownloadLibraryRequested(
       DownloadLibraryRequested event, Emitter<EmptyLibraryState> emit) async {
     const url =
-        'https://github.com/Otzaria/otzaria-library/releases/download/library-db-1/seforim.zip';
+        'https://github.com/Otzaria/otzaria-library/releases/download/library-db-1/seforim.db.zip';
 
     try {
       // קבלת תיקיית ההתקנה
@@ -191,21 +189,40 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
       final file = File(zipPath);
       final sink = file.openWrite();
 
-      await for (var chunk in response.stream) {
-        sink.add(chunk);
-        downloadedBytes += chunk.length;
-        if (contentLength > 0) {
-          final progress = downloadedBytes / contentLength;
-          final mb = (downloadedBytes / 1024 / 1024).toStringAsFixed(1);
-          final totalMb = (contentLength / 1024 / 1024).toStringAsFixed(1);
-          emit(EmptyLibraryDownloading(
-            progress: progress,
-            message: 'מוריד... $mb MB מתוך $totalMb MB',
-          ));
-        }
-      }
+      // Buffer גדול יותר - 2MB לביצועים אופטימליים
+      const bufferSize = 2 * 1024 * 1024;
+      var buffer = <int>[];
 
-      await sink.close();
+      try {
+        await for (var chunk in response.stream) {
+          buffer.addAll(chunk);
+
+          // כתוב כשהבuffer מלא
+          if (buffer.length >= bufferSize) {
+            sink.add(buffer);
+            downloadedBytes += buffer.length;
+            buffer = <int>[];
+
+            if (contentLength > 0) {
+              final progress = downloadedBytes / contentLength;
+              final mb = (downloadedBytes / 1024 / 1024).toStringAsFixed(1);
+              final totalMb = (contentLength / 1024 / 1024).toStringAsFixed(1);
+              emit(EmptyLibraryDownloading(
+                progress: progress,
+                message: 'מוריד... $mb MB מתוך $totalMb MB',
+              ));
+            }
+          }
+        }
+
+        // כתוב את הבuffer הנותר
+        if (buffer.isNotEmpty) {
+          sink.add(buffer);
+          downloadedBytes += buffer.length;
+        }
+      } finally {
+        await sink.close();
+      }
 
       // חילוץ הקובץ
       emit(const EmptyLibraryExtracting(
@@ -214,7 +231,7 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
         message: 'מתחיל חילוץ...',
       ));
 
-      final extractionResult =
+      final extractResult =
           await ZipExtractorService.checkAndExtractZipIfNeeded(
         otzariaDir.path,
         onProgress: (p, m) {
@@ -224,27 +241,23 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
             message: m,
           ));
         },
-        onAskDeleteZip: () async {
-          // לא נמחק כאן - נשאל את המשתמש אחרי החילוץ
-          return false;
-        },
+        onAskDeleteZip: () async => false,
       );
 
-      if (!extractionResult.success) {
+      if (!extractResult.success) {
         emit(EmptyLibraryError(
-          errorMessage: extractionResult.errorMessage ?? 'שגיאה בחילוץ',
-          zipFiles: extractionResult.zipFiles,
+          errorMessage: extractResult.errorMessage ?? 'שגיאה בחילוץ',
+          zipFiles: extractResult.zipFiles,
         ));
         return;
       }
 
       // אם החילוץ הצליח, נשאל את המשתמש אם למחוק את ה-ZIP
-      if (extractionResult.successfullyExtracted) {
+      if (extractResult.successfullyExtracted) {
         emit(EmptyLibraryAskingDeleteZip(
           zipPath: zipPath,
-          extractedPath: otzariaDir.path, // נשמור את נתיב תיקיית אוצריא
+          extractedPath: otzariaDir.path,
         ));
-        // נעצור כאן - המשתמש יענה דרך אירוע DeleteZipAnswered
         return;
       }
 
@@ -315,7 +328,8 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
       return;
     }
 
-    await Settings.setValue(SettingsRepository.keyLibraryFolderName, folderName);
+    await Settings.setValue(
+        SettingsRepository.keyLibraryFolderName, folderName);
     await Settings.setValue(SettingsRepository.keyLibraryPath, libraryPath);
     emit(EmptyLibraryDirectorySelected(selectedPath: libraryPath));
   }
