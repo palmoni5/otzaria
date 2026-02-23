@@ -315,13 +315,35 @@ class _AdvancedSettingsTabState extends State<AdvancedSettingsTab> {
                           ? 'האינדקס מעודכן'
                           : 'האינדקס לא מעודכן',
                   style: const TextStyle(fontSize: 13)),
-              trailing: indexingState is IndexingInProgress
-                  ? const SizedBox(
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(FluentIcons.delete_24_regular),
+                    tooltip: 'איפוס אינדקס',
+                    onPressed: () async {
+                      final result = await showConfirmationDialog(
+                        context: context,
+                        title: 'איפוס אינדקס',
+                        content:
+                            'האם למחוק את אינדקס החיפוש? תצטרך לבנות אותו מחדש כדי להשתמש בחיפוש.',
+                      );
+                      if (!context.mounted) return;
+                      if (result == true) {
+                        context.read<IndexingBloc>().add(ClearIndex());
+                      }
+                    },
+                  ),
+                  if (indexingState is IndexingInProgress)
+                    const SizedBox(
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(FluentIcons.chevron_left_24_regular),
+                  else
+                    const Icon(FluentIcons.chevron_left_24_regular),
+                ],
+              ),
               onTap: () async {
                 if (indexingState is IndexingInProgress) {
                   final result = await showConfirmationDialog(
@@ -341,25 +363,6 @@ class _AdvancedSettingsTabState extends State<AdvancedSettingsTab> {
                 }
               },
             );
-          },
-        ),
-        const Divider(height: 1),
-        ListTile(
-          leading: const Icon(FluentIcons.delete_24_regular),
-          title: const Text('איפוס אינדקס', style: TextStyle(fontSize: 16)),
-          subtitle: const Text('מחק את אינדקס החיפוש',
-              style: TextStyle(fontSize: 13)),
-          onTap: () async {
-            final result = await showConfirmationDialog(
-              context: context,
-              title: 'איפוס אינדקס',
-              content:
-                  'האם למחוק את אינדקס החיפוש? תצטרך לבנות אותו מחדש כדי להשתמש בחיפוש.',
-            );
-            if (!context.mounted) return;
-            if (result == true) {
-              context.read<IndexingBloc>().add(ClearIndex());
-            }
           },
         ),
       ],
@@ -476,64 +479,129 @@ class _AdvancedSettingsTabState extends State<AdvancedSettingsTab> {
       context: context,
       title: 'איפוס',
       children: [
-        ListTile(
-          leading: const Icon(FluentIcons.arrow_reset_24_regular),
-          title: const Text('איפוס הגדרות', style: TextStyle(fontSize: 16)),
-          subtitle: const Text(
-              'פעולה זו תמחק את כל ההגדרות ותחזיר את התוכנה למצב ההתחלתי',
-              style: TextStyle(fontSize: 13)),
-          onTap: () async {
-            // בדיקה אם במצב מוגן - אם כן, דרוש אימות סיסמה
-            if (shouldProtectSettings(context)) {
-              final verified = await verifyPasswordForAction(context);
-              if (!verified || !context.mounted) {
-                return;
-              }
-            }
-
-            if (!context.mounted) return;
-
-            final confirmed = await showConfirmationDialog(
-              context: context,
-              title: 'איפוס הגדרות?',
-              content:
-                  'כל ההגדרות האישיות שלך ימחקו. פעולה זו אינה הפיכה. האם להמשיך?',
-              isDangerous: true,
-            );
-
-            if (confirmed == true && context.mounted) {
-              Settings.clearCache();
-              await showDialog<void>(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => AlertDialog(
-                  title: const Text('ההגדרות אופסו'),
-                  content: const Text(
-                      'יש לסגור ולהפעיל מחדש את התוכנה כדי שהשינויים יכנסו לתוקף.'),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        if (Platform.isAndroid || Platform.isIOS) {
-                          SystemNavigator.pop();
-                        } else {
-                          windowManager.close();
-                        }
-                      },
-                      child: const Text('סגור את התוכנה'),
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // איפוס הגדרות
+              Row(
+                children: [
+                  const Icon(FluentIcons.arrow_reset_24_regular),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('איפוס הגדרות',
+                            style: TextStyle(fontSize: 16)),
+                        const SizedBox(height: 4),
+                        Text(
+                          'פעולה זו תמחק את כל ההגדרות ותחזיר את התוכנה למצב ההתחלתי',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              );
-            }
-          },
-        ),
-        ListTile(
-          leading: const Icon(FluentIcons.delete_24_regular),
-          title: const Text('הסרת התוכנה', style: TextStyle(fontSize: 16)),
-          subtitle: const Text(
-              'מחיקת כל ההגדרות ותיקיית ההתקנה. ניתן לבחור האם למחוק גם את הספרייה',
-              style: TextStyle(fontSize: 13)),
-          onTap: () => _uninstallApp(context),
+                  ),
+                  const SizedBox(width: 16),
+                  FilledButton.tonal(
+                    onPressed: () async {
+                      // בדיקה אם במצב מוגן - אם כן, דרוש אימות סיסמה
+                      if (shouldProtectSettings(context)) {
+                        final verified = await verifyPasswordForAction(context);
+                        if (!verified || !context.mounted) {
+                          return;
+                        }
+                      }
+
+                      if (!context.mounted) return;
+
+                      final confirmed = await showConfirmationDialog(
+                        context: context,
+                        title: 'איפוס הגדרות?',
+                        content:
+                            'כל ההגדרות האישיות שלך ימחקו. פעולה זו אינה הפיכה. האם להמשיך?',
+                        isDangerous: true,
+                      );
+
+                      if (confirmed == true && context.mounted) {
+                        Settings.clearCache();
+                        await showDialog<void>(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => AlertDialog(
+                            title: const Text('ההגדרות אופסו'),
+                            content: const Text(
+                                'יש לסגור ולהפעיל מחדש את התוכנה כדי שהשינויים יכנסו לתוקף.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  if (Platform.isAndroid || Platform.isIOS) {
+                                    SystemNavigator.pop();
+                                  } else {
+                                    windowManager.close();
+                                  }
+                                },
+                                child: const Text('סגור את התוכנה'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text('איפוס'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 16),
+              // הסרת התוכנה
+              Row(
+                children: [
+                  const Icon(FluentIcons.delete_24_regular),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('הסרת התוכנה',
+                            style: TextStyle(fontSize: 16)),
+                        const SizedBox(height: 4),
+                        Text(
+                          'מחיקת כל ההגדרות ותיקיית ההתקנה. ניתן לבחור האם למחוק גם את הספרייה',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  FilledButton.tonal(
+                    onPressed: () => _uninstallApp(context),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(context)
+                          .colorScheme
+                          .errorContainer
+                          .withValues(alpha: 0.5),
+                    ),
+                    child: const Text('הסר'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ],
     );
