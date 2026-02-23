@@ -16,6 +16,8 @@ import 'package:otzaria/library/models/library.dart';
 import 'package:otzaria/models/links.dart';
 import 'package:otzaria/utils/toc_parser.dart';
 import 'package:otzaria/migration/core/models/book.dart' as db_models;
+import 'package:otzaria/data/constants/database_constants.dart';
+import 'package:path/path.dart' as path;
 
 /// A data provider that manages file system operations for the library.
 ///
@@ -170,18 +172,35 @@ class FileSystemData {
   /// to create a full [Library] object containing all categories and books.
   /// Uses LibraryProviderManager for unified catalog building.
   Future<Library> getLibrary() async {
-    // בדיקה שהתיקייה הראשית קיימת
-    final rootDir = Directory(libraryPath);
-    if (!rootDir.existsSync()) {
-      debugPrint('Library root directory does not exist: $libraryPath');
+    // בדיקה שהנתיב קיים (יכול להיות קובץ DB או תיקייה)
+    final libraryFile = File(libraryPath);
+    final libraryDir = Directory(libraryPath);
+    
+    // אם זה קובץ DB, נשתמש בו ישירות
+    if (libraryFile.existsSync() && libraryPath.toLowerCase().endsWith('.db')) {
+      metadata = _getMetadata();
+      final metadataResult = await metadata;
+
+      // Use the unified catalog builder from LibraryProviderManager
+      final library = await _providerManager.buildLibraryCatalog(
+        metadataResult,
+        libraryPath,
+      );
+
+      return library;
+    }
+    
+    // אם זה תיקייה, נחפש את קובץ ה-DB בתוכה
+    if (!libraryDir.existsSync()) {
+      debugPrint('Library path does not exist: $libraryPath');
       return Library(categories: []);
     }
 
     // קבלת שם התיקייה מההגדרות (אם לא קיים, השתמש ב-"אוצריא")
-final folderName = Settings.getValue<String>(SettingsRepository.keyLibraryFolderName) ?? DatabaseConstants.otzariaFolderName;
+    final folderName = Settings.getValue<String>(SettingsRepository.keyLibraryFolderName) ?? DatabaseConstants.otzariaFolderName;
 
-// בדיקה שתיקיית הספרים קיימת
-final otzariaPath = path.join(libraryPath, folderName);
+    // בדיקה שתיקיית הספרים קיימת
+    final otzariaPath = path.join(libraryPath, folderName);
     final otzariaDir = Directory(otzariaPath);
     if (!otzariaDir.existsSync()) {
       debugPrint('Books directory does not exist: $otzariaPath');

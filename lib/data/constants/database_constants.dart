@@ -12,19 +12,31 @@ class DatabaseConstants {
   /// Gets the full database path based on the library path setting
   static String getDatabasePath() {
     final libraryPath = Settings.getValue<String>('key-library-path') ?? '.';
-    return getDatabasePathForLibrary(libraryPath);
+    return libraryPath;
   }
 
-  /// Gets the database path for a specific library path
-  static String getDatabasePathForLibrary(String libraryPath, [String? folderName]) {
-    final folder = folderName ?? Settings.getValue<String>('key-library-folder-name') ?? otzariaFolderName;
-    
-    // אם folderName ריק, זה אומר שה-seforim.db נמצא ישירות בנתיב
-    if (folder.isEmpty) {
-      return path.join(libraryPath, databaseFileName);
+  /// Gets the database path for a specific file path
+  /// If the file is a .db file, returns it directly
+  /// If the file is a .zip file, returns the extracted database path
+  static String getDatabasePathForLibrary(String filePath, [String? folderName]) {
+    // If it's a .db file, return it directly
+    if (filePath.toLowerCase().endsWith('.db')) {
+      return filePath;
     }
     
-    return path.join(libraryPath, folder, databaseFileName);
+    // If it's a .zip file, return the extracted path
+    if (filePath.toLowerCase().endsWith('.zip')) {
+      final fileName = path.basenameWithoutExtension(filePath);
+      final directory = path.dirname(filePath);
+      return path.join(directory, fileName, databaseFileName);
+    }
+    
+    // Fallback for directory paths (legacy support)
+    final folder = folderName ?? Settings.getValue<String>('key-library-folder-name') ?? otzariaFolderName;
+    if (folder.isEmpty) {
+      return path.join(filePath, databaseFileName);
+    }
+    return path.join(filePath, folder, databaseFileName);
   }
 
   /// Private constructor to prevent instantiation

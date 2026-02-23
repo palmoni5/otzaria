@@ -12,8 +12,6 @@ import 'package:otzaria/utils/text_manipulation.dart';
 import 'package:otzaria/utils/toc_parser.dart';
 import 'package:otzaria/settings/custom_folders/custom_folder.dart';
 import 'package:otzaria/settings/settings_repository.dart';
-import 'package:otzaria/data/constants/database_constants.dart';
-import 'package:path/path.dart' as path;
 
 /// Library provider that loads books from the file system.
 class FileSystemLibraryProvider implements LibraryProvider {

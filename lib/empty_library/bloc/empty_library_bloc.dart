@@ -12,84 +12,75 @@ import 'package:http/http.dart' as http;
 
 class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
   EmptyLibraryBloc() : super(EmptyLibraryInitial()) {
-    on<PickDirectoryRequested>(_onPickDirectoryRequested);
-    on<PickDirectoryWithZipRequested>(_onPickDirectoryWithZipRequested);
+    on<PickDatabaseFileRequested>(_onPickDatabaseFileRequested);
     on<DownloadLibraryRequested>(_onDownloadLibraryRequested);
     on<DeleteZipAnswered>(_onDeleteZipAnswered);
   }
 
-  Future<void> _onPickDirectoryRequested(
-      PickDirectoryRequested event, Emitter<EmptyLibraryState> emit) async {
-    // אם יש נתיב שהועבר, נשתמש בו (מהUI שכבר עשה חילוץ)
-    // אחרת, נבקש מהמשתמש לבחור
-    String? selectedDirectory = event.path;
+  Future<void> _onPickDatabaseFileRequested(
+      PickDatabaseFileRequested event, Emitter<EmptyLibraryState> emit) async {
+    String? selectedFile = event.filePath;
 
-    if (selectedDirectory == null) {
-      selectedDirectory = await FilePicker.platform.getDirectoryPath();
-      if (selectedDirectory == null) {
+    if (selectedFile == null) {
+      // FilePicker.getFilePath לא קיים, נשתמש בפתיחת תיקייה ובחירת קובץ
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['db', 'zip'],
+        dialogTitle: 'בחר קובץ מסד נתונים (seforim.db) או קובץ ZIP',
+      );
+      
+      if (result == null || result.files.isEmpty) {
+        return;
+      }
+      
+      selectedFile = result.files.first.path;
+      if (selectedFile == null) {
         return;
       }
     }
 
-    emit(EmptyLibraryLoading(selectedPath: selectedDirectory));
+    emit(EmptyLibraryLoading(selectedPath: selectedFile));
 
-    // בדיקה שקובץ seforim.db קיים בתיקייה שנבחרה
-    // נבדוק שני מקרים:
-    // 1. המשתמש בחר תיקייה שמכילה את תיקיית "אוצריא" (למשל: C:\Library שמכילה C:\Library\אוצריא\seforim.db)
-    // 2. המשתמש בחר ישירות את תיקיית "אוצריא" (למשל: C:\Library\אוצריא שמכילה seforim.db)
-
-    String libraryPath;
-    String folderName;
-
-    // בדיקה אפשרות 1: התיקייה שנבחרה מכילה תיקייה בשם "אוצריא" עם seforim.db
-    final databasePathWithOtzaria =
-        DatabaseConstants.getDatabasePathForLibrary(selectedDirectory);
-    final databaseFileWithOtzaria = File(databasePathWithOtzaria);
-
-    // בדיקה אפשרות 2: התיקייה שנבחרה היא תיקייה עם seforim.db ישירות בתוכה
-    final databasePathDirect =
-        path.join(selectedDirectory, DatabaseConstants.databaseFileName);
-    final databaseFileDirect = File(databasePathDirect);
-
-    final dirName = path.basename(selectedDirectory);
-
-    if (databaseFileWithOtzaria.existsSync()) {
-      // אפשרות 1: נבחרה תיקייה שמכילה תיקייה בשם "אוצריא" עם seforim.db
-      libraryPath = selectedDirectory;
-      folderName = DatabaseConstants.otzariaFolderName;
-    } else if (databaseFileDirect.existsSync()) {
-      // seforim.db נמצא ישירות בתיקייה שנבחרה.
-      // נבחין בין המקרים: האם התיקייה שנבחרה היא תיקיית הספרייה עצמה, או תת-תיקייה בתוכה.
-      if (dirName == DatabaseConstants.otzariaFolderName) {
-        // התיקייה שנבחרה היא תיקיית "אוצריא" עצמה, המכילה seforim.db
-        libraryPath = selectedDirectory;
-        folderName = '';
-      } else {
-        // התיקייה שנבחרה היא תיקייה מותאמת אישית (לא "אוצריא") המכילה seforim.db
-        libraryPath = path.dirname(selectedDirectory);
-        folderName = dirName;
-      }
+    // בדיקה אם הקובץ הוא ZIP
+    if (selectedFile.toLowerCase().endsWith('.zip')) {
+      await _handleZipFile(selectedFile, emit);
+    } else if (selectedFile.toLowerCase().endsWith('.db')) {
+      await _handleDatabaseFile(selectedFile, emit);
     } else {
       emit(EmptyLibraryError(
-        errorMessage: 'הקובץ ${DatabaseConstants.databaseFileName} לא נמצא.\n'
-            'יש לבחור את התיקייה המכילה את הקובץ ${DatabaseConstants.databaseFileName}.\n'
-            'לדוגמה: C:\\אוצריא\\3אוצריא (אם seforim.db נמצא בתוכה)',
-        selectedPath: selectedDirectory,
+        errorMessage: 'סוג קובץ לא תומך. בחר קובץ .db או .zip',
+        selectedPath: selectedFile,
       ));
-      return;
     }
-
-    // שמירת הגדרות
-    await Settings.setValue(
-        SettingsRepository.keyLibraryFolderName, folderName);
-    await Settings.setValue(SettingsRepository.keyLibraryPath, libraryPath);
-
-    emit(EmptyLibraryDirectorySelected(selectedPath: libraryPath));
   }
 
-  Future<void> _onPickDirectoryWithZipRequested(
-      PickDirectoryWithZipRequested event,
-      Emitter<EmptyLibraryState> emit) async {
+  Future<void> _handleDatabaseFile(
+      String dbFilePath, Emitter<EmptyLibraryState> emit) async {
+    try {
+      final dbFile = File(dbFilePath);
+      if (!await dbFile.exists()) {
+        emit(EmptyLibraryError(
+          errorMessage: 'הקובץ לא קיים: $dbFilePath',
+          selectedPath: dbFilePath,
+        ));
+        return;
+      }
+
+      // שמירת הגדרות - נשמור את נתיב הקובץ ישירות
+      await Settings.setValue(SettingsRepository.keyLibraryPath, dbFilePath);
+      await Settings.setValue(SettingsRepository.keyLibraryFolderName, '');
+
+      emit(EmptyLibraryDirectorySelected(selectedPath: dbFilePath));
+    } catch (e) {
+      emit(EmptyLibraryError(
+        errorMessage: 'שגיאה: $e',
+        selectedPath: dbFilePath,
+      ));
+    }
+  }
+
+  Future<void> _handleZipFile(
+      String zipFilePath, Emitter<EmptyLibraryState> emit) async {
     try {
       emit(const EmptyLibraryExtracting(
         selectedPath: '',
@@ -97,23 +88,12 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
         message: 'מתחיל חילוץ...',
       ));
 
-      // נמצא את קובץ ה-ZIP בתיקייה לפני החילוץ
-      final directory = Directory(event.path);
-      final zipFiles = await directory
-          .list()
-          .where((entity) =>
-              entity is File && entity.path.toLowerCase().endsWith('.zip'))
-          .cast<File>()
-          .toList();
-
-      final zipPath = zipFiles.isNotEmpty ? zipFiles.first.path : '';
-
       final extractionResult =
           await ZipExtractorService.checkAndExtractZipIfNeeded(
-        event.path,
+        path.dirname(zipFilePath),
         onProgress: (p, m) {
           emit(EmptyLibraryExtracting(
-            selectedPath: event.path,
+            selectedPath: zipFilePath,
             progress: p,
             message: m,
           ));
@@ -130,16 +110,50 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
       }
 
       // אם החילוץ הצליח, נשאל את המשתמש אם למחוק את ה-ZIP
-      if (extractionResult.successfullyExtracted && zipPath.isNotEmpty) {
+      if (extractionResult.successfullyExtracted) {
         emit(EmptyLibraryAskingDeleteZip(
-          zipPath: zipPath,
-          extractedPath: event.path,
+          zipPath: zipFilePath,
+          extractedPath: path.dirname(zipFilePath),
         ));
         return;
       }
 
-      // אם לא היה חילוץ (אין ZIP), נמשיך ישירות לבדיקת הספרייה
-      await _checkAndSaveLibraryPath(event.path, emit);
+      // אם לא היה חילוץ, נמשיך ישירות לבדיקת הקובץ
+      await _checkAndSaveExtractedDatabase(path.dirname(zipFilePath), emit);
+    } catch (e) {
+      emit(EmptyLibraryError(
+        errorMessage: 'שגיאה: $e',
+      ));
+    }
+  }
+
+  Future<void> _checkAndSaveExtractedDatabase(
+      String extractedDirectory, Emitter<EmptyLibraryState> emit) async {
+    try {
+      // חיפוש קובץ seforim.db בתיקייה המחולצת
+      final directory = Directory(extractedDirectory);
+      final dbFiles = await directory
+          .list(recursive: true)
+          .where((entity) =>
+              entity is File &&
+              entity.path.toLowerCase().endsWith(DatabaseConstants.databaseFileName))
+          .cast<File>()
+          .toList();
+
+      if (dbFiles.isEmpty) {
+        emit(EmptyLibraryError(
+          errorMessage: 'לא נמצא קובץ ${DatabaseConstants.databaseFileName} בקובץ ה-ZIP',
+          selectedPath: extractedDirectory,
+        ));
+        return;
+      }
+
+      // שמירת הגדרות - נשמור את נתיב קובץ ה-DB
+      final dbPath = dbFiles.first.path;
+      await Settings.setValue(SettingsRepository.keyLibraryPath, dbPath);
+      await Settings.setValue(SettingsRepository.keyLibraryFolderName, '');
+
+      emit(EmptyLibraryDirectorySelected(selectedPath: dbPath));
     } catch (e) {
       emit(EmptyLibraryError(
         errorMessage: 'שגיאה: $e',
@@ -242,8 +256,8 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
         return;
       }
 
-      // אם לא היה חילוץ, נמשיך ישירות לבדיקת הספרייה
-      await _checkAndSaveLibraryPath(otzariaDir.path, emit);
+      // אם לא היה חילוץ, נמשיך ישירות לבדיקת הקובץ
+      await _checkAndSaveExtractedDatabase(otzariaDir.path, emit);
     } catch (e) {
       emit(EmptyLibraryError(
         errorMessage: 'שגיאה בהורדה: $e',
@@ -261,58 +275,12 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
         }
       }
 
-      // המשך לבדיקת הספרייה
-      await _checkAndSaveLibraryPath(event.extractedPath, emit);
+      // המשך לבדיקת הקובץ המחולץ
+      await _checkAndSaveExtractedDatabase(event.extractedPath, emit);
     } catch (e) {
       emit(EmptyLibraryError(
         errorMessage: 'שגיאה: $e',
       ));
     }
-  }
-
-  Future<void> _checkAndSaveLibraryPath(
-      String selectedDirectory, Emitter<EmptyLibraryState> emit) async {
-    String libraryPath;
-    String folderName;
-
-    final databasePathWithOtzaria =
-        DatabaseConstants.getDatabasePathForLibrary(selectedDirectory);
-    final databaseFileWithOtzaria = File(databasePathWithOtzaria);
-
-    final databasePathDirect =
-        path.join(selectedDirectory, DatabaseConstants.databaseFileName);
-    final databaseFileDirect = File(databasePathDirect);
-
-    final dirName = path.basename(selectedDirectory);
-
-    if (databaseFileWithOtzaria.existsSync()) {
-      // אפשרות 1: נבחרה תיקייה שמכילה תיקייה בשם "אוצריא" עם seforim.db
-      libraryPath = selectedDirectory;
-      folderName = DatabaseConstants.otzariaFolderName;
-    } else if (databaseFileDirect.existsSync()) {
-      // seforim.db נמצא ישירות בתיקייה שנבחרה.
-      // נבחין בין המקרים: האם התיקייה שנבחרה היא תיקיית הספרייה עצמה, או תת-תיקייה בתוכה.
-      if (dirName == DatabaseConstants.otzariaFolderName) {
-        // התיקייה שנבחרה היא תיקיית "אוצריא" עצמה, המכילה seforim.db
-        libraryPath = selectedDirectory;
-        folderName = '';
-      } else {
-        // התיקייה שנבחרה היא תיקייה מותאמת אישית (לא "אוצריא") המכילה seforim.db
-        libraryPath = path.dirname(selectedDirectory);
-        folderName = dirName;
-      }
-    } else {
-      emit(EmptyLibraryError(
-        errorMessage: 'הקובץ ${DatabaseConstants.databaseFileName} לא נמצא.\n'
-            'יש לבחור את התיקייה המכילה את הקובץ ${DatabaseConstants.databaseFileName}.',
-        selectedPath: selectedDirectory,
-      ));
-      return;
-    }
-
-    await Settings.setValue(
-        SettingsRepository.keyLibraryFolderName, folderName);
-    await Settings.setValue(SettingsRepository.keyLibraryPath, libraryPath);
-    emit(EmptyLibraryDirectorySelected(selectedPath: libraryPath));
   }
 }
