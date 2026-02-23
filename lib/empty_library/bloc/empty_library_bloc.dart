@@ -51,24 +51,24 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
         path.join(selectedDirectory, DatabaseConstants.databaseFileName);
     final databaseFileDirect = File(databasePathDirect);
 
-    // בדיקה אפשרות 3: התיקייה שנבחרה היא תיקייה שמכילה תיקייה אחרת עם seforim.db
     final dirName = path.basename(selectedDirectory);
-    final databasePathInSelectedDir =
-        path.join(selectedDirectory, DatabaseConstants.databaseFileName);
-    final databaseFileInSelectedDir = File(databasePathInSelectedDir);
 
     if (databaseFileWithOtzaria.existsSync()) {
       // אפשרות 1: נבחרה תיקייה שמכילה תיקייה בשם "אוצריא" עם seforim.db
       libraryPath = selectedDirectory;
       folderName = DatabaseConstants.otzariaFolderName;
     } else if (databaseFileDirect.existsSync()) {
-      // אפשרות 2: נבחרה ישירות תיקייה שיש בה seforim.db
-      libraryPath = path.dirname(selectedDirectory);
-      folderName = dirName;
-    } else if (databaseFileInSelectedDir.existsSync()) {
-      // אפשרות 3: התיקייה שנבחרה מכילה seforim.db ישירות
-      libraryPath = selectedDirectory;
-      folderName = '';
+      // seforim.db נמצא ישירות בתיקייה שנבחרה.
+      // נבחין בין המקרים: האם התיקייה שנבחרה היא תיקיית הספרייה עצמה, או תת-תיקייה בתוכה.
+      if (dirName == DatabaseConstants.otzariaFolderName) {
+        // התיקייה שנבחרה היא תיקיית "אוצריא" עצמה, המכילה seforim.db
+        libraryPath = selectedDirectory;
+        folderName = '';
+      } else {
+        // התיקייה שנבחרה היא תיקייה מותאמת אישית (לא "אוצריא") המכילה seforim.db
+        libraryPath = path.dirname(selectedDirectory);
+        folderName = dirName;
+      }
     } else {
       emit(EmptyLibraryError(
         errorMessage: 'הקובץ ${DatabaseConstants.databaseFileName} לא נמצא.\n'
@@ -82,9 +82,6 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
     // שמירת הגדרות
     await Settings.setValue(
         SettingsRepository.keyLibraryFolderName, folderName);
-    await Settings.setValue(SettingsRepository.keyLibraryPath, libraryPath);
-
-    // שמירת הנתיב בהגדרות
     await Settings.setValue(SettingsRepository.keyLibraryPath, libraryPath);
 
     emit(EmptyLibraryDirectorySelected(selectedPath: libraryPath));
@@ -189,36 +186,20 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
       final file = File(zipPath);
       final sink = file.openWrite();
 
-      // Buffer גדול יותר - 2MB לביצועים אופטימליים
-      const bufferSize = 2 * 1024 * 1024;
-      var buffer = <int>[];
-
       try {
         await for (var chunk in response.stream) {
-          buffer.addAll(chunk);
+          sink.add(chunk);
+          downloadedBytes += chunk.length;
 
-          // כתוב כשהבuffer מלא
-          if (buffer.length >= bufferSize) {
-            sink.add(buffer);
-            downloadedBytes += buffer.length;
-            buffer = <int>[];
-
-            if (contentLength > 0) {
-              final progress = downloadedBytes / contentLength;
-              final mb = (downloadedBytes / 1024 / 1024).toStringAsFixed(1);
-              final totalMb = (contentLength / 1024 / 1024).toStringAsFixed(1);
-              emit(EmptyLibraryDownloading(
-                progress: progress,
-                message: 'מוריד... $mb MB מתוך $totalMb MB',
-              ));
-            }
+          if (contentLength > 0) {
+            final progress = downloadedBytes / contentLength;
+            final mb = (downloadedBytes / 1024 / 1024).toStringAsFixed(1);
+            final totalMb = (contentLength / 1024 / 1024).toStringAsFixed(1);
+            emit(EmptyLibraryDownloading(
+              progress: progress,
+              message: 'מוריד... $mb MB מתוך $totalMb MB',
+            ));
           }
-        }
-
-        // כתוב את הבuffer הנותר
-        if (buffer.isNotEmpty) {
-          sink.add(buffer);
-          downloadedBytes += buffer.length;
         }
       } finally {
         await sink.close();
@@ -303,22 +284,23 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
     final databaseFileDirect = File(databasePathDirect);
 
     final dirName = path.basename(selectedDirectory);
-    final databasePathInSelectedDir =
-        path.join(selectedDirectory, DatabaseConstants.databaseFileName);
-    final databaseFileInSelectedDir = File(databasePathInSelectedDir);
 
     if (databaseFileWithOtzaria.existsSync()) {
       // אפשרות 1: נבחרה תיקייה שמכילה תיקייה בשם "אוצריא" עם seforim.db
       libraryPath = selectedDirectory;
       folderName = DatabaseConstants.otzariaFolderName;
     } else if (databaseFileDirect.existsSync()) {
-      // אפשרות 2: נבחרה ישירות תיקייה שיש בה seforim.db
-      libraryPath = path.dirname(selectedDirectory);
-      folderName = dirName;
-    } else if (databaseFileInSelectedDir.existsSync()) {
-      // אפשרות 3: התיקייה שנבחרה מכילה seforim.db ישירות
-      libraryPath = selectedDirectory;
-      folderName = '';
+      // seforim.db נמצא ישירות בתיקייה שנבחרה.
+      // נבחין בין המקרים: האם התיקייה שנבחרה היא תיקיית הספרייה עצמה, או תת-תיקייה בתוכה.
+      if (dirName == DatabaseConstants.otzariaFolderName) {
+        // התיקייה שנבחרה היא תיקיית "אוצריא" עצמה, המכילה seforim.db
+        libraryPath = selectedDirectory;
+        folderName = '';
+      } else {
+        // התיקייה שנבחרה היא תיקייה מותאמת אישית (לא "אוצריא") המכילה seforim.db
+        libraryPath = path.dirname(selectedDirectory);
+        folderName = dirName;
+      }
     } else {
       emit(EmptyLibraryError(
         errorMessage: 'הקובץ ${DatabaseConstants.databaseFileName} לא נמצא.\n'

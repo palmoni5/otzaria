@@ -12,6 +12,8 @@ import 'package:otzaria/utils/text_manipulation.dart';
 import 'package:otzaria/utils/toc_parser.dart';
 import 'package:otzaria/settings/custom_folders/custom_folder.dart';
 import 'package:otzaria/settings/settings_repository.dart';
+import 'package:otzaria/data/constants/database_constants.dart';
+import 'package:path/path.dart' as path;
 
 /// Library provider that loads books from the file system.
 class FileSystemLibraryProvider implements LibraryProvider {
@@ -74,15 +76,8 @@ class FileSystemLibraryProvider implements LibraryProvider {
     // We can populate the key map here as well to ensure it's accurate
     final map = await _keyToPath;
 
-    // Load books from the main library folder (אוצריא or custom folder name)
-    final folderName = Settings.getValue<String>('key-library-folder-name') ?? 'אוצריא';
-    final mainLibraryPath = '$_libraryPath${Platform.pathSeparator}$folderName';
-    final mainLibraryDir = Directory(mainLibraryPath);
-    
-    if (await mainLibraryDir.exists()) {
-      await _loadBooksRecursively(
-          mainLibraryDir, metadata, booksByCategory, [], map);
-    }
+    // NOTE: The main library folder (אוצריא) is now stored in the database
+    // and loaded by DatabaseLibraryProvider. We do NOT scan it here to avoid duplicates.
 
     // Load books from the built-in personal folder (אוצריא/אישי)
     // This is NOT a custom folder, but a built-in location for personal books
@@ -94,7 +89,6 @@ class FileSystemLibraryProvider implements LibraryProvider {
     }
 
     // Load books from custom folders (those NOT marked for DB sync)
-    // The main library is now stored in the database, so we don't scan the אוצריא folder
     await _loadCustomFoldersBooks(metadata, booksByCategory, map);
 
     return booksByCategory;
@@ -322,16 +316,8 @@ class FileSystemLibraryProvider implements LibraryProvider {
       keyToPath[key] = path;
     }
 
-    // Load from the main library folder (אוצריא or custom folder name)
-    final folderName = Settings.getValue<String>('key-library-folder-name') ?? 'אוצריא';
-    final mainLibraryPath = '$_libraryPath${Platform.pathSeparator}$folderName';
-    
-    if (await Directory(mainLibraryPath).exists()) {
-      final mainPaths = await _getAllBookPaths(mainLibraryPath);
-      for (var path in mainPaths) {
-        addPath(path, mainLibraryPath);
-      }
-    }
+    // NOTE: The main library folder (אוצריא) is now stored in the database
+    // and loaded by DatabaseLibraryProvider. We do NOT scan it here to avoid duplicates.
 
     // Load from the built-in personal folder (אוצריא/אישי)
     // This is NOT a custom folder, but a built-in location for personal books

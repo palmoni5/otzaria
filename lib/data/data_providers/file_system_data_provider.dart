@@ -178,10 +178,10 @@ class FileSystemData {
     }
 
     // קבלת שם התיקייה מההגדרות (אם לא קיים, השתמש ב-"אוצריא")
-    final folderName = Settings.getValue<String>('key-library-folder-name') ?? 'אוצריא';
+final folderName = Settings.getValue<String>(SettingsRepository.keyLibraryFolderName) ?? DatabaseConstants.otzariaFolderName;
 
-    // בדיקה שתיקיית הספרים קיימת
-    final otzariaPath = '$libraryPath${Platform.pathSeparator}$folderName';
+// בדיקה שתיקיית הספרים קיימת
+final otzariaPath = path.join(libraryPath, folderName);
     final otzariaDir = Directory(otzariaPath);
     if (!otzariaDir.existsSync()) {
       debugPrint('Books directory does not exist: $otzariaPath');
