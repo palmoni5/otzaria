@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/constants/fonts.dart';
 import 'package:otzaria/models/links.dart';
 import 'package:otzaria/personal_notes/models/personal_note.dart';
@@ -14,7 +15,10 @@ import 'package:otzaria/personal_notes/repository/personal_notes_repository.dart
 import 'package:otzaria/pdf_book/pdf_page_number_dispaly.dart';
 import 'package:otzaria/pdf_book/pdf_thumbnails_screen.dart';
 import 'package:otzaria/pdf_book/pdf_scrollbar.dart';
+import 'package:otzaria/settings/settings_bloc.dart';
+import 'package:otzaria/settings/settings_state.dart';
 import 'package:otzaria/utils/text_manipulation.dart';
+import 'package:otzaria/utils/fullscreen_helper.dart';
 import 'package:otzaria/widgets/dialogs.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:printing/printing.dart';
@@ -639,6 +643,24 @@ class _PrintingScreenState extends State<PrintingScreen> {
             },
             icon: const Icon(FluentIcons.print_24_regular),
             label: const Text('הדפסה'),
+          ),
+          const SizedBox(width: 8),
+          BlocBuilder<SettingsBloc, SettingsState>(
+            builder: (context, state) {
+              return IconButton(
+                onPressed: () async {
+                  final newFullscreenState = !state.isFullscreen;
+                  await FullscreenHelper.toggleFullscreen(
+                    context,
+                    newFullscreenState,
+                  );
+                },
+                icon: Icon(state.isFullscreen
+                    ? FluentIcons.full_screen_minimize_24_regular
+                    : FluentIcons.full_screen_maximize_24_regular),
+                tooltip: state.isFullscreen ? 'צא ממסך מלא' : 'מסך מלא',
+              );
+            },
           ),
           const SizedBox(width: 16),
         ],
