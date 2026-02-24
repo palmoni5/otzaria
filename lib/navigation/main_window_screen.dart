@@ -32,7 +32,7 @@ import 'package:otzaria/tabs/models/searching_tab.dart';
 import 'package:otzaria/navigation/calendar_cubit.dart';
 import 'package:otzaria/widgets/ad_popup_dialog.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:otzaria/main.dart' show appWindowListener;
+import 'package:otzaria/core/platform_init.dart' show appWindowListener;
 import 'package:otzaria/navigation/custom_title_bar.dart';
 import 'package:otzaria/migration/sync/background_sync_initializer.dart';
 import 'package:otzaria/library/bloc/library_bloc.dart';

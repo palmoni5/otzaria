@@ -5,12 +5,10 @@
 library;
 
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_single_instance/flutter_single_instance.dart';
-import 'package:window_manager/window_manager.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:hive/hive.dart';
@@ -46,11 +44,11 @@ import 'package:otzaria/data/data_providers/hive_data_provider.dart';
 import 'package:otzaria/data/data_providers/sqlite_data_provider.dart';
 import 'package:otzaria/personal_notes/bloc/personal_notes_bloc.dart';
 import 'package:otzaria/personal_notes/migration/file_to_db_migrator.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:search_engine/search_engine.dart';
 import 'package:otzaria/core/app_paths.dart';
-import 'package:otzaria/core/window_listener.dart';
-import 'package:otzaria/core/window_persistence.dart';
+import 'package:otzaria/core/platform_init.dart';
+import 'package:otzaria/core/platform_utils.dart';
+import 'package:otzaria/core/storage/storage_provider_factory.dart';
 import 'package:otzaria/tools/shamor_zachor/providers/shamor_zachor_data_provider.dart';
 import 'package:otzaria/tools/shamor_zachor/providers/shamor_zachor_progress_provider.dart';
 import 'package:otzaria/settings/backup_service.dart';
@@ -61,12 +59,6 @@ import 'package:otzaria/services/notification_service.dart';
 import 'package:logging/logging.dart';
 import 'package:otzaria/widgets/restart_widget.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
-
-// Global reference to window listener for cleanup
-AppWindowListener? _appWindowListener;
-
-/// Getter for accessing the window listener from other parts of the app
-AppWindowListener? get appWindowListener => _appWindowListener;
 
 /// Application entry point that initializes necessary components and launches the app.
 ///
@@ -85,7 +77,7 @@ void main() async {
     final errorString = details.toString();
 
     // Skip accessibility tree errors on Windows - they're harmless noise
-    if (Platform.isWindows &&
+    if (!kIsWeb && isWindows &&
         (errorString.contains('Failed to update ui::AXTree') ||
             errorString.contains('accessibility_bridge.cc'))) {
       return; // Silently ignore these errors
@@ -102,9 +94,8 @@ void main() async {
     // Log all other errors normally
     if (kDebugMode) {
       FlutterError.dumpErrorToConsole(details);
-    } else {
-      File('errors.txt')
-          .writeAsStringSync(details.toString(), mode: FileMode.append);
+    } else if (!kIsWeb) {
+      writeErrorToFile(details.toString());
     }
   };
 
@@ -112,7 +103,7 @@ void main() async {
     final errorString = error.toString();
 
     // Skip accessibility tree errors on Windows
-    if (Platform.isWindows &&
+    if (!kIsWeb && isWindows &&
         (errorString.contains('Failed to update ui::AXTree') ||
             errorString.contains('accessibility_bridge.cc'))) {
       return true; // Silently ignore these errors
@@ -131,9 +122,8 @@ void main() async {
         exception: error,
         stack: stack,
       ));
-    } else {
-      File('errors.txt')
-          .writeAsStringSync(error.toString(), mode: FileMode.append);
+    } else if (!kIsWeb) {
+      writeErrorToFile(error.toString());
     }
     return true;
   };
@@ -155,7 +145,7 @@ void main() async {
       // Filter out Windows accessibility errors from being sent to Sentry
       options.beforeSend = (event, hint) {
         final exception = event.throwable?.toString() ?? '';
-        if (Platform.isWindows &&
+        if (!kIsWeb && isWindows &&
             (exception.contains('Failed to update ui::AXTree') ||
                 exception.contains('accessibility_bridge.cc'))) {
           return null; // Don't send to Sentry
@@ -173,13 +163,13 @@ void main() async {
     appRunner: () async {
       SentryWidgetsFlutterBinding.ensureInitialized();
 
-      // Check for single instance - skip on Apple platforms (macOS/iOS) due to sandbox restrictions
-      if (!Platform.isMacOS && !Platform.isIOS) {
+      // Check for single instance - skip on Apple platforms (macOS/iOS) due to sandbox restrictions and on web
+      if (!kIsWeb && !isMacOS && !isIOS) {
         FlutterSingleInstance flutterSingleInstance = FlutterSingleInstance();
         bool isFirstInstance = await flutterSingleInstance.isFirstInstance();
         if (!isFirstInstance) {
           // If not the first instance, exit the app
-          exit(0);
+          exitApp(0);
         }
       }
 
@@ -304,34 +294,12 @@ void main() async {
 /// 5. Required directory structure creation
 /// 6. Shamor Zachor dynamic data loader initialization
 Future<void> initialize() async {
-  // Initialize SQLite FFI for desktop platforms
-  if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-    await windowManager.ensureInitialized();
-
-    // Configure window manager for proper close handling
-    WindowOptions windowOptions = const WindowOptions(
-      skipTaskbar: false,
-      titleBarStyle: TitleBarStyle.hidden,
-    );
-
-    // Add window listener for proper close handling
-    _appWindowListener = AppWindowListener();
-    windowManager.addListener(_appWindowListener!);
-
-    await windowManager.setPreventClose(true);
-
-    windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await WindowPersistence.restoreIfAny();
-      await windowManager.show();
-      await windowManager.focus();
-    });
-  }
+  // Initialize platform-specific components (SQLite, window manager, etc.)
+  await initializePlatform();
 
   await RustLib.init();
   await Settings.init(cacheProvider: HiveCache());
-  await initHive();
+  await initHiveBoxes();
   await createDirs();
   await loadCerts();
 
@@ -402,15 +370,19 @@ Future<void> createDirs() async {
 ///
 /// Prints status messages indicating whether the directory was created
 /// or already existed.
-void createDirectoryIfNotExists(String path) {
-  Directory directory = Directory(path);
-  if (!directory.existsSync()) {
-    directory.createSync(recursive: true);
+Future<void> createDirectoryIfNotExists(String path) async {
+  if (kIsWeb) return; // No-op on web
+  
+  final storage = createStorageProvider();
+  final exists = await storage.directoryExists(path);
+  if (!exists) {
+    await storage.createDirectory(path, recursive: true);
   }
 }
 
-initHive() async {
-  Hive.defaultDirectory = (await getApplicationSupportDirectory()).path;
+initHiveBoxes() async {
+  // Platform-specific Hive initialization is done in HiveCache.init()
+  // Here we just open the boxes
   Hive.box(name: 'tabs', maxSizeMiB: 100);
   Hive.box(name: 'workspaces', maxSizeMiB: 100);
   Hive.box(name: 'history', maxSizeMiB: 100);
@@ -418,17 +390,22 @@ initHive() async {
 }
 
 Future<void> loadCerts() async {
-  final certs = ['assets/ca/netfree_cas.pem'];
-  for (var cert in certs) {
-    final certBytes = await rootBundle.load(cert);
-    SecurityContext.defaultContext
-        .setTrustedCertificatesBytes(certBytes.buffer.asUint8List());
+  if (kIsWeb) return; // Certificates are handled by the browser
+  
+  try {
+    final certs = ['assets/ca/netfree_cas.pem'];
+    for (var cert in certs) {
+      final certBytes = await rootBundle.load(cert);
+      loadCertificate(certBytes.buffer.asUint8List());
+    }
+  } catch (e) {
+    debugPrint('Failed to load certificates: $e');
   }
 }
 
 /// Clean up resources when the app is closing
 void cleanup() {
-  _appWindowListener?.dispose();
+  cleanupPlatform();
 
   // Clear shared book/acronym caches
   BooksCache.instance.clear();

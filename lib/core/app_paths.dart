@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:otzaria/settings/settings_repository.dart';
+import 'package:otzaria/core/storage/storage_provider_factory.dart';
 
 /// Utility class for managing application paths.
 /// Centralizes path construction logic to avoid duplication.
@@ -17,22 +17,24 @@ class AppPaths {
       return currentPath;
     }
 
-    // Determine default path based on platform
+    // Use StorageProvider for platform-specific paths
+    final storage = createStorageProvider();
     String libraryPath;
+
     if (Platform.isIOS) {
-      libraryPath = (await getApplicationDocumentsDirectory()).path;
+      libraryPath = await storage.getApplicationDocumentsDirectory();
     } else if (Platform.isAndroid) {
       try {
-        libraryPath = (await getExternalStorageDirectory())?.path ??
-            (await getApplicationDocumentsDirectory()).path;
+        libraryPath = await storage.getExternalStorageDirectory() ??
+            await storage.getApplicationDocumentsDirectory();
       } catch (_) {
-        libraryPath = (await getApplicationDocumentsDirectory()).path;
+        libraryPath = await storage.getApplicationDocumentsDirectory();
       }
     } else if (Platform.isWindows) {
       libraryPath = 'C:/אוצריא';
     } else {
       // Linux, macOS: use application support directory for consistency
-      libraryPath = (await getApplicationSupportDirectory()).path;
+      libraryPath = await storage.getApplicationSupportDirectory();
     }
 
     await Settings.setValue(SettingsRepository.keyLibraryPath, libraryPath);
@@ -44,12 +46,12 @@ class AppPaths {
   /// Otherwise returns the library path itself
   static Future<String> _getBasePath() async {
     final libraryPath = await getLibraryPath();
-    
+
     // אם הנתיב הוא קובץ DB, נשתמש בתיקייה שמכילה אותו
     if (libraryPath.toLowerCase().endsWith('.db')) {
       return p.dirname(libraryPath);
     }
-    
+
     // אחרת, נשתמש בנתיב כרגיל
     return libraryPath;
   }
@@ -70,10 +72,12 @@ class AppPaths {
 
   /// Resolves the notes database path - for cross-platform compatibility
   static Future<String> resolveNotesDbPath(String fileName) async {
+    final storage = createStorageProvider();
+
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       // Windows, Linux, macOS: this will go into application support directory
-      final support = await getApplicationSupportDirectory();
-      final dbDir = Directory(p.join(support.path, 'databases'));
+      final support = await storage.getApplicationSupportDirectory();
+      final dbDir = Directory(p.join(support, 'databases'));
       if (!await dbDir.exists()) await dbDir.create(recursive: true);
       return p.join(dbDir.path, fileName);
     } else {
@@ -92,7 +96,7 @@ class AppPaths {
     // רק ניצור את תיקיות האינדקס, לא את תיקיית הספרייה עצמה
     // תיקיית הספרייה תיווצר רק כשמורידים ספרייה או כשהמשתמש בוחר תיקייה קיימת
     final libraryPath = await getLibraryPath();
-    
+
     // בדיקה אם הנתיב הוא קובץ או תיקייה
     final isDbFile = libraryPath.toLowerCase().endsWith('.db');
     final checkPath = isDbFile ? p.dirname(libraryPath) : libraryPath;
