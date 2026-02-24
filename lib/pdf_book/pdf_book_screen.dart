@@ -84,9 +84,6 @@ class _PdfBookScreenState extends State<PdfBookScreen>
   final FocusNode _pdfViewFocusNode = FocusNode();
   late final StreamSubscription<SettingsState> _settingsSub;
 
-  // מעקב אחרי מקשים לחוצים למניעת repeat
-  final Set<LogicalKeyboardKey> _pressedKeys = {};
-
   // גלילה רציפה
   Timer? _scrollTimer;
   LogicalKeyboardKey? _currentScrollKey;
@@ -336,8 +333,6 @@ class _PdfBookScreenState extends State<PdfBookScreen>
     return file.path;
   }
 
-  // ... (שאר הקוד בקובץ ממשיך בדיוק כפי שהיה - פונקציות העזר והבנייה)
-  // למען השלמות צירפתי את מלוא הקובץ
   Text _buildRtlMenuText(String text) =>
       Text(text, textDirection: TextDirection.rtl);
 
@@ -649,31 +644,33 @@ class _PdfBookScreenState extends State<PdfBookScreen>
   }
 
   Widget _buildPdfViewerFromFile(String filePath) {
-    return KeyboardListener(
+    return Focus(
       focusNode: _pdfViewFocusNode,
       autofocus: false,
-      onKeyEvent: (KeyEvent event) {
-        if (event is KeyDownEvent) {
-          if (_pressedKeys.contains(event.logicalKey)) return;
-          _pressedKeys.add(event.logicalKey);
-
+      onKeyEvent: (FocusNode node, KeyEvent event) {
+        // טיפול בלחיצה ראשונית או בלחיצה ממושכת (Repeat)
+        if (event is KeyDownEvent || event is KeyRepeatEvent) {
           if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
             _goNextPage();
+            return KeyEventResult.handled;
           } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
             _goPreviousPage();
+            return KeyEventResult.handled;
           } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
             _startContinuousScroll(LogicalKeyboardKey.arrowUp);
+            return KeyEventResult.handled;
           } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
             _startContinuousScroll(LogicalKeyboardKey.arrowDown);
+            return KeyEventResult.handled;
           }
         } else if (event is KeyUpEvent) {
-          _pressedKeys.remove(event.logicalKey);
-
           if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
               event.logicalKey == LogicalKeyboardKey.arrowDown) {
             _stopContinuousScroll();
+            return KeyEventResult.handled;
           }
         }
+        return KeyEventResult.ignored;
       },
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -1413,6 +1410,11 @@ class _PdfBookScreenState extends State<PdfBookScreen>
     final nextPage = min(currentPage + 1, totalPages);
 
     widget.tab.pdfViewerController.goToPage(pageNumber: nextPage);
+    
+    // משיכת פוקוס חזרה לאחר שינוי עמוד
+    if (!_pdfViewFocusNode.hasFocus) {
+      _pdfViewFocusNode.requestFocus();
+    }
   }
 
   void _goPreviousPage() {
@@ -1424,6 +1426,11 @@ class _PdfBookScreenState extends State<PdfBookScreen>
     final prevPage = max(currentPage - 1, 1);
 
     widget.tab.pdfViewerController.goToPage(pageNumber: prevPage);
+    
+    // משיכת פוקוס חזרה לאחר שינוי עמוד
+    if (!_pdfViewFocusNode.hasFocus) {
+      _pdfViewFocusNode.requestFocus();
+    }
   }
 
   void _handleThrottledScroll(double deltaY) {
@@ -1471,10 +1478,22 @@ class _PdfBookScreenState extends State<PdfBookScreen>
         return;
       }
 
-      if (_currentScrollKey == LogicalKeyboardKey.arrowUp) {
+      // שמירה אקטיבית על הפוקוס - מונע את ה"בריחה" של המקלדת
+      if (!_pdfViewFocusNode.hasFocus) {
+        _pdfViewFocusNode.requestFocus();
+      }
+
+      final isUpPressed = HardwareKeyboard.instance.logicalKeysPressed
+          .contains(LogicalKeyboardKey.arrowUp);
+      final isDownPressed = HardwareKeyboard.instance.logicalKeysPressed
+          .contains(LogicalKeyboardKey.arrowDown);
+
+      if (_currentScrollKey == LogicalKeyboardKey.arrowUp && isUpPressed) {
         _scrollUpSimple();
-      } else if (_currentScrollKey == LogicalKeyboardKey.arrowDown) {
+      } else if (_currentScrollKey == LogicalKeyboardKey.arrowDown && isDownPressed) {
         _scrollDownSimple();
+      } else {
+        _stopContinuousScroll();
       }
     });
   }
@@ -1483,6 +1502,11 @@ class _PdfBookScreenState extends State<PdfBookScreen>
     _scrollTimer?.cancel();
     _scrollTimer = null;
     _currentScrollKey = null;
+
+    // למקרה שהפוקוס אבד בדיוק ברגע העצירה
+    if (mounted && !_pdfViewFocusNode.hasFocus) {
+      _pdfViewFocusNode.requestFocus();
+    }
   }
 
   void _scrollUpSimple() {
