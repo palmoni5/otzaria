@@ -94,7 +94,10 @@ dependencies:
   googleapis: ^16.0.0
   googleapis_auth: ^2.0.0
   sqflite: ^2.4.2
+  sqflite_common_ffi_web: ^1.1.1
+  sqlite3_web: ^0.5.0
   characters: ^1.4.0
+  web: ^1.1.0
   flutter_document_picker:
     git:
       url: https://github.com/sidlatau/flutter_document_picker

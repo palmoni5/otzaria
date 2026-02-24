@@ -1,7 +1,10 @@
-import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
-import 'package:path_provider/path_provider.dart';
+
+// Conditional imports for platform-specific initialization
+import 'hive_data_provider_stub.dart'
+    if (dart.library.io) 'hive_data_provider_io.dart'
+    if (dart.library.html) 'hive_data_provider_web.dart';
 
 /// A cache access provider class for shared preferences using Hive library
 class HiveCache extends CacheProvider {
@@ -10,14 +13,13 @@ class HiveCache extends CacheProvider {
 
   @override
   Future<void> init() async {
-    if (!kIsWeb) {
-      final defaultDirectory = await getApplicationSupportDirectory();
-      _preferences = Hive.box(
-        name: keyName,
-        directory: defaultDirectory.path,
-        maxSizeMiB: 100,
-      );
-    }
+    // Initialize Hive with platform-specific configuration
+    await initHive();
+    
+    _preferences = Hive.box(
+      name: keyName,
+      maxSizeMiB: 100,
+    );
   }
 
   Set get keys => getKeys();

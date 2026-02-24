@@ -3,8 +3,12 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
-import 'package:system_fonts/system_fonts.dart' show SystemFonts;
 import 'package:otzaria/utils/font_file_reader.dart';
+
+// Conditional imports for system fonts
+import 'fonts_stub.dart'
+    if (dart.library.io) 'fonts_io.dart'
+    if (dart.library.html) 'fonts_web.dart';
 
 /// רשימת הגופנים הזמינים באפליקציה
 class AppFonts {
@@ -62,15 +66,17 @@ class AppFonts {
 
     final result = <FontInfo>[];
     try {
-      final map = SystemFonts().getFontMap(); // name -> path
-      final names = map.keys.toList()..sort();
-      for (final name in names) {
-        final path = map[name];
-        if (path == null || path.isEmpty) continue;
-        if (_fontFileSupportsHebrewSync(path)) {
-          result.add(FontInfo(value: name, label: name));
+      // שימוש בפונקציה המותאמת לפלטפורמה
+      getSystemFontsMap().then((map) {
+        final names = map.keys.toList()..sort();
+        for (final name in names) {
+          final path = map[name];
+          if (path == null || path.isEmpty) continue;
+          if (_fontFileSupportsHebrewSync(path)) {
+            result.add(FontInfo(value: name, label: name));
+          }
         }
-      }
+      });
     } catch (_) {
       // אם אין גישה לגופני מערכת מסיבה כלשהי, נחזיר רשימה ריקה.
     }
@@ -292,11 +298,8 @@ class AppFonts {
     if (fontPaths.containsKey(fontFamily)) return;
     if (!_supportsSystemFonts) return;
 
-    try {
-      await SystemFonts().loadFont(fontFamily);
-    } catch (_) {
-      // אם לא ניתן לטעון, נשאיר את fallback של Flutter לעשות את שלו.
-    }
+    // שימוש בפונקציה המותאמת לפלטפורמה
+    await loadSystemFont(fontFamily);
   }
 }
 
