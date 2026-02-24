@@ -39,34 +39,33 @@ class AppPaths {
     return libraryPath;
   }
 
-  /// Gets the search index path (library_path/index)
-  /// If library path points to a .db file, uses its parent directory
-  static Future<String> getIndexPath() async {
+  /// Helper method to get the base directory path
+  /// If library path points to a .db file, returns its parent directory
+  /// Otherwise returns the library path itself
+  static Future<String> _getBasePath() async {
     final libraryPath = await getLibraryPath();
     
     // אם הנתיב הוא קובץ DB, נשתמש בתיקייה שמכילה אותו
     if (libraryPath.toLowerCase().endsWith('.db')) {
-      final parentDir = p.dirname(libraryPath);
-      return p.join(parentDir, 'index');
+      return p.dirname(libraryPath);
     }
     
     // אחרת, נשתמש בנתיב כרגיל
-    return p.join(libraryPath, 'index');
+    return libraryPath;
+  }
+
+  /// Gets the search index path (library_path/index)
+  /// If library path points to a .db file, uses its parent directory
+  static Future<String> getIndexPath() async {
+    final basePath = await _getBasePath();
+    return p.join(basePath, 'index');
   }
 
   /// Gets the manifest file path (library_path/files_manifest.json)
   /// If library path points to a .db file, uses its parent directory
   static Future<String> getManifestPath() async {
-    final libraryPath = await getLibraryPath();
-    
-    // אם הנתיב הוא קובץ DB, נשתמש בתיקייה שמכילה אותו
-    if (libraryPath.toLowerCase().endsWith('.db')) {
-      final parentDir = p.dirname(libraryPath);
-      return p.join(parentDir, 'files_manifest.json');
-    }
-    
-    // אחרת, נשתמש בנתיב כרגיל
-    return p.join(libraryPath, 'files_manifest.json');
+    final basePath = await _getBasePath();
+    return p.join(basePath, 'files_manifest.json');
   }
 
   /// Resolves the notes database path - for cross-platform compatibility
