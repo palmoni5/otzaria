@@ -934,22 +934,36 @@ class _PdfBookScreenState extends State<PdfBookScreen>
                         }
                         return false;
                       },
-                      child: Listener(
-                        onPointerSignal: (event) {
-                          if (event is PointerScrollEvent) {
-                            _handleThrottledScroll(event.scrollDelta.dy);
+                      child: GestureDetector(
+                        onPanUpdate: (details) {
+                          // טיפול בגלילה במסך מגע
+                          _handleThrottledScroll(-details.delta.dy);
 
-                            if (!(widget.tab.pinLeftPane.value ||
-                                (Settings.getValue<bool>('key-pin-sidebar') ??
-                                    false))) {
-                              widget.tab.showLeftPane.value = false;
-                              Future.microtask(() {
-                                _pdfViewFocusNode.requestFocus();
-                              });
-                            }
+                          if (!(widget.tab.pinLeftPane.value ||
+                              (Settings.getValue<bool>('key-pin-sidebar') ??
+                                  false))) {
+                            widget.tab.showLeftPane.value = false;
+                            Future.microtask(() {
+                              _pdfViewFocusNode.requestFocus();
+                            });
                           }
                         },
-                        child: ColorFiltered(
+                        child: Listener(
+                          onPointerSignal: (event) {
+                            if (event is PointerScrollEvent) {
+                              _handleThrottledScroll(event.scrollDelta.dy);
+
+                              if (!(widget.tab.pinLeftPane.value ||
+                                  (Settings.getValue<bool>('key-pin-sidebar') ??
+                                      false))) {
+                                widget.tab.showLeftPane.value = false;
+                                Future.microtask(() {
+                                  _pdfViewFocusNode.requestFocus();
+                                });
+                              }
+                            }
+                          },
+                          child: ColorFiltered(
                           colorFilter: ColorFilter.mode(
                             Colors.white,
                             Provider.of<SettingsBloc>(context, listen: true)
@@ -1066,6 +1080,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
                           ),
                         ),
                       ),
+                    ),
                     ),
                     BlocBuilder<PdfBookBloc, PdfBookState>(
                       buildWhen: (prev, curr) {
