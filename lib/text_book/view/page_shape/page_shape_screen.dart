@@ -293,7 +293,8 @@ class _PageShapeScreenState extends State<PageShapeScreen> {
       },
       listener: (context, state) {
         if (state is TextBookLoaded && state.links.isNotEmpty) {
-          debugPrint('📖 PageShape: Links loaded (${state.links.length}), reloading configuration...');
+          debugPrint(
+              '📖 PageShape: Links loaded (${state.links.length}), reloading configuration...');
           // קריאה חוזרת לפונקציה שתשדך את המפרשים השמורים לקישורים שהרגע נטענו
           _loadConfiguration();
         }
@@ -360,8 +361,11 @@ class _PageShapeScreenState extends State<PageShapeScreen> {
                                 showDivider: false,
                                 onDragDelta: (delta) {
                                   setState(() {
-                                    _leftWidth = ((_leftWidth ?? 0) - delta).clamp(
-                                        80.0, MediaQuery.of(context).size.width * 0.4);
+                                    _leftWidth = ((_leftWidth ?? 0) - delta)
+                                        .clamp(
+                                            80.0,
+                                            MediaQuery.of(context).size.width *
+                                                0.4);
                                   });
                                 },
                                 onDragEnd: _saveSizes,
@@ -385,8 +389,11 @@ class _PageShapeScreenState extends State<PageShapeScreen> {
                                 showDivider: false,
                                 onDragDelta: (delta) {
                                   setState(() {
-                                    _rightWidth = ((_rightWidth ?? 0) + delta).clamp(
-                                        80.0, MediaQuery.of(context).size.width * 0.4);
+                                    _rightWidth = ((_rightWidth ?? 0) + delta)
+                                        .clamp(
+                                            80.0,
+                                            MediaQuery.of(context).size.width *
+                                                0.4);
                                   });
                                 },
                                 onDragEnd: _saveSizes,
@@ -446,9 +453,10 @@ class _PageShapeScreenState extends State<PageShapeScreen> {
                           rightCommentator: _rightCommentator,
                           onPanUpdate: (details) {
                             setState(() {
-                              _bottomHeight = ((_bottomHeight ?? 0) - details.delta.dy)
-                                  .clamp(
-                                      80.0, MediaQuery.of(context).size.height * 0.5);
+                              _bottomHeight = ((_bottomHeight ?? 0) -
+                                      details.delta.dy)
+                                  .clamp(80.0,
+                                      MediaQuery.of(context).size.height * 0.5);
                             });
                           },
                           onPanEnd: _saveSizes,
@@ -480,7 +488,8 @@ class _PageShapeScreenState extends State<PageShapeScreen> {
                                             const SizedBox(width: 4),
                                             Expanded(
                                               child: _CommentaryPane(
-                                                commentatorName: _bottomCommentator!,
+                                                commentatorName:
+                                                    _bottomCommentator!,
                                                 openBookCallback:
                                                     widget.openBookCallback,
                                                 isBottom: true,
@@ -490,8 +499,10 @@ class _PageShapeScreenState extends State<PageShapeScreen> {
                                           ],
                                           Expanded(
                                             child: _CommentaryPane(
-                                              commentatorName: _bottomRightCommentator!,
-                                              openBookCallback: widget.openBookCallback,
+                                              commentatorName:
+                                                  _bottomRightCommentator!,
+                                              openBookCallback:
+                                                  widget.openBookCallback,
                                               isBottom: true,
                                             ),
                                           ),
@@ -531,8 +542,10 @@ class _PageShapeScreenState extends State<PageShapeScreen> {
                                           const SizedBox(width: 4),
                                           Expanded(
                                             child: _CommentaryPane(
-                                              commentatorName: _bottomCommentator!,
-                                              openBookCallback: widget.openBookCallback,
+                                              commentatorName:
+                                                  _bottomCommentator!,
+                                              openBookCallback:
+                                                  widget.openBookCallback,
                                               isBottom: true,
                                             ),
                                           ),
@@ -604,8 +617,10 @@ class _CommentaryPaneState extends State<_CommentaryPane> {
     // אם שם המפרש השתנה, טען מחדש את התוכן
     if (oldWidget.commentatorName != widget.commentatorName) {
       _loadCommentary();
+    } else {
+      // אם המפרש לא השתנה, רק עדכן הדגשות
+      _updateHighlightSettings();
     }
-    _updateHighlightSettings();
   }
 
   @override
@@ -633,6 +648,17 @@ class _CommentaryPaneState extends State<_CommentaryPane> {
   void _setupBlocListener() {
     // טעינת הגדרת הדגשה ראשונית
     _updateHighlightSettings();
+
+    // סנכרון ראשוני עם ה-state הנוכחי
+    final currentState = context.read<TextBookBloc>().state;
+    if (currentState is TextBookLoaded && mounted) {
+      // נדחה מעט כדי לוודא שה-ScrollController מוכן
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _syncWithMainText(currentState);
+        }
+      });
+    }
 
     _blocSubscription = context.read<TextBookBloc>().stream.listen((state) {
       if (state is TextBookLoaded && mounted) {
@@ -816,9 +842,24 @@ class _CommentaryPaneState extends State<_CommentaryPane> {
         _lastSyncedIndex = null; // איפוס לסנכרון ראשוני
       });
 
-      // סנכרון ראשוני
-      if (state is TextBookLoaded) {
-        _syncWithMainText(state);
+      // סנכרון ראשוני - נדחה מעט כדי לוודא שה-ScrollController מוכן
+      final currentState = state;
+      if (currentState is TextBookLoaded) {
+        // נחכה שה-widget יבנה ואז נסנכרן
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _syncWithMainText(currentState);
+          }
+        });
+        // ניסיון סנכרון נוסף אחרי זמן קצר (למקרה שה-ScrollController לא היה מוכן)
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted && _lastSyncedIndex == null) {
+            final bloc = context.read<TextBookBloc>();
+            if (bloc.state is TextBookLoaded) {
+              _syncWithMainText(bloc.state as TextBookLoaded);
+            }
+          }
+        });
       }
     } catch (e) {
       debugPrint(
@@ -839,12 +880,23 @@ class _CommentaryPaneState extends State<_CommentaryPane> {
       return;
     }
 
+    // אם ה-ScrollController עדיין לא מחובר, נדחה את הסנכרון
+    if (!_scrollController.isAttached) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _syncWithMainText(state);
+        }
+      });
+      return;
+    }
+
     // קביעת האינדקס הנוכחי בטקסט הראשי
+    // נעדיף את visibleIndices כי זה המיקום האמיתי בגלילה
     int currentMainIndex;
-    if (state.selectedIndex != null) {
-      currentMainIndex = state.selectedIndex!;
-    } else if (state.visibleIndices.isNotEmpty) {
+    if (state.visibleIndices.isNotEmpty) {
       currentMainIndex = state.visibleIndices.first;
+    } else if (state.selectedIndex != null) {
+      currentMainIndex = state.selectedIndex!;
     } else {
       return; // אין מידע על מיקום נוכחי
     }
@@ -911,6 +963,15 @@ class _CommentaryPaneState extends State<_CommentaryPane> {
     return TextBookStateBuilder(
       loadingWidget: const SizedBox(),
       builder: (context, state) {
+        // ניסיון סנכרון נוסף כשה-widget נבנה (במקרה שהסנכרון הראשוני נכשל)
+        if (_lastSyncedIndex == null && _scrollController.isAttached) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _syncWithMainText(state);
+            }
+          });
+        }
+
         return BlocBuilder<SettingsBloc, SettingsState>(
           builder: (context, settingsState) {
             // מפרשים תחתונים משתמשים בגופן מההגדרות, עליונים בגופן הרגיל
