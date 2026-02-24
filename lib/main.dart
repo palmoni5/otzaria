@@ -297,7 +297,15 @@ Future<void> initialize() async {
   // Initialize platform-specific components (SQLite, window manager, etc.)
   await initializePlatform();
 
-  await RustLib.init();
+  // Initialize Rust library (skip on web - not yet supported)
+  if (!kIsWeb) {
+    try {
+      await RustLib.init();
+    } catch (e) {
+      debugPrint('Failed to initialize Rust library: $e');
+    }
+  }
+
   await Settings.init(cacheProvider: HiveCache());
   await initHiveBoxes();
   await createDirs();
