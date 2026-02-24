@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'dart:math' as math;
-import 'package:path/path.dart' as p;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:otzaria/indexing/bloc/indexing_bloc.dart';
 import 'package:otzaria/indexing/bloc/indexing_event.dart';
 import 'package:otzaria/indexing/bloc/indexing_state.dart';
@@ -19,7 +17,6 @@ import 'package:otzaria/widgets/confirmation_dialog.dart';
 import 'package:otzaria/widgets/shortcut_dropdown_tile.dart';
 import 'package:otzaria/settings/protected_mode_settings.dart';
 import 'package:otzaria/settings/protected_settings_wrapper.dart';
-import 'package:otzaria/core/app_paths.dart';
 
 /// טאב הגדרות מתקדמות
 class AdvancedSettingsTab extends StatefulWidget {
@@ -559,47 +556,7 @@ class _AdvancedSettingsTabState extends State<AdvancedSettingsTab> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              const Divider(height: 1),
-              const SizedBox(height: 16),
-              // הסרת התוכנה
-              Row(
-                children: [
-                  const Icon(FluentIcons.delete_24_regular),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('הסרת התוכנה',
-                            style: TextStyle(fontSize: 16)),
-                        const SizedBox(height: 4),
-                        Text(
-                          'מחיקת כל ההגדרות ותיקיית ההתקנה. ניתן לבחור האם למחוק גם את הספרייה',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  FilledButton.tonal(
-                    onPressed: () => _uninstallApp(context),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Theme.of(context)
-                          .colorScheme
-                          .errorContainer
-                          .withValues(alpha: 0.5),
-                    ),
-                    child: const Text('הסר'),
-                  ),
-                ],
-              ),
+
             ],
           ),
         ),
@@ -607,241 +564,7 @@ class _AdvancedSettingsTabState extends State<AdvancedSettingsTab> {
     );
   }
 
-  /// הסרת התוכנה - מחיקת הגדרות ותיקיית התקנה
-  Future<void> _uninstallApp(BuildContext context) async {
-    // בדיקה אם במצב מוגן - אם כן, דרוש אימות סיסמה
-    if (shouldProtectSettings(context)) {
-      final verified = await verifyPasswordForAction(context);
-      if (!verified || !context.mounted) {
-        return;
-      }
-    }
 
-    if (!context.mounted) return;
-
-    // אישור ראשוני
-    final confirmed = await showConfirmationDialog(
-      context: context,
-      title: 'הסרת התוכנה?',
-      content:
-          'פעולה זו תמחק את כל ההגדרות ואת תיקיית ההתקנה של התוכנה. פעולה זו אינה הפיכה!\n\nהאם להמשיך?',
-      isDangerous: true,
-    );
-
-    if (confirmed != true || !context.mounted) return;
-
-    // שאלה לגבי מחיקת הספרייה
-    final deleteLibrary = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('מחיקת הספרייה?'),
-        content: const Text(
-          'האם למחוק גם את ספריית הספרים?\n\n'
-          'אם תבחר "כן", כל הספרים שהורדת יימחקו.\n'
-          'אם תבחר "לא", הספרייה תישאר במחשב.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('לא, השאר את הספרייה'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('כן, מחק את הספרייה'),
-          ),
-        ],
-      ),
-    );
-
-    if (!context.mounted) return;
-
-    try {
-      // מחיקת ההגדרות
-      Settings.clearCache();
-
-      // קבלת נתיבי התיקיות
-      final appSupportDir = await getApplicationSupportDirectory();
-      final libraryPath = await AppPaths.getLibraryPath();
-
-      // בדיקה אם הספרייה נמצאת בתוך תיקיית ההתקנה
-      final isLibraryInAppSupport = libraryPath.startsWith(appSupportDir.path);
-
-      // יצירת סקריפט מחיקה שירוץ אחרי סגירת התוכנה
-      final scriptPath = await _createUninstallScript(
-        appSupportDir.path,
-        deleteLibrary == true
-            ? null
-            : (isLibraryInAppSupport ? libraryPath : null),
-        !isLibraryInAppSupport && deleteLibrary == true ? libraryPath : null,
-      );
-
-      if (!context.mounted) return;
-
-      // הודעה על הצלחה והפעלת הסקריפט
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('התוכנה תוסר'),
-          content: Text(
-            deleteLibrary == true
-                ? 'כל ההגדרות, תיקיית ההתקנה והספרייה יימחקו לאחר סגירת התוכנה.'
-                : 'כל ההגדרות ותיקיית ההתקנה יימחקו לאחר סגירת התוכנה. הספרייה תישמר.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                // הפעלת הסקריפט
-                if (Platform.isWindows) {
-                  await Process.start('cmd', ['/c', 'start', '', scriptPath],
-                      mode: ProcessStartMode.detached);
-                } else if (Platform.isLinux || Platform.isMacOS) {
-                  await Process.start('sh', [scriptPath],
-                      mode: ProcessStartMode.detached);
-                }
-
-                // סגירת התוכנה
-                if (Platform.isAndroid || Platform.isIOS) {
-                  SystemNavigator.pop();
-                } else {
-                  windowManager.close();
-                }
-              },
-              child: const Text('סגור והסר'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('שגיאה'),
-          content: Text('אירעה שגיאה בהכנת הסרת התוכנה: $e'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('סגור'),
-            ),
-          ],
-        ),
-      );
-    }
-  }
-
-  /// יצירת סקריפט מחיקה שירוץ אחרי סגירת התוכנה
-  Future<String> _createUninstallScript(
-    String appSupportPath,
-    String? libraryToPreserve,
-    String? libraryToDelete,
-  ) async {
-    final tempDir =
-        await Directory.systemTemp.createTemp('otzaria_uninstall_');
-
-    if (Platform.isWindows) {
-      final scriptPath = p.join(tempDir.path, 'uninstall.bat');
-      final script = StringBuffer();
-
-      script.writeln('@echo off');
-      script.writeln('chcp 65001 > nul');
-      script.writeln('timeout /t 2 /nobreak > nul');
-
-      // שמירת הספרייה אם נדרש
-      if (libraryToPreserve != null) {
-        final tempLibrary = p.join(tempDir.path, 'library_backup');
-        script.writeln('echo Backing up library...');
-        script.writeln('xcopy /E /I /Y /Q "$libraryToPreserve" "$tempLibrary"');
-      }
-
-      // מחיקת תיקיית ההתקנה
-      script.writeln('echo Removing application data...');
-      script.writeln('if exist "$appSupportPath" (');
-      script.writeln('  rmdir /S /Q "$appSupportPath"');
-      script.writeln(')');
-
-      // החזרת הספרייה אם נדרש
-      if (libraryToPreserve != null) {
-        final tempLibrary = p.join(tempDir.path, 'library_backup');
-        script.writeln('echo Restoring library...');
-        script.writeln('if exist "$tempLibrary" (');
-        script.writeln('  xcopy /E /I /Y /Q "$tempLibrary" "$libraryToPreserve"');
-        script.writeln(')');
-      }
-
-      // מחיקת ספרייה חיצונית אם נדרש
-      if (libraryToDelete != null) {
-        script.writeln('echo Removing library...');
-        script.writeln('if exist "$libraryToDelete" (');
-        script.writeln('  rmdir /S /Q "$libraryToDelete"');
-        script.writeln(')');
-      }
-
-      script.writeln('echo Uninstall complete!');
-      script.writeln('timeout /t 3 /nobreak > nul');
-      
-      // מחיקת התיקייה הזמנית
-      script.writeln('if exist "${tempDir.path}" (');
-      script.writeln('  rmdir /S /Q "${tempDir.path}"');
-      script.writeln(')');
-
-      await File(scriptPath).writeAsString(script.toString());
-      return scriptPath;
-    } else {
-      final scriptPath = p.join(tempDir.path, 'uninstall.sh');
-      final script = StringBuffer();
-
-      script.writeln('#!/bin/bash');
-      script.writeln('sleep 2');
-
-      // שמירת הספרייה אם נדרש
-      if (libraryToPreserve != null) {
-        final tempLibrary = p.join(tempDir.path, 'library_backup');
-        script.writeln('echo "Backing up library..."');
-        script.writeln('if [ -d "$libraryToPreserve" ]; then');
-        script.writeln('  cp -r "$libraryToPreserve" "$tempLibrary"');
-        script.writeln('fi');
-      }
-
-      // מחיקת תיקיית ההתקנה
-      script.writeln('echo "Removing application data..."');
-      script.writeln('if [ -d "$appSupportPath" ]; then');
-      script.writeln('  rm -rf "$appSupportPath"');
-      script.writeln('fi');
-
-      // החזרת הספרייה אם נדרש
-      if (libraryToPreserve != null) {
-        final tempLibrary = p.join(tempDir.path, 'library_backup');
-        script.writeln('echo "Restoring library..."');
-        script.writeln('if [ -d "$tempLibrary" ]; then');
-        script.writeln('  mkdir -p "$libraryToPreserve"');
-        script.writeln('  cp -r "$tempLibrary"/* "$libraryToPreserve/"');
-        script.writeln('fi');
-      }
-
-      // מחיקת ספרייה חיצונית אם נדרש
-      if (libraryToDelete != null) {
-        script.writeln('echo "Removing library..."');
-        script.writeln('if [ -d "$libraryToDelete" ]; then');
-        script.writeln('  rm -rf "$libraryToDelete"');
-        script.writeln('fi');
-      }
-
-      script.writeln('echo "Uninstall complete!"');
-      script.writeln('sleep 3');
-      
-      // מחיקת התיקייה הזמנית
-      script.writeln('if [ -d "${tempDir.path}" ]; then');
-      script.writeln('  rm -rf "${tempDir.path}"');
-      script.writeln('fi');
-
-      final file = File(scriptPath);
-      await file.writeAsString(script.toString());
-      await Process.run('chmod', ['+x', scriptPath]);
-      return scriptPath;
-    }
-  }
 
   Widget _buildSectionCard({
     required BuildContext context,
