@@ -40,13 +40,33 @@ class AppPaths {
   }
 
   /// Gets the search index path (library_path/index)
+  /// If library path points to a .db file, uses its parent directory
   static Future<String> getIndexPath() async {
-    return p.join(await getLibraryPath(), 'index');
+    final libraryPath = await getLibraryPath();
+    
+    // אם הנתיב הוא קובץ DB, נשתמש בתיקייה שמכילה אותו
+    if (libraryPath.toLowerCase().endsWith('.db')) {
+      final parentDir = p.dirname(libraryPath);
+      return p.join(parentDir, 'index');
+    }
+    
+    // אחרת, נשתמש בנתיב כרגיל
+    return p.join(libraryPath, 'index');
   }
 
   /// Gets the manifest file path (library_path/files_manifest.json)
+  /// If library path points to a .db file, uses its parent directory
   static Future<String> getManifestPath() async {
-    return p.join(await getLibraryPath(), 'files_manifest.json');
+    final libraryPath = await getLibraryPath();
+    
+    // אם הנתיב הוא קובץ DB, נשתמש בתיקייה שמכילה אותו
+    if (libraryPath.toLowerCase().endsWith('.db')) {
+      final parentDir = p.dirname(libraryPath);
+      return p.join(parentDir, 'files_manifest.json');
+    }
+    
+    // אחרת, נשתמש בנתיב כרגיל
+    return p.join(libraryPath, 'files_manifest.json');
   }
 
   /// Resolves the notes database path - for cross-platform compatibility
@@ -73,11 +93,15 @@ class AppPaths {
     // רק ניצור את תיקיות האינדקס, לא את תיקיית הספרייה עצמה
     // תיקיית הספרייה תיווצר רק כשמורידים ספרייה או כשהמשתמש בוחר תיקייה קיימת
     final libraryPath = await getLibraryPath();
-    final libraryDir = Directory(libraryPath);
+    
+    // בדיקה אם הנתיב הוא קובץ או תיקייה
+    final isDbFile = libraryPath.toLowerCase().endsWith('.db');
+    final checkPath = isDbFile ? p.dirname(libraryPath) : libraryPath;
+    final checkDir = Directory(checkPath);
 
-    // אם תיקיית הספרייה לא קיימת, לא ניצור אותה
-    // רק נוודא שתיקיות האינדקס קיימות אם תיקיית הספרייה קיימת
-    if (await libraryDir.exists()) {
+    // אם התיקייה לא קיימת, לא ניצור אותה
+    // רק נוודא שתיקיות האינדקס קיימות אם התיקייה קיימת
+    if (await checkDir.exists()) {
       final dirs = [
         await getIndexPath(),
       ];
