@@ -1,0 +1,173 @@
+name: "Build, Release and Announce"
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+  release:
+    types: [published, prereleased]
+
+jobs:
+  build_windows:
+    if: github.event_name != 'release' && github.event_name != 'pull_request'
+    runs-on: windows-2022
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Get Flutter packages
+        shell: pwsh
+        run: flutter pub get
+
+      - name: Patch Sentry native fetch config
+        shell: pwsh
+        run: |
+          $pubCacheRoot = Join-Path $env:LOCALAPPDATA 'Pub\Cache\hosted\pub.dev'
+          $sentryNativeCmakeFiles = Get-ChildItem -Path $pubCacheRoot -Recurse -Filter sentry-native.cmake |
+            Where-Object { $_.FullName -like '*sentry_flutter-*\sentry-native\sentry-native.cmake' }
+
+          if (-not $sentryNativeCmakeFiles) {
+            Write-Host "Could not locate sentry-native.cmake, skipping patch."
+            return
+          }
+
+          foreach ($sentryNativeCmake in $sentryNativeCmakeFiles) {
+            [string[]]$lines = @(Get-Content -Path $sentryNativeCmake.FullName)
+            
+            if ($lines -match 'GIT_SUBMODULES_RECURSE FALSE') {
+                Write-Host "File already patched: $($sentryNativeCmake.FullName)"
+                continue
+            }
+
+            $gitTagIndex = -1
+            for ($i = 0; $i -lt $lines.Count; $i++) {
+                if ($lines[$i] -match 'GIT_TAG\s+') {
+                    $gitTagIndex = $i
+                    break
+                }
+            }
+
+            if ($gitTagIndex -lt 0) {
+              Write-Host "Note: GIT_TAG not found in $($sentryNativeCmake.FullName). This is normal for newer Sentry versions."
+              continue
+            }
+
+            $updatedLines = @()
+            $updatedLines += $lines[0..$gitTagIndex]
+            $updatedLines += '    GIT_SUBMODULES_RECURSE FALSE'
+            if ($gitTagIndex + 1 -lt $lines.Length) {
+              $updatedLines += $lines[($gitTagIndex + 1)..($lines.Length - 1)]
+            }
+
+            $updatedLines | Set-Content -Path $sentryNativeCmake.FullName -Encoding UTF8
+            Write-Host "Successfully patched $($sentryNativeCmake.FullName)"
+          }
+
+      - name: Create Google Calendar Credentials
+        shell: pwsh
+        run: |
+          $clientId = '${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}'
+          $clientSecret = '${{ secrets.GOOGLE_CALENDAR_CLIENT_SECRET }}'
+          $credentialsContent = @"
+          class GoogleCalendarCredentials {
+            static const String clientId = '$clientId';
+            static const String clientSecret = '$clientSecret';
+          }
+          "@
+          $credentialsContent | Out-File -FilePath "lib/tools/calendar/services/google_calendar_credentials.dart" -Encoding UTF8
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) {
+            choco install innosetup -y --no-progress
+          }
+          $iscc = (Get-ChildItem "C:\Program Files*\Inno Setup*\ISCC.exe" -Recurse | Select-Object -First 1).FullName
+          "ISCC=$iscc" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Build Flutter Windows app
+        env:
+          SENTRY_NATIVE_BACKEND: inproc
+        run: flutter build windows --release
+
+      - name: Zip Windows build
+        shell: pwsh
+        run: |
+          $relDir = Get-ChildItem -Directory build\windows | Where-Object { Test-Path "$($_.FullName)\runner\Release" } | Select-Object -First 1 -ExpandProperty FullName
+          $portableMarker = Join-Path $relDir 'runner\Release\portable_install.marker'
+          New-Item -ItemType File -Path $portableMarker -Force | Out-Null
+          Compress-Archive -Path "$relDir\runner\Release\*" -DestinationPath otzaria-windows.zip
+          Remove-Item -Path $portableMarker -Force
+
+      - name: Download library assets for full installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Path "installer\library_db" -Force | Out-Null
+          $ProgressPreference = 'SilentlyContinue'
+          
+          # הורדת ה-DB הראשי
+          $latestRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/Otzaria/SeforimLibrary/releases/latest"
+          $dbAsset = $latestRelease.assets | Where-Object { $_.name -eq "seforim.db.zst" }
+          Invoke-WebRequest -Uri $dbAsset.browser_download_url -OutFile "installer\library_db\seforim.db.zst" -UseBasicParsing
+          
+          # הורדת הקטלוג
+          $catalogRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/Otzaria/otzar-HB_catalog/releases/latest"
+          $catalogAsset = $catalogRelease.assets | Where-Object { $_.name -eq "otzar-HB_catalog.db.zst" }
+          Invoke-WebRequest -Uri $catalogAsset.browser_download_url -OutFile "installer\library_db\otzar-HB_catalog.db.zst" -UseBasicParsing
+
+          # הורדת תלמוד בבלי
+          $talmudUrl = "https://github.com/Otzaria/otzaria-library/releases/latest/download/talmud_bavli_latest.tar.zst"
+          Invoke-WebRequest -Uri $talmudUrl -OutFile "installer\library_db\talmud_bavli_latest.tar.zst" -UseBasicParsing
+
+          # הורדת כלי עזר (zstd, 7za)
+          $zstdRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/facebook/zstd/releases/latest"
+          $zstdAsset = $zstdRelease.assets | Where-Object { $_.name -like "zstd-*-win64.zip" } | Select-Object -First 1
+          Invoke-WebRequest -Uri $zstdAsset.browser_download_url -OutFile "installer\zstd-win64.zip" -UseBasicParsing
+          Expand-Archive -Path "installer\zstd-win64.zip" -DestinationPath "installer\zstd_tmp" -Force
+          Copy-Item -Path (Get-ChildItem "installer\zstd_tmp" -Filter "zstd.exe" -Recurse).FullName -Destination "installer\zstd.exe" -Force
+          
+          $sevenZipRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/ip7z/7zip/releases/latest"
+          Invoke-WebRequest -Uri ($sevenZipRelease.assets | Where-Object { $_.name -eq "7zr.exe" }).browser_download_url -OutFile "installer\7zr.exe" -UseBasicParsing
+          Invoke-WebRequest -Uri ($sevenZipRelease.assets | Where-Object { $_.name -like "7z*-extra.7z" }).browser_download_url -OutFile "installer\7zip-extra.7z" -UseBasicParsing
+          & "installer\7zr.exe" x "installer\7zip-extra.7z" "-oinstaller\7zip_tmp" -y
+          Copy-Item -Path (Get-ChildItem "installer\7zip_tmp" -Filter "7za.exe" -Recurse).FullName -Destination "installer\7za.exe" -Force
+
+      - name: Download Visual C++ Redistributable
+        shell: pwsh
+        run: |
+          $latestRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/abbodi1406/vcredist/releases/latest"
+          $asset = $latestRelease.assets | Where-Object { $_.name -eq "VisualCppRedist_AIO_x86_x64.exe" }
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "installer\VisualCppRedist_AIO_x86_x64.exe"
+
+      - name: Build Inno Setup installer
+        shell: pwsh
+        run: |
+          & "$env:ISCC" installer\otzaria_full.iss
+          if ($LASTEXITCODE -ne 0) { throw "FULL installer build failed" }
+          & "$env:ISCC" installer\otzaria.iss
+          if ($LASTEXITCODE -ne 0) { throw "Regular installer build failed" }
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: otzaria-windows-installer
+          path: installer/otzaria-*-windows*.exe
+
+      - name: Upload Windows ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: otzaria-windows-zip
+          path: otzaria-windows.zip
