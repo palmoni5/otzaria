@@ -12,7 +12,7 @@ import 'package:otzaria/core/app_paths.dart';
 /// This provider handles the search operations for both text-based and PDF books,
 /// maintaining an index for full-text search capabilities.
 class TantivyDataProvider {
-  static const int currentIndexStateVersion = 5;
+  static const int currentIndexStateVersion = 6;
   static const String _booksDoneKey = 'key-books-done';
   static const String _indexStateVersionKey = 'key-index-state-version';
   static const String _catalogueOrderSignatureKey =
