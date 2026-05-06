@@ -9,46 +9,6 @@ void main() {
       expect(SearchQueryBuilder.sanitizeQuery(''), '');
     });
 
-    test('מסיר פסיקים', () {
-      expect(SearchQueryBuilder.sanitizeQuery('תורה, ומצוות'), 'תורה ומצוות');
-    });
-
-    test('מסיר גרשיים', () {
-      expect(SearchQueryBuilder.sanitizeQuery("ה'"), 'ה');
-    });
-
-    test('מסיר גרשיים עבריים (״ ו-׳)', () {
-      expect(SearchQueryBuilder.sanitizeQuery('ר״ן'), 'רן');
-      expect(SearchQueryBuilder.sanitizeQuery("א׳"), 'א');
-    });
-
-    test('מסיר סימני שאלה וקריאה', () {
-      expect(SearchQueryBuilder.sanitizeQuery('מה?'), 'מה');
-      expect(SearchQueryBuilder.sanitizeQuery('כן!'), 'כן');
-    });
-
-    test('מסיר סוגריים', () {
-      expect(SearchQueryBuilder.sanitizeQuery('(תורה) [ומצוות] {ונביאים}'),
-          'תורה ומצוות ונביאים');
-    });
-
-    test('מסיר כוכביות ונקודות', () {
-      expect(SearchQueryBuilder.sanitizeQuery('תורה.*'), 'תורה');
-    });
-
-    test('מסיר מעוין וסולמית ומקף בינתיים', () {
-      expect(SearchQueryBuilder.sanitizeQuery('^abc\$'), 'abc');
-    });
-
-    test('מסיר backslash וpipe', () {
-      expect(SearchQueryBuilder.sanitizeQuery('a\\b|c'), 'abc');
-    });
-
-    test('query עם רק תווים מיוחדים → ריק', () {
-      expect(SearchQueryBuilder.sanitizeQuery('*!?.,'), '');
-      expect(SearchQueryBuilder.sanitizeQuery('"..."'), '');
-    });
-
     test('query טהור עברי נשמר', () {
       expect(SearchQueryBuilder.sanitizeQuery('בראשית ברא אלהים'),
           'בראשית ברא אלהים');
@@ -58,10 +18,99 @@ void main() {
       expect(SearchQueryBuilder.sanitizeQuery('  תורה  '), 'תורה');
     });
 
+    // ── הסרות ──────────────────────────────────────────────────────────────
+    test('מסיר פסיקים', () {
+      expect(SearchQueryBuilder.sanitizeQuery('תורה, ומצוות'), 'תורה ומצוות');
+    });
+
+    test('מסיר נקודה־פסיק (;)', () {
+      expect(SearchQueryBuilder.sanitizeQuery('תורה;מצוות'), 'תורהמצוות');
+    });
+
+    test('מסיר סימני שאלה וקריאה', () {
+      expect(SearchQueryBuilder.sanitizeQuery('מה?'), 'מה');
+      expect(SearchQueryBuilder.sanitizeQuery('כן!'), 'כן');
+    });
+
+    test('מסיר נקודתיים ופלוס', () {
+      expect(SearchQueryBuilder.sanitizeQuery('a:b+c'), 'abc');
+    });
+
+    test('מסיר סוגריים מכל הסוגים', () {
+      expect(SearchQueryBuilder.sanitizeQuery('(תורה) [ומצוות] {ונביאים}'),
+          'תורה ומצוות ונביאים');
+    });
+
+    test('מסיר כוכביות ונקודות', () {
+      expect(SearchQueryBuilder.sanitizeQuery('תורה.*'), 'תורה');
+    });
+
+    test('מסיר ^ ו-\$', () {
+      expect(SearchQueryBuilder.sanitizeQuery('^abc\$'), 'abc');
+    });
+
+    test('מסיר backslash ו-pipe', () {
+      expect(SearchQueryBuilder.sanitizeQuery('a\\b|c'), 'abc');
+    });
+
+    test('מסיר tilde ו-backquote', () {
+      expect(SearchQueryBuilder.sanitizeQuery('a~b`c'), 'abc');
+    });
+
+    test('query עם רק תווים מוסרים → ריק', () {
+      expect(SearchQueryBuilder.sanitizeQuery('*!?.,;:'), '');
+    });
+
+    // ── שמירת גרש/גרשיים לועזיים ───────────────────────────────────────────
+    test('שומר גרש לועזי (\')', () {
+      expect(SearchQueryBuilder.sanitizeQuery("ה'"), "ה'");
+    });
+
+    test('שומר גרשיים לועזיים (")', () {
+      expect(SearchQueryBuilder.sanitizeQuery('רמב"ם'), 'רמב"ם');
+    });
+
+    // ── המרות ──────────────────────────────────────────────────────────────
+    test('ממיר גרשיים עבריים (״) לגרשיים לועזיים (")', () {
+      expect(SearchQueryBuilder.sanitizeQuery('ר״ן'), 'ר"ן');
+      expect(SearchQueryBuilder.sanitizeQuery('רמב״ם'), 'רמב"ם');
+    });
+
+    test('ממיר גרש עברי (׳) לגרש לועזי (\')', () {
+      expect(SearchQueryBuilder.sanitizeQuery('א׳'), "א'");
+    });
+
     test('ממיר מקף עברי (־) לרווח רגיל', () {
       expect(SearchQueryBuilder.sanitizeQuery('אל־משה'), 'אל משה');
-      expect(SearchQueryBuilder.sanitizeQuery('ויאמר־אלהים'),
-          'ויאמר אלהים');
+      expect(SearchQueryBuilder.sanitizeQuery('ויאמר־אלהים'), 'ויאמר אלהים');
+    });
+
+    test('ממיר מקף לועזי (-) לרווח רגיל', () {
+      expect(SearchQueryBuilder.sanitizeQuery('פר-קציאל'), 'פר קציאל');
+      expect(SearchQueryBuilder.sanitizeQuery('a-b-c'), 'a b c');
+    });
+
+    // ── צמצום רווחים ───────────────────────────────────────────────────────
+    test('מצמצם רווחים מרובים לרווח יחיד', () {
+      expect(SearchQueryBuilder.sanitizeQuery('תורה   ומצוות'), 'תורה ומצוות');
+      expect(SearchQueryBuilder.sanitizeQuery('א  ב   ג    ד'), 'א ב ג ד');
+    });
+
+    test('מצמצם רווחים שנוצרו ממקפים סמוכים', () {
+      expect(SearchQueryBuilder.sanitizeQuery('אל־-משה'), 'אל משה');
+    });
+
+    test('מצמצם tabs ומעברי שורה לרווח יחיד', () {
+      expect(SearchQueryBuilder.sanitizeQuery('תורה\t\tומצוות'), 'תורה ומצוות');
+      expect(SearchQueryBuilder.sanitizeQuery('תורה\nומצוות'), 'תורה ומצוות');
+    });
+
+    // ── זרימה משולבת ───────────────────────────────────────────────────────
+    test('זרימה משולבת: המרות + הסרות + צמצום רווחים + trim', () {
+      expect(
+        SearchQueryBuilder.sanitizeQuery('  אבא־בן-דוד   רמב״ם, מלך!  '),
+        'אבא בן דוד רמב"ם מלך',
+      );
     });
   });
 
@@ -314,9 +363,10 @@ void main() {
     });
 
     test('query עם רק תווים מוסרים → regexTerms ריק', () {
-      // sanitizeQuery מסיר: , ! ? \' " ״ ׳ : * ( ) [ ] { } ^ $ | \\ + . ~ `
+      // sanitizeQuery מסיר: , ; ! ? : * ( ) [ ] { } ^ $ | \\ + . ~ `
+      // וממיר: ״ → " ; ׳ → ' ; ־ → רווח ; - → רווח
       final params = SearchQueryBuilder.prepareQueryParams(
-          '!?.,*', false, 0, null, null, null);
+          '!?.,*;', false, 0, null, null, null);
       final regexTerms = params['regexTerms'] as List<String>;
       expect(regexTerms, isEmpty);
     });
@@ -577,9 +627,9 @@ void main() {
 
   // ──────────────────────────────────────────────────────────────────────────
   group('תרחישי הבאג: אופרטורים ריקים', () {
-    test('sanitize של query עם רק גרשיים → regexTerms ריק, לא קורס', () {
+    test('sanitize של query עם רק תווים מוסרים → regexTerms ריק, לא קורס', () {
       final params = SearchQueryBuilder.prepareQueryParams(
-          '"""', false, 0, null, null, null);
+          '!?.,;', false, 0, null, null, null);
       final regexTerms = params['regexTerms'] as List<String>;
       expect(regexTerms, isEmpty);
     });

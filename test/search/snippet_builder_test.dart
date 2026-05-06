@@ -81,6 +81,142 @@ void main() {
     expect(renderedText, contains('רש"י'));
   });
 
+  // ── סימטריה מול sanitizeQuery ────────────────────────────────────────────
+  // sanitizeQuery ממיר ״→" ו-׳→' ו-־→רווח ו-‎-→רווח. הטקסט המוצג נשאר
+  // עם הצורה המקורית, ולכן ההדגשה חייבת לזהות שתי הצורות.
+
+  test('הדגשה: שאילתה עם ״ עברי מדגישה רמב״ם (גרשיים בטקסט)', () {
+    final spans = SnippetBuilder.buildHighlightSpans(
+      plainText: 'אמר רמב״ם בפירושו',
+      query: 'רמב״ם',
+      defaultStyle: const TextStyle(),
+      highlightStyle: const TextStyle(fontWeight: FontWeight.bold),
+      searchOptions: const {},
+      alternativeWords: const {},
+    );
+
+    final highlighted = spans
+        .whereType<TextSpan>()
+        .where((span) => span.style?.fontWeight == FontWeight.bold)
+        .map((span) => span.text ?? '')
+        .join();
+
+    expect(highlighted, 'רמב״ם');
+  });
+
+  test('הדגשה: שאילתה עם " לועזי מדגישה רמב״ם (גרשיים עבריים בטקסט)', () {
+    final spans = SnippetBuilder.buildHighlightSpans(
+      plainText: 'אמר רמב״ם בפירושו',
+      query: 'רמב"ם',
+      defaultStyle: const TextStyle(),
+      highlightStyle: const TextStyle(fontWeight: FontWeight.bold),
+      searchOptions: const {},
+      alternativeWords: const {},
+    );
+
+    final highlighted = spans
+        .whereType<TextSpan>()
+        .where((span) => span.style?.fontWeight == FontWeight.bold)
+        .map((span) => span.text ?? '')
+        .join();
+
+    expect(highlighted, 'רמב״ם');
+  });
+
+  test('הדגשה: שאילתה עם " לועזי מדגישה גם רמב"ם (לועזי בטקסט)', () {
+    final spans = SnippetBuilder.buildHighlightSpans(
+      plainText: 'אמר רמב"ם בפירושו',
+      query: 'רמב"ם',
+      defaultStyle: const TextStyle(),
+      highlightStyle: const TextStyle(fontWeight: FontWeight.bold),
+      searchOptions: const {},
+      alternativeWords: const {},
+    );
+
+    final highlighted = spans
+        .whereType<TextSpan>()
+        .where((span) => span.style?.fontWeight == FontWeight.bold)
+        .map((span) => span.text ?? '')
+        .join();
+
+    expect(highlighted, 'רמב"ם');
+  });
+
+  test('הדגשה: שאילתה עם ׳ עברי מדגישה גם א׳ וגם א\' בטקסט', () {
+    final spansHebrew = SnippetBuilder.buildHighlightSpans(
+      plainText: 'בפרק א׳ של הספר',
+      query: 'א׳',
+      defaultStyle: const TextStyle(),
+      highlightStyle: const TextStyle(fontWeight: FontWeight.bold),
+      searchOptions: const {},
+      alternativeWords: const {},
+    );
+    final highlightedHebrew = spansHebrew
+        .whereType<TextSpan>()
+        .where((span) => span.style?.fontWeight == FontWeight.bold)
+        .map((span) => span.text ?? '')
+        .join();
+    expect(highlightedHebrew, 'א׳');
+
+    final spansLatin = SnippetBuilder.buildHighlightSpans(
+      plainText: "בפרק א' של הספר",
+      query: 'א׳',
+      defaultStyle: const TextStyle(),
+      highlightStyle: const TextStyle(fontWeight: FontWeight.bold),
+      searchOptions: const {},
+      alternativeWords: const {},
+    );
+    final highlightedLatin = spansLatin
+        .whereType<TextSpan>()
+        .where((span) => span.style?.fontWeight == FontWeight.bold)
+        .map((span) => span.text ?? '')
+        .join();
+    expect(highlightedLatin, "א'");
+  });
+
+  test('הדגשה: שאילתה עם מקף עברי (־) מדגישה את שתי המילים בטקסט', () {
+    // sanitizeQuery הופך 'אל־משה' לשתי מילים 'אל משה'.
+    // הטקסט בכל זאת מכיל 'אל־משה' אחד — _collectSearchTokens מפצל על ־ לטוקנים,
+    // ו-phrase matching מאתר את שתי המילים סמוכות.
+    final spans = SnippetBuilder.buildHighlightSpans(
+      plainText: 'ויאמר אל־משה לאמר',
+      query: 'אל־משה',
+      defaultStyle: const TextStyle(),
+      highlightStyle: const TextStyle(fontWeight: FontWeight.bold),
+      searchOptions: const {},
+      alternativeWords: const {},
+    );
+
+    final highlighted = spans
+        .whereType<TextSpan>()
+        .where((span) => span.style?.fontWeight == FontWeight.bold)
+        .map((span) => span.text ?? '')
+        .toList();
+
+    expect(highlighted, contains('אל'));
+    expect(highlighted, contains('משה'));
+  });
+
+  test('הדגשה: שאילתה עם מקף לועזי (-) מדגישה את שתי המילים בטקסט', () {
+    final spans = SnippetBuilder.buildHighlightSpans(
+      plainText: 'מערכת אבא-גדול בשימוש',
+      query: 'אבא-גדול',
+      defaultStyle: const TextStyle(),
+      highlightStyle: const TextStyle(fontWeight: FontWeight.bold),
+      searchOptions: const {},
+      alternativeWords: const {},
+    );
+
+    final highlighted = spans
+        .whereType<TextSpan>()
+        .where((span) => span.style?.fontWeight == FontWeight.bold)
+        .map((span) => span.text ?? '')
+        .toList();
+
+    expect(highlighted, contains('אבא'));
+    expect(highlighted, contains('גדול'));
+  });
+
   test('SnippetBuilder מדגיש גם התאמה דומה כשהופעלו שגיאות כתיב', () {
     final spans = SnippetBuilder.createSnippetSpans(
       fullHtml: '<p>חכמה לכל העולם</p>',
