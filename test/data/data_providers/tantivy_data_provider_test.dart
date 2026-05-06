@@ -37,4 +37,30 @@ void main() {
       expect(shouldInvalidate, isFalse);
     });
   });
+
+  group('TantivyDataProvider.shouldPromptForManualReindex', () {
+    test('מחזיר false כשאין אינדקס קיים גם אם הגרסה השתנתה', () {
+      final shouldPrompt = TantivyDataProvider.shouldPromptForManualReindex(
+        indexExistedBeforeInit: false,
+        storedIndexStateVersion:
+            TantivyDataProvider.currentIndexStateVersion - 1,
+        storedCatalogueOrderSignature: 'same-signature',
+        currentCatalogueOrderSignature: 'same-signature',
+      );
+
+      expect(shouldPrompt, isFalse);
+    });
+
+    test('מחזיר true כשיש אינדקס קיים והגרסה השתנתה', () {
+      final shouldPrompt = TantivyDataProvider.shouldPromptForManualReindex(
+        indexExistedBeforeInit: true,
+        storedIndexStateVersion:
+            TantivyDataProvider.currentIndexStateVersion - 1,
+        storedCatalogueOrderSignature: 'same-signature',
+        currentCatalogueOrderSignature: 'same-signature',
+      );
+
+      expect(shouldPrompt, isTrue);
+    });
+  });
 }

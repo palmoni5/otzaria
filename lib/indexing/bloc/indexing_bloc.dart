@@ -187,6 +187,11 @@ class IndexingBloc extends Bloc<IndexingEvent, IndexingState> {
 
     if (state is IndexingInProgress) return;
 
+    if (await _repository.requiresManualReindex(event.library)) {
+      emit(IndexingInitial());
+      return;
+    }
+
     final indexableBooks = event.library
         .getAllBooks()
         .where(IndexingRepository.isIndexableBook)
