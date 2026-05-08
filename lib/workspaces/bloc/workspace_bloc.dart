@@ -1,4 +1,5 @@
 import 'package:bloc_concurrency/bloc_concurrency.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/workspaces/bloc/workspace_event.dart';
 import 'package:otzaria/workspaces/bloc/workspace_state.dart';
@@ -57,7 +58,7 @@ class WorkspaceBloc extends Bloc<WorkspaceEvent, WorkspaceState> {
       // Create default workspace if none exist
       if (finalWorkspaces.isEmpty) {
         final defaultWorkspace = Workspace(
-          name: "שולחן עבודה 1",
+          name: 'workspaces.default_name'.tr(namedArgs: {'n': '1'}),
           tabs: [],
           activeTabIndex: 0,
         );
@@ -110,7 +111,8 @@ class WorkspaceBloc extends Bloc<WorkspaceEvent, WorkspaceState> {
     try {
       // Can't remove the active workspace
       if (state.activeWorkspaceId == event.workspaceId) {
-        emit(state.copyWith(error: 'לא ניתן למחוק שולחן עבודה פעיל'));
+        emit(state.copyWith(
+            error: 'workspaces.cant_delete_active'.tr()));
         return;
       }
 
@@ -195,7 +197,7 @@ class WorkspaceBloc extends Bloc<WorkspaceEvent, WorkspaceState> {
       ClearWorkspaces event, Emitter<WorkspaceState> emit) async {
     try {
       final defaultWorkspace = Workspace(
-        name: "ברירת מחדל",
+        name: 'workspaces.default_fallback'.tr(),
         tabs: _cloneTabs(event.currentTabs),
         activeTabIndex: event.currentTabIndex,
       );

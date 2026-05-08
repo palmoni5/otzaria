@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
@@ -44,10 +45,10 @@ class SearchModeToggle extends StatelessWidget {
             inactiveFgColor: Colors.white,
             initialLabelIndex: currentIndex,
             totalSwitches: 3,
-            labels: const [
-              'חיפוש מתקדם',
-              'חיפוש מדוייק',
-              'חיפוש מקורב',
+            labels: [
+              'search.advanced_label'.tr(),
+              'search.exact_label'.tr(),
+              'search.fuzzy_label'.tr(),
             ],
             radiusStyle: true,
             onToggle: (index) {
@@ -142,8 +143,8 @@ class _FuzzyDistanceState extends State<FuzzyDistance> {
               enabled: isEnabled,
               decoration: InputDecoration(
                 labelText: hasCustomSpacing
-                    ? 'מרווח בין מילים (מושבת)'
-                    : 'מרווח בין מילים',
+                    ? 'search.spacing_disabled'.tr()
+                    : 'search.word_spacing'.tr(),
                 labelStyle: TextStyle(
                   color: hasCustomSpacing
                       ? Theme.of(context).colorScheme.onSurfaceVariant
@@ -349,7 +350,7 @@ class _SearchTermsDisplayState extends State<SearchTermsDisplay> {
           spans.add(const TextSpan(text: ' '));
           spans.add(
             TextSpan(
-              text: 'או',
+              text: 'search.or'.tr(),
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.normal,
@@ -534,18 +535,18 @@ class OrderOfResults extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
             child: AppDropdownField<ResultsOrder>(
               value: state.sortBy,
-              decoration: const InputDecoration(
-                labelText: 'מיון',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: 'search.sort_label'.tr(),
+                border: const OutlineInputBorder(),
               ),
-              entries: const [
+              entries: [
                 AppMenuEntry(
                   value: ResultsOrder.relevance,
-                  label: 'לפי רלוונטיות',
+                  label: 'search.sort_by_relevance'.tr(),
                 ),
                 AppMenuEntry(
                   value: ResultsOrder.catalogue,
-                  label: 'לפי סדר קטלוגי',
+                  label: 'search.sort_by_catalogue'.tr(),
                 ),
               ],
               onSelected: (value) {

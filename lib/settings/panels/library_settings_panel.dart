@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -76,23 +77,23 @@ class LibrarySettingsPanel extends StatelessWidget {
           children: [
             // הגדרות תצוגה
             SettingsCard(
-              title: 'תצוגת ספרייה',
+              title: 'settings.library.view_section'.tr(),
               children: [
                 SegmentedSettingsTile<String>(
                   icon: FluentIcons.grid_24_regular,
-                  title: 'סוג תצוגה',
+                  title: 'settings.library.view_mode_title'.tr(),
                   subtitle: state.libraryViewMode == 'list'
-                      ? 'תצוגת רשימה (עץ מתרחב)'
-                      : 'תצוגת רשת',
-                  options: const [
+                      ? 'settings.library.view_mode_list_subtitle'.tr()
+                      : 'settings.library.view_mode_grid_subtitle'.tr(),
+                  options: [
                     SegmentOption(
                       value: 'grid',
-                      label: 'רשת',
+                      label: 'settings.library.view_grid'.tr(),
                       icon: FluentIcons.grid_24_regular,
                     ),
                     SegmentOption(
                       value: 'list',
-                      label: 'רשימה',
+                      label: 'settings.library.view_list'.tr(),
                       icon: FluentIcons.list_24_regular,
                     ),
                   ],
@@ -105,12 +106,12 @@ class LibrarySettingsPanel extends StatelessWidget {
                 ),
                 SwitchSettingsTile(
                   leading: const Icon(FluentIcons.eye_24_regular),
-                  title: const Text('הצג תצוגה מקדימה',
+                  title: Text('settings.library.show_preview_title'.tr(),
                       style: kSettingsTitleStyle),
                   subtitle: Text(
                     state.libraryShowPreview
-                        ? 'תצוגה מקדימה מוצגת'
-                        : 'תצוגה מקדימה מוסתרת',
+                        ? 'settings.library.show_preview_on'.tr()
+                        : 'settings.library.show_preview_off'.tr(),
                     style: kSettingsSubtitleStyle,
                   ),
                   value: state.libraryShowPreview,
@@ -127,19 +128,19 @@ class LibrarySettingsPanel extends StatelessWidget {
 
             // ספרים נוספים (משלב מיקום היברובוקס וספרים חיצוניים)
             SettingsCard(
-              title: 'ספרים נוספים',
+              title: 'settings.library.additional_section'.tr(),
               children: [
                 // מיקום היברובוקס (יוצג ראשון במידה והועבר לו ווידג'ט - דסקטופ בלבד)
                 if (hebrewBooksPathWidget != null) hebrewBooksPathWidget!,
 
                 SwitchSettingsTile(
                   leading: const Icon(FluentIcons.globe_24_regular),
-                  title: const Text('הצגת ספרים מאתרים חיצוניים',
+                  title: Text('settings.library.external_books_title'.tr(),
                       style: kSettingsTitleStyle),
                   subtitle: Text(
                     state.showExternalBooks
-                        ? 'יוצגו גם ספרים מאתרים חיצוניים'
-                        : 'יוצגו רק ספרים מספריית אוצריא',
+                        ? 'settings.library.external_books_on'.tr()
+                        : 'settings.library.external_books_off'.tr(),
                     style: kSettingsSubtitleStyle,
                   ),
                   value: state.showExternalBooks,
@@ -153,9 +154,9 @@ class LibrarySettingsPanel extends StatelessWidget {
                 if (state.showExternalBooks) ...[
                   SwitchSettingsTile(
                     leading: const Icon(FluentIcons.library_24_regular),
-                    title: const Text('הצג ספרים מאוצר החכמה',
+                    title: Text('settings.library.otzar_title'.tr(),
                         style: kSettingsTitleStyle),
-                    subtitle: const Text('ספרים מאתר אוצר החכמה',
+                    subtitle: Text('settings.library.otzar_subtitle'.tr(),
                         style: kSettingsSubtitleStyle),
                     value: state.showOtzarHachochma,
                     onChanged: (value) async {
@@ -167,9 +168,11 @@ class LibrarySettingsPanel extends StatelessWidget {
                   ),
                   SwitchSettingsTile(
                     leading: const Icon(FluentIcons.book_open_24_regular),
-                    title: const Text('הצג ספרים מהיברובוקס',
+                    title: Text(
+                        'settings.library.hebrew_books_external_title'.tr(),
                         style: kSettingsTitleStyle),
-                    subtitle: const Text('ספרים מאתר HebrewBooks',
+                    subtitle: Text(
+                        'settings.library.hebrew_books_external_subtitle'.tr(),
                         style: kSettingsSubtitleStyle),
                     value: state.showHebrewBooks,
                     onChanged: (value) async {
@@ -181,9 +184,9 @@ class LibrarySettingsPanel extends StatelessWidget {
                   ),
                   SwitchSettingsTile(
                     leading: const Icon(FluentIcons.arrow_sync_24_regular),
-                    title: const Text('סנכרון קטלוגים אוטומטי',
+                    title: Text('settings.library.auto_sync_title'.tr(),
                         style: kSettingsTitleStyle),
-                    subtitle: const Text('עדכן קטלוגים חיצוניים אוטומטית',
+                    subtitle: Text('settings.library.auto_sync_subtitle'.tr(),
                         style: kSettingsSubtitleStyle),
                     value: state.autoSyncCatalogs,
                     onChanged: (value) {

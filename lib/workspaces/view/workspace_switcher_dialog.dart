@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -40,7 +41,8 @@ class _WorkspaceSwitcherDialogState extends State<WorkspaceSwitcherDialog> {
     int counter = existingWorkspaces.length + 1;
 
     while (true) {
-      final candidateName = "שולחן עבודה $counter";
+      final candidateName =
+          'workspaces.default_name'.tr(namedArgs: {'n': '$counter'});
       if (!existingNames.contains(candidateName)) {
         return candidateName;
       }
@@ -62,9 +64,9 @@ class _WorkspaceSwitcherDialogState extends State<WorkspaceSwitcherDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'שולחנות עבודה',
-                  style: TextStyle(
+                Text(
+                  'workspaces.title'.tr(),
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
@@ -84,7 +86,9 @@ class _WorkspaceSwitcherDialogState extends State<WorkspaceSwitcherDialog> {
                   }
 
                   if (state.error != null) {
-                    return Center(child: Text('שגיאה: ${state.error}'));
+                    return Center(
+                        child: Text('workspaces.error_with_message'
+                            .tr(namedArgs: {'error': '${state.error}'})));
                   }
 
                   return GridView.builder(
@@ -148,9 +152,9 @@ class _WorkspaceSwitcherDialogState extends State<WorkspaceSwitcherDialog> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'שולחן עבודה חדש',
-                  style: TextStyle(
+                Text(
+                  'workspaces.new_workspace'.tr(),
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -240,7 +244,7 @@ class _WorkspaceSwitcherDialogState extends State<WorkspaceSwitcherDialog> {
                                 ),
                                 const SizedBox(width: 6),
                                 IconButton(
-                                  tooltip: 'שמור',
+                                  tooltip: 'workspaces.save_tooltip'.tr(),
                                   icon: const Icon(
                                       FluentIcons.checkmark_24_regular),
                                   onPressed: commitRenameAndClose,
@@ -291,13 +295,13 @@ class _WorkspaceSwitcherDialogState extends State<WorkspaceSwitcherDialog> {
               onPressed: () {
                 // Remove the workspace
                 if (isActive) {
-                  UiSnack.showError('לא ניתן למחוק שולחן עבודה פעיל');
+                  UiSnack.showError('workspaces.cant_delete_active'.tr());
                   return;
                 }
                 context
                     .read<WorkspaceBloc>()
                     .add(RemoveWorkspace(workspace.id));
-                UiSnack.show('שולחן העבודה נמחק');
+                UiSnack.show('workspaces.deleted'.tr());
               },
             ),
           ),

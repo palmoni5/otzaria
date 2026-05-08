@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:file_picker/file_picker.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
@@ -66,7 +67,7 @@ class _BooksListDialogState extends State<_BooksListDialog> {
     if (!mounted) return;
 
     final path = await FilePicker.saveFile(
-      dialogTitle: 'בחר מיקום לשמירת רשימת הספרים',
+      dialogTitle: 'settings.books_list.save_dialog_title'.tr(),
       fileName: 'otzaria_books.csv',
       initialDirectory: downloadsDirectory?.path,
       allowedExtensions: ['csv'],
@@ -81,10 +82,12 @@ class _BooksListDialogState extends State<_BooksListDialog> {
       // BOM כדי שאקסל יזהה UTF-8 כראוי בעברית.
       await File(path).writeAsString('﻿$csv');
       if (!mounted) return;
-      UiSnack.show('רשימת הספרים נשמרה: ${_rows.length} שורות');
+      UiSnack.show('settings.books_list.saved_summary'
+          .tr(namedArgs: {'count': _rows.length.toString()}));
     } catch (e) {
       if (!mounted) return;
-      UiSnack.showError('שגיאה בשמירת הקובץ: $e');
+      UiSnack.showError(
+          'settings.books_list.save_error'.tr(namedArgs: {'error': '$e'}));
     } finally {
       if (mounted) setState(() => _isExporting = false);
     }
@@ -117,7 +120,7 @@ class _BooksListDialogState extends State<_BooksListDialog> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'רשימת הספרים',
+                        'settings.books_list.title'.tr(),
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                     ),
@@ -133,10 +136,10 @@ class _BooksListDialogState extends State<_BooksListDialog> {
                 RtlTextField(
                   controller: _searchController,
                   autofocus: true,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(FluentIcons.search_24_regular),
-                    hintText: 'חיפוש לפי שם, מחבר או קטגוריה',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(FluentIcons.search_24_regular),
+                    hintText: 'settings.books_list.search_hint'.tr(),
+                    border: const OutlineInputBorder(),
                     isDense: true,
                   ),
                 ),
@@ -145,7 +148,7 @@ class _BooksListDialogState extends State<_BooksListDialog> {
                   child: _visibleRows.isEmpty
                       ? Center(
                           child: Text(
-                            'לא נמצאו ספרים',
+                            'settings.books_list.no_books_found'.tr(),
                             style: TextStyle(color: cs.onSurfaceVariant),
                           ),
                         )
@@ -166,14 +169,14 @@ class _BooksListDialogState extends State<_BooksListDialog> {
                 Row(
                   children: [
                     RecommendedActionButton(
-                      text: 'ייצוא ל-CSV',
+                      text: 'settings.books_list.export_csv'.tr(),
                       icon: FluentIcons.arrow_download_24_regular,
                       isLoading: _isExporting,
                       onPressed: _exportToCsv,
                     ),
                     const Spacer(),
                     NeutralActionButton(
-                      text: 'סגור',
+                      text: 'settings.books_list.close'.tr(),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -262,7 +265,7 @@ class _BookRow {
 String _buildCsv(List<_BookRow> rows) {
   final buf = StringBuffer();
   buf.write(
-      '${_csvEscape('כותרת')},${_csvEscape('מחבר')},${_csvEscape('קטגוריה')},${_csvEscape('סוג קובץ')}\r\n');
+      '${_csvEscape('settings.books_list.csv_header_title'.tr())},${_csvEscape('settings.books_list.csv_header_author'.tr())},${_csvEscape('settings.books_list.csv_header_category'.tr())},${_csvEscape('settings.books_list.csv_header_file_type'.tr())}\r\n');
   for (final r in rows) {
     buf.write(_csvEscape(r.title));
     buf.write(',');

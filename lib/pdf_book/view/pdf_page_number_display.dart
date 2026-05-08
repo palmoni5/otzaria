@@ -1,5 +1,6 @@
 // ignore_for_file: prefer_const_constructors
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:otzaria/widgets/text/rtl_text_field.dart';
@@ -88,7 +89,7 @@ class _PageNumberDisplayState extends State<PageNumberDisplay> {
               ),
             )
           : Tooltip(
-              message: "הזן מספר דף",
+              message: 'pdf_book.page_number.enter_page'.tr(),
               child: InkWell(
                   mouseCursor: SystemMouseCursors.click,
                   child: TextButton(

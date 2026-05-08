@@ -62,7 +62,7 @@ class PersonalNotesImportExportService {
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
     final version = decoded['version'] as String? ?? '1.0';
     if (!version.startsWith('2')) {
-      throw Exception('גרסת ייצוא לא נתמכת: $version');
+      throw Exception('unsupported_export_version:$version');
     }
 
     final notesJson = decoded['notes'] as List<dynamic>? ?? const [];

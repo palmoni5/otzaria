@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:otzaria/theme/theme_exports.dart';
@@ -18,7 +19,8 @@ class ColorPickerTile extends StatelessWidget {
   });
 
   String get _colorName =>
-      AppSeedColors.nameOf(currentColor) ?? 'צבע מותאם אישית';
+      AppSeedColors.nameOf(currentColor) ??
+      'settings.color_picker.custom_color'.tr();
 
   void _showPicker(BuildContext context) {
     showDialog<void>(
@@ -36,7 +38,8 @@ class ColorPickerTile extends StatelessWidget {
     return ListTile(
       hoverColor: Colors.transparent,
       leading: const Icon(FluentIcons.color_24_regular),
-      title: const Text('צבע בסיס', textDirection: TextDirection.rtl),
+      title: Text('settings.color_picker.tile_title'.tr(),
+          textDirection: TextDirection.rtl),
       subtitle: Text(
         _colorName,
         textDirection: TextDirection.rtl,
@@ -44,7 +47,8 @@ class ColorPickerTile extends StatelessWidget {
       ),
       trailing: FilledButton(
         onPressed: () => _showPicker(context),
-        child: const Text('שינוי צבע', textDirection: TextDirection.rtl),
+        child: Text('settings.color_picker.change_color'.tr(),
+            textDirection: TextDirection.rtl),
       ),
     );
   }
@@ -80,7 +84,8 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
   }
 
   String get _selectedName =>
-      AppSeedColors.nameOf(_selected) ?? 'צבע מותאם אישית';
+      AppSeedColors.nameOf(_selected) ??
+      'settings.color_picker.custom_color'.tr();
 
   @override
   Widget build(BuildContext context) {
@@ -95,7 +100,8 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
           Row(
             textDirection: TextDirection.rtl,
             children: [
-              const Text('בחר צבע בסיס', textDirection: TextDirection.rtl),
+              Text('settings.color_picker.dialog_title'.tr(),
+                  textDirection: TextDirection.rtl),
               const Spacer(),
               Container(
                 width: 22,
@@ -122,10 +128,10 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
           Row(
             textDirection: TextDirection.rtl,
             children: [
-              const Text(
-                'בחר בצבע ברירת מחדל',
+              Text(
+                'settings.color_picker.default_color_label'.tr(),
                 textDirection: TextDirection.rtl,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: AppTokens.fontMD,
                   fontWeight: FontWeight.normal,
                 ),
@@ -134,7 +140,8 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
               OutlinedButton.icon(
                 onPressed: () => _select(widget.defaultColor),
                 icon: const Icon(FluentIcons.arrow_reset_24_regular, size: 16),
-                label: const Text('איפוס', textDirection: TextDirection.rtl),
+                label: Text('settings.color_picker.reset'.tr(),
+                    textDirection: TextDirection.rtl),
               ),
             ],
           ),
@@ -176,7 +183,7 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
       actions: [
         FilledButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('סגור'),
+          child: Text('settings.color_picker.close'.tr()),
         ),
       ],
     );

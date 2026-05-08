@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
@@ -80,24 +81,37 @@ class _DirectReportDetails extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _ReportDetailRow(label: 'ספר', value: report.bookTitle),
-              _ReportDetailRow(label: 'מיקום', value: report.currentRef),
               _ReportDetailRow(
-                label: 'שורה',
+                  label: 'error_report.label_book'.tr(),
+                  value: report.bookTitle),
+              _ReportDetailRow(
+                  label: 'error_report.label_location'.tr(),
+                  value: report.currentRef),
+              _ReportDetailRow(
+                label: 'error_report.label_line'.tr(),
                 value: report.lineNumber.toString(),
               ),
-              _ReportDetailRow(label: 'כתובת זיהוי', value: report.senderEmail),
-              _ReportDetailRow(label: 'טקסט שנבחר', value: report.selectedText),
               _ReportDetailRow(
-                  label: 'פירוט הטעות', value: report.errorDetails),
-              _ReportDetailRow(label: 'הקשר', value: report.contextText),
-              _ReportDetailRow(label: 'נתיב קובץ', value: report.filePath),
+                  label: 'error_report.label_id_email'.tr(),
+                  value: report.senderEmail),
               _ReportDetailRow(
-                label: 'תיקיית מקור',
+                  label: 'error_report.label_selected_text'.tr(),
+                  value: report.selectedText),
+              _ReportDetailRow(
+                  label: 'error_report.label_error_details'.tr(),
+                  value: report.errorDetails),
+              _ReportDetailRow(
+                  label: 'error_report.label_context'.tr(),
+                  value: report.contextText),
+              _ReportDetailRow(
+                  label: 'error_report.label_file_path'.tr(),
+                  value: report.filePath),
+              _ReportDetailRow(
+                label: 'error_report.label_source_folder'.tr(),
                 value: report.sourceFolder,
               ),
               _ReportDetailRow(
-                label: 'גרסת ספרייה',
+                label: 'error_report.label_library_version'.tr(),
                 value: report.libraryVersion,
               ),
             ],
@@ -119,7 +133,8 @@ class _ReportDetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayValue = value.trim().isEmpty ? 'לא נשלח ערך' : value.trim();
+    final displayValue =
+        value.trim().isEmpty ? 'error_report.no_value'.tr() : value.trim();
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(
@@ -460,7 +475,7 @@ $detailsSection
       await launchUrl(emailUri, mode: LaunchMode.externalApplication);
     } catch (e) {
       if (context.mounted) {
-        UiSnack.show('לא ניתן לפתוח את תוכנת הדואר');
+        UiSnack.show('error_report.cant_open_email'.tr());
       }
     }
   }
@@ -489,13 +504,13 @@ $detailsSection
     }
 
     if (!DirectErrorReportService.isValidSenderEmail(enteredEmail)) {
-      UiSnack.showError('יש להזין כתובת דוא"ל תקינה.');
+      UiSnack.showError('error_report.invalid_email'.tr());
       return null;
     }
 
     await reportService.saveSenderEmail(enteredEmail);
     if (context.mounted) {
-      UiSnack.showSuccess('כתובת הזיהוי נשמרה. ניתן לשנות אותה בהגדרות.');
+      UiSnack.showSuccess('error_report.id_saved'.tr());
     }
     return enteredEmail.trim();
   }
@@ -515,7 +530,8 @@ $detailsSection
     return DirectErrorReport(
       id: '${DateTime.now().microsecondsSinceEpoch}-${widgetHash(bookTitle, currentRef, reportData.selectedText)}',
       senderEmail: senderEmail,
-      subject: 'דיווח על טעות: $bookTitle',
+      subject: 'error_report.report_subject'
+          .tr(namedArgs: {'book': bookTitle}),
       bookTitle: bookTitle,
       currentRef: currentRef,
       lineNumber: lineNumber,
@@ -539,19 +555,19 @@ $detailsSection
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('דיווח נשלח בהצלחה'),
-        content: const Text('הדיווח נשלח בהצלחה לצוות אוצריא. תודה על הדיווח!'),
+        title: Text('error_report.report_sent_title'.tr()),
+        content: Text('error_report.report_sent_content'.tr()),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('סגור'),
+            child: Text('common.close'.tr()),
           ),
           TextButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
               onReportAgain();
             },
-            child: const Text('פתח דוח שגיאות אחר'),
+            child: Text('error_report.open_other_report'.tr()),
           ),
         ],
       ),
@@ -566,7 +582,7 @@ $detailsSection
     await showSingleActionDialog(
       context: context,
       title: title,
-      confirmText: 'סגור',
+      confirmText: 'common.close'.tr(),
       customContent: _DirectReportDetails(report: report),
     );
   }
@@ -608,7 +624,10 @@ $detailsSection
       }
 
       debugPrint('Phone report error: $e');
-      showSimpleSnack(context, 'שגיאה בשליחת הדיווח: ${e.toString()}');
+      showSimpleSnack(
+          context,
+          'error_report.send_error'
+              .tr(namedArgs: {'error': e.toString()}));
     }
   }
 
@@ -639,7 +658,7 @@ $detailsSection
       if (result.isSent) {
         await showDirectReportDetailsDialog(
           context,
-          title: 'הדיווח נשלח בהצלחה',
+          title: 'error_report.report_sent_title'.tr(),
           report: reportData,
         );
       } else if (result.isQueued) {
@@ -654,7 +673,8 @@ $detailsSection
 
       debugPrint('Direct report error: $e');
       if (context.mounted) {
-        UiSnack.showError('שגיאה בשליחת הדיווח: ${e.toString()}');
+        UiSnack.showError('error_report.send_error'
+            .tr(namedArgs: {'error': e.toString()}));
       }
     }
   }
@@ -718,7 +738,8 @@ $detailsSection
         scheme: 'mailto',
         path: emailAddress,
         query: encodeQueryParameters(<String, String>{
-          'subject': 'דיווח על טעות: $bookTitle',
+          'subject': 'error_report.report_subject'
+              .tr(namedArgs: {'book': bookTitle}),
           'body': emailBody,
         }),
       );
@@ -726,12 +747,12 @@ $detailsSection
       try {
         if (!await launchUrl(emailUri, mode: LaunchMode.externalApplication)) {
           if (context.mounted) {
-            showSimpleSnack(context, 'לא ניתן לפתוח את תוכנת הדואר');
+            showSimpleSnack(context, 'error_report.cant_open_email'.tr());
           }
         }
       } catch (_) {
         if (context.mounted) {
-          showSimpleSnack(context, 'לא ניתן לפתוח את תוכנת הדואר');
+          showSimpleSnack(context, 'error_report.cant_open_email'.tr());
         }
       }
     } else if (action == ErrorReportAction.saveForLater) {
@@ -759,7 +780,8 @@ $detailsSection
       final count = await reportService.getPendingReportsCount();
       if (context.mounted) {
         UiSnack.show(
-          'הדיווח נשמר להמשך. יש כרגע $count דיווחים ממתינים בתור, וניתן לנהל את הדיווחים השמורים בהגדרות.',
+          'error_report.report_saved_queue'
+              .tr(namedArgs: {'count': count.toString()}),
         );
       }
     }
@@ -908,7 +930,10 @@ $detailsSection
     } catch (e) {
       debugPrint('Error handling report result: $e');
       if (context.mounted) {
-        showSimpleSnack(context, 'שגיאה בטיפול בדיווח: ${e.toString()}');
+        showSimpleSnack(
+            context,
+            'error_report.handle_error'
+                .tr(namedArgs: {'error': e.toString()}));
       }
     }
   }
@@ -988,7 +1013,7 @@ class _TabbedReportDialogState extends State<TabbedReportDialog>
       debugPrint('Error loading phone report data: $e');
       if (mounted) {
         setState(() {
-          _dataErrors = ['שגיאה בטעינת נתוני הדיווח'];
+          _dataErrors = ['error_report.load_data_error'.tr()];
           _isLoadingData = false;
         });
       }
@@ -1031,7 +1056,7 @@ class _TabbedReportDialogState extends State<TabbedReportDialog>
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
-                'דיווח על טעות בספר',
+                'error_report.report_title'.tr(),
                 style: Theme.of(context).textTheme.headlineSmall,
                 textDirection: TextDirection.rtl,
               ),
@@ -1039,9 +1064,9 @@ class _TabbedReportDialogState extends State<TabbedReportDialog>
             TabBar(
               controller: _tabController,
               splashBorderRadius: BorderRadius.circular(AppTokens.radiusMD),
-              tabs: const [
-                Tab(text: 'שליחת דיווח'),
-                Tab(text: 'דיווח דרך קו אוצריא'),
+              tabs: [
+                Tab(text: 'error_report.tab_send_report'.tr()),
+                Tab(text: 'error_report.tab_otzaria_phone'.tr()),
               ],
             ),
             Expanded(
@@ -1076,13 +1101,13 @@ class _TabbedReportDialogState extends State<TabbedReportDialog>
 
   Widget _buildPhoneReportTab() {
     if (_isLoadingData) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('טוען נתוני דיווח...'),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text('error_report.loading_report_data'.tr()),
           ],
         ),
       );
@@ -1096,7 +1121,7 @@ class _TabbedReportDialogState extends State<TabbedReportDialog>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'לא ניתן לטעון את נתוני הדיווח:',
+              'error_report.cant_load_data'.tr(),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium,
             ),
@@ -1111,7 +1136,7 @@ class _TabbedReportDialogState extends State<TabbedReportDialog>
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('סגור'),
+              child: Text('common.close'.tr()),
             ),
           ],
         ),
@@ -1200,7 +1225,7 @@ class _RegularReportTabState extends State<RegularReportTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('הטקסט שנבחר:'),
+                Text('error_report.selected_text'.tr()),
                 const SizedBox(height: 8),
                 Container(
                   constraints: const BoxConstraints(
@@ -1230,7 +1255,7 @@ class _RegularReportTabState extends State<RegularReportTab> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
-                    'פירוט הטעות: (חובה לפרט מהי הטעות, בלא פירוט לא נוכל לטפל)',
+                    'error_report.error_details_full'.tr(),
                     style: Theme.of(context)
                         .textTheme
                         .bodyMedium
@@ -1243,10 +1268,10 @@ class _RegularReportTabState extends State<RegularReportTab> {
                   minLines: 3,
                   maxLines: null,
                   autofocus: true,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     isDense: true,
-                    border: OutlineInputBorder(),
-                    hintText: 'כתוב כאן מה לא תקין, הצע תיקון וכו\'',
+                    border: const OutlineInputBorder(),
+                    hintText: 'error_report.error_details_hint'.tr(),
                   ),
                 ),
               ],
@@ -1280,12 +1305,12 @@ class _RegularReportTabState extends State<RegularReportTab> {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           NeutralActionButton(
-            text: 'ביטול',
+            text: 'common.cancel'.tr(),
             onPressed: widget.onCancel,
           ),
           if (_canSubmit)
             NeutralActionButton(
-              text: 'שמור לשליחה מאוחרת',
+              text: 'error_report.save_for_later'.tr(),
               icon: FluentIcons.save_24_regular,
               onPressed: () {
                 widget.onActionSelected(
@@ -1296,7 +1321,7 @@ class _RegularReportTabState extends State<RegularReportTab> {
             ),
           if (!isOfflineMode && _canSubmit)
             NeutralActionButton(
-              text: 'שלח בדוא"ל',
+              text: 'error_report.send_via_email'.tr(),
               icon: FluentIcons.mail_24_regular,
               onPressed: () {
                 widget.onActionSelected(
@@ -1308,19 +1333,20 @@ class _RegularReportTabState extends State<RegularReportTab> {
           if (_canSubmit)
             RecommendedActionButton(
               text: isOfflineMode
-                  ? 'שמור בתור ל${widget.directReportTargetLabel}'
-                  : 'שלח ישירות ל${widget.directReportTargetLabel}',
+                  ? 'error_report.save_for_target'.tr(
+                      namedArgs: {'target': widget.directReportTargetLabel})
+                  : 'error_report.send_to_target'.tr(
+                      namedArgs: {'target': widget.directReportTargetLabel}),
               icon: FluentIcons.arrow_upload_24_regular,
               onPressed: () async {
                 // דיאלוג אישור לפני שליחה ישירה
                 final shouldSend = await showTwoActionsDialog(
                   context: context,
-                  title: 'אישור שליחת דיווח',
-                  content: 'לחיצה על שלח דיווח תשלח את השגיאה ישירות '
-                      'ל${widget.directReportTargetLabel}, יש לשים לב '
-                      'לתקינות הדיווח לפני השליחה',
-                  cancelText: 'ביטול',
-                  confirmText: 'שלח דיווח',
+                  title: 'error_report.confirm_send_title'.tr(),
+                  content: 'error_report.confirm_send_content'.tr(
+                      namedArgs: {'target': widget.directReportTargetLabel}),
+                  cancelText: 'common.cancel'.tr(),
+                  confirmText: 'error_report.confirm_send_button'.tr(),
                 );
                 if (shouldSend == true) {
                   widget.onActionSelected(

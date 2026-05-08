@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -140,7 +141,7 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
       selectedText: selectedText?.trim(),
     ));
 
-    UiSnack.showSuccess('ההערה נשמרה בהצלחה');
+    UiSnack.show('personal_notes.saved'.tr());
   }
 
   @override
@@ -284,7 +285,7 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
               ...state.missingNotes,
             ],
             extraAction: IconButton(
-              tooltip: 'שנה שיוך לשורה נבחרת',
+              tooltip: 'personal_notes.change_line_assignment'.tr(),
               icon: const Icon(FluentIcons.pin_24_regular, size: 18),
               iconSize: 18,
               padding: const EdgeInsets.all(8),
@@ -306,7 +307,7 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text(
-              'הערות חסרות מיקום',
+              'personal_notes.missing_location'.tr(),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: Theme.of(context)
                         .colorScheme
@@ -337,7 +338,7 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
                 .withValues(alpha: 0.05),
             subtitle: note.lastKnownLineNumber != null
                 ? Text(
-                    'שורה קודמת: ${note.lastKnownLineNumber}',
+                    'personal_notes.last_known_line'.tr(namedArgs: {'line': '${note.lastKnownLineNumber}'}),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context)
                               .colorScheme
@@ -347,7 +348,7 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
                   )
                 : null,
             extraAction: IconButton(
-              tooltip: 'מיקום מחדש',
+              tooltip: 'personal_notes.relocate'.tr(),
               icon: const Icon(FluentIcons.location_24_regular, size: 18),
               iconSize: 18,
               padding: const EdgeInsets.all(8),
@@ -366,11 +367,11 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
       final message =
           state.showOnlyVisible && state.visibleLineIndices.isNotEmpty
               ? (widget.isPdf
-                  ? 'אין הערות לעמוד המוצג'
-                  : 'אין הערות לטקסט הנראה במסך')
+                  ? 'personal_notes.no_notes_page'.tr()
+                  : 'personal_notes.no_notes_visible'.tr())
               : (state.searchQuery.isNotEmpty
-                  ? 'לא נמצאו הערות התואמות לחיפוש'
-                  : 'אין עדיין הערות על ספר זה');
+                  ? 'personal_notes.no_notes_search'.tr()
+                  : 'personal_notes.no_notes'.tr());
       items.add(
         Padding(
           padding: const EdgeInsets.all(16.0),
@@ -433,8 +434,8 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
               Expanded(
                 child: Text(
                   state.newNoteReferenceText != null
-                      ? 'הערה חדשה - ${state.newNoteReferenceText}'
-                      : 'הערה חדשה - שורה ${state.newNoteLineNumber}',
+                      ? 'personal_notes.new_note_with_ref'.tr(namedArgs: {'ref': state.newNoteReferenceText!})
+                      : 'personal_notes.new_note_line'.tr(namedArgs: {'line': '${state.newNoteLineNumber}'}),
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.primary,
@@ -442,7 +443,7 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
                 ),
               ),
               IconButton(
-                tooltip: 'ביטול',
+                tooltip: 'common.cancel'.tr(),
                 icon: const Icon(FluentIcons.dismiss_24_regular),
                 onPressed: _cancelNewNote,
                 iconSize: 20,
@@ -497,7 +498,7 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
     final uri = Uri.tryParse(url);
     if (uri == null) return;
     if (uri.scheme != 'otzaria') {
-      UiSnack.show('קישור חיצוני: $url');
+      UiSnack.show('personal_notes.external_link'.tr(namedArgs: {'url': url}));
       return;
     }
 
@@ -510,7 +511,7 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
           widget.onNavigateToLine(line);
           return;
         }
-        UiSnack.show('קישור לספר אחר: $bookId');
+        UiSnack.show('personal_notes.book_link'.tr(namedArgs: {'bookId': bookId}));
         return;
       case 'note':
         final noteId = uri.queryParameters['id'];
@@ -532,12 +533,12 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
         await showDialog<void>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('הערה מקושרת'),
+            title: Text('personal_notes.linked_note'.tr()),
             content: PersonalNoteContentView(note: note!),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('סגור'),
+                child: Text('common.close'.tr()),
               ),
             ],
           ),
@@ -552,9 +553,9 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
     final bloc = context.read<PersonalNotesBloc>();
     final shouldDelete = await showConfirmationDialog(
       context: context,
-      title: 'מחיקת הערה',
-      content: 'האם למחוק את ההערה לצמיתות?',
-      confirmText: 'מחק',
+      title: 'personal_notes.delete_title'.tr(),
+      content: 'personal_notes.delete_confirm'.tr(),
+      confirmText: 'common.delete'.tr(),
       isDangerous: true,
     );
 
@@ -573,12 +574,12 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
     final bloc = context.read<PersonalNotesBloc>();
     final result = await showInputDialog(
       context: context,
-      title: 'שחזור מיקום הערה',
+      title: 'personal_notes.relocate_title'.tr(),
       subtitle: note.lastKnownLineNumber != null
-          ? 'המיקום האחרון הידוע: שורה ${note.lastKnownLineNumber}'
+          ? 'personal_notes.last_known_location'.tr(namedArgs: {'line': '${note.lastKnownLineNumber}'})
           : null,
-      labelText: 'שורה חדשה',
-      hintText: 'הקלד מספר שורה',
+      labelText: 'personal_notes.new_line'.tr(),
+      hintText: 'personal_notes.type_line_number'.tr(),
       initialValue: note.lastKnownLineNumber?.toString() ?? '',
       keyboardType: TextInputType.number,
     );
@@ -609,7 +610,7 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
         lineNumber: selectedLineNumber,
       ),
     );
-    UiSnack.show('ההערה שויכה לשורה $selectedLineNumber');
+    UiSnack.show('personal_notes.assigned_to_line'.tr(namedArgs: {'line': '$selectedLineNumber'}));
   }
 
   Future<void> _reanchorNote(
@@ -621,14 +622,14 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
     if (selectedLineNumber != null) {
       final choice = await showSelectionDialog<String>(
         context: context,
-        title: 'שינוי שיוך הערה',
+        title: 'personal_notes.reanchor_title'.tr(),
         items: [
           SelectionItem(
-            label: 'שייך לשורה נבחרת ($selectedLineNumber)',
+            label: 'personal_notes.reanchor_assign_selected'.tr(namedArgs: {'line': '$selectedLineNumber'}),
             value: 'selected',
           ),
-          const SelectionItem(
-            label: 'הקלד מספר שורה',
+          SelectionItem(
+            label: 'personal_notes.reanchor_manual'.tr(),
             value: 'manual',
           ),
         ],
@@ -648,12 +649,12 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
     if (!context.mounted) return;
     final result = await showInputDialog(
       context: context,
-      title: 'שנה שיוך הערה',
+      title: 'personal_notes.change_assignment_title2'.tr(),
       subtitle: note.lineNumber != null
-          ? 'מיקום נוכחי: שורה ${note.lineNumber}'
+          ? 'personal_notes.current_location'.tr(namedArgs: {'line': '${note.lineNumber}'})
           : null,
-      labelText: 'שורה חדשה',
-      hintText: 'הקלד מספר שורה',
+      labelText: 'personal_notes.new_line'.tr(),
+      hintText: 'personal_notes.type_line_number'.tr(),
       initialValue: note.lineNumber?.toString() ?? '',
       keyboardType: TextInputType.number,
     );

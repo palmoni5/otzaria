@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/services.dart';
@@ -18,7 +19,7 @@ class CustomShortcutDialog extends StatefulWidget {
 
 class _CustomShortcutDialogState extends State<CustomShortcutDialog> {
   final Set<LogicalKeyboardKey> _pressedKeys = {};
-  String _displayText = 'לחץ על המקשים...';
+  late String _displayText = 'settings.shortcuts.custom_dialog_press_keys'.tr();
   bool _isRecording = false;
 
   @override
@@ -33,7 +34,7 @@ class _CustomShortcutDialogState extends State<CustomShortcutDialog> {
   void _updateDisplay() {
     if (_pressedKeys.isEmpty) {
       setState(() {
-        _displayText = 'לחץ על המקשים...';
+        _displayText = 'settings.shortcuts.custom_dialog_press_keys'.tr();
       });
       return;
     }
@@ -72,8 +73,8 @@ class _CustomShortcutDialogState extends State<CustomShortcutDialog> {
         }
       },
       child: AlertDialog(
-        title: const Text(
-          'הגדרת קיצור מקשים מותאם אישית',
+        title: Text(
+          'settings.shortcuts.custom_dialog_title'.tr(),
           textAlign: TextAlign.right,
         ),
         content: SizedBox(
@@ -82,10 +83,10 @@ class _CustomShortcutDialogState extends State<CustomShortcutDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'לחץ על "התחל הקלטה" ואז לחץ על צירוף המקשים הרצוי',
+              Text(
+                'settings.shortcuts.custom_dialog_instructions'.tr(),
                 textAlign: TextAlign.right,
-                style: TextStyle(fontSize: 14),
+                style: const TextStyle(fontSize: 14),
               ),
               const SizedBox(height: 20),
               Container(
@@ -133,7 +134,8 @@ class _CustomShortcutDialogState extends State<CustomShortcutDialog> {
                     });
                   },
                   icon: const Icon(FluentIcons.stop_24_regular),
-                  label: const Text('עצור הקלטה'),
+                  label:
+                      Text('settings.shortcuts.custom_dialog_stop_recording'.tr()),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.error,
                     foregroundColor: Theme.of(context).colorScheme.onError,
@@ -145,11 +147,13 @@ class _CustomShortcutDialogState extends State<CustomShortcutDialog> {
                     setState(() {
                       _pressedKeys.clear();
                       _isRecording = true;
-                      _displayText = 'לחץ על המקשים...';
+                      _displayText =
+                          'settings.shortcuts.custom_dialog_press_keys'.tr();
                     });
                   },
                   icon: const Icon(FluentIcons.record_24_regular),
-                  label: const Text('התחל הקלטה'),
+                  label: Text(
+                      'settings.shortcuts.custom_dialog_start_recording'.tr()),
                 ),
             ],
           ),
@@ -157,7 +161,7 @@ class _CustomShortcutDialogState extends State<CustomShortcutDialog> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('ביטול'),
+            child: Text('common.cancel'.tr()),
           ),
           TextButton(
             onPressed: _pressedKeys.isEmpty
@@ -167,7 +171,7 @@ class _CustomShortcutDialogState extends State<CustomShortcutDialog> {
                         ShortcutHelper.formatKeysToShortcut(_pressedKeys);
                     Navigator.pop(context, shortcut);
                   },
-            child: const Text('אישור'),
+            child: Text('common.ok'.tr()),
           ),
         ],
       ),

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -64,17 +65,20 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
         insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
         clipBehavior: Clip.antiAlias,
         child: Scaffold(
-          appBar: AppBar(title: Text('הגדרות תוסף: ${currentPlugin.name}')),
+          appBar: AppBar(
+              title: Text('plugins.settings_screen.title'
+                  .tr(namedArgs: {'name': currentPlugin.name}))),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
               SettingsCard(
-                title: 'הגדרות כלליות',
+                title: 'plugins.settings_screen.general_section'.tr(),
                 children: [
                   SwitchListTile(
-                    title: const Text('מצב מופעל (Enabled)'),
-                    subtitle:
-                        const Text('כיבוי ימנע מהתוסף לרוץ לחלוטין באפליקציה'),
+                    title:
+                        Text('plugins.settings_screen.enabled_title'.tr()),
+                    subtitle: Text(
+                        'plugins.settings_screen.enabled_subtitle'.tr()),
                     value: currentPlugin.enabled,
                     onChanged: (val) {
                       if (val) {
@@ -89,9 +93,9 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
                     hoverColor: Colors.transparent,
                   ),
                   SwitchListTile(
-                    title: const Text('הצמדה לסרגל הניווט'),
-                    subtitle: const Text(
-                        'הצגת התוסף כפריט קבוע בסרגל הניווט הראשי, בין "כלים" ל"הגדרות"'),
+                    title: Text('plugins.settings_screen.pin_title'.tr()),
+                    subtitle:
+                        Text('plugins.settings_screen.pin_subtitle'.tr()),
                     value: currentPlugin.pinnedToNavRail,
                     onChanged: currentPlugin.enabled
                         ? (val) {
@@ -113,8 +117,9 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
               if (currentPlugin.manifest.permissions.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 SettingsCard(
-                  title: 'ניהול הרשאות',
-                  subtitle: 'אפשר או חסום הרשאות ספציפיות כפי שנדרש במניפסט',
+                  title: 'plugins.settings_screen.permissions_section'.tr(),
+                  subtitle:
+                      'plugins.settings_screen.permissions_subtitle'.tr(),
                   children: currentPlugin.manifest.permissions.map((p) {
                     final info = getPermissionInfo(p);
                     final defaultValue = p != pluginRunOnStartupPermission;
@@ -165,13 +170,16 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
               ],
               const SizedBox(height: 32),
               if (currentPlugin.isDevelopment) ...[
-                SettingsCard(title: 'פיתוח', children: [
+                SettingsCard(
+                    title: 'plugins.settings_screen.dev_section'.tr(),
+                    children: [
                   ListTile(
-                    title: const Text('נתיב תיקייה'),
+                    title:
+                        Text('plugins.settings_screen.folder_path'.tr()),
                     subtitle: Text(currentPlugin.resolvedRootPath),
                   ),
                   ListTile(
-                    title: const Text('רענן עכשיו'),
+                    title: Text('plugins.settings_screen.reload_now'.tr()),
                     trailing:
                         const Icon(FluentIcons.arrow_clockwise_24_regular),
                     onTap: () {
@@ -182,7 +190,8 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
                     hoverColor: Colors.transparent,
                   ),
                   ListTile(
-                    title: const Text('פתח מחדש את הצפייה'),
+                    title:
+                        Text('plugins.settings_screen.reopen_view'.tr()),
                     trailing: const Icon(FluentIcons.window_new_24_regular),
                     onTap: () {
                       context.read<PluginSystemBloc>().add(
@@ -195,7 +204,8 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
                 ]),
                 const SizedBox(height: 16),
                 NeutralActionButton(
-                  text: 'נתק תוסף פיתוח',
+                  text:
+                      'plugins.settings_screen.disconnect_dev_plugin'.tr(),
                   onPressed: () async {
                     context.read<PluginSystemBloc>().add(
                         DetachDevelopmentPluginRequested(
@@ -205,17 +215,19 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
                 )
               ] else ...[
                 NeutralActionButton(
-                  text: 'הסרת תוסף',
+                  text: 'plugins.settings_screen.remove_plugin'.tr(),
                   onPressed: () async {
                     final confirm = await showWarningDialog(
                       context: context,
-                      title: 'מחיקת תוסף סופית',
-                      content:
-                          'האם אתה בטוח שברצונך למחוק את התוסף "${currentPlugin.name}"?',
-                      subtitle:
-                          'המחיקה תכלול את כל נתוני התוסף, המטמון והפעולות שלו. הליך זה סופי.',
-                      cancelText: 'ביטול',
-                      confirmText: 'מחק',
+                      title:
+                          'plugins.settings_screen.delete_dialog_title'.tr(),
+                      content: 'plugins.settings_screen.delete_dialog_content'
+                          .tr(namedArgs: {'name': currentPlugin.name}),
+                      subtitle: 'plugins.settings_screen.delete_dialog_subtitle'
+                          .tr(),
+                      cancelText: 'common.cancel'.tr(),
+                      confirmText:
+                          'plugins.settings_screen.delete_confirm'.tr(),
                     );
                     if (confirm == true && context.mounted) {
                       context.read<PluginSystemBloc>().add(

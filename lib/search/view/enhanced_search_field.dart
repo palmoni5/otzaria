@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:otzaria/history/bloc/history_bloc.dart';
@@ -309,10 +310,10 @@ class _EnhancedSearchFieldState extends State<EnhancedSearchField> {
     if (wordInfo == null ||
         wordInfo['word'] == null ||
         wordInfo['word'].isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'הקלד או הצב את הסמן על מילה כלשהיא, כדי לבחור אפשרויות חיפוש',
-          style: TextStyle(fontSize: 12, color: Colors.grey),
+          'search.select_word_hint'.tr(),
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
           textAlign: TextAlign.center,
         ),
       );
@@ -465,8 +466,8 @@ class _EnhancedSearchFieldState extends State<EnhancedSearchField> {
                         filled: true,
                         fillColor: colorScheme.surfaceContainerHigh,
                         border: const OutlineInputBorder(),
-                        hintText: "חפש כאן...",
-                        labelText: "לחיפוש הקש אנטר או לחץ על סמל החיפוש",
+                        hintText: 'search.field_hint'.tr(),
+                        labelText: 'search.field_label'.tr(),
                         contentPadding: widget.showInlineSearchButton
                             ? null
                             : const EdgeInsets.only(

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -41,8 +42,8 @@ class AdPopupDialog extends StatefulWidget {
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) => const AdPopupDialog(
-        title: 'אוצריא מתגייסת לעזרת לומדי התורה',
+      builder: (context) => AdPopupDialog(
+        title: 'dialogs.ad_popup.default_title'.tr(),
       ),
     );
   }
@@ -163,7 +164,7 @@ class _AdPopupDialogState extends State<AdPopupDialog>
                   child: IconButton(
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(FluentIcons.dismiss_24_regular),
-                    tooltip: 'סגור',
+                    tooltip: 'dialogs.ad_popup.close'.tr(),
                     style: IconButton.styleFrom(
                       backgroundColor: Colors.black.withValues(alpha: 0.1),
                       foregroundColor: Colors.black54,
@@ -349,33 +350,33 @@ class _AdPopupDialogState extends State<AdPopupDialog>
               navigator.pop();
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'week',
                 child: Row(
                   children: [
-                    Icon(FluentIcons.calendar_24_regular, size: 20),
-                    SizedBox(width: 12),
-                    Text('למשך שבוע'),
+                    const Icon(FluentIcons.calendar_24_regular, size: 20),
+                    const SizedBox(width: 12),
+                    Text('dialogs.ad_popup.remind_week'.tr()),
                   ],
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'month',
                 child: Row(
                   children: [
-                    Icon(FluentIcons.calendar_month_24_regular, size: 20),
-                    SizedBox(width: 12),
-                    Text('למשך חודש'),
+                    const Icon(FluentIcons.calendar_month_24_regular, size: 20),
+                    const SizedBox(width: 12),
+                    Text('dialogs.ad_popup.remind_month'.tr()),
                   ],
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'forever',
                 child: Row(
                   children: [
-                    Icon(FluentIcons.prohibited_24_regular, size: 20),
-                    SizedBox(width: 12),
-                    Text('לעולם'),
+                    const Icon(FluentIcons.prohibited_24_regular, size: 20),
+                    const SizedBox(width: 12),
+                    Text('dialogs.ad_popup.remind_forever'.tr()),
                   ],
                 ),
               ),
@@ -388,7 +389,7 @@ class _AdPopupDialogState extends State<AdPopupDialog>
                 side: BorderSide(color: Colors.grey.shade400),
               ),
               icon: const Icon(FluentIcons.dismiss_24_regular, size: 18),
-              label: const Text('אל תציג שוב'),
+              label: Text('dialogs.ad_popup.dont_show_again'.tr()),
             ),
           ),
         ),
@@ -695,11 +696,11 @@ class _OrganizationsList extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // קווי חירום
-        _buildSectionTitle('קווי חירום', Colors.red),
+        _buildSectionTitle('dialogs.ad_popup.section_emergency'.tr(), Colors.red),
         ...emergencyLines.map((org) => _buildOrgCard(context, org, true)),
         const SizedBox(height: 20),
         // ארגוני סיוע
-        _buildSectionTitle('ארגוני סיוע', Colors.blue),
+        _buildSectionTitle('dialogs.ad_popup.section_support'.tr(), Colors.blue),
         ...supportOrgs.map((org) => _buildOrgCard(context, org, false)),
       ],
     );
@@ -926,9 +927,9 @@ class _ExpandableOrgCardState extends State<_ExpandableOrgCard> {
                 children: [
                   // טלפונים נוספים
                   if (widget.org['phones'] != null) ...[
-                    const Text(
-                      'מספרי טלפון:',
-                      style: TextStyle(
+                    Text(
+                      'dialogs.ad_popup.phones_label'.tr(),
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -953,9 +954,9 @@ class _ExpandableOrgCardState extends State<_ExpandableOrgCard> {
                   ],
                   // פרטים
                   if (widget.org['details'] != null) ...[
-                    const Text(
-                      'אפשרויות הקו:',
-                      style: TextStyle(
+                    Text(
+                      'dialogs.ad_popup.details_label'.tr(),
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),

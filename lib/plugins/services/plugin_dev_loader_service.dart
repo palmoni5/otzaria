@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:otzaria/plugins/models/installed_plugin.dart';
@@ -17,7 +18,8 @@ class PluginDevLoaderService {
   Future<void> loadDevelopmentPlugin(String directoryPath) async {
     final dir = Directory(directoryPath);
     if (!dir.existsSync()) {
-      throw Exception('תיקיית התוסף לא נמצאה: $directoryPath');
+      throw Exception('plugins.services.dev_dir_not_found'
+          .tr(namedArgs: {'path': directoryPath}));
     }
 
     final manifestFile = File(p.join(directoryPath, 'manifest.json'));
@@ -40,7 +42,7 @@ class PluginDevLoaderService {
     final existingPlugin = await _repository.getPlugin(manifest.id);
     if (existingPlugin != null && !existingPlugin.isDevelopment) {
       throw Exception(
-          'כבר קיים תוסף מותקן (רגיל) עם אותו מזהה. מחק או שנה id.');
+          'plugins.services.dev_id_conflict'.tr());
     }
 
     // טעינה-מחדש של תוסף פיתוח: שומרים את הסדר הידני.

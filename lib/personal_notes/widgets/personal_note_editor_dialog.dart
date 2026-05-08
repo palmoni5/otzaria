@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:otzaria/personal_notes/models/personal_note.dart';
@@ -87,21 +88,21 @@ class _PersonalNoteEditorDialogState extends State<PersonalNoteEditorDialog> {
     final result = await showDialog<_DraftDecision>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('אזהרה'),
-        content: const Text('ההערה לא נשמרה. לשמור טיוטה?'),
+        title: Text('personal_notes.unsaved_dialog_title'.tr()),
+        content: Text('personal_notes.unsaved_dialog_content'.tr()),
         actions: [
           FilledButton.tonal(
             onPressed: () => Navigator.of(context).pop(_DraftDecision.cancel),
-            child: const Text('ביטול'),
+            child: Text('common.cancel'.tr()),
           ),
           FilledButton.tonal(
             onPressed: () => Navigator.of(context).pop(_DraftDecision.discard),
-            child: const Text('סגור בלי לשמור'),
+            child: Text('personal_notes.close_without_saving'.tr()),
           ),
           FilledButton(
             onPressed: () =>
                 Navigator.of(context).pop(_DraftDecision.saveDraft),
-            child: const Text('שמור טיוטה'),
+            child: Text('personal_notes.save_draft'.tr()),
           ),
         ],
       ),
@@ -259,12 +260,12 @@ class _PersonalNoteEditorDialogState extends State<PersonalNoteEditorDialog> {
           ),
           actions: [
             _buildButton(
-              text: 'ביטול',
+              text: 'common.cancel'.tr(),
               isFocused: _focusedButtonIndex == 0,
               onPressed: _handleCancel,
             ),
             _buildButton(
-              text: 'שמור',
+              text: 'common.save'.tr(),
               isFocused: _focusedButtonIndex == 1,
               isConfirm: true,
               onPressed: _submit,

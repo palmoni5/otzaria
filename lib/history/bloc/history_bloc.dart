@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/bookmarks/models/bookmark.dart';
@@ -138,7 +139,7 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
             await refFromIndex(index, Future.value(blocState.tableOfContents));
         ref = addBookTitleToRef(ref, blocState.book.title);
         return Bookmark(
-          ref: 'מפרשים | $ref',
+          ref: 'history.commentators_prefix'.tr(namedArgs: {'ref': ref}),
           book: blocState.book,
           index: index,
           commentatorsToShow: blocState.activeCommentators,
@@ -158,10 +159,12 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
         if (heading != null) {
           ref = '${tab.title} $heading'; // שם הספר + הכותרת
         } else {
-          ref = '${tab.title} עמוד $page'; // אם אין כותרת, הצג עם מספר עמוד
+          ref = 'history.title_with_page'
+              .tr(namedArgs: {'title': tab.title, 'page': '$page'});
         }
       } else {
-        ref = '${tab.title} עמוד $page'; // אם אין outline, הצג עם מספר עמוד
+        ref = 'history.title_with_page'
+            .tr(namedArgs: {'title': tab.title, 'page': '$page'});
       }
 
       return Bookmark(
@@ -177,8 +180,12 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
           : sourceTab.pageNumber;
       final heading = sourceTab.currentTitle.value.trim();
       final ref = heading.isNotEmpty
-          ? 'מפרשים | ${sourceTab.book.title} $heading'
-          : 'מפרשים | ${sourceTab.book.title} עמוד $page';
+          ? 'history.commentators_with_heading'.tr(
+              namedArgs: {'title': sourceTab.book.title, 'heading': heading})
+          : 'history.commentators_with_page'.tr(namedArgs: {
+              'title': sourceTab.book.title,
+              'page': '$page',
+            });
 
       return Bookmark(
         ref: ref,

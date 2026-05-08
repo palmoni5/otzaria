@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -157,7 +158,7 @@ class _SelectedLineLinksViewState extends State<SelectedLineLinksView> {
                   RtlTextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: 'חפש בתוך הקישורים המוצגים...',
+                      hintText: 'selected_line_links.search_in_links'.tr(),
                       prefixIcon: const Icon(FluentIcons.search_24_regular),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
@@ -194,7 +195,7 @@ class _SelectedLineLinksViewState extends State<SelectedLineLinksView> {
                               });
                             },
                           ),
-                          const Text('חפש גם בתוכן הקישורים'),
+                          Text('selected_line_links.search_in_link_content'.tr()),
                         ],
                       ),
                     ),
@@ -218,13 +219,13 @@ class _SelectedLineLinksViewState extends State<SelectedLineLinksView> {
         .toList();
 
     if (links.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16.0),
           child: Text(
-            'לא נמצאו קישורים לקטע הנבחר',
+            'selected_line_links.no_links_for_section'.tr(),
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 16,
               color: Colors.grey,
             ),
@@ -448,7 +449,8 @@ class _SelectedLineLinksViewState extends State<SelectedLineLinksView> {
                   BlocBuilder<SettingsBloc, SettingsState>(
                 builder: (context, settingsState) {
                   return Text(
-                    'שגיאה בטעינת התוכן: $error',
+                    'selected_line_links.content_load_error'
+                        .tr(namedArgs: {'error': error.toString()}),
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.error,
                       fontSize: settingsState.commentatorsFontSize,
@@ -467,7 +469,7 @@ class _SelectedLineLinksViewState extends State<SelectedLineLinksView> {
       return BlocBuilder<SettingsBloc, SettingsState>(
         builder: (context, settingsState) {
           return Text(
-            'אין תוכן זמין',
+            'selected_line_links.no_content_available'.tr(),
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
               fontSize: settingsState.commentatorsFontSize,

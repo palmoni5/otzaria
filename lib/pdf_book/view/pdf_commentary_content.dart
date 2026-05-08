@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
@@ -115,7 +116,7 @@ class _PdfCommentaryContentState extends State<PdfCommentaryContent> {
           }
           if (snapshot.hasError) {
             return Center(
-              child: Text('שגיאה בטעינת הפרשן: ${snapshot.error}'),
+              child: Text('pdf_book.commentary_content.error'.tr(namedArgs: {'error': '${snapshot.error}'})),
             );
           }
           return _buildSkeletonLoading(context);

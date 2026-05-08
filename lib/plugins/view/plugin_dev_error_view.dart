@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -35,14 +36,15 @@ class PluginDevErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'שגיאה בטעינת תוסף פיתוח',
+              'plugins.dev_error.title'.tr(),
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     color: Theme.of(context).colorScheme.error,
                   ),
             ),
             const SizedBox(height: 8),
             Text(
-              'נתיב: ${plugin.resolvedRootPath}',
+              'plugins.dev_error.path'
+                  .tr(namedArgs: {'path': plugin.resolvedRootPath}),
               style: Theme.of(context).textTheme.bodySmall,
               textAlign: TextAlign.center,
               textDirection: TextDirection.ltr,
@@ -66,7 +68,7 @@ class PluginDevErrorView extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 RecommendedActionButton(
-                  text: 'נסה קריאה מחדש',
+                  text: 'plugins.dev_error.reload'.tr(),
                   onPressed: () {
                     context
                         .read<PluginSystemBloc>()
@@ -75,7 +77,7 @@ class PluginDevErrorView extends StatelessWidget {
                 ),
                 const SizedBox(width: 16),
                 NeutralActionButton(
-                  text: 'הגדרות תוסף',
+                  text: 'plugins.dev_error.settings'.tr(),
                   onPressed: () async {
                     final result = await showDialog<bool>(
                       context: context,

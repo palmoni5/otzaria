@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -251,22 +252,21 @@ class AboutDevTab extends StatelessWidget {
 
             // ── תרומה ומידע ──
             SettingsCard(
-              title: 'תרומה ומידע',
+              title: 'settings.about.donation_section'.tr(),
               children: [
                 _ActionTile(
                   icon: FluentIcons.payment_24_regular,
-                  title: 'תרום לפרויקט',
-                  subtitle:
-                      'תרומתך תעזור לנו להמשיך לפתח ולשפר את אוצריא עבור כלל ציבור הלומדים',
-                  buttonLabel: 'נדרים+',
+                  title: 'settings.about.donate_title'.tr(),
+                  subtitle: 'settings.about.donate_subtitle'.tr(),
+                  buttonLabel: 'settings.about.nedarim_button'.tr(),
                   buttonIcon: FluentIcons.payment_24_regular,
                   onTap: () => _openUrl('https://nedar.im/ezOd'),
                 ),
                 _ActionTile(
                   icon: FluentIcons.shield_task_24_filled,
-                  title: 'אוצריא מתגייסת לעזרת לומדי התורה',
-                  subtitle: 'מרכז המידע על ארגוני סיוע ללומדי התורה',
-                  buttonLabel: 'למידע נוסף',
+                  title: 'settings.about.campaign_title'.tr(),
+                  subtitle: 'settings.about.campaign_subtitle'.tr(),
+                  buttonLabel: 'settings.about.more_info_button'.tr(),
                   onTap: () => _openAdPopup(context),
                 ),
               ],
@@ -274,21 +274,20 @@ class AboutDevTab extends StatelessWidget {
 
             // ── הצטרף ──
             SettingsCard(
-              title: 'הצטרף',
+              title: 'settings.about.join_section'.tr(),
               children: [
                 _ActionTile(
                   icon: FluentIcons.edit_24_regular,
-                  title: 'הצטרף לצוות העריכה ומהדירי הספרים',
-                  subtitle: 'עזור לנו להוסיף ספרים חדשים לספריית אוצריא',
-                  buttonLabel: 'הצטרף לעריכה',
+                  title: 'settings.about.join_editing_title'.tr(),
+                  subtitle: 'settings.about.join_editing_subtitle'.tr(),
+                  buttonLabel: 'settings.about.join_editing_button'.tr(),
                   onTap: () => _openUrl('https://www.otzaria.org/library'),
                 ),
                 _ActionTile(
                   icon: FluentIcons.code_24_regular,
-                  title: 'הצטרף לפיתוח',
-                  subtitle:
-                      'מפתחים מוזמנים לתרום לקהילה התורנית ולשדרג את אוצריא',
-                  buttonLabel: 'הצטרף עכשיו',
+                  title: 'settings.about.join_dev_title'.tr(),
+                  subtitle: 'settings.about.join_dev_subtitle'.tr(),
+                  buttonLabel: 'settings.about.join_dev_button'.tr(),
                   onTap: () => _openUrl('https://github.com/otzaria/otzaria'),
                 ),
               ],
@@ -310,7 +309,7 @@ class AboutDevTab extends StatelessWidget {
 
             // ── תורמים ──
             SettingsCard(
-              title: 'תורמים',
+              title: 'settings.about.donors_section'.tr(),
               children: [
                 Padding(
                   padding: const EdgeInsets.all(16),
@@ -323,7 +322,7 @@ class AboutDevTab extends StatelessWidget {
 
             // ── מפתחים ──
             SettingsCard(
-              title: 'מפתחים',
+              title: 'settings.about.developers_section'.tr(),
               children: [
                 Padding(
                   padding: const EdgeInsets.all(16),
@@ -337,7 +336,7 @@ class AboutDevTab extends StatelessWidget {
 
             // ── אנשים חיוניים ──
             SettingsCard(
-              title: 'התוכנה נעזרה רבות ב:',
+              title: 'settings.about.essential_section'.tr(),
               children: [
                 Padding(
                   padding: const EdgeInsets.all(16),
@@ -351,16 +350,19 @@ class AboutDevTab extends StatelessWidget {
 
             // ── מהדירי ספרים ──
             SettingsCard(
-              title: 'מהדירי ספרים',
+              title: 'settings.about.editors_section'.tr(),
               children: [
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _editorCategory('10 ספרים ומעלה', _topEditors),
+                      _editorCategory(
+                          'settings.about.editors_top'.tr(), _topEditors),
                       const SizedBox(height: 20),
-                      _editorCategory('בין 5 ל-10 ספרים', _regularEditors),
+                      _editorCategory(
+                          'settings.about.editors_regular'.tr(),
+                          _regularEditors),
                       const SizedBox(height: 12),
                       _editorsNote(context),
                     ],
@@ -409,14 +411,14 @@ class AboutDevTab extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'אוצריא',
+                  'settings.about.app_name'.tr(),
                   style: Theme.of(context)
                       .textTheme
                       .headlineSmall
                       ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  'מאגר תורני חינמי, רחב ומהיר לשימוש בכל מקום.',
+                  'settings.about.app_tagline'.tr(),
                   style: kSettingsSubtitleStyle,
                 ),
               ],
@@ -431,7 +433,10 @@ class AboutDevTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('מהדירים שההדירו $label', style: kSettingsSubtitleStyle),
+        Text(
+            'settings.about.editors_category_label'
+                .tr(namedArgs: {'label': label}),
+            style: kSettingsSubtitleStyle),
         const SizedBox(height: 8),
         _ContributorWrap(
           contributors: editors,
@@ -459,8 +464,7 @@ class AboutDevTab extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'באם שמכם אינו מופיע ברשימה או שאתם מעוניינים בשינוי, '
-              'אנא פנו למייל המערכת.',
+              'settings.about.editors_note'.tr(),
               style: kSettingsSubtitleStyle,
             ),
           ),
@@ -478,8 +482,8 @@ class AboutDevTab extends StatelessWidget {
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) => const AdPopupDialog(
-        title: 'אוצריא מתגייסת לעזרת לומדי התורה',
+      builder: (context) => AdPopupDialog(
+        title: 'settings.about.campaign_title'.tr(),
       ),
     );
   }
@@ -593,8 +597,8 @@ class _MemorialCardsGrid extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _MemorialCard(
-              name: "לע\"נ ר' משה בן יהודה ראה ז\"ל",
-              description: 'סכום משמעותי לפיתוח התוכנה',
+              name: 'settings.about.memorial_main_name'.tr(),
+              description: 'settings.about.memorial_main_description'.tr(),
             ),
             const SizedBox(height: 12),
             _DonationMemorialCard(onTap: onDonationTap),
@@ -692,7 +696,7 @@ class _DonationMemorialCard extends StatelessWidget {
                 color: colorScheme.primary.withValues(alpha: 0.6), size: 24),
             const SizedBox(height: 6),
             Text(
-              'מקום זה יכול להיות מונצח לע"נ יקירך',
+              'settings.about.memorial_placeholder'.tr(),
               textAlign: TextAlign.center,
               textDirection: TextDirection.rtl,
               style: TextStyle(
@@ -703,7 +707,7 @@ class _DonationMemorialCard extends StatelessWidget {
             const SizedBox(height: 8),
             RecommendedActionButton(
               icon: FluentIcons.payment_24_regular,
-              text: 'נדרים+',
+              text: 'settings.about.nedarim_button'.tr(),
               onPressed: onTap,
             ),
           ],

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -508,7 +509,7 @@ class _TocViewerState extends State<TocViewer>
                       widget.focusNode.requestFocus();
                     },
                     decoration: InputDecoration(
-                      hintText: 'איתור כותרת...',
+                      hintText: 'toc_navigator.find_heading'.tr(),
                       prefixIcon: const Icon(FluentIcons.search_24_regular),
                       suffixIcon: searchController.text.isNotEmpty
                           ? IconButton(

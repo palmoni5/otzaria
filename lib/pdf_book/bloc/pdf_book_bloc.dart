@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
@@ -148,7 +149,7 @@ class PdfBookBloc extends Bloc<PdfBookEvent, PdfBookState> {
     if (initial is! PdfBookInitial) return;
 
     if (!File(initial.book.path).existsSync()) {
-      emit(PdfBookError(book: initial.book, message: 'הספר איננו קיים'));
+      emit(PdfBookError(book: initial.book, message: 'pdf_book.error.book_not_found'.tr()));
       return;
     }
 
@@ -382,7 +383,7 @@ class PdfBookBloc extends Bloc<PdfBookEvent, PdfBookState> {
     // Update tab
     tab.pageNumber = event.pageNumber;
 
-    String title = event.title ?? 'עמוד ${event.pageNumber}';
+    String title = event.title ?? 'pdf_book.book_screen.page_title'.tr(namedArgs: {'page': '${event.pageNumber}'});
     int? textLineNumber = event.textLineNumber;
 
     // Calculate title from outline if not provided

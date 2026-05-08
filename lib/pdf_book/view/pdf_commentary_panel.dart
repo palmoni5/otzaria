@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -459,18 +460,18 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
               setState(() => _showFilterTab = false);
             }
           },
-          tabs: const [
+          tabs: [
             PanelTab(
               icon: FluentIcons.book_24_regular,
-              label: 'מפרשים',
+              label: 'pdf_book.commentary_panel.tab_commentaries'.tr(),
             ),
             PanelTab(
               icon: FluentIcons.link_24_regular,
-              label: 'קישורים',
+              label: 'pdf_book.commentary_panel.tab_links'.tr(),
             ),
             PanelTab(
               icon: FluentIcons.note_24_regular,
-              label: 'הערות',
+              label: 'pdf_book.commentary_panel.tab_notes'.tr(),
             ),
           ],
         ),
@@ -624,7 +625,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
         // 4. הפעלת שדה החיפוש
         IconButton(
           icon: const Icon(FluentIcons.search_24_regular),
-          tooltip: 'חיפוש',
+          tooltip: 'common.search'.tr(),
           onPressed: _openInlineSearch,
         ),
       ],
@@ -636,7 +637,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
       focusNode: _searchFocusNode,
       controller: _searchController,
       decoration: InputDecoration(
-        hintText: 'חפש בתוך המפרשים המוצגים...',
+        hintText: 'pdf_book.commentary_panel.search_hint'.tr(),
         prefixIcon: const Icon(FluentIcons.search_24_regular),
         suffixIcon: Row(
           mainAxisSize: MainAxisSize.min,
@@ -724,7 +725,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
-            'טוען מפרשים...',
+            'pdf_book.commentary_panel.loading_commentaries'.tr(),
             style: TextStyle(
               fontSize: widget.fontSize * 0.9,
               color: Colors.grey,
@@ -740,7 +741,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Text(
-              'טוען מפרשים...',
+              'pdf_book.commentary_panel.loading_commentaries'.tr(),
               style: TextStyle(
                 fontSize: widget.fontSize * 0.9,
                 color: Colors.grey,
@@ -772,8 +773,8 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
             children: [
               Text(
                 hasCommentaryLinks
-                    ? 'לא נמצאו מפרשים מהנבחרים לדף זה'
-                    : 'לא נמצאו מפרשים לקטע הנבחר',
+                    ? 'pdf_book.commentary_panel.no_commentaries_selected'.tr()
+                    : 'pdf_book.commentary_panel.no_commentaries'.tr(),
                 style: TextStyle(
                   fontSize: widget.fontSize * 0.9,
                   color: Colors.grey,
@@ -789,7 +790,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
                     });
                   },
                   icon: const Icon(FluentIcons.apps_list_24_regular),
-                  label: const Text('בחר מפרשים'),
+                  label: Text('pdf_book.commentary_panel.select_commentaries'.tr()),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 24,
@@ -1020,7 +1021,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
-            'טוען קישורים...',
+            'pdf_book.commentary_panel.loading_links'.tr(),
             style: TextStyle(
               fontSize: widget.fontSize * 0.9,
               color: Colors.grey,
@@ -1037,7 +1038,9 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
-            widget.linksLoading ? 'טוען קישורים...' : 'לא נמצאו קישורים לדף זה',
+            widget.linksLoading
+                ? 'pdf_book.commentary_panel.loading_links'.tr()
+                : 'pdf_book.commentary_panel.no_links'.tr(),
             style: TextStyle(
               fontSize: widget.fontSize * 0.9,
               color: Colors.grey,
@@ -1164,7 +1167,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
                           debugPrint(
                               'Error loading link content: ${snapshot.error}');
                           debugPrint('Stack trace: ${snapshot.stackTrace}');
-                          return Text('שגיאה: ${snapshot.error}');
+                          return Text('pdf_book.commentary_panel.link_error'.tr(namedArgs: {'error': '${snapshot.error}'}));
                         }
                         return BlocBuilder<SettingsBloc, SettingsState>(
                           builder: (context, settingsState) {

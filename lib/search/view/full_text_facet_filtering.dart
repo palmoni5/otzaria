@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -125,7 +126,7 @@ class _SearchFacetFilteringState extends State<SearchFacetFiltering>
       child: RtlTextField(
         controller: _filterQuery,
         decoration: InputDecoration(
-          hintText: 'איתור ספר…',
+          hintText: 'search.find_book'.tr(),
           prefixIcon: const Icon(FluentIcons.filter_24_regular),
           suffixIcon: IconButton(
             onPressed: _clearFilter,
@@ -256,10 +257,10 @@ class _SearchFacetFilteringState extends State<SearchFacetFiltering>
   ) {
     // אם אין ספרים, הצג הודעה
     if (books.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text('לא נמצאו ספרים'),
+          padding: const EdgeInsets.all(16.0),
+          child: Text('search.no_books_found'.tr()),
         ),
       );
     }

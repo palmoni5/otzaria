@@ -1,5 +1,6 @@
 // לתחזוקת כרטיסי טיפים חיים ראו: docs/guided_tour_developer_guide.md
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:otzaria/widgets/widgets_exports.dart';
@@ -53,7 +54,7 @@ class LiveTipCard extends StatelessWidget {
                   IconButton(
                     onPressed: onDismiss,
                     icon: const Icon(FluentIcons.dismiss_24_regular),
-                    tooltip: 'סגור',
+                    tooltip: 'tour.live_tip_close'.tr(),
                   ),
                 ],
               ),
@@ -68,7 +69,7 @@ class LiveTipCard extends StatelessWidget {
                 alignment: AlignmentDirectional.centerStart,
                 child: NeutralActionButton(
                   icon: FluentIcons.checkmark_24_regular,
-                  text: 'הבנתי',
+                  text: 'tour.live_tip_got_it'.tr(),
                   onPressed: onDismiss,
                 ),
               ),

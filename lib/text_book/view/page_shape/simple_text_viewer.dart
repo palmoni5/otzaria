@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/cupertino.dart'
     show cupertinoTextSelectionHandleControls;
 import 'package:flutter/foundation.dart'
@@ -961,7 +962,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
       final hasSelectedText = cleanedText.isNotEmpty;
       final preview = hasSelectedText ? previewForLabel(cleanedText) : '';
       entries.add(AppContextMenuEntry(
-        label: 'חיפוש',
+        label: 'combined_book.search'.tr(),
         icon: FluentIcons.search_24_regular,
         enabled: hasSelectedText,
         children: hasSelectedText
@@ -977,7 +978,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
                     if (widget.onOpenSearch != null) {
                       widget.onOpenSearch!(cleanedText);
                     } else {
-                      UiSnack.show('חיפוש לא זמין בתצוגה זו');
+                      UiSnack.show('simple_viewer.search_unavailable'.tr());
                     }
                   },
                 ),
@@ -1007,7 +1008,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
     if (hasLinkItems) {
       entries.add(const AppContextMenuEntry.divider());
       entries.add(AppContextMenuEntry(
-        label: 'קישורים',
+        label: 'combined_book.links'.tr(),
         icon: FluentIcons.link_24_regular,
         childrenBuilder: buildLinksItems,
       ));
@@ -1030,25 +1031,25 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
     final reportTargetBook = widget.reportBook ?? state.book;
     entries.addAll([
       AppContextMenuEntry(
-        label: 'הוסף הערה אישית ',
+        label: 'simple_viewer.add_personal_note'.tr(),
         icon: FluentIcons.note_add_24_regular,
         onTap: () => _createNoteForCurrentLine(index, capturedText),
       ),
       if (!reportTargetBook.isUserBook)
         AppContextMenuEntry(
-          label: 'דווח על טעות בספר',
+          label: 'combined_book.report_book_error'.tr(),
           icon: FluentIcons.error_circle_24_regular,
           onTap: () => _openErrorReportDialog(capturedText ?? ''),
         ),
       const AppContextMenuEntry.divider(),
       AppContextMenuEntry(
-        label: 'העתק',
+        label: 'combined_book.copy'.tr(),
         icon: FluentIcons.copy_24_regular,
         enabled: capturedText != null && capturedText.trim().isNotEmpty,
         onTap: () => _copyFormattedText(capturedText),
       ),
       AppContextMenuEntry(
-        label: 'העתק את כל הפסקה',
+        label: 'combined_book.copy_full_paragraph'.tr(),
         icon: FluentIcons.document_copy_24_regular,
         enabled: index >= 0 && index < widget.content.length,
         onTap: () => _copyParagraphByIndex(index),
@@ -1352,7 +1353,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
     final plainText = capturedText ?? _savedSelectedText;
 
     if (plainText == null || plainText.trim().isEmpty) {
-      UiSnack.show('אנא בחר טקסט להעתקה');
+      UiSnack.show('combined_book.select_text_to_copy'.tr());
       return;
     }
 
@@ -1375,7 +1376,8 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
       );
     } catch (e) {
       if (mounted) {
-        UiSnack.showError('שגיאה בהעתקה מעוצבת: $e');
+        UiSnack.showError('combined_book.formatted_copy_error'
+            .tr(namedArgs: {'error': e.toString()}));
       }
     }
   }
@@ -1808,9 +1810,9 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
                       onLongPress: () {
                         showSingleActionDialog(
                           context: context,
-                          title: 'הערה לשורה זו',
+                          title: 'combined_book.note_for_line'.tr(),
                           customContent: PersonalNoteContentView(note: note),
-                          confirmText: 'סגור',
+                          confirmText: 'common.close'.tr(),
                         );
                       },
                       child: Padding(
@@ -2035,7 +2037,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
 
     return [
       AppContextMenuEntry(
-        label: 'החלף מפרש',
+        label: 'simple_viewer.swap_commentator'.tr(),
         icon: FluentIcons.arrow_swap_24_regular,
         children: normalized,
       ),

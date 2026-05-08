@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -289,10 +290,17 @@ class _LibraryBrowserState extends State<LibraryBrowser>
                 p.selectedTopics != c.selectedTopics,
             builder: (context, state) {
               if (state.error != null) {
-                return Center(child: Text('Error: ${state.error}'));
+                return Center(
+                  child: Text(
+                    'library_browser.error_prefix'
+                        .tr(namedArgs: {'error': state.error.toString()}),
+                  ),
+                );
               }
               if (state.library == null && !state.isLoading) {
-                return const Center(child: Text('No library data available'));
+                return Center(
+                  child: Text('library_browser.no_library_data'.tr()),
+                );
               }
 
               return Stack(
@@ -435,7 +443,9 @@ class _LibraryBrowserState extends State<LibraryBrowser>
         dividerBefore: true,
         widget: ToolbarActionButton(
           compact: isCompact,
-          tooltip: previewSelected ? 'הסתר תצוגה מקדימה' : 'הצג תצוגה מקדימה',
+          tooltip: previewSelected
+              ? 'library_browser.hide_preview'.tr()
+              : 'library_browser.show_preview'.tr(),
           icon: previewSelected
               ? FluentIcons.eye_24_filled
               : FluentIcons.eye_24_regular,
@@ -449,7 +459,9 @@ class _LibraryBrowserState extends State<LibraryBrowser>
           valueListenable: _settingsPanelOpen,
           builder: (context, isOpen, _) => ToolbarActionButton(
             compact: isCompact,
-            tooltip: isOpen ? 'סגור הגדרות ספרייה' : 'הגדרות ספרייה',
+            tooltip: isOpen
+                ? 'library_browser.close_settings'.tr()
+                : 'library_browser.open_settings'.tr(),
             icon: isOpen
                 ? FluentIcons.settings_24_filled
                 : FluentIcons.settings_24_regular,
@@ -673,7 +685,9 @@ class _LibraryBrowserState extends State<LibraryBrowser>
               autofocus: true,
               slim: isCompact,
               hintText:
-                  'איתור ספר או מחבר ב${state.currentCategory?.title ?? ""}',
+                  'library_browser.search_book_or_author'.tr(namedArgs: {
+                    'category': state.currentCategory?.title ?? ''
+                  }),
               maxWidth: isCompact ? 500 : 400,
               onChanged: (value) {
                 context.read<LibraryBloc>().add(UpdateSearchQuery(value));
@@ -849,11 +863,12 @@ class _LibraryBrowserState extends State<LibraryBrowser>
               ? FluentIcons.checkmark_circle_24_regular
               : FluentIcons.arrow_sync_24_regular;
           final tooltip = switch (syncState.status) {
-            FileSyncStatus.syncing => 'עצור סינכרון',
-            FileSyncStatus.completed =>
-              syncState.hasNewSync ? 'סנכרון הושלם' : 'אין עדכונים חדשים',
-            FileSyncStatus.error => 'שגיאה בסינכרון - לחץ לנסות שוב',
-            FileSyncStatus.initial => 'סינכרון',
+            FileSyncStatus.syncing => 'library_browser.sync_stop'.tr(),
+            FileSyncStatus.completed => syncState.hasNewSync
+                ? 'library_browser.sync_completed'.tr()
+                : 'library_browser.sync_no_updates'.tr(),
+            FileSyncStatus.error => 'library_browser.sync_error'.tr(),
+            FileSyncStatus.initial => 'library_browser.sync_initial'.tr(),
           };
           return ToolbarActionButton(
             compact: compact,
@@ -876,7 +891,7 @@ class _LibraryBrowserState extends State<LibraryBrowser>
         },
       ),
       icon: FluentIcons.arrow_sync_24_regular,
-      tooltip: 'סינכרון',
+      tooltip: 'library_browser.sync_tooltip'.tr(),
       onPressed: () {
         final b = context.read<FileSyncBloc>();
         if (b.state.status != FileSyncStatus.syncing) {
@@ -899,24 +914,39 @@ class _LibraryBrowserState extends State<LibraryBrowser>
     bool compact,
   ) {
     return [
-      ActionButtonData.simple(
-        compact: compact,
-        tooltip: 'חזרה לתיקיה הקודמת',
+      ActionButtonData(
+        widget: ToolbarActionButton(
+          compact: compact,
+          tooltip: 'library_browser.back_to_previous_folder'.tr(),
+          icon: FluentIcons.arrow_up_24_regular,
+          onPressed: () => _handleNavigateUp(context, state, settingsState),
+        ),
         icon: FluentIcons.arrow_up_24_regular,
+        tooltip: 'library_browser.back_to_previous_folder'.tr(),
         onPressed: () => _handleNavigateUp(context, state, settingsState),
       ),
-      ActionButtonData.simple(
-        compact: compact,
-        tooltip: 'חזרה לתיקיה הראשית',
+      ActionButtonData(
+        widget: ToolbarActionButton(
+          compact: compact,
+          tooltip: 'library_browser.back_to_main_folder'.tr(),
+          icon: FluentIcons.home_24_regular,
+          onPressed: () => _handleNavigateHome(context, state, settingsState),
+        ),
         icon: FluentIcons.home_24_regular,
+        tooltip: 'library_browser.back_to_main_folder'.tr(),
         onPressed: () => _handleNavigateHome(context, state, settingsState),
       ),
       if (settingsState.canUseSoftwareAndBookUpdates)
         _buildSyncActionButton(compact: compact),
-      ActionButtonData.simple(
-        compact: compact,
-        tooltip: 'טעינה מחדש',
+      ActionButtonData(
+        widget: ToolbarActionButton(
+          compact: compact,
+          tooltip: 'library_browser.reload'.tr(),
+          icon: FluentIcons.arrow_clockwise_24_regular,
+          onPressed: _refreshWithPersonalFolders,
+        ),
         icon: FluentIcons.arrow_clockwise_24_regular,
+        tooltip: 'library_browser.reload'.tr(),
         onPressed: _refreshWithPersonalFolders,
       ),
     ];
@@ -929,24 +959,39 @@ class _LibraryBrowserState extends State<LibraryBrowser>
     bool compact,
   ) {
     return [
-      ActionButtonData.simple(
-        compact: compact,
-        tooltip: 'חזרה לתיקיה הקודמת',
+      ActionButtonData(
+        widget: ToolbarActionButton(
+          compact: compact,
+          tooltip: 'library_browser.back_to_previous_folder'.tr(),
+          icon: FluentIcons.arrow_up_24_regular,
+          onPressed: () => _handleNavigateUp(context, state, settingsState),
+        ),
         icon: FluentIcons.arrow_up_24_regular,
+        tooltip: 'library_browser.back_to_previous_folder'.tr(),
         onPressed: () => _handleNavigateUp(context, state, settingsState),
       ),
       if (settingsState.canUseSoftwareAndBookUpdates)
         _buildSyncActionButton(compact: compact),
-      ActionButtonData.simple(
-        compact: compact,
-        tooltip: 'חזרה לתיקיה הראשית',
+      ActionButtonData(
+        widget: ToolbarActionButton(
+          compact: compact,
+          tooltip: 'library_browser.back_to_main_folder'.tr(),
+          icon: FluentIcons.home_24_regular,
+          onPressed: () => _handleNavigateHome(context, state, settingsState),
+        ),
         icon: FluentIcons.home_24_regular,
+        tooltip: 'library_browser.back_to_main_folder'.tr(),
         onPressed: () => _handleNavigateHome(context, state, settingsState),
       ),
-      ActionButtonData.simple(
-        compact: compact,
-        tooltip: 'טעינה מחדש',
+      ActionButtonData(
+        widget: ToolbarActionButton(
+          compact: compact,
+          tooltip: 'library_browser.reload'.tr(),
+          icon: FluentIcons.arrow_clockwise_24_regular,
+          onPressed: _refreshWithPersonalFolders,
+        ),
         icon: FluentIcons.arrow_clockwise_24_regular,
+        tooltip: 'library_browser.reload'.tr(),
         onPressed: _refreshWithPersonalFolders,
       ),
     ];
@@ -1285,7 +1330,9 @@ class _LibraryBrowserState extends State<LibraryBrowser>
               bottom: 10,
             ),
             child: Text(
-              'הצג עוד ${filteredBooks.length - limit} פריטים',
+              'library_browser.show_more_items'.tr(namedArgs: {
+                'count': (filteredBooks.length - limit).toString(),
+              }),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.secondary,
                   ),
@@ -1886,7 +1933,8 @@ class _LibraryBrowserState extends State<LibraryBrowser>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('כל הספרים (${books.length})'),
+        title: Text('library_browser.all_books_title'
+            .tr(namedArgs: {'count': books.length.toString()})),
         content: SizedBox(
           width: 600,
           height: 400,
@@ -1898,7 +1946,7 @@ class _LibraryBrowserState extends State<LibraryBrowser>
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('סגור'),
+            child: Text('common.close'.tr()),
           ),
         ],
       ),
@@ -2041,7 +2089,7 @@ class _LibraryBrowserState extends State<LibraryBrowser>
       width: 400,
       deferChildBuildOnOpen: true,
       preserveChildStateOnClose: true,
-      title: 'הגדרות',
+      title: 'library_browser.settings_dialog_title'.tr(),
       child: const Expanded(
         child: SingleChildScrollView(
           child: LibrarySettingsPanel(hebrewBooksPathWidget: null),
@@ -2072,7 +2120,7 @@ class _SearchingIndicator extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          'מחפש...',
+          'library_browser.searching'.tr(),
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: cs.onSurfaceVariant,
               ),
@@ -2125,7 +2173,9 @@ class _LoadingDotsTextState extends State<_LoadingDotsText>
                     ? 2
                     : 3;
         return Text(
-          'טוען ספרייה${'.' * dots}${' ' * (3 - dots)}',
+          'library_browser.loading_library'.tr(namedArgs: {
+            'dots': '${'.' * dots}${' ' * (3 - dots)}',
+          }),
           style: Theme.of(context).textTheme.bodyMedium,
         );
       },

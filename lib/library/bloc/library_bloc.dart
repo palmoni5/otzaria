@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
@@ -236,7 +237,8 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
 
       if (!extractionResult.success) {
         emit(state.copyWith(
-          error: extractionResult.errorMessage ?? 'שגיאה בחילוץ קובץ דחוס',
+          error: extractionResult.errorMessage ??
+              'library_bloc.extraction_error'.tr(),
           isLoading: false,
         ));
         return;
@@ -300,7 +302,8 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
 
       if (!extractionResult.success) {
         emit(state.copyWith(
-          error: extractionResult.errorMessage ?? 'שגיאה בחילוץ קובץ דחוס',
+          error: extractionResult.errorMessage ??
+              'library_bloc.extraction_error'.tr(),
           isLoading: false,
         ));
         return;

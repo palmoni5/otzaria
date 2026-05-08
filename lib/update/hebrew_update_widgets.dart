@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -32,18 +33,19 @@ Widget hebrewFlatChip({
       }
     });
     return Tooltip(
-      message: 'עדכון לגרסה ${latestVersion!.toString()}',
+      message: 'update.update_to_version'
+          .tr(namedArgs: {'version': latestVersion!.toString()}),
       child: TextButton.icon(
         onPressed: openDialog,
         icon: const Icon(FluentIcons.arrow_download_24_regular),
-        label: const Text('עדכון זמין'),
+        label: Text('update.update_available_short'.tr()),
       ),
     );
   }
 
   if (UpdatStatus.downloading == status) {
     return Tooltip(
-      message: 'אנא המתן...',
+      message: 'update.please_wait'.tr(),
       child: TextButton.icon(
         onPressed: () {},
         icon: const SizedBox(
@@ -53,18 +55,18 @@ Widget hebrewFlatChip({
             strokeWidth: 2,
           ),
         ),
-        label: const Text('מוריד...'),
+        label: Text('update.downloading'.tr()),
       ),
     );
   }
 
   if (UpdatStatus.readyToInstall == status) {
     return Tooltip(
-      message: 'לחץ להתקנה',
+      message: 'update.click_to_install'.tr(),
       child: TextButton.icon(
         onPressed: launchInstaller,
         icon: const Icon(FluentIcons.checkmark_circle_24_regular),
-        label: const Text('מוכן להתקנה'),
+        label: Text('update.ready_to_install'.tr()),
       ),
     );
   }
@@ -77,11 +79,11 @@ Widget hebrewFlatChip({
       return Container();
     }
     return Tooltip(
-      message: 'אירעה שגיאה בעדכון. אנא נסה שוב.',
+      message: 'update.update_error_message'.tr(),
       child: TextButton.icon(
         onPressed: startUpdate,
         icon: const Icon(FluentIcons.warning_24_regular),
-        label: const Text('שגיאה בחיבור לרשת במהלך בדיקת עדכונים'),
+        label: Text('update.network_error_check'.tr()),
       ),
     );
   }
@@ -115,25 +117,26 @@ Widget hebrewFloatingExtendedChipWithSilentDownload({
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "מוריד עדכון...",
+              'update.downloading_update'.tr(),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Text(
-              "מוריד גרסה ${latestVersion.toString()}",
+              'update.downloading_version'
+                  .tr(namedArgs: {'version': latestVersion.toString()}),
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 15),
-            const Row(
+            Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(
+                const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-                SizedBox(width: 10),
-                Text("אנא המתן..."),
+                const SizedBox(width: 10),
+                Text('update.please_wait'.tr()),
               ],
             ),
           ],
@@ -151,22 +154,24 @@ Widget hebrewFloatingExtendedChipWithSilentDownload({
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "עדכון מוכן",
+              'update.update_ready_title'.tr(),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Text(
-              "גרסה ${latestVersion.toString()} מוכנה להתקנה!",
+              'update.version_ready_to_install'
+                  .tr(namedArgs: {'version': latestVersion.toString()}),
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 8),
             Text(
-              "אתה משתמש כרגע בגרסה $appVersion.",
+              'update.current_version_label'
+                  .tr(namedArgs: {'version': appVersion}),
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 8),
             Text(
-              "עדכן כעת כדי לקבל את התכונות והתיקונים החדשים.",
+              'update.update_now_for_features'.tr(),
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 15),
@@ -176,13 +181,13 @@ Widget hebrewFloatingExtendedChipWithSilentDownload({
               children: [
                 TextButton(
                   onPressed: dismissUpdate,
-                  child: const Text('מאוחר יותר'),
+                  child: Text('update.later'.tr()),
                 ),
                 const SizedBox(width: 10),
                 ElevatedButton.icon(
                   onPressed: startUpdate,
                   icon: const Icon(FluentIcons.desktop_arrow_down_24_regular),
-                  label: const Text('התקן כעת'),
+                  label: Text('update.install_now'.tr()),
                 ),
               ],
             ),
@@ -217,22 +222,23 @@ void hebrewDefaultDialog({
       title: Flex(
         direction:
             Theme.of(context).useMaterial3 ? Axis.vertical : Axis.horizontal,
-        children: const [
-          Icon(FluentIcons.arrow_sync_24_regular),
-          Text('עדכון זמין'),
+        children: [
+          const Icon(FluentIcons.arrow_sync_24_regular),
+          Text('update.update_available_long'.tr()),
         ],
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('גרסה חדשה של האפליקציה זמינה.'),
+          Text('update.new_version_available'.tr()),
           const SizedBox(width: 10),
-          Text('גרסה חדשה: ${latestVersion!.toString()}'),
+          Text('update.new_version_label'
+              .tr(namedArgs: {'version': latestVersion!.toString()})),
           const SizedBox(height: 10),
           if (status == UpdatStatus.availableWithChangelog) ...[
             Text(
-              'יומן שינויים:',
+              'update.changelog_label'.tr(),
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -240,7 +246,7 @@ void hebrewDefaultDialog({
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: changelogText.isEmpty
-                  ? const Text('לא נמצאו פריטי יומן שינויים לעדכון זה.')
+                  ? Text('update.no_changelog_for_update'.tr())
                   : MarkdownBody(
                       data: changelogText,
                       onTapLink: (text, href, title) {
@@ -253,7 +259,7 @@ void hebrewDefaultDialog({
       ),
       actions: <Widget>[
         TextButton(
-          child: const Text('מאוחר יותר'),
+          child: Text('update.later'.tr()),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -263,7 +269,7 @@ void hebrewDefaultDialog({
             Navigator.pop(context);
             startUpdate();
           },
-          child: const Text('עדכן כעת'),
+          child: Text('update.update_now'.tr()),
         ),
       ],
     ),

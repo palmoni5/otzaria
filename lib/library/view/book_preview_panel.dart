@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/gestures.dart';
@@ -201,7 +202,7 @@ class _BookPreviewPanelState extends State<BookPreviewPanel> {
             ),
             const SizedBox(height: 16),
             Text(
-              'בחר ספר לתצוגה מקדימה',
+              'book_preview.select_book'.tr(),
               style: TextStyle(
                 fontSize: 16,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -237,7 +238,7 @@ class _BookPreviewPanelState extends State<BookPreviewPanel> {
             ),
             const SizedBox(height: 8),
             Text(
-              'ספר חיצוני - לחץ פעמיים לפתיחה',
+              'book_preview.external_book'.tr(),
               style: TextStyle(
                 fontSize: 14,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -246,7 +247,7 @@ class _BookPreviewPanelState extends State<BookPreviewPanel> {
             ),
             const SizedBox(height: 16),
             RecommendedActionButton(
-              text: 'פתח בעיון',
+              text: 'book_preview.open_in_reading'.tr(),
               icon: FluentIcons.open_24_regular,
               onPressed: () => widget.onOpenInReader?.call(0),
             ),
@@ -316,7 +317,10 @@ class _BookPreviewPanelState extends State<BookPreviewPanel> {
                       return _buildSkeletonLoading();
                     }
                     if (state is TextBookError) {
-                      return Center(child: Text('שגיאה: ${state.message}'));
+                      return Center(
+                        child: Text('book_preview.error'
+                            .tr(namedArgs: {'message': state.message})),
+                      );
                     }
                     if (state is TextBookLoaded) {
                       return CombinedView(
@@ -364,8 +368,11 @@ class _BookPreviewPanelState extends State<BookPreviewPanel> {
   /// בניית PDF viewer דרך נתיב הקובץ
   Widget _buildPdfViewer(String filePath) {
     if (!_pdfFileExists) {
-      return const Center(
-        child: Text('הספר איננו קיים', textDirection: TextDirection.rtl),
+      return Center(
+        child: Text(
+          'book_preview.book_not_found'.tr(),
+          textDirection: TextDirection.rtl,
+        ),
       );
     }
     return Stack(
@@ -537,19 +544,19 @@ class _PreviewToolbar extends StatelessWidget {
         children: [
           ToolbarActionButton(
             compact: compact,
-            tooltip: 'הגדל טקסט',
+            tooltip: 'book_preview.increase_text'.tr(),
             icon: FluentIcons.zoom_in_24_regular,
             onPressed: onZoomIn,
           ),
           ToolbarActionButton(
             compact: compact,
-            tooltip: 'הקטן טקסט',
+            tooltip: 'book_preview.decrease_text_size'.tr(),
             icon: FluentIcons.zoom_out_24_regular,
             onPressed: onZoomOut,
           ),
           ToolbarActionButton(
             compact: compact,
-            tooltip: 'פתח בעיון (או לחץ פעמיים על הספר)',
+            tooltip: 'book_preview.open_or_double_click'.tr(),
             icon: FluentIcons.open_24_regular,
             onPressed: onOpen,
           ),

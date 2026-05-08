@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
@@ -35,12 +36,12 @@ class _EditorSettingsTabState extends State<EditorSettingsTab> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SettingsCard(
-            title: 'עורך הספרים',
+            title: 'settings.editor.section'.tr(),
             children: [
               _buildSlider(
                 icon: FluentIcons.timer_24_regular,
-                label: 'זמן עיכוב במילישניות',
-                subtitle: 'זמן ההמתנה לפני עדכון התצוגה המקדימה',
+                label: 'settings.editor.preview_debounce_label'.tr(),
+                subtitle: 'settings.editor.preview_debounce_subtitle'.tr(),
                 value: previewDebounce,
                 min: 50,
                 max: 300,
@@ -53,8 +54,8 @@ class _EditorSettingsTabState extends State<EditorSettingsTab> {
               ),
               _buildSlider(
                 icon: FluentIcons.delete_dismiss_24_regular,
-                label: 'ניקוי טיוטות ישנות',
-                subtitle: 'מספר הימים לשמירת טיוטות לפני מחיקה אוטומטית',
+                label: 'settings.editor.cleanup_days_label'.tr(),
+                subtitle: 'settings.editor.cleanup_days_subtitle'.tr(),
                 value: cleanupDays,
                 min: 7,
                 max: 90,
@@ -67,8 +68,8 @@ class _EditorSettingsTabState extends State<EditorSettingsTab> {
               ),
               _buildSlider(
                 icon: FluentIcons.database_24_regular,
-                label: 'מכסת טיוטות',
-                subtitle: 'גודל מקסימלי לאחסון טיוטות (MB)',
+                label: 'settings.editor.drafts_quota_label'.tr(),
+                subtitle: 'settings.editor.drafts_quota_subtitle'.tr(),
                 value: draftsQuota,
                 min: 50,
                 max: 100,

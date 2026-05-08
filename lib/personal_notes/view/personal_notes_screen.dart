@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -114,7 +115,7 @@ class _PersonalNotesManagerScreenState
           _isLoadingBooks = false;
         });
       } else {
-        UiSnack.showError('שגיאה בטעינת רשימת ההערות: $e');
+        UiSnack.showError('personal_notes.load_error'.tr(namedArgs: {'error': '$e'}));
       }
     }
   }
@@ -246,13 +247,13 @@ class _PersonalNotesManagerScreenState
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'אירעה שגיאה בעת טעינת רשימת ההערות:\n${_booksError!}',
+              'personal_notes.load_error_detail'.tr(namedArgs: {'error': _booksError!}),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             FilledButton(
               onPressed: _loadBooks,
-              child: const Text('נסה שוב'),
+              child: Text('personal_notes.retry'.tr()),
             ),
           ],
         ),
@@ -343,7 +344,7 @@ class _PersonalNotesManagerScreenState
           leadingItems: [
             AppTopBarItem(
               widget: IconButton(
-                tooltip: _isNavigationVisible ? 'הסתר ניווט' : 'הצג ניווט',
+                tooltip: _isNavigationVisible ? 'personal_notes.hide_navigation'.tr() : 'personal_notes.show_navigation'.tr(),
                 onPressed: () {
                   setState(() {
                     _isNavigationVisible = !_isNavigationVisible;
@@ -373,7 +374,7 @@ class _PersonalNotesManagerScreenState
           center: OtzariaSearchField(
             controller: _searchController,
             focusNode: _searchFocusNode,
-            hintText: 'חפש בהערות...',
+            hintText: 'personal_notes.search_hint'.tr(),
             onSubmitted: (_) => requestKeyboardFocus(),
             onChanged: (value) {
               setState(() {
@@ -402,7 +403,7 @@ class _PersonalNotesManagerScreenState
             AppTopBarItem(
               widget: ToolbarActionButton(
                 compact: isCompact,
-                tooltip: 'רענן',
+                tooltip: 'personal_notes.refresh'.tr(),
                 icon: FluentIcons.arrow_clockwise_24_regular,
                 onPressed: _loadBooks,
               ),
@@ -410,7 +411,7 @@ class _PersonalNotesManagerScreenState
             AppTopBarItem(
               widget: ToolbarActionButton(
                 compact: isCompact,
-                tooltip: 'ייצוא הערות',
+                tooltip: 'personal_notes.export'.tr(),
                 icon: FluentIcons.arrow_download_24_regular,
                 onPressed: _exportNotes,
               ),
@@ -418,7 +419,7 @@ class _PersonalNotesManagerScreenState
             AppTopBarItem(
               widget: ToolbarActionButton(
                 compact: isCompact,
-                tooltip: 'ייבוא הערות',
+                tooltip: 'personal_notes.import'.tr(),
                 icon: FluentIcons.arrow_upload_24_regular,
                 onPressed: _importNotes,
               ),
@@ -451,7 +452,7 @@ class _PersonalNotesManagerScreenState
     if (selection == null || selection.notes.isEmpty) return;
 
     final path = await FilePicker.saveFile(
-      dialogTitle: 'בחר מיקום לשמירת קובץ הייצוא',
+      dialogTitle: 'personal_notes.select_export_location'.tr(),
       fileName: 'otzaria_notes_export.json',
       allowedExtensions: ['json'],
       type: FileType.custom,
@@ -467,12 +468,12 @@ class _PersonalNotesManagerScreenState
     );
 
     if (!mounted) return;
-    UiSnack.show('הייצוא הושלם בהצלחה');
+    UiSnack.show('personal_notes.export_success'.tr());
   }
 
   Future<void> _importNotes() async {
     final picked = await FilePicker.pickFiles(
-      dialogTitle: 'בחר קובץ ייבוא',
+      dialogTitle: 'personal_notes.select_import_file'.tr(),
       allowedExtensions: ['json'],
       type: FileType.custom,
       lockParentWindow: true,
@@ -483,28 +484,28 @@ class _PersonalNotesManagerScreenState
     final strategy = await showDialog<NotesImportConflictStrategy>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('ייבוא הערות - טיפול בהתנגשויות'),
-        content: const Text('כיצד לטפל בהערות קיימות עם אותו מזהה?'),
+        title: Text('personal_notes.import_conflicts_title'.tr()),
+        content: Text('personal_notes.import_conflicts_content'.tr()),
         actions: [
           TextButton(
             onPressed: () =>
                 Navigator.of(context).pop(NotesImportConflictStrategy.merge),
-            child: const Text('מזג'),
+            child: Text('personal_notes.import_merge'.tr()),
           ),
           TextButton(
             onPressed: () =>
                 Navigator.of(context).pop(NotesImportConflictStrategy.skip),
-            child: const Text('דלג על כפולים'),
+            child: Text('personal_notes.import_skip'.tr()),
           ),
           TextButton(
             onPressed: () =>
                 Navigator.of(context).pop(NotesImportConflictStrategy.keepBoth),
-            child: const Text('שמור גם וגם'),
+            child: Text('personal_notes.import_keep_both'.tr()),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context)
                 .pop(NotesImportConflictStrategy.overwrite),
-            child: const Text('דרוס'),
+            child: Text('personal_notes.import_overwrite'.tr()),
           ),
         ],
       ),
@@ -519,8 +520,12 @@ class _PersonalNotesManagerScreenState
 
     if (!mounted) return;
     UiSnack.show(
-      'ייבוא הושלם: נוספו ${summary.inserted}, עודכנו ${summary.updated}, '
-      'דולגו ${summary.skipped}, שוכפלו ${summary.duplicated}',
+      'personal_notes.import_summary'.tr(namedArgs: {
+        'inserted': '${summary.inserted}',
+        'updated': '${summary.updated}',
+        'skipped': '${summary.skipped}',
+        'duplicated': '${summary.duplicated}',
+      }),
     );
     _loadBooks();
   }
@@ -553,7 +558,7 @@ class _PersonalNotesManagerScreenState
               children: [
                 // Root "הערות אישיות" folder
                 NavigationTreeTile.category(
-                  title: 'הערות אישיות',
+                  title: 'personal_notes.title'.tr(),
                   level: 0,
                   isSelected: isRootSelected,
                   isExpanded: isRootExpanded,
@@ -652,7 +657,7 @@ class _PersonalNotesManagerScreenState
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'הערות ללא מיקום',
+                'personal_notes.missing_notes_section'.tr(),
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -856,8 +861,8 @@ class _PersonalNotesManagerScreenState
     });
 
     if (displayNotes.isEmpty) {
-      return const Center(
-        child: Text('אין הערות להצגה'),
+      return Center(
+        child: Text('personal_notes.no_notes_to_show'.tr()),
       );
     }
 
@@ -1015,7 +1020,7 @@ class _PersonalNotesManagerScreenState
                 children: [
                   Expanded(
                     child: Text(
-                      isMissing ? 'הערה ללא מיקום' : note.title,
+                      isMissing ? 'personal_notes.no_location'.tr() : note.title,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: cs.onSurface,
@@ -1057,7 +1062,7 @@ class _PersonalNotesManagerScreenState
                         if (isMissing && note.lastKnownLineNumber != null)
                           _InfoChip(
                             icon: FluentIcons.location_24_regular,
-                            text: 'שורה קודמת: ${note.lastKnownLineNumber}',
+                            text: 'personal_notes.last_known_line'.tr(namedArgs: {'line': '${note.lastKnownLineNumber}'}),
                             backgroundColor: cs.surfaceContainerHighest,
                             foregroundColor: cs.onSurfaceVariant,
                           ),
@@ -1070,24 +1075,24 @@ class _PersonalNotesManagerScreenState
                     runSpacing: 6,
                     children: [
                       ToolbarActionButton(
-                        tooltip: 'עריכה',
+                        tooltip: 'personal_notes.edit_tooltip'.tr(),
                         icon: FluentIcons.edit_24_regular,
                         onPressed: () => _editNote(note),
                       ),
                       if (isMissing)
                         ToolbarActionButton(
-                          tooltip: 'מיקום מחדש',
+                          tooltip: 'personal_notes.relocate'.tr(),
                           icon: FluentIcons.location_24_regular,
                           onPressed: () => _repositionMissing(note),
                         ),
                       if (!isMissing)
                         ToolbarActionButton(
-                          tooltip: 'פתח ספר בשורה',
+                          tooltip: 'personal_notes.open_book_at_line'.tr(),
                           icon: FluentIcons.book_open_24_regular,
                           onPressed: () => _openNoteInBook(note),
                         ),
                       ToolbarActionButton(
-                        tooltip: 'מחיקה',
+                        tooltip: 'common.delete'.tr(),
                         icon: FluentIcons.delete_24_regular,
                         onPressed: () => _deleteNote(note),
                       ),
@@ -1106,7 +1111,7 @@ class _PersonalNotesManagerScreenState
     final result = await showDialog<PersonalNoteEditorResult>(
       context: context,
       builder: (context) => PersonalNoteEditorDialog(
-        title: 'ערוך הערה',
+        title: 'personal_notes.edit_note_title'.tr(),
         initialContent: note.content,
         initialContentFormat: note.contentFormat,
         referenceText: note.displayTitle,
@@ -1122,7 +1127,7 @@ class _PersonalNotesManagerScreenState
 
     final trimmed = result.contentPlain.trim();
     if (trimmed.isEmpty) {
-      UiSnack.show('ההערה ריקה, לא נשמרה');
+      UiSnack.show('personal_notes.note_empty_not_saved'.tr());
       return;
     }
 
@@ -1136,15 +1141,15 @@ class _PersonalNotesManagerScreenState
             contentFormat: result.contentFormat,
           ),
         );
-    UiSnack.show('ההערה עודכנה');
+    UiSnack.show('personal_notes.updated'.tr());
   }
 
   Future<void> _deleteNote(PersonalNote note) async {
     final shouldDelete = await showConfirmationDialog(
       context: context,
-      title: 'מחיקת הערה',
-      content: 'האם למחוק את ההערה לצמיתות?',
-      confirmText: 'מחק',
+      title: 'personal_notes.delete_title'.tr(),
+      content: 'personal_notes.delete_confirm'.tr(),
+      confirmText: 'common.delete'.tr(),
       isDangerous: true,
     );
 
@@ -1156,18 +1161,18 @@ class _PersonalNotesManagerScreenState
               noteId: note.id,
             ),
           );
-      UiSnack.show('ההערה נמחקה');
+      UiSnack.show('personal_notes.deleted'.tr());
     }
   }
 
   Future<void> _repositionMissing(PersonalNote note) async {
     final result = await showInputDialog(
       context: context,
-      title: 'מיקום מחדש של הערה',
+      title: 'personal_notes.relocate_title2'.tr(),
       subtitle: note.lastKnownLineNumber != null
-          ? 'שורה קודמת: ${note.lastKnownLineNumber}'
+          ? 'personal_notes.last_known_line'.tr(namedArgs: {'line': '${note.lastKnownLineNumber}'})
           : null,
-      labelText: 'מספר שורה חדש',
+      labelText: 'personal_notes.new_line_number'.tr(),
       initialValue: (note.lastKnownLineNumber ?? '').toString(),
       keyboardType: TextInputType.number,
     );
@@ -1183,27 +1188,27 @@ class _PersonalNotesManagerScreenState
               lineNumber: newLine,
             ),
           );
-      UiSnack.show('ההערה הועברה לשורה $newLine');
+      UiSnack.show('personal_notes.moved_to_line'.tr(namedArgs: {'line': '$newLine'}));
     }
   }
 
   Future<void> _openNoteInBook(PersonalNote note) async {
     if (note.lineNumber == null) {
-      UiSnack.show('להערה הזו אין מיקום');
+      UiSnack.show('personal_notes.no_location_title'.tr());
       return;
     }
 
     final libraryState = context.read<LibraryBloc>().state;
     final library = libraryState.library;
     if (library == null) {
-      UiSnack.show('הספרייה לא נטענה עדיין');
+      UiSnack.show('personal_notes.library_not_loaded'.tr());
       return;
     }
 
     final book = library.findBookByTitle(note.bookId, TextBook) ??
         library.findBookByTitle(note.bookId, null);
     if (book == null) {
-      UiSnack.show('הספר לא נמצא: ${note.bookId}');
+      UiSnack.show('personal_notes.book_not_found'.tr(namedArgs: {'bookId': note.bookId}));
       return;
     }
 

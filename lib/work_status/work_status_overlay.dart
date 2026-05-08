@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -94,7 +95,7 @@ class WorkStatusOverlay extends StatelessWidget {
                             size: 16,
                           ),
                           color: colorScheme.onSurfaceVariant,
-                          tooltip: 'סגור',
+                          tooltip: 'work_status.close'.tr(),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           onPressed: () =>

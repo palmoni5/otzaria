@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
@@ -223,7 +224,7 @@ class _NoteActions extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          tooltip: 'עריכה',
+          tooltip: 'common.edit'.tr(),
           icon: const Icon(FluentIcons.edit_24_regular, size: 18),
           iconSize: 18,
           padding: const EdgeInsets.all(8),
@@ -235,7 +236,7 @@ class _NoteActions extends StatelessWidget {
         ),
         if (extraAction != null) extraAction!,
         IconButton(
-          tooltip: 'מחיקה',
+          tooltip: 'common.delete'.tr(),
           icon: const Icon(FluentIcons.delete_24_regular, size: 18),
           iconSize: 18,
           padding: const EdgeInsets.all(8),
@@ -246,7 +247,7 @@ class _NoteActions extends StatelessWidget {
           onPressed: onDelete,
         ),
         IconButton(
-          tooltip: isExpanded ? 'סגור' : 'פתח',
+          tooltip: isExpanded ? 'common.close'.tr() : 'common.open'.tr(),
           icon: AnimatedRotation(
             turns: isExpanded ? 0.5 : 0.0,
             duration: const Duration(milliseconds: 200),

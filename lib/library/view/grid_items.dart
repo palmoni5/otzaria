@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:otzaria/library/models/library.dart';
@@ -433,7 +434,7 @@ class _BookGridMediaColumn extends StatelessWidget {
       children: [
         book.isUserBook
             ? Tooltip(
-                message: 'ספר אישי',
+                message: 'grid_items.private_book'.tr(),
                 waitDuration: const Duration(milliseconds: 400),
                 child: SizedBox(
                   width: iconBoxSize,
@@ -597,7 +598,7 @@ class _BookGridActionColumn extends StatelessWidget {
                   size: 15,
                   color: theme.colorScheme.secondary,
                 ),
-                tooltip: 'אפשרויות נוספות',
+                tooltip: 'grid_items.more_options'.tr(),
                 position: PopupMenuPosition.under,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(
@@ -609,10 +610,10 @@ class _BookGridActionColumn extends StatelessWidget {
                     _showDeleteBookDialog(context, book, onBookDeleted);
                   }
                 },
-                entries: const [
+                entries: [
                   AppMenuEntry<String>(
                     value: 'delete',
-                    label: 'מחק מה-DB',
+                    label: 'grid_items.delete_from_db'.tr(),
                     icon: FluentIcons.delete_24_regular,
                     isDestructive: true,
                   ),
@@ -683,11 +684,12 @@ Future<void> _showDeleteBookDialog(
     BuildContext context, Book book, VoidCallback? onBookDeleted) async {
   final confirmed = await showWarningDialog(
     context: context,
-    title: 'למחוק את הספר?',
-    content: 'הספר "${book.title}" יימחק ממסד הנתונים.',
-    subtitle: 'לא ניתן לשחזר ספר שנמחק.',
-    cancelText: 'ביטול',
-    confirmText: 'מחק',
+    title: 'grid_items.delete_book_title'.tr(),
+    content: 'grid_items.delete_book_content'
+        .tr(namedArgs: {'name': book.title}),
+    subtitle: 'grid_items.delete_book_subtitle'.tr(),
+    cancelText: 'common.cancel'.tr(),
+    confirmText: 'grid_items.delete_book_confirm'.tr(),
   );
 
   if (confirmed != true) {
@@ -707,11 +709,13 @@ Future<void> _deleteBook(Book book) async {
     );
 
     if (!success) {
-      throw Exception('המחיקה נכשלה');
+      throw Exception('grid_items.delete_failed_exception'.tr());
     }
 
-    UiSnack.show('הספר "${book.title}" נמחק בהצלחה ממסד הנתונים');
+    UiSnack.show('grid_items.delete_success'
+        .tr(namedArgs: {'name': book.title}));
   } catch (e) {
-    UiSnack.showError('שגיאה במחיקת הספר: $e');
+    UiSnack.showError('grid_items.delete_error'
+        .tr(namedArgs: {'error': e.toString()}));
   }
 }

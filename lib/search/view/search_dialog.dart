@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -107,7 +108,7 @@ class _SearchDialogState extends State<SearchDialog> {
       final lastMode =
           Settings.getValue<String>('key-last-search-mode') ?? 'advanced';
 
-      _searchTab = SearchingTab("חיפוש", lastTyping);
+      _searchTab = SearchingTab("search.default_tab".tr(), lastTyping);
 
       final searchMode = switch (lastMode) {
         'fuzzy' => SearchMode.fuzzy,
@@ -240,7 +241,7 @@ class _SearchDialogState extends State<SearchDialog> {
                     ),
                     trailing: IconButton(
                       icon: const Icon(FluentIcons.delete_24_regular, size: 18),
-                      tooltip: 'מחק מההיסטוריה',
+                      tooltip: 'search.delete_from_history'.tr(),
                       onPressed: () {
                         context
                             .read<HistoryBloc>()
@@ -315,7 +316,7 @@ class _SearchDialogState extends State<SearchDialog> {
     String query = _searchTab.queryController.text.trim();
 
     if (query.isEmpty) {
-      UiSnack.show('נא להזין טקסט לחיפוש');
+      UiSnack.show('search.empty_query'.tr());
       return;
     }
 
@@ -384,7 +385,8 @@ class _SearchDialogState extends State<SearchDialog> {
 
     // יצירת טאב חדש לגמרי - ללא קשר לטאב קודם
     // שם הלשונית: "חיפוש: [מילות החיפוש]"
-    final newSearchTab = SearchingTab("חיפוש: $query", query);
+    final newSearchTab = SearchingTab(
+        "search.tab_with_query".tr(namedArgs: {'query': query}), query);
 
     // העתקת כל ההגדרות מהטאב הנוכחי לטאב החדש
     newSearchTab.searchOptions.addAll(_searchTab.searchOptions.map(
@@ -471,7 +473,7 @@ class _SearchDialogState extends State<SearchDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'כל הקטגוריות',
+            'search.all_categories'.tr(),
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w500,
@@ -590,8 +592,9 @@ class _SearchDialogState extends State<SearchDialog> {
                     const SizedBox(width: 12),
                     Text(
                       widget.bookTitle != null
-                          ? 'חיפוש ב${widget.bookTitle}'
-                          : 'חיפוש',
+                          ? 'search.search_in_book'
+                              .tr(namedArgs: {'book': widget.bookTitle ?? ''})
+                          : 'search.search_label'.tr(),
                       style: const TextStyle(
                           fontSize: 24, fontWeight: FontWeight.bold),
                     ),
@@ -599,7 +602,7 @@ class _SearchDialogState extends State<SearchDialog> {
                     IconButton(
                       icon: const Icon(FluentIcons.dismiss_24_regular),
                       onPressed: () => Navigator.of(context).pop(),
-                      tooltip: 'סגור',
+                      tooltip: 'search.close_dialog'.tr(),
                     ),
                   ],
                 ),
@@ -624,7 +627,7 @@ class _SearchDialogState extends State<SearchDialog> {
                               children: [
                                 _buildNavButton(
                                   context,
-                                  'מדויק',
+                                  'search.exact'.tr(),
                                   FluentIcons.text_quote_24_regular,
                                   SearchMode.exact,
                                   state.configuration.searchMode ==
@@ -633,7 +636,7 @@ class _SearchDialogState extends State<SearchDialog> {
                                 const SizedBox(height: 4),
                                 _buildNavButton(
                                   context,
-                                  'מתקדם',
+                                  'search.advanced'.tr(),
                                   FluentIcons.search_info_24_regular,
                                   SearchMode.advanced,
                                   state.configuration.searchMode ==
@@ -642,7 +645,7 @@ class _SearchDialogState extends State<SearchDialog> {
                                 const SizedBox(height: 4),
                                 _buildNavButton(
                                   context,
-                                  'מקורב',
+                                  'search.fuzzy'.tr(),
                                   FluentIcons
                                       .arrow_bidirectional_left_right_24_regular,
                                   SearchMode.fuzzy,
@@ -687,7 +690,8 @@ class _SearchDialogState extends State<SearchDialog> {
                                                       .history_24_regular,
                                               size: 24,
                                             ),
-                                            tooltip: 'היסטוריית חיפושים',
+                                            tooltip:
+                                                'search.search_history'.tr(),
                                             padding: EdgeInsets.zero,
                                             constraints: const BoxConstraints(),
                                             onPressed: () {
@@ -722,8 +726,8 @@ class _SearchDialogState extends State<SearchDialog> {
                                                 size: 20,
                                               ),
                                               tooltip: blocked
-                                                  ? 'אינדקס לא קיים, לא ניתן לבצע חיפוש זה ללא אינדקס'
-                                                  : 'חפש',
+                                                  ? 'search.no_index_error'.tr()
+                                                  : 'search.search_action'.tr(),
                                               onPressed: blocked
                                                   ? null
                                                   : _performSearch,

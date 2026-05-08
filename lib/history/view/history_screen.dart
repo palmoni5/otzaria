@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -29,9 +30,9 @@ class HistoryDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ReusableItemsDialog(
-      title: 'היסטוריה',
-      child: HistoryView(),
+    return ReusableItemsDialog(
+      title: 'history.title'.tr(),
+      child: const HistoryView(),
     );
   }
 }
@@ -223,7 +224,7 @@ class _HistoryViewState extends State<HistoryView> {
                   if (item.isSearch) {
                     final tabsBloc = ctx.read<TabsBloc>();
                     // Always create a new search tab instead of reusing existing one
-                    final searchTab = SearchingTab('חיפוש', null);
+                    final searchTab = SearchingTab('search.default_tab'.tr(), null);
                     tabsBloc.add(AddTab(searchTab));
 
                     // Restore search query and options
@@ -274,16 +275,16 @@ class _HistoryViewState extends State<HistoryView> {
                 },
                 onDelete: (ctx, originalIndex) {
                   ctx.read<HistoryBloc>().add(RemoveHistory(originalIndex));
-                  UiSnack.show('נמחק בהצלחה');
+                  UiSnack.show('history.deleted'.tr());
                 },
                 onClearAll: (ctx) {
                   ctx.read<HistoryBloc>().add(ClearHistory());
-                  UiSnack.show('כל ההיסטוריה נמחקה');
+                  UiSnack.show('history.all_deleted'.tr());
                 },
-                hintText: 'חפש בהיסטוריה...',
-                emptyText: 'אין היסטוריה',
-                notFoundText: 'לא נמצאו תוצאות',
-                clearAllText: 'מחק את כל ההיסטוריה',
+                hintText: 'history.search_hint'.tr(),
+                emptyText: 'history.empty'.tr(),
+                notFoundText: 'history.not_found'.tr(),
+                clearAllText: 'history.clear_all'.tr(),
                 leadingIconBuilder: (item) =>
                     _getLeadingIcon(item.book, item.isSearch),
                 subtitleBuilder: (item) {
@@ -294,7 +295,8 @@ class _HistoryViewState extends State<HistoryView> {
                     final displayed = allNames.length > 2
                         ? '${allNames.take(2).join(', ')}...'
                         : allNames.join(', ');
-                    return 'חיפוש בקטגוריות: $displayed';
+                    return 'history.search_in_categories'
+                        .tr(namedArgs: {'names': displayed});
                   }
                   return ItemsListView.locationSubtitle(item);
                 },
@@ -302,7 +304,9 @@ class _HistoryViewState extends State<HistoryView> {
                   if (!(item.isSearch as bool)) return null;
                   final facets = item.searchScopeFacets as List<String>?;
                   if (facets == null || facets.length <= 2) return null;
-                  return 'חיפוש בקטגוריות: ${_facetDisplayNames(facets).join(', ')}';
+                  return 'history.search_in_categories'.tr(namedArgs: {
+                    'names': _facetDisplayNames(facets).join(', ')
+                  });
                 },
               ),
             ),
