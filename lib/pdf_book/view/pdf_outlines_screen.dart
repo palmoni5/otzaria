@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/scheduler.dart';
@@ -210,8 +211,8 @@ class _OutlineViewState extends State<OutlineView>
     super.build(context);
     final outline = widget.outline;
     if (outline == null || outline.isEmpty) {
-      return const Center(
-        child: Text('אין תוכן עניינים'),
+      return Center(
+        child: Text('pdf_book.outline.no_outline'.tr()),
       );
     }
 
@@ -228,7 +229,7 @@ class _OutlineViewState extends State<OutlineView>
               widget.focusNode.requestFocus();
             },
             decoration: InputDecoration(
-              hintText: 'חיפוש סימניה...',
+              hintText: 'pdf_book.outline.search_hint'.tr(),
               prefixIcon: const Icon(FluentIcons.search_24_regular),
               suffixIcon: searchController.text.isNotEmpty
                   ? IconButton(

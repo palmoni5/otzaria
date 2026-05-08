@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -85,7 +86,7 @@ void sortToolDescriptorsStably(List<ToolDescriptor> descriptors) {
   });
 }
 
-typedef MobileToolGroupDef = ({String label, List<String> toolIds});
+typedef MobileToolGroupDef = ({String labelKey, List<String> toolIds});
 typedef MobileToolGroup = ({String label, List<ToolDescriptor> tools});
 
 /// בונה את קבוצות התצוגה של תפריט המובייל מתוך הסדר שכבר חושב ב-descriptors.
@@ -100,12 +101,12 @@ List<MobileToolGroup> buildMobileToolGroups(
 }) {
   final labelByToolId = <String, String>{
     for (final group in groupDefs)
-      for (final toolId in group.toolIds) toolId: group.label,
+      for (final toolId in group.toolIds) toolId: group.labelKey.tr(),
   };
 
   final groups = <MobileToolGroup>[];
   for (final descriptor in descriptors) {
-    final label = labelByToolId[descriptor.toolId] ?? 'תוספים';
+    final label = labelByToolId[descriptor.toolId] ?? 'tools.group_plugins'.tr();
     if (groups.isNotEmpty && groups.last.label == label) {
       groups.last.tools.add(descriptor);
       continue;
@@ -313,13 +314,13 @@ class ToolsScreenState extends State<ToolsScreen>
   static const Duration _pendingToolTimeout = Duration(seconds: 5);
 
   static const List<MobileToolGroupDef> _mobileGroupDefs = [
-    (label: 'לוח שנה', toolIds: <String>['builtin.calendar']),
+    (labelKey: 'tools.group_calendar', toolIds: <String>['builtin.calendar']),
     (
-      label: 'תורה שלמדתי',
+      labelKey: 'tools.group_shamor_zachor',
       toolIds: <String>['builtin.shamor_zachor', 'builtin.notes']
     ),
     (
-      label: 'דקדוקי סופרים',
+      labelKey: 'tools.group_scribes',
       toolIds: <String>[
         'builtin.measurements',
         'builtin.gematria',
@@ -408,7 +409,7 @@ class ToolsScreenState extends State<ToolsScreen>
     return [
       BuiltInToolDescriptor(
         toolId: 'builtin.calendar',
-        label: 'לוח שנה',
+        label: 'tools.tab_calendar'.tr(),
         icon: FluentIcons.calendar_24_regular,
         iconFilled: FluentIcons.calendar_24_filled,
         order: 10,
@@ -418,14 +419,14 @@ class ToolsScreenState extends State<ToolsScreen>
       ),
       BuiltInToolDescriptor(
         toolId: 'builtin.shamor_zachor',
-        label: 'שמור וזכור',
+        label: 'tools.tab_shamor_zachor'.tr(),
         imageIcon: 'assets/icon/שמור וזכור שחור ריק.png',
         order: 20,
         pageBuilder: () => ShamorZachorWidget(onTitleChanged: (_) {}),
       ),
       BuiltInToolDescriptor(
         toolId: 'builtin.measurements',
-        label: 'מדות ושיעורים',
+        label: 'tools.tab_measurements'.tr(),
         icon: FluentIcons.ruler_24_regular,
         iconFilled: FluentIcons.ruler_24_filled,
         order: 30,
@@ -433,7 +434,7 @@ class ToolsScreenState extends State<ToolsScreen>
       ),
       BuiltInToolDescriptor(
         toolId: 'builtin.notes',
-        label: 'הערות אישיות',
+        label: 'tools.tab_notes'.tr(),
         icon: FluentIcons.note_24_regular,
         iconFilled: FluentIcons.note_24_filled,
         // order 25 ממקם את "הערות אישיות" צמוד ל"שמור וזכור" (20) — שניהם
@@ -444,7 +445,7 @@ class ToolsScreenState extends State<ToolsScreen>
       ),
       BuiltInToolDescriptor(
         toolId: 'builtin.gematria',
-        label: 'גימטריה',
+        label: 'tools.tab_gematria'.tr(),
         icon: FluentIcons.calculator_24_regular,
         iconFilled: FluentIcons.calculator_24_filled,
         order: 50,
@@ -452,7 +453,7 @@ class ToolsScreenState extends State<ToolsScreen>
       ),
       BuiltInToolDescriptor(
         toolId: 'builtin.aramaic_dictionary',
-        label: 'מילון ארמי-עברי',
+        label: 'tools.tab_aramaic_dict'.tr(),
         icon: FluentIcons.translate_24_regular,
         iconFilled: FluentIcons.translate_24_filled,
         order: 60,
@@ -460,7 +461,7 @@ class ToolsScreenState extends State<ToolsScreen>
       ),
       BuiltInToolDescriptor(
         toolId: 'builtin.acronyms_dictionary',
-        label: 'ראשי תיבות',
+        label: 'tools.tab_acronyms'.tr(),
         icon: FluentIcons.text_quote_24_regular,
         iconFilled: FluentIcons.text_quote_24_filled,
         order: 70,
@@ -756,7 +757,7 @@ class ToolsScreenState extends State<ToolsScreen>
       if (_pendingToolIdToOpen == toolId) {
         _pendingToolIdToOpen = null;
         _pendingToolTimeoutTimer = null;
-        UiSnack.showError('הכלי "$toolId" לא נמצא');
+        UiSnack.showError('tools.tool_not_found'.tr(namedArgs: {'toolId': toolId}));
       }
     });
   }
@@ -832,11 +833,11 @@ class ToolsScreenState extends State<ToolsScreen>
         backgroundColor: bgColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        title: const Text('כלים'),
+        title: Text('tools.screen_title'.tr()),
         actions: [
           IconButton(
             icon: const Icon(FluentIcons.puzzle_piece_24_regular),
-            tooltip: 'תוספים',
+            tooltip: 'tools.plugins_button'.tr(),
             onPressed: () => showModalBottomSheet(
               context: context,
               isScrollControlled: true,
@@ -903,7 +904,7 @@ class ToolsScreenState extends State<ToolsScreen>
             _descriptors.isEmpty ? '' : _descriptors[safeIndex].label,
           ),
           leading: Tooltip(
-            message: 'חזור (Esc)',
+            message: 'tools.back_shortcut'.tr(),
             child: IconButton(
               icon: const RtlIcon(FluentIcons.arrow_right_24_regular),
               onPressed: () => setState(() => _showMobileMenu = true),
@@ -974,7 +975,7 @@ class ToolsScreenState extends State<ToolsScreen>
                                         FluentIcons.chevron_right_24_regular),
                                     iconSize: 18,
                                     onPressed: () => _tabScrollBy(-150),
-                                    tooltip: 'גלול ימינה',
+                                    tooltip: 'tools.scroll_right'.tr(),
                                     constraints: const BoxConstraints(
                                         minWidth: 32, minHeight: 32),
                                     padding: EdgeInsets.zero,
@@ -1040,7 +1041,7 @@ class ToolsScreenState extends State<ToolsScreen>
                                         FluentIcons.chevron_left_24_regular),
                                     iconSize: 18,
                                     onPressed: () => _tabScrollBy(150),
-                                    tooltip: 'גלול שמאלה',
+                                    tooltip: 'tools.scroll_left'.tr(),
                                     constraints: const BoxConstraints(
                                         minWidth: 32, minHeight: 32),
                                     padding: EdgeInsets.zero,
@@ -1054,7 +1055,7 @@ class ToolsScreenState extends State<ToolsScreen>
                                   FluentIcons.puzzle_piece_24_regular),
                               onPressed: () =>
                                   setState(() => _isPanelOpen = !_isPanelOpen),
-                              tooltip: 'תוספים',
+                              tooltip: 'tools.plugins_button'.tr(),
                             ),
                           ],
                         ),
@@ -1132,7 +1133,6 @@ class ToolsScreenState extends State<ToolsScreen>
           listener: (context, settingsState) {
             final blocState = context.read<PluginSystemBloc>().state;
             if (blocState is! PluginSystemLoaded) return;
-            // אם התוסף ה-transient דורש אינטרנט ועברנו למצב מנותק — נסגור אותו.
             if (settingsState.isOfflineMode &&
                 _transientPlugin != null &&
                 _transientPlugin!.requiresNetwork) {

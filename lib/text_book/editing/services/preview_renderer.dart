@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:html/dom.dart' as dom;
@@ -28,7 +29,7 @@ class PreviewRenderer {
           return Container(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'תצוגה מקדימה תופיע כאן...',
+              'preview_renderer.preview_will_appear'.tr(),
               style: textStyle.copyWith(
                 color: cs.onSurfaceVariant,
                 fontStyle: FontStyle.italic,
@@ -60,7 +61,8 @@ class PreviewRenderer {
           return Container(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'שגיאה בתצוגה מקדימה: ${e.toString()}',
+              'preview_renderer.preview_error'
+                  .tr(namedArgs: {'error': e.toString()}),
               style: textStyle.copyWith(color: cs.error),
             ),
           );

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:otzaria/personal_notes/models/personal_note.dart';
 import 'package:otzaria/widgets/misc/app_menu_exports.dart';
@@ -61,11 +62,11 @@ class _PersonalNotesExportDialogState extends State<PersonalNotesExportDialog> {
   NotesExportSelection _buildSelection() {
     final notes = widget.allNotes;
     List<PersonalNote> result = notes;
-    String description = 'כל ההערות';
+    String description = 'personal_notes.export_all'.tr();
 
     if (_mode == NotesExportMode.byBook && _selectedBookId != null) {
       result = notes.where((note) => note.bookId == _selectedBookId).toList();
-      description = 'הערות לספר $_selectedBookId';
+      description = 'personal_notes.export_by_book'.tr(namedArgs: {'book': _selectedBookId!});
     } else if (_mode == NotesExportMode.byDateRange && _dateRange != null) {
       final start = DateUtils.dateOnly(_dateRange!.start);
       final endExclusive = DateUtils.dateOnly(
@@ -76,12 +77,14 @@ class _PersonalNotesExportDialogState extends State<PersonalNotesExportDialog> {
               !note.updatedAt.isBefore(start) &&
               note.updatedAt.isBefore(endExclusive))
           .toList();
-      description =
-          'הערות בתאריכים ${_dateRange!.start.toIso8601String()} - ${_dateRange!.end.toIso8601String()}';
+      description = 'personal_notes.export_by_date'.tr(namedArgs: {
+        'start': _dateRange!.start.toIso8601String(),
+        'end': _dateRange!.end.toIso8601String(),
+      });
     } else if (_mode == NotesExportMode.manual) {
       result =
           notes.where((note) => _manualSelection[note.id] == true).toList();
-      description = 'בחירה ידנית (${result.length})';
+      description = 'personal_notes.export_manual'.tr(namedArgs: {'count': '${result.length}'});
     }
 
     return NotesExportSelection(notes: result, description: description);
@@ -131,16 +134,16 @@ class _PersonalNotesExportDialogState extends State<PersonalNotesExportDialog> {
                     )
                     .toList(),
                 onSelected: (value) => setState(() => _selectedBookId = value),
-                decoration: const InputDecoration(
-                  labelText: 'בחר ספר',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: 'personal_notes.select_book'.tr(),
+                  border: const OutlineInputBorder(),
                 ),
               ),
             if (_mode == NotesExportMode.byDateRange)
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(_dateRange == null
-                    ? 'בחר טווח תאריכים'
+                    ? 'personal_notes.select_date_range'.tr()
                     : '${_dateRange!.start.toString().split(' ').first} - ${_dateRange!.end.toString().split(' ').first}'),
                 trailing: const Icon(FluentIcons.calendar_24_regular),
                 onTap: () async {
@@ -157,9 +160,9 @@ class _PersonalNotesExportDialogState extends State<PersonalNotesExportDialog> {
             if (_mode == NotesExportMode.manual) ...[
               RtlTextField(
                 controller: _searchController,
-                decoration: const InputDecoration(
-                  labelText: 'חיפוש הערות',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: 'personal_notes.search_notes_hint'.tr(),
+                  border: const OutlineInputBorder(),
                 ),
                 onChanged: (_) => setState(() {}),
               ),
@@ -196,7 +199,7 @@ class _PersonalNotesExportDialogState extends State<PersonalNotesExportDialog> {
       actions: [
         NeutralActionButton(
           onPressed: () => Navigator.of(context).pop(),
-          text: 'ביטול',
+          text: 'common.cancel'.tr(),
         ),
         RecommendedActionButton(
           onPressed: _submit,
@@ -209,13 +212,13 @@ class _PersonalNotesExportDialogState extends State<PersonalNotesExportDialog> {
   String _labelForMode(NotesExportMode mode) {
     switch (mode) {
       case NotesExportMode.all:
-        return 'הכל';
+        return 'personal_notes.export_tab_all'.tr();
       case NotesExportMode.byBook:
-        return 'לפי ספר';
+        return 'personal_notes.export_tab_by_book'.tr();
       case NotesExportMode.byDateRange:
-        return 'טווח זמן';
+        return 'personal_notes.export_tab_time_range'.tr();
       case NotesExportMode.manual:
-        return 'בחירה ידנית';
+        return 'personal_notes.export_tab_manual'.tr();
     }
   }
 }

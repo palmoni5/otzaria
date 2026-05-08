@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -278,7 +279,8 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
                                 if (settingsState.isFullscreen)
                                   _CaptionActionButton(
                                     brightness: Theme.of(context).brightness,
-                                    tooltip: 'מזער',
+                                    tooltip:
+                                        'navigation.title_bar.minimize'.tr(),
                                     icon: FluentIcons.subtract_24_regular,
                                     onPressed: () async {
                                       await FullscreenHelper.toggleFullscreen(
@@ -289,7 +291,7 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
                                 if (settingsState.isFullscreen)
                                   _CaptionActionButton(
                                     brightness: Theme.of(context).brightness,
-                                    tooltip: 'סגור',
+                                    tooltip: 'navigation.title_bar.close'.tr(),
                                     icon: FluentIcons.dismiss_24_regular,
                                     onPressed: () => windowManager.close(),
                                   ),
@@ -350,21 +352,23 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
                 IconButton(
                   key: tourTitleBarHistoryButtonTargetKey,
                   icon: const Icon(FluentIcons.history_24_regular, size: 18),
-                  tooltip: 'הצג היסטוריה (${historyShortcut.toUpperCase()})',
+                  tooltip: 'navigation.title_bar.show_history'.tr(
+                      namedArgs: {'shortcut': historyShortcut.toUpperCase()}),
                   onPressed: () => _showHistoryDialog(context),
                   style: _kIconButtonStyle,
                 ),
                 IconButton(
                   key: tourTitleBarBookmarkButtonTargetKey,
                   icon: const Icon(FluentIcons.bookmark_24_regular, size: 18),
-                  tooltip: 'הצג סימניות (${bookmarksShortcut.toUpperCase()})',
+                  tooltip: 'navigation.title_bar.show_bookmarks'.tr(
+                      namedArgs: {'shortcut': bookmarksShortcut.toUpperCase()}),
                   onPressed: () => _showBookmarksDialog(context),
                   style: _kIconButtonStyle,
                 ),
                 IconButton(
                   icon: const Icon(FluentIcons.add_square_24_regular, size: 18),
-                  tooltip:
-                      'החלף שולחן עבודה (${workspaceShortcut.toUpperCase()})',
+                  tooltip: 'navigation.title_bar.switch_workspace'.tr(
+                      namedArgs: {'shortcut': workspaceShortcut.toUpperCase()}),
                   onPressed: () => _showSaveWorkspaceDialog(context),
                   style: _kIconButtonStyle,
                 ),
@@ -407,7 +411,7 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
             category == null || identical(category, libraryState.library);
         return _buildPanelTitle(
           context,
-          'ספריה',
+          'navigation.library'.tr(),
           subtitle: isRoot ? null : category.title,
         );
       },
@@ -416,11 +420,11 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
 
   Widget _buildStandardTitle(BuildContext context, NavigationState navState) {
     final title = switch (navState.currentScreen) {
-      Screen.settings => 'הגדרות',
-      Screen.more => 'כלים',
-      Screen.find => 'איתור',
-      Screen.search => 'חיפוש',
-      _ => 'אוצריא',
+      Screen.settings => 'navigation.settings'.tr(),
+      Screen.more => 'navigation.tools'.tr(),
+      Screen.find => 'navigation.find'.tr(),
+      Screen.search => 'navigation.search'.tr(),
+      _ => 'app.title'.tr(),
     };
     return _buildPanelTitle(context, title);
   }
@@ -456,7 +460,7 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
           return DragToMoveArea(
             child: Center(
               child: Text(
-                'עיון',
+                'navigation.reading'.tr(),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
@@ -627,7 +631,7 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
                 : FluentIcons.settings_24_regular,
             size: 18,
           ),
-          tooltip: 'הגדרות תצוגת הספרים',
+          tooltip: 'navigation.title_bar.reading_settings'.tr(),
           onPressed: widget.onReadingSettingsPressed ??
               () => showReadingSettingsDialog(context),
           style: _kIconButtonStyle,
@@ -677,7 +681,9 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
       BuildContext context, SettingsState settingsState) {
     return _CaptionActionButton(
       brightness: Theme.of(context).brightness,
-      tooltip: settingsState.isFullscreen ? 'צא ממסך מלא' : 'מסך מלא',
+      tooltip: settingsState.isFullscreen
+          ? 'navigation.title_bar.exit_fullscreen'.tr()
+          : 'navigation.title_bar.enter_fullscreen'.tr(),
       icon: settingsState.isFullscreen
           ? FluentIcons.full_screen_minimize_24_regular
           : FluentIcons.full_screen_maximize_24_regular,
@@ -696,7 +702,7 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
       child: Padding(
         padding: const EdgeInsets.only(right: 4.0),
         child: Tooltip(
-          message: 'בטל הצמדה',
+          message: 'navigation.title_bar.unpin_tab'.tr(),
           child: const Icon(FluentIcons.pin_24_filled, size: 14),
         ),
       ),
@@ -928,7 +934,10 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
           menuBuilder: (menuCtx, _) =>
               _buildTabContextMenuEntries(menuCtx, tab, state),
           menuItemKeysByLabel: isSelected
-              ? {'הצג לצד': tourTabSideBySideMenuItemTargetKey}
+              ? {
+                  'navigation.title_bar.show_side_by_side'.tr():
+                      tourTabSideBySideMenuItemTargetKey
+                }
               : null,
           child: StatefulBuilder(
             builder: (context, setLocalState) {
@@ -955,13 +964,13 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
 
     if (otherWorkspaces.isEmpty) {
       return AppContextMenuEntry(
-        label: 'העבר לשולחן עבודה',
+        label: 'navigation.title_bar.move_to_workspace'.tr(),
         enabled: false,
       );
     }
 
     return AppContextMenuEntry(
-      label: 'העבר לשולחן עבודה',
+      label: 'navigation.title_bar.move_to_workspace'.tr(),
       children: otherWorkspaces.map((workspace) {
         return AppContextMenuEntry(
           label: workspace.name,
@@ -998,7 +1007,9 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
       currentTabIndex: newActiveIndex,
     ));
 
-    UiSnack.show('הכרטיסיה הועברה לשולחן העבודה "${targetWorkspace.name}"');
+    // מציג הודעה למשתמש
+    UiSnack.show('navigation.title_bar.tab_moved_to_workspace'
+        .tr(namedArgs: {'name': targetWorkspace.name}));
   }
 
   List<AppContextMenuEntry> _buildTabContextMenuEntries(
@@ -1008,23 +1019,25 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
   ) {
     final entries = <AppContextMenuEntry>[
       AppContextMenuEntry(
-        label: tab.isPinned ? 'בטל הצמדת כרטיסיה' : 'הצמד כרטיסיה',
+        label: tab.isPinned
+            ? 'navigation.title_bar.unpin_tab_menu'.tr()
+            : 'navigation.title_bar.pin_tab_menu'.tr(),
         onTap: () => context.read<TabsBloc>().add(TogglePinTab(tab)),
       ),
       AppContextMenuEntry(
-        label: 'סגור',
+        label: 'navigation.title_bar.close_menu'.tr(),
         onTap: () => closeTab(tab, context),
       ),
       AppContextMenuEntry(
-        label: 'סגור הכל',
+        label: 'navigation.title_bar.close_all_menu'.tr(),
         onTap: () => closeAllTabs(state, context),
       ),
       AppContextMenuEntry(
-        label: 'סגור את האחרים',
+        label: 'navigation.title_bar.close_others_menu'.tr(),
         onTap: () => closeAllTabsButCurrent(state, context),
       ),
       AppContextMenuEntry(
-        label: 'שיכפול',
+        label: 'navigation.title_bar.duplicate_menu'.tr(),
         onTap: () => context.read<TabsBloc>().add(CloneTab(tab)),
       ),
       const AppContextMenuEntry.divider(),
@@ -1051,12 +1064,12 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
           );
         }).toList();
         entries.add(AppContextMenuEntry(
-          label: 'הצג לצד',
+          label: 'navigation.title_bar.show_side_by_side_menu'.tr(),
           children: otherTabs,
         ));
       } else {
         entries.add(AppContextMenuEntry(
-          label: 'הצג לצד',
+          label: 'navigation.title_bar.show_side_by_side_menu'.tr(),
           enabled: false,
         ));
       }
@@ -1065,11 +1078,11 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
     if (tab is CombinedTab) {
       entries.addAll([
         AppContextMenuEntry(
-          label: 'החלף צדדים',
+          label: 'navigation.title_bar.swap_sides'.tr(),
           onTap: () => context.read<TabsBloc>().add(const SwapSideBySideTabs()),
         ),
         AppContextMenuEntry(
-          label: 'חזרה לתצוגה רגילה',
+          label: 'navigation.title_bar.back_to_normal'.tr(),
           onTap: () => context
               .read<TabsBloc>()
               .add(DisableSideBySideMode(state.tabs.indexOf(tab))),
@@ -1080,7 +1093,7 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
     entries.addAll([
       const AppContextMenuEntry.divider(),
       AppContextMenuEntry(
-        label: 'כרטיסיות פתוחות',
+        label: 'navigation.title_bar.open_tabs'.tr(),
         // childrenBuilder + stream: הרשימה נבנית מחדש בכל שינוי במצב הכרטיסיות,
         // כך שסגירת כרטיסייה דרך ה-X מסירה את שורתה והתפריט נשאר פתוח.
         childrenBuilder: () =>
@@ -1105,7 +1118,7 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
         trailing: Align(
           alignment: AlignmentDirectional.centerEnd,
           child: IconButton(
-            tooltip: 'סגור',
+            tooltip: 'navigation.title_bar.close_menu'.tr(),
             visualDensity: VisualDensity.compact,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 28, minHeight: 28),

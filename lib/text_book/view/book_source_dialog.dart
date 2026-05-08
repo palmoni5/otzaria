@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:otzaria/text_book/bloc/text_book_state.dart';
@@ -79,7 +80,8 @@ Future<void> showBookSourceDialog(
     debugPrint('Opening book source dialog for: "${state.book.title}"');
 
     final bookDetails = await BookDetailsService().getBookDetails(state.book);
-    final bookSource = bookDetails['תיקיית המקור'] ?? 'לא נמצא מקור';
+    final bookSource = bookDetails['תיקיית המקור'] ??
+        'book_source_dialog.no_source_found'.tr();
 
     // קבלת מידע התצוגה עבור המקור
     final sourceInfo = getSourceDisplayInfo(bookSource);
@@ -96,10 +98,10 @@ Future<void> showBookSourceDialog(
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text(
-          'אודות הספר',
+        title: Text(
+          'book_source_dialog.title'.tr(),
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         content: SizedBox(
           width: 450,
@@ -108,17 +110,17 @@ Future<void> showBookSourceDialog(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'מושבת זמנית',
-                  style: TextStyle(fontSize: 14),
+                Text(
+                  'book_source_dialog.disabled_temporarily'.tr(),
+                  style: const TextStyle(fontSize: 14),
                 ),
 
                 const Divider(height: 24),
 
                 // מקור הספר
-                const Text(
-                  'מקור הספר:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                Text(
+                  'book_source_dialog.book_source'.tr(),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 // ספרי "תא שמע" מציגים נוסח זכויות יוצרים עם קישור.
@@ -154,7 +156,7 @@ Future<void> showBookSourceDialog(
         actions: [
           FilledButton.tonal(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('סגור'),
+            child: Text('common.close'.tr()),
           ),
         ],
       ),
@@ -162,7 +164,8 @@ Future<void> showBookSourceDialog(
   } catch (e) {
     debugPrint('Error showing book source dialog: $e');
     if (context.mounted) {
-      UiSnack.showError('שגיאה בטעינת מידע הספר: ${e.toString()}');
+      UiSnack.showError('book_source_dialog.load_error'
+          .tr(namedArgs: {'error': e.toString()}));
     }
   }
 }

@@ -1,6 +1,21 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:otzaria/search/search_query_builder.dart';
+
+String _translateSearchOption(String option) {
+  const Map<String, String> optionKeys = {
+    'קידומות דקדוקיות': 'search.option_grammatical_prefixes',
+    'סיומות דקדוקיות': 'search.option_grammatical_suffixes',
+    'קידומות': 'search.option_prefixes',
+    'סיומות': 'search.option_suffixes',
+    'כתיב מלא/חסר': 'search.option_spelling',
+    'חלק ממילה': 'search.option_partial_word',
+    'שגיאות כתיב': 'search.option_typo_tolerance',
+  };
+  final key = optionKeys[option];
+  return key != null ? key.tr() : option;
+}
 
 class SearchOptionsDropdown extends StatefulWidget {
   final Function(bool)? onToggle;
@@ -48,7 +63,7 @@ class _SearchOptionsDropdownState extends State<SearchOptionsDropdown> {
       icon: Icon(_isExpanded
           ? FluentIcons.chevron_up_24_regular
           : FluentIcons.chevron_down_24_regular),
-      tooltip: 'אפשרויות חיפוש',
+      tooltip: 'search.options_tooltip'.tr(),
       onPressed: _toggleExpanded,
     );
   }
@@ -155,7 +170,7 @@ class _SearchOptionsRowState extends State<SearchOptionsRow> {
               Align(
                 alignment: Alignment.center,
                 child: Text(
-                  option,
+                  _translateSearchOption(option),
                   style: TextStyle(
                     fontSize: 13,
                     color: colorScheme.onSurface,

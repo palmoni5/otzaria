@@ -1,5 +1,6 @@
 // לתחזוקת כרטיסי הסיור המודרך ראו: docs/guided_tour_developer_guide.md
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:otzaria/tour/widgets/tour_progress_dots.dart';
@@ -118,10 +119,10 @@ class TourTooltipCard extends StatelessWidget {
                     NeutralActionButton(
                       icon: FluentIcons.dismiss_24_regular,
                       text: isRestartEntry
-                          ? 'ביטול'
+                          ? 'tour.cancel'.tr()
                           : isWelcomeStep
-                              ? 'דלג — אגלה לבד'
-                              : 'דלג על הסיור',
+                              ? 'tour.skip_ill_find_alone'.tr()
+                              : 'tour.skip_tour'.tr(),
                       onPressed: onSkip,
                     )
                   else
@@ -130,8 +131,8 @@ class TourTooltipCard extends StatelessWidget {
                   if (!isLastStep && !isWelcomeStep && !isRestartEntry) ...[
                     Tooltip(
                       message: isAutoPlaying
-                          ? 'עצור הצגה אוטומטית'
-                          : 'הצגה אוטומטית — מעבר אוטומטי בין השלבים כל 4 שניות',
+                          ? 'tour.stop_autoplay'.tr()
+                          : 'tour.autoplay_subtitle'.tr(),
                       child: FilledButton.tonal(
                         onPressed: onToggleAutoPlay,
                         style: FilledButton.styleFrom(
@@ -152,12 +153,12 @@ class TourTooltipCard extends StatelessWidget {
                         ? FluentIcons.checkmark_24_regular
                         : FluentIcons.arrow_left_24_regular,
                     text: isLastStep
-                        ? 'סגור'
+                        ? 'tour.close'.tr()
                         : isRestartEntry
-                            ? 'אני מוכן'
+                            ? 'tour.im_ready'.tr()
                             : isWelcomeStep
-                                ? 'בוא נתחיל'
-                                : 'הבא',
+                                ? 'tour.lets_start'.tr()
+                                : 'tour.next'.tr(),
                     onPressed: onNext,
                   ),
                 ],

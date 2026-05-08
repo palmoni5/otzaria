@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:otzaria/data/data_providers/database_library_provider.dart';
@@ -44,7 +45,7 @@ class FileSyncBloc extends Bloc<FileSyncEvent, FileSyncState> {
     if (_isOffline) {
       emit(state.copyWith(
         status: FileSyncStatus.initial,
-        message: 'מצב אופליין מופעל',
+        message: 'file_sync.offline_mode',
       ));
       return;
     }
@@ -52,7 +53,7 @@ class FileSyncBloc extends Bloc<FileSyncEvent, FileSyncState> {
     if (!_softwareAndBookUpdatesEnabled) {
       emit(state.copyWith(
         status: FileSyncStatus.initial,
-        message: 'עדכוני תוכנה וספרים מושבתים',
+        message: 'file_sync.updates_disabled',
       ));
       return;
     }
@@ -64,13 +65,13 @@ class FileSyncBloc extends Bloc<FileSyncEvent, FileSyncState> {
 
     emit(state.copyWith(
       status: FileSyncStatus.syncing,
-      message: 'בודק עדכוני ספרייה...',
+      message: 'file_sync.checking_updates',
     ));
 
-    workStatusCubit.upsert(const WorkStatusItem(
+    workStatusCubit.upsert(WorkStatusItem(
       id: _kSyncTaskId,
-      title: 'סנכרון ספרייה',
-      message: 'בודק עדכוני ספרייה',
+      title: 'file_sync.sync_title'.tr(),
+      message: 'file_sync.checking_message'.tr(),
     ));
 
     final runId = ++_syncRunId;
@@ -93,7 +94,7 @@ class FileSyncBloc extends Bloc<FileSyncEvent, FileSyncState> {
         emit(state.copyWith(
           status: FileSyncStatus.completed,
           hasNewSync: false,
-          message: 'הספרייה מעודכנת',
+          message: 'file_sync.library_up_to_date',
         ));
         return;
       }
@@ -153,7 +154,7 @@ class FileSyncBloc extends Bloc<FileSyncEvent, FileSyncState> {
         } else if (failedMessage != null) {
           emit(state.copyWith(
             status: FileSyncStatus.error,
-            message: 'שגיאה בסנכרון',
+            message: 'file_sync.sync_error_title',
             errorMessage: failedMessage,
           ));
         } else {
@@ -161,8 +162,9 @@ class FileSyncBloc extends Bloc<FileSyncEvent, FileSyncState> {
             status: FileSyncStatus.completed,
             hasNewSync: appliedCount > 0,
             message: appliedCount > 0
-                ? 'הוחלו $appliedCount עדכוני DB'
-                : 'הספרייה מעודכנת',
+                ? 'file_sync.applied_updates'
+                    .tr(namedArgs: {'count': '$appliedCount'})
+                : 'file_sync.library_up_to_date'.tr(),
             currentProgress: appliedCount,
             totalFiles: chain.length,
           ));

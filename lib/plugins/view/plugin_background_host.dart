@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -315,8 +316,8 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner> {
               context: ctx,
               title: title,
               content: content,
-              cancelText: 'ביטול',
-              confirmText: 'אישור',
+              cancelText: 'common.cancel'.tr(),
+              confirmText: 'common.ok'.tr(),
             ) ==
             true;
       },
@@ -332,8 +333,8 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner> {
               title: title,
               content: content,
               subtitle: subtitle,
-              cancelText: 'ביטול',
-              confirmText: 'המשך',
+              cancelText: 'common.cancel'.tr(),
+              confirmText: 'common.continue_action'.tr(),
             ) ==
             true;
       },

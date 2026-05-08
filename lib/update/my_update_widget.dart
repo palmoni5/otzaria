@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:archive/archive_io.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -412,7 +413,8 @@ String changelogBetweenVersionsForUpdateDialog({
 
   final result = selected.join('\n').trim();
   if (result.isEmpty) {
-    return 'לא נמצאו פריטי יומן שינויים בין גרסה $currentVersion לגרסה $latestVersion.';
+    return 'update.no_changelog_between'.tr(
+        namedArgs: {'current': currentVersion, 'latest': latestVersion});
   }
   return result;
 }
@@ -741,9 +743,11 @@ class _ManagedUpdatWidgetState extends State<_ManagedUpdatWidget> {
           latestVersion: latestVersion,
         );
       }
-      return 'שגיאה בטעינת יומן השינויים.\nקוד שגיאה: ${response.statusCode}';
+      return 'update.load_changelog_error_code'
+          .tr(namedArgs: {'code': '${response.statusCode}'});
     } catch (e) {
-      return 'שגיאה בטעינת יומן השינויים: $e';
+      return 'update.load_changelog_error'
+          .tr(namedArgs: {'error': '$e'});
     }
   }
 

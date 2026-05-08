@@ -423,167 +423,6 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
               }
             }
 
-            // ── מצב דסקטופ: KeyboardNavigator + sidebar + תוכן ──────────
-            return KeyboardNavigator(
-              currentTabIndex: _selectedIndex,
-              totalTabs: _tabsData.length,
-              onTabChange: _changeTab,
-              onBack: null,
-              child: Scaffold(
-                backgroundColor: bgColor,
-                body: Listener(
-                  // [תיקון גלילה] גלגל עכבר מכל מקום (כולל sidebar) גולל את התוכן
-                  onPointerSignal: (event) {
-                    if (event is PointerScrollEvent &&
-                        _contentScrollController.hasClients) {
-                      final newOffset = _contentScrollController.offset +
-                          event.scrollDelta.dy;
-                      _contentScrollController.jumpTo(
-                        newOffset.clamp(
-                          0.0,
-                          _contentScrollController.position.maxScrollExtent,
-                        ),
-                      );
-                    }
-                  },
-                  child: Row(
-                    children: [
-                      // ── Sidebar ──────────────────────────────────────
-                      SizedBox(
-                        width: 210,
-                        child: Container(
-                          color: bgColor,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 28),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                    right: 12, left: 12, bottom: 20),
-                                child: Text(
-                                  'settings.title'.tr(),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineSmall
-                                      ?.copyWith(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              Expanded(
-                                child: ListView.builder(
-                                  itemCount: _tabsData.length,
-                                  itemBuilder: (context, index) =>
-                                      SidebarNavItem(
-                                    key: tourSettingsTabTargetKeys[index],
-                                    icon: _tabsData[index].icon,
-                                    iconFilled: _tabsData[index].iconFilled,
-                                    label: _tabsData[index].label,
-                                    isSelected: _selectedIndex == index,
-                                    onTap: () => _changeTab(index),
-                                    mirrorIcon: _tabsData[index].icon ==
-                                        FluentIcons.book_24_regular,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: showResults
-                            ? SettingsSearchResultsView(
-                                query: _searchQuery,
-                                results: _searchResults,
-                                onResultTap: _onSearchResultTap,
-                              )
-                            : ListView(
-                                padding: const EdgeInsets.all(12),
-                                children: [
-                                  for (final group in _mobileGroups) ...[
-                                    SettingsCard(
-                                      title: group.label,
-                                      children: [
-                                        for (final idx in group.indices)
-                                          ListTile(
-                                            key: tourSettingsTabTargetKeys[idx],
-                                            leading: Icon(
-                                              _tabsData[idx].icon,
-                                              color: colorScheme.primary,
-                                            ),
-                                            title: Text(
-                                              _tabsData[idx].label,
-                                            ),
-                                            trailing: const RtlIcon(
-                                              FluentIcons
-                                                  .chevron_left_24_regular,
-                                            ),
-                                            onTap: () {
-                                              setState(() {
-                                                _selectedIndex = idx;
-                                                _showMobileMenu = false;
-                                              });
-                                            },
-                                          ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                  ],
-                                ],
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            } else {
-              final showResults = _searchQuery.trim().isNotEmpty;
-              return KeyboardNavigator(
-                currentTabIndex: _selectedIndex,
-                totalTabs: _tabsData.length,
-                onTabChange: _changeTab,
-                onBack: _handleMobileBack,
-                child: Scaffold(
-                  backgroundColor: bgColor,
-                  appBar: AppBar(
-                    backgroundColor: bgColor,
-                    elevation: 0,
-                    title: Text(isSearching
-                        ? 'תוצאות חיפוש'
-                        : _tabsData[_selectedIndex].label),
-                    leading: Tooltip(
-                      message: 'חזור (Esc)',
-                      child: IconButton(
-                        icon: const RtlIcon(FluentIcons.arrow_right_24_regular),
-                        onPressed: _handleMobileBack,
-                      ),
-                    ),
-                  ),
-                  body: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                        child: SettingsSearchField(
-                          controller: _searchController,
-                          focusNode: _searchFocusNode,
-                          onChanged: _onSearchChanged,
-                        ),
-                      ),
-                      Expanded(
-                        child: showResults
-                            ? SettingsSearchResultsView(
-                                query: _searchQuery,
-                                results: _searchResults,
-                                onResultTap: _onSearchResultTap,
-                              )
-                            : _tabsData[_selectedIndex].pageBuilder(),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-          }
-
           // ── מצב דסקטופ: KeyboardNavigator + sidebar + תוכן ──────────
           return KeyboardNavigator(
             currentTabIndex: _selectedIndex,
@@ -623,7 +462,7 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
                               padding: const EdgeInsets.only(
                                   right: 12, left: 12, bottom: 20),
                               child: Text(
-                                'הגדרות',
+                                'settings.title'.tr(),
                                 style: Theme.of(context)
                                     .textTheme
                                     .headlineSmall
@@ -654,7 +493,7 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
                       child: _SettingsContentPane(
                         key: ValueKey(_selectedIndex),
                         label: isSearching
-                            ? 'תוצאות חיפוש'
+                            ? 'settings.search_results'.tr()
                             : _tabsData[_selectedIndex].label,
                         bgColor: bgColor,
                         focusNode: _contentFocusNode,

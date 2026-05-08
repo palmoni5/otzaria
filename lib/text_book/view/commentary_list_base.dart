@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -1311,8 +1312,8 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
                       padding: const EdgeInsets.all(16.0),
                       child: Text(
                         hasAnyCommentaryLinks
-                            ? 'לא נמצאו מפרשים מהנבחרים לקטע זה'
-                            : 'לא נמצאו מפרשים לקטע הנבחר',
+                            ? 'commentary_list.no_selected_commentators_for_section'.tr()
+                            : 'commentary_list.no_commentators_for_section'.tr(),
                         style: TextStyle(
                           fontSize: widget.fontSize * 0.7,
                           color: Colors.grey,

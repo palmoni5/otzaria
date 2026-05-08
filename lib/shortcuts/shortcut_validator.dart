@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 
 /// Validator for keyboard shortcuts to detect conflicts
@@ -81,35 +82,50 @@ class ShortcutValidator {
     'key-shortcut-open-commentators-tab': '',
   };
 
-  /// Shortcut names for display
-  static const Map<String, String> shortcutNames = {
-    'key-shortcut-open-library-browser': 'ספרייה',
-    currentWindowSearchKey: 'חיפוש בספר הפתוח',
-    'key-shortcut-open-find-ref': 'איתור',
-    'key-shortcut-close-tab': 'סגור ספר נוכחי',
-    'key-shortcut-close-all-tabs': 'סגור כל הספרים',
-    'key-shortcut-restore-closed-tab': 'פתח כרטיסייה אחרונה שנסגרה',
-    'key-shortcut-open-reading-screen': 'עיון',
-    'key-shortcut-open-new-search': 'חיפוש חדש בכל הספרים',
-    'key-shortcut-open-settings': 'הגדרות',
-    'key-shortcut-open-more': 'כלים',
-    'key-shortcut-open-bookmarks': 'סימניות',
-    'key-shortcut-open-history': 'היסטוריה',
-    'key-shortcut-add-bookmark': 'הוסף סימניה',
-    'key-shortcut-add-note': 'הוספת הערה',
-    'key-shortcut-switch-workspace': 'החלף שולחן עבודה',
-    'key-shortcut-print': 'הדפסה',
-    'key-shortcut-toggle-pdf-view': 'החלף מצב תצוגה (PDF/טקסט)',
-    'key-shortcut-calendar-toggle-times': 'לוח שנה: פתיחה/סגירה זמני היום',
-    'key-shortcut-calendar-toggle-events': 'לוח שנה: פתיחה/סגירה אירועים',
-    'key-shortcut-calendar-today': 'לוח שנה: מעבר להיום',
-    'key-shortcut-calendar-create-event': 'לוח שנה: יצירת אירוע',
-    'key-shortcut-calendar-toggle-view': 'לוח שנה: מעבר בין תצוגות',
-    'key-shortcut-shamor-zachor-cycle-filter': 'שמור וזכור: מעבר בין הסינונים',
-    'key-shortcut-toggle-nav-pane': 'פתח/סגור חלונית ניווט',
-    'key-shortcut-toggle-commentators-pane': 'פתח/סגור חלונית מפרשים',
-    'key-shortcut-open-commentators-tab': 'פתח כרטיסיית מפרשים',
-  };
+  /// Shortcut names for display (translated at access time)
+  static Map<String, String> get shortcutNames => {
+        'key-shortcut-open-library-browser': 'settings.shortcuts.library'.tr(),
+        currentWindowSearchKey:
+            'settings.shortcuts.current_window_search'.tr(),
+        'key-shortcut-open-find-ref': 'settings.shortcuts.find_ref'.tr(),
+        'key-shortcut-close-tab': 'settings.shortcuts.close_tab'.tr(),
+        'key-shortcut-close-all-tabs':
+            'settings.shortcuts.close_all_tabs'.tr(),
+        'key-shortcut-restore-closed-tab':
+            'settings.shortcuts.restore_closed_tab'.tr(),
+        'key-shortcut-open-reading-screen':
+            'settings.shortcuts.reading_screen'.tr(),
+        'key-shortcut-open-new-search': 'settings.shortcuts.new_search'.tr(),
+        'key-shortcut-open-settings': 'settings.shortcuts.settings'.tr(),
+        'key-shortcut-open-more': 'settings.shortcuts.tools'.tr(),
+        'key-shortcut-open-bookmarks': 'settings.shortcuts.bookmarks'.tr(),
+        'key-shortcut-open-history': 'settings.shortcuts.history'.tr(),
+        'key-shortcut-add-bookmark': 'settings.shortcuts.add_bookmark'.tr(),
+        'key-shortcut-add-note': 'settings.shortcuts.add_note'.tr(),
+        'key-shortcut-switch-workspace':
+            'settings.shortcuts.switch_workspace'.tr(),
+        'key-shortcut-print': 'settings.shortcuts.print'.tr(),
+        'key-shortcut-toggle-pdf-view':
+            'settings.shortcuts.toggle_pdf_view'.tr(),
+        'key-shortcut-calendar-toggle-times':
+            'settings.shortcuts.calendar_toggle_times'.tr(),
+        'key-shortcut-calendar-toggle-events':
+            'settings.shortcuts.calendar_toggle_events'.tr(),
+        'key-shortcut-calendar-today':
+            'settings.shortcuts.calendar_today'.tr(),
+        'key-shortcut-calendar-create-event':
+            'settings.shortcuts.calendar_create_event'.tr(),
+        'key-shortcut-calendar-toggle-view':
+            'settings.shortcuts.calendar_toggle_view'.tr(),
+        'key-shortcut-shamor-zachor-cycle-filter':
+            'settings.shortcuts.shamor_zachor_cycle_filter'.tr(),
+        'key-shortcut-toggle-nav-pane':
+            'settings.shortcuts.toggle_nav_pane'.tr(),
+        'key-shortcut-toggle-commentators-pane':
+            'settings.shortcuts.toggle_commentators_pane'.tr(),
+        'key-shortcut-open-commentators-tab':
+            'settings.shortcuts.open_commentators_tab'.tr(),
+      };
 
   /// Check for conflicts in current shortcuts
   /// Returns a map of conflicting shortcuts: {shortcut: [key1, key2, ...]}
@@ -140,16 +156,17 @@ class ShortcutValidator {
     final conflicts = checkConflicts();
 
     if (conflicts.isEmpty) {
-      return 'אין קונפליקטים בקיצורי המקשים';
+      return 'settings.shortcuts.conflicts_none'.tr();
     }
 
-    final buffer = StringBuffer('נמצאו קונפליקטים בקיצורי המקשים:\n\n');
+    final buffer = StringBuffer('settings.shortcuts.conflicts_found'.tr());
 
     for (final entry in conflicts.entries) {
       final shortcut = entry.key;
       final keys = entry.value;
 
-      buffer.writeln('$shortcut משמש עבור:');
+      buffer.writeln('settings.shortcuts.conflict_used_for'
+          .tr(namedArgs: {'shortcut': shortcut}));
       for (final key in keys) {
         final name = shortcutNames[key] ?? key;
         buffer.writeln('  • $name');

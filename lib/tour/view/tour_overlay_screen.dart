@@ -4,6 +4,7 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/tour/bloc/tour_cubit.dart';
@@ -377,8 +378,8 @@ class _LiveTipOverlay extends StatelessWidget {
           final targetRect = targetRectResolver?.call(
                 TourStep(
                   id: 'live_tip_${tip.id.name}',
-                  title: tip.title,
-                  body: tip.description,
+                  title: tip.title.tr(),
+                  body: tip.description.tr(),
                   area: tip.area,
                 ),
               ) ??

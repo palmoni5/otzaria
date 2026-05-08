@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:path/path.dart' as p;
 import 'package:archive/archive_io.dart';
 import 'package:otzaria/core/app_paths.dart';
@@ -226,7 +227,8 @@ void _extractPluginArchiveSync(String archivePath, String tempDirPath) {
     final filename = file.name;
     final targetPath = p.normalize(p.join(tempDirPath, filename));
     if (!p.isWithin(tempDirPath, targetPath)) {
-      throw Exception('נתיב חולץ מקובץ ZIP באופן לא חוקי: $filename');
+      throw Exception('plugins.services.installer_zip_invalid_path'
+          .tr(namedArgs: {'filename': filename}));
     }
 
     if (file.isFile) {

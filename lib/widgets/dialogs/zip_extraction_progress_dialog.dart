@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:otzaria/utils/file/zip_extractor_service.dart';
 
@@ -16,14 +17,15 @@ class ZipExtractionProgressDialog {
     required Function(String) onError,
   }) async {
     final progressNotifier = ValueNotifier<double>(0.0);
-    final messageNotifier = ValueNotifier<String>('בודק תיקייה...');
+    final messageNotifier =
+        ValueNotifier<String>('dialogs.zip_extraction.checking_folder'.tr());
     final isExtractingNotifier = ValueNotifier<bool>(false);
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('מעבד תיקייה'),
+        title: Text('dialogs.zip_extraction.processing_folder'.tr()),
         content: ValueListenableBuilder<bool>(
           valueListenable: isExtractingNotifier,
           builder: (context, isExtracting, _) {
@@ -101,20 +103,18 @@ class ZipExtractionProgressDialog {
           final shouldDelete = await showDialog<bool>(
             context: context,
             builder: (dialogContext) => AlertDialog(
-              title: const Text('מחיקת קובץ דחוס'),
-              content: const Text(
-                'האם למחוק את קובץ ה-ZIP המקורי?\n\n'
-                'הקובץ הדחוס אינו נצרך עבור פעילות התוכנה והוא רק תופס מקום.\n'
-                'מומלץ למחוק אותו.',
+              title: Text('dialogs.zip_extraction.delete_zip_title'.tr()),
+              content: Text(
+                'dialogs.zip_extraction.delete_zip_content'.tr(),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('השאר את הקובץ'),
+                  child: Text('dialogs.zip_extraction.keep_file'.tr()),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: const Text('מחק את הקובץ'),
+                  child: Text('dialogs.zip_extraction.delete_file'.tr()),
                 ),
               ],
             ),
@@ -126,13 +126,13 @@ class ZipExtractionProgressDialog {
               context: context,
               barrierDismissible: false,
               builder: (dialogContext) => AlertDialog(
-                title: const Text('משלים...'),
-                content: const Column(
+                title: Text('dialogs.zip_extraction.completing'.tr()),
+                content: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('משלים חילוץ...'),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text('dialogs.zip_extraction.completing_extraction'.tr()),
                   ],
                 ),
               ),
@@ -148,7 +148,8 @@ class ZipExtractionProgressDialog {
       }
 
       if (!extractionResult.success) {
-        onError(extractionResult.errorMessage ?? 'שגיאה לא ידועה');
+        onError(extractionResult.errorMessage ??
+            'dialogs.zip_extraction.unknown_error'.tr());
       } else {
         onSuccess(extractionResult);
       }

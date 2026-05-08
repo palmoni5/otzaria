@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -55,7 +56,7 @@ class _SearchEditPanelState extends State<SearchEditPanel> {
     final query = widget.tab.queryController.text.trim();
 
     if (query.isEmpty) {
-      UiSnack.show('נא להזין טקסט לחיפוש');
+      UiSnack.show('search.empty_query'.tr());
       return;
     }
 
@@ -187,7 +188,7 @@ class _SearchEditPanelState extends State<SearchEditPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'בחר קטגוריות לחיפוש המעודכן',
+            'search.select_categories_for_updated'.tr(),
             style: TextStyle(
               fontSize: 14,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -279,7 +280,7 @@ class _SearchEditPanelState extends State<SearchEditPanel> {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
-                      'מצב חיפוש:',
+                      'search.search_mode'.tr(),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -299,7 +300,7 @@ class _SearchEditPanelState extends State<SearchEditPanel> {
                         controller: widget.tab.queryController,
                         focusNode: widget.tab.searchFieldFocusNode,
                         decoration: InputDecoration(
-                          hintText: 'הזן טקסט לחיפוש...',
+                          hintText: 'search.enter_search_text'.tr(),
                           border: const OutlineInputBorder(),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -316,13 +317,13 @@ class _SearchEditPanelState extends State<SearchEditPanel> {
                     ),
                     const SizedBox(width: 12),
                     RecommendedActionButton(
-                      text: 'חפש',
+                      text: 'search.search_button'.tr(),
                       icon: FluentIcons.search_24_regular,
                       onPressed: () => _performSearch(context),
                     ),
                     const SizedBox(width: 8),
                     NeutralActionButton(
-                      text: 'סגור',
+                      text: 'common.close'.tr(),
                       icon: FluentIcons.dismiss_24_regular,
                       onPressed: widget.onClose,
                     ),

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
@@ -56,12 +57,12 @@ class MarkdownToolbar extends StatelessWidget {
           // Text formatting
           _ToolbarButton(
             icon: FluentIcons.text_bold_24_regular,
-            tooltip: 'מודגש (Ctrl+B)',
+            tooltip: 'markdown_toolbar.bold'.tr(),
             onPressed: onBold,
           ),
           _ToolbarButton(
             icon: FluentIcons.text_italic_24_regular,
-            tooltip: 'נטוי (Ctrl+I)',
+            tooltip: 'markdown_toolbar.italic'.tr(),
             onPressed: onItalic,
           ),
 
@@ -71,7 +72,9 @@ class MarkdownToolbar extends StatelessWidget {
           _ToolbarButton(
             icon: FluentIcons.text_header_1_24_regular,
             tooltip:
-                hasLinksFile ? 'כותרת 1 - מושבת בספר עם לינקים' : 'כותרת 1',
+                hasLinksFile
+                    ? 'markdown_toolbar.h1_disabled'.tr()
+                    : 'markdown_toolbar.h1'.tr(),
             onPressed: hasLinksFile ? () {} : onHeader1,
             text: 'H1',
             enabled: !hasLinksFile,
@@ -79,7 +82,9 @@ class MarkdownToolbar extends StatelessWidget {
           _ToolbarButton(
             icon: FluentIcons.text_header_1_24_regular,
             tooltip:
-                hasLinksFile ? 'כותרת 2 - מושבת בספר עם לינקים' : 'כותרת 2',
+                hasLinksFile
+                    ? 'markdown_toolbar.h2_disabled'.tr()
+                    : 'markdown_toolbar.h2'.tr(),
             onPressed: hasLinksFile ? () {} : onHeader2,
             text: 'H2',
             enabled: !hasLinksFile,
@@ -87,7 +92,9 @@ class MarkdownToolbar extends StatelessWidget {
           _ToolbarButton(
             icon: FluentIcons.text_header_1_24_regular,
             tooltip:
-                hasLinksFile ? 'כותרת 3 - מושבת בספר עם לינקים' : 'כותרת 3',
+                hasLinksFile
+                    ? 'markdown_toolbar.h3_disabled'.tr()
+                    : 'markdown_toolbar.h3'.tr(),
             onPressed: hasLinksFile ? () {} : onHeader3,
             text: 'H3',
             enabled: !hasLinksFile,
@@ -99,16 +106,16 @@ class MarkdownToolbar extends StatelessWidget {
           _ToolbarButton(
             icon: FluentIcons.text_bullet_list_24_regular,
             tooltip: hasLinksFile
-                ? 'רשימה לא ממוספרת - מושבת בספר עם לינקים'
-                : 'רשימה לא ממוספרת',
+                ? 'markdown_toolbar.ul_disabled'.tr()
+                : 'markdown_toolbar.ul'.tr(),
             onPressed: hasLinksFile ? () {} : onUnorderedList,
             enabled: !hasLinksFile,
           ),
           _ToolbarButton(
             icon: FluentIcons.text_number_list_ltr_24_regular,
             tooltip: hasLinksFile
-                ? 'רשימה ממוספרת - מושבת בספר עם לינקים'
-                : 'רשימה ממוספרת',
+                ? 'markdown_toolbar.ol_disabled'.tr()
+                : 'markdown_toolbar.ol'.tr(),
             onPressed: hasLinksFile ? () {} : onOrderedList,
             enabled: !hasLinksFile,
           ),
@@ -118,17 +125,19 @@ class MarkdownToolbar extends StatelessWidget {
           // Links and code
           _ToolbarButton(
             icon: FluentIcons.link_24_regular,
-            tooltip: 'קישור (Ctrl+K)',
+            tooltip: 'markdown_toolbar.link'.tr(),
             onPressed: onLink,
           ),
           _ToolbarButton(
             icon: FluentIcons.code_24_regular,
-            tooltip: 'קוד',
+            tooltip: 'markdown_toolbar.code'.tr(),
             onPressed: onCode,
           ),
           _ToolbarButton(
             icon: FluentIcons.text_quote_24_regular,
-            tooltip: hasLinksFile ? 'ציטוט - מושבת בספר עם לינקים' : 'ציטוט',
+            tooltip: hasLinksFile
+                ? 'markdown_toolbar.quote_disabled'.tr()
+                : 'markdown_toolbar.quote'.tr(),
             onPressed: hasLinksFile ? () {} : onQuote,
             enabled: !hasLinksFile,
           ),
@@ -138,7 +147,7 @@ class MarkdownToolbar extends StatelessWidget {
           // Search and navigation
           _ToolbarButton(
             icon: FluentIcons.search_24_regular,
-            tooltip: 'חיפוש (Ctrl+F)',
+            tooltip: 'markdown_toolbar.search'.tr(),
             onPressed: onSearch,
           ),
 
@@ -147,12 +156,12 @@ class MarkdownToolbar extends StatelessWidget {
           // Undo/Redo
           _ToolbarButton(
             icon: FluentIcons.arrow_undo_24_regular,
-            tooltip: 'בטל (Ctrl+Z)',
+            tooltip: 'markdown_toolbar.undo'.tr(),
             onPressed: onUndo,
           ),
           _ToolbarButton(
             icon: FluentIcons.arrow_redo_24_regular,
-            tooltip: 'חזור (Ctrl+Y)',
+            tooltip: 'markdown_toolbar.redo'.tr(),
             onPressed: onRedo,
           ),
 
@@ -178,7 +187,7 @@ class MarkdownToolbar extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    'ספר עם קישורים - אין לשנות מבנה שורות',
+                    'markdown_toolbar.linked_book_warning'.tr(),
                     style: TextStyle(
                       fontSize: 12,
                       color: cs.onErrorContainer,

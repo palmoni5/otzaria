@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:otzaria/widgets/widgets_exports.dart';
@@ -22,19 +23,21 @@ const List<String> commonEmailDomains = [
 Future<String?> showErrorReportSenderEmailDialog({
   required BuildContext context,
   String initialValue = '',
-  String title = 'כתובת מייל לזיהוי',
-  String subtitle =
-      'כתובת זו תצורף לדיווח כדי שצוות אוצריא יוכל לחזור אליכם במקרה הצורך.',
+  String? title,
+  String? subtitle,
 }) async {
   String capturedValue = initialValue;
+  final effectiveTitle = title ?? 'dialogs.error_report_email.title'.tr();
+  final effectiveSubtitle =
+      subtitle ?? 'dialogs.error_report_email.subtitle'.tr();
 
   final confirmed = await showSingleActionDialog(
     context: context,
-    title: title,
-    confirmText: 'שמור',
+    title: effectiveTitle,
+    confirmText: 'dialogs.error_report_email.save'.tr(),
     customContent: EmailFieldWithAutocomplete(
       initialValue: initialValue,
-      subtitle: subtitle,
+      subtitle: effectiveSubtitle,
       onValueChanged: (v) => capturedValue = v,
     ),
   );
@@ -304,8 +307,8 @@ class _EmailFieldWithAutocompleteState
                 focusNode: _focusNode,
                 keyboardType: TextInputType.emailAddress,
                 textAlign: TextAlign.left,
-                decoration: const InputDecoration(
-                  labelText: 'כתובת דוא"ל',
+                decoration: InputDecoration(
+                  labelText: 'dialogs.error_report_email.email_label'.tr(),
                   hintText: 'name@example.com',
                 ),
                 autofocus: true,

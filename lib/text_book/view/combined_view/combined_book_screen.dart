@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:otzaria/text_book/utils/visible_index.dart';
 
@@ -544,7 +545,8 @@ class _CombinedViewState extends State<CombinedView> {
         group.every((title) => st.activeCommentators.contains(title));
     return [
       AppContextMenuEntry(
-        label: 'הצג את כל $groupName',
+        label: 'combined_book.show_all_group'
+            .tr(namedArgs: {'group': groupName}),
         isSelected: groupActive,
         onTap: () {
           _selectParagraphForContextMenu(paragraphIndex);
@@ -592,7 +594,7 @@ class _CombinedViewState extends State<CombinedView> {
     if (widget.isPreviewMode) {
       return [
         AppContextMenuEntry(
-          label: 'העתק',
+          label: 'combined_book.copy'.tr(),
           icon: FluentIcons.copy_24_regular,
           enabled: selectedText != null && selectedText.trim().isNotEmpty,
           onTap: () => _copyFormattedText(selectedText),
@@ -631,7 +633,7 @@ class _CombinedViewState extends State<CombinedView> {
     final commentatorChildren = <AppContextMenuEntry>[
       if (shouldShowOpenPaneEntry)
         AppContextMenuEntry(
-          label: 'פתח את חלונית המפרשים',
+          label: 'combined_book.open_commentary_panel'.tr(),
           icon: FluentIcons.panel_right_24_regular,
           isHighlighted: true,
           onTap: () {
@@ -652,7 +654,7 @@ class _CombinedViewState extends State<CombinedView> {
       if (shouldShowOpenPaneEntry || shouldShowSelectEntry)
         const AppContextMenuEntry.divider(),
       AppContextMenuEntry(
-        label: 'הצג את כל המפרשים',
+        label: 'combined_book.show_all_commentators'.tr(),
         isSelected: allActive,
         onTap: () {
           _selectParagraphForContextMenu(paragraphIndex);
@@ -708,7 +710,7 @@ class _CombinedViewState extends State<CombinedView> {
     List<AppContextMenuEntry> buildLinkChildren() => [
           if (showOpenLinksPaneEntry) ...[
             AppContextMenuEntry(
-              label: 'פתח קישורים בחלונית צד',
+              label: 'combined_book.open_links_panel'.tr(),
               onTap: () => widget.onOpenLinksPane?.call(),
             ),
             const AppContextMenuEntry.divider(),
@@ -739,7 +741,7 @@ class _CombinedViewState extends State<CombinedView> {
         final hasSelectedText = cleanedText.isNotEmpty;
         final preview = hasSelectedText ? previewForLabel(cleanedText) : '';
         return AppContextMenuEntry(
-          label: 'חיפוש',
+          label: 'combined_book.search'.tr(),
           icon: FluentIcons.search_24_regular,
           enabled: true,
           // ללא טקסט נבחר: פתיחת חיפוש רגיל בספר ללא שאילתה.
@@ -774,13 +776,13 @@ class _CombinedViewState extends State<CombinedView> {
         );
       }(),
       AppContextMenuEntry(
-        label: 'מפרשים',
+        label: 'combined_book.commentators'.tr(),
         icon: FluentIcons.book_24_regular,
         enabled: state.availableCommentators.isNotEmpty,
         children: commentatorChildren,
       ),
       AppContextMenuEntry(
-        label: 'קישורים',
+        label: 'combined_book.links'.tr(),
         icon: FluentIcons.link_24_regular,
         enabled: paragraphLinks.isNotEmpty,
         childrenBuilder: buildLinkChildren,
@@ -804,13 +806,13 @@ class _CombinedViewState extends State<CombinedView> {
       })(),
       const AppContextMenuEntry.divider(),
       AppContextMenuEntry(
-        label: 'הוסף הערה אישית',
+        label: 'combined_book.add_personal_note'.tr(),
         icon: FluentIcons.note_add_24_regular,
         onTap: () => _showNoteEditor(selectedText),
       ),
       if (!state.book.isUserBook)
         AppContextMenuEntry(
-          label: 'דווח על טעות בספר',
+          label: 'combined_book.report_book_error'.tr(),
           icon: FluentIcons.error_circle_24_regular,
           onTap: () => _openErrorReportDialog(
             selectedText ?? '',
@@ -819,19 +821,19 @@ class _CombinedViewState extends State<CombinedView> {
         ),
       const AppContextMenuEntry.divider(),
       AppContextMenuEntry(
-        label: 'העתק',
+        label: 'combined_book.copy'.tr(),
         icon: FluentIcons.copy_24_regular,
         enabled: selectedText != null && selectedText.trim().isNotEmpty,
         onTap: () => _copyFormattedText(selectedText),
       ),
       AppContextMenuEntry(
-        label: 'העתק את כל הפסקה',
+        label: 'combined_book.copy_full_paragraph'.tr(),
         icon: FluentIcons.document_copy_24_regular,
         enabled: paragraphIndex >= 0 && paragraphIndex < widget.data.length,
         onTap: () => _copyParagraphByIndex(paragraphIndex),
       ),
       AppContextMenuEntry(
-        label: 'העתק טקסט מוצג',
+        label: 'combined_book.copy_visible_text'.tr(),
         icon: FluentIcons.document_copy_24_regular,
         onTap: _copyVisibleText,
       ),
@@ -1074,7 +1076,7 @@ class _CombinedViewState extends State<CombinedView> {
     debugPrint('_currentSelectedIndex: ${_currentSelectedIndex.value}');
 
     if (plainText == null || plainText.trim().isEmpty) {
-      UiSnack.show('אנא בחר טקסט להעתקה');
+      UiSnack.show('combined_book.select_text_to_copy'.tr());
       return;
     }
 
@@ -1094,7 +1096,8 @@ class _CombinedViewState extends State<CombinedView> {
       );
     } catch (e) {
       if (mounted) {
-        UiSnack.showError('שגיאה בהעתקה מעוצבת: $e');
+        UiSnack.showError('combined_book.formatted_copy_error'
+            .tr(namedArgs: {'error': e.toString()}));
       }
     }
   }

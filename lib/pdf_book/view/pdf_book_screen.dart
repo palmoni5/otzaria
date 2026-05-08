@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'dart:io';
 import 'dart:math';
 import 'dart:async';
@@ -270,8 +271,6 @@ class _PdfBookScreenState extends State<PdfBookScreen>
   static const String _connectionTypeTargum = 'TARGUM';
   static const int _kCommentaryTabIndex = 0;
   static const int _kLinksTabIndex = 1;
-  static const int _kPersonalNotesTabIndex = 2;
-  static const double _kRightPaneNarrowWidth = 250;
 
   @override
   bool get wantKeepAlive => true;
@@ -832,21 +831,6 @@ class _PdfBookScreenState extends State<PdfBookScreen>
   }
 
   // פותחת את חלונית ההערות האישיות.
-  // אם הייתה סגורה — נפתחת ב-narrow (רוחב מינימלי).
-  // אם הייתה פתוחה — נשארת ברוחב הנוכחי ועוברת לטאב הערות.
-  void _openPersonalNotesPane() {
-    final current = _bloc.state;
-    final isOpen = current is PdfBookLoaded && current.showRightPane;
-    setState(() {
-      _rightPaneInitialTabIndex = _kPersonalNotesTabIndex;
-      _currentRightPaneTabIndex = _kPersonalNotesTabIndex;
-    });
-    if (!isOpen) {
-      _bloc.add(const pdf_events.UpdateRightPaneWidth(_kRightPaneNarrowWidth));
-    }
-    _bloc.add(const pdf_events.ToggleRightPane(show: true));
-  }
-
   void _maybeRegisterPdfCommentaryOpportunity() {
     if (_linksLoading) {
       return;
@@ -938,7 +922,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
     final commentatorChildren = <AppContextMenuEntry>[
       if (shouldShowOpenPaneEntry)
         AppContextMenuEntry(
-          label: 'פתח את חלונית המפרשים',
+          label: 'pdf_book.book_screen.open_commentary_pane'.tr(),
           icon: FluentIcons.panel_right_24_regular,
           isHighlighted: true,
           onTap: () => _openCommentaryPane(),
@@ -960,7 +944,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
       if (shouldShowOpenPaneEntry || shouldShowSelectEntry)
         const AppContextMenuEntry.divider(),
       AppContextMenuEntry(
-        label: 'הצג את כל המפרשים',
+        label: 'pdf_book.book_screen.show_all_commentaries'.tr(),
         isSelected: allActive,
         onTap: () => _toggleAllCommentators(relevantCommentators),
       ),
@@ -975,12 +959,12 @@ class _PdfBookScreenState extends State<PdfBookScreen>
 
     return [
       AppContextMenuEntry(
-        label: 'חיפוש',
+        label: 'pdf_book.book_screen.context_search'.tr(),
         icon: FluentIcons.search_24_regular,
         onTap: _ensureSearchTabIsActive,
       ),
       AppContextMenuEntry(
-        label: 'מפרשים',
+        label: 'pdf_book.book_screen.context_commentaries'.tr(),
         icon: FluentIcons.book_24_regular,
         // התת-תפריט פעיל אם יש בדף מפרשים זמינים, או אם ניתן לפתוח את
         // חלונית בחירת המפרשים (כדי לאפשר בחירה התחלתית גם בדף ללא מפרשים).
@@ -1002,7 +986,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
       ),
       const AppContextMenuEntry.divider(),
       AppContextMenuEntry(
-        label: 'הוסף הערה אישית',
+        label: 'pdf_book.add_personal_note'.tr(),
         icon: FluentIcons.note_add_24_regular,
         onTap: () => _handleAddNotePress(menuContext),
       ),
@@ -1676,7 +1660,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
                 padding: EdgeInsets.only(right: horizontalPadding),
                 child: _BookViewTurnButton(
                   icon: FluentIcons.chevron_left_24_regular,
-                  tooltip: 'הזוג הקודם',
+                  tooltip: 'pdf_book.book_screen.previous_spread'.tr(),
                   size: buttonSize,
                   backgroundColor: colorScheme.surface.withValues(alpha: 0.78),
                   iconColor: colorScheme.onSurface,
@@ -1693,7 +1677,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
                 padding: EdgeInsets.only(left: horizontalPadding),
                 child: _BookViewTurnButton(
                   icon: FluentIcons.chevron_right_24_regular,
-                  tooltip: 'הזוג הבא',
+                  tooltip: 'pdf_book.book_screen.next_spread'.tr(),
                   size: buttonSize,
                   backgroundColor: colorScheme.surface.withValues(alpha: 0.78),
                   iconColor: colorScheme.onSurface,
@@ -2536,16 +2520,23 @@ class _PdfBookScreenState extends State<PdfBookScreen>
     setState(() {
       _commentatorGroups = [
         CommentatorGroup(
-            title: 'תורה שבכתב', commentators: eras['תורה שבכתב'] ?? const []),
-        CommentatorGroup(title: 'חז"ל', commentators: eras['חז"ל'] ?? const []),
+            title: 'pdf_book.commentator_group_torah_writings'.tr(),
+            commentators: eras['תורה שבכתב'] ?? const []),
         CommentatorGroup(
-            title: 'ראשונים', commentators: eras['ראשונים'] ?? const []),
+            title: 'pdf_book.commentator_group_hazal'.tr(),
+            commentators: eras['חז"ל'] ?? const []),
         CommentatorGroup(
-            title: 'אחרונים', commentators: eras['אחרונים'] ?? const []),
+            title: 'pdf_book.commentator_group_rishonim'.tr(),
+            commentators: eras['ראשונים'] ?? const []),
         CommentatorGroup(
-            title: 'מחברי זמננו',
+            title: 'pdf_book.commentator_group_acharonim'.tr(),
+            commentators: eras['אחרונים'] ?? const []),
+        CommentatorGroup(
+            title: 'pdf_book.commentator_group_modern_authors'.tr(),
             commentators: eras['מחברי זמננו'] ?? const []),
-        CommentatorGroup(title: 'שאר מפרשים', commentators: others),
+        CommentatorGroup(
+            title: 'pdf_book.commentator_group_other'.tr(),
+            commentators: others),
       ];
     });
   }
@@ -2814,7 +2805,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
     _bloc.add(const pdf_events.ResetPerBookSettings());
     widget.tab.activeCommentators.clear();
     if (mounted) {
-      UiSnack.show('ההגדרות הפר-ספריות אופסו בהצלחה');
+      UiSnack.show('pdf_book.book_screen.settings_reset'.tr());
     }
   }
 
@@ -2873,8 +2864,11 @@ class _PdfBookScreenState extends State<PdfBookScreen>
     widget.tab.currentTitle.value = immediateRange.endPageExclusive -
                 immediateRange.startPage >
             1
-        ? 'עמודים ${immediateRange.startPage}-${immediateRange.endPageExclusive - 1}'
-        : 'עמוד $newPage';
+        ? 'pdf_book.book_screen.page_range_title'.tr(namedArgs: {
+            'start': '${immediateRange.startPage}',
+            'end': '${immediateRange.endPageExclusive - 1}',
+          })
+        : 'pdf_book.book_screen.page_title'.tr(namedArgs: {'page': '$newPage'});
 
     final titles = await _resolveTitlesForPage(newPage);
     if (!mounted) return;
@@ -3296,21 +3290,21 @@ class _PdfBookScreenState extends State<PdfBookScreen>
           valueListenable: widget.tab.pinLeftPane,
           builder: (context, pinLeftPanel, child) => SidebarTabHeader(
             controller: _leftPaneTabController!,
-            tabs: const [
+            tabs: [
               (
                 icon: FluentIcons.navigation_24_regular,
                 iconFilled: FluentIcons.navigation_24_filled,
-                label: 'ניווט'
+                label: 'pdf_book.book_screen.tab_navigation'.tr(),
               ),
               (
                 icon: FluentIcons.search_24_regular,
                 iconFilled: FluentIcons.search_24_filled,
-                label: 'חיפוש'
+                label: 'pdf_book.book_screen.tab_search'.tr(),
               ),
               (
                 icon: FluentIcons.document_multiple_24_regular,
                 iconFilled: FluentIcons.document_multiple_24_filled,
-                label: 'דפים'
+                label: 'pdf_book.book_screen.tab_pages'.tr(),
               ),
             ],
             isPinned: pinLeftPanel,
@@ -3598,15 +3592,15 @@ class _PdfBookScreenState extends State<PdfBookScreen>
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          title: const Text('לעבור לURL?'),
+          title: Text('pdf_book.book_screen.url_dialog_title'.tr()),
           content: RtlSelectionShortcuts(
               child: SelectionArea(
             child: Text.rich(
               TextSpan(
                 children: [
-                  const TextSpan(text: 'האם לעבור לכתובת הבאה\n'),
+                  TextSpan(text: 'pdf_book.book_screen.url_dialog_content'.tr()),
                   TextSpan(
-                    text: url.toString(),
+                    text: '\n${url.toString()}',
                     style: const TextStyle(color: Colors.blue),
                   ),
                 ],
@@ -3616,11 +3610,11 @@ class _PdfBookScreenState extends State<PdfBookScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('ביטול'),
+              child: Text('pdf_book.book_screen.url_dialog_cancel'.tr()),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('עבור'),
+              child: Text('pdf_book.book_screen.url_dialog_go'.tr()),
             ),
           ],
         );
@@ -3665,9 +3659,9 @@ class _PdfBookScreenState extends State<PdfBookScreen>
             widget.enableTourTargets ? pdfBookOverflowTourTargetKey : null,
         menuItemKeysByTooltip: widget.enableTourTargets
             ? {
-                'הוסף סימניה': pdfBookOverflowBookmarkTourTargetKey,
-                'חיפוש': pdfBookOverflowSearchTourTargetKey,
-                'הדפס': pdfBookOverflowPrintTourTargetKey,
+                'pdf_book.book_screen.add_bookmark'.tr(): pdfBookOverflowBookmarkTourTargetKey,
+                'pdf_book.book_screen.search_tooltip'.tr(): pdfBookOverflowSearchTourTargetKey,
+                'pdf_book.book_screen.print'.tr(): pdfBookOverflowPrintTourTargetKey,
               }
             : null,
         actions: _buildDisplayOrderPdfActions(context),
@@ -3684,7 +3678,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
         widget: _buildTextButton(
             context, widget.tab.book, widget.tab.pdfViewerController),
         icon: FluentIcons.document_text_24_regular,
-        tooltip: 'פתח ספר במהדורת טקסט',
+        tooltip: 'pdf_book.book_screen.open_text_edition'.tr(),
         onPressed: () => _handleTextButtonPress(context),
       ),
       ActionButtonData.simple(
@@ -3707,13 +3701,13 @@ class _PdfBookScreenState extends State<PdfBookScreen>
           },
         ),
         icon: FluentIcons.book_open_24_regular,
-        tooltip: 'מצב תצוגה',
+        tooltip: 'pdf_book.book_screen.view_mode'.tr(),
         onPressed: null,
       ),
       ActionButtonData.simple(
         key: widget.enableTourTargets ? pdfBookSearchTourTargetKey : null,
         icon: FluentIcons.search_24_regular,
-        tooltip: 'חיפוש',
+        tooltip: 'pdf_book.book_screen.search_tooltip'.tr(),
         onPressed: _ensureSearchTabIsActive,
         compact: isCompact,
       ),
@@ -3739,31 +3733,41 @@ class _PdfBookScreenState extends State<PdfBookScreen>
       if (widget.isInCombinedView) ...navigationActions,
       ActionButtonData(
         widget: ToolbarActionButton(
-          tooltip: 'הצג הערות אישיות',
+          tooltip: 'pdf_book.book_screen.show_notes'.tr(),
           icon: FluentIcons.note_24_regular,
           compact: isCompact,
-          onPressed: _openPersonalNotesPane,
+          onPressed: () {
+            setState(() {
+              _rightPaneInitialTabIndex = 2;
+            });
+            _bloc.add(const pdf_events.ToggleRightPane(show: true));
+          },
         ),
         icon: FluentIcons.note_24_regular,
-        tooltip: 'הצג הערות אישיות',
-        onPressed: _openPersonalNotesPane,
+        tooltip: 'pdf_book.book_screen.show_notes'.tr(),
+        onPressed: () {
+          setState(() {
+            _rightPaneInitialTabIndex = 2;
+          });
+          _bloc.add(const pdf_events.ToggleRightPane(show: true));
+        },
       ),
       ActionButtonData.simple(
         icon: FluentIcons.note_add_24_regular,
-        tooltip: 'הוסף הערה לעמוד זה',
+        tooltip: 'pdf_book.book_screen.add_note'.tr(),
         onPressed: () => _handleAddNotePress(context),
         compact: isCompact,
       ),
       ActionButtonData(
         widget: ToolbarActionButton(
           key: widget.enableTourTargets ? pdfBookBookmarkTourTargetKey : null,
-          tooltip: 'הוסף סימניה',
+          tooltip: 'pdf_book.book_screen.add_bookmark'.tr(),
           icon: FluentIcons.bookmark_add_24_regular,
           compact: isCompact,
           onPressed: () => _handleBookmarkPress(context),
         ),
         icon: FluentIcons.bookmark_add_24_regular,
-        tooltip: 'הוסף סימניה',
+        tooltip: 'pdf_book.book_screen.add_bookmark'.tr(),
         onPressed: () => _handleBookmarkPress(context),
       ),
       ActionButtonData(
@@ -3781,7 +3785,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
           context.read<SettingsBloc>().state.enablePerBookSettings)
         ActionButtonData.simple(
           icon: FluentIcons.arrow_reset_24_regular,
-          tooltip: 'אפס הגדרות ספר זה',
+          tooltip: 'pdf_book.book_screen.reset_book_settings'.tr(),
           onPressed: _resetPerBookSettings,
           compact: isCompact,
         ),
@@ -3789,7 +3793,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
         ActionButtonData.simple(
           key: widget.enableTourTargets ? pdfBookPrintTourTargetKey : null,
           icon: FluentIcons.print_24_regular,
-          tooltip: 'הדפס',
+          tooltip: 'pdf_book.book_screen.print'.tr(),
           onPressed: () => _handlePrintPress(context),
           compact: isCompact,
         ),
@@ -3798,8 +3802,8 @@ class _PdfBookScreenState extends State<PdfBookScreen>
         widget: const SizedBox.shrink(),
         icon: FluentIcons.link_24_regular,
         tooltip: widget.tab.book.id != null
-            ? 'העתק קישור ישיר'
-            : 'העתק קישור ישיר (לא זמין לספר זה)',
+            ? 'pdf_book.copy_link_direct'.tr()
+            : 'pdf_book.copy_link_direct_unavailable'.tr(),
         onPressed: null,
         submenuItems: widget.tab.book.id != null
             ? () {
@@ -3808,14 +3812,14 @@ class _PdfBookScreenState extends State<PdfBookScreen>
                   ActionButtonData(
                     widget: const SizedBox.shrink(),
                     icon: FluentIcons.link_24_regular,
-                    tooltip: 'העתק קישור ישיר לספר זה',
+                    tooltip: 'pdf_book.copy_link_to_book'.tr(),
                     onPressed: () =>
                         copyLinkToClipboard(buildPdfBookLink(bookId)),
                   ),
                   ActionButtonData(
                     widget: const SizedBox.shrink(),
                     icon: FluentIcons.link_multiple_24_regular,
-                    tooltip: 'העתק קישור ישיר לעמוד זה',
+                    tooltip: 'pdf_book.copy_link_to_page'.tr(),
                     onPressed: () {
                       final page = widget.tab.pdfViewerController.pageNumber ??
                           widget.tab.pageNumber;
@@ -3830,20 +3834,20 @@ class _PdfBookScreenState extends State<PdfBookScreen>
         ActionButtonData(
           widget: const SizedBox.shrink(),
           icon: FluentIcons.more_horizontal_24_regular,
-          tooltip: 'פעולות נוספות',
+          tooltip: 'pdf_book.book_screen.more_actions'.tr(),
           onPressed: null,
           submenuItems: [
             if (context.read<SettingsBloc>().state.enablePerBookSettings)
               ActionButtonData(
                 widget: const SizedBox.shrink(),
                 icon: FluentIcons.arrow_reset_24_regular,
-                tooltip: 'אפס הגדרות ספר זה',
+                tooltip: 'pdf_book.book_screen.reset_book_settings'.tr(),
                 onPressed: () => _resetPerBookSettings(),
               ),
             ActionButtonData(
               widget: const SizedBox.shrink(),
               icon: FluentIcons.print_24_regular,
-              tooltip: 'הדפס',
+              tooltip: 'pdf_book.book_screen.print'.tr(),
               onPressed: () => _handlePrintPress(context),
             ),
           ],
@@ -3980,15 +3984,17 @@ class _PdfBookScreenState extends State<PdfBookScreen>
 
     String ref;
     final outline = widget.tab.outline.value;
+    final pageLabel = 'pdf_book.book_screen.page_title'
+        .tr(namedArgs: {'page': '$index'});
     if (outline != null && outline.isNotEmpty) {
       final heading = _findHeadingForPage(outline, index);
       if (heading != null) {
         ref = '${widget.tab.title} $heading';
       } else {
-        ref = '${widget.tab.title} עמוד $index';
+        ref = '${widget.tab.title} $pageLabel';
       }
     } else {
-      ref = '${widget.tab.title} עמוד $index';
+      ref = '${widget.tab.title} $pageLabel';
     }
 
     try {
@@ -3996,13 +4002,14 @@ class _PdfBookScreenState extends State<PdfBookScreen>
           .read<BookmarkBloc>()
           .addBookmark(ref: ref, book: widget.tab.book, index: index);
       if (mounted) {
-        UiSnack.show(
-            bookmarkAdded ? 'הסימניה נוספה בהצלחה' : 'הסימניה כבר קיימת');
+        UiSnack.show(bookmarkAdded
+            ? 'pdf_book.book_screen.bookmark_added'.tr()
+            : 'pdf_book.book_screen.bookmark_exists'.tr());
       }
     } catch (e) {
       debugPrint('Error adding bookmark: $e');
       if (mounted) {
-        UiSnack.show('שגיאה בהוספת הסימניה');
+        UiSnack.show('pdf_book.book_screen.bookmark_error'.tr());
       }
     }
 
@@ -4044,6 +4051,8 @@ class _PdfBookScreenState extends State<PdfBookScreen>
 
     final notesBloc = context.read<PersonalNotesBloc>();
 
+    if (!mounted) return;
+
     final draftService = PersonalNoteDraftService();
     final draft = await draftService.loadDraft(
       bookId: widget.tab.book.title,
@@ -4055,12 +4064,16 @@ class _PdfBookScreenState extends State<PdfBookScreen>
     notesBloc.add(StartCreatingPersonalNote(
       bookId: widget.tab.book.title,
       lineNumber: currentPage,
-      referenceText: 'עמוד $currentPage',
+      referenceText: 'pdf_book.book_screen.page_title'
+          .tr(namedArgs: {'page': '$currentPage'}),
       initialContent: draft?.content ?? '',
       initialFormat: draft?.contentFormat ?? PersonalNoteContentFormat.plain,
     ));
 
-    _openPersonalNotesPane();
+    setState(() {
+      _rightPaneInitialTabIndex = 2;
+    });
+    _bloc.add(const pdf_events.ToggleRightPane(show: true));
   }
 
   Future<void> _handlePrintPress(BuildContext context) async {
@@ -4122,7 +4135,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
           .then((library) => library.findBookByTitle(book.title, TextBook)),
       builder: (context, snapshot) => snapshot.hasData
           ? ToolbarActionButton(
-              tooltip: 'פתח ספר במהדורת טקסט',
+              tooltip: 'pdf_book.book_screen.open_text_edition'.tr(),
               icon: FluentIcons.document_text_24_regular,
               compact: isCompact,
               onPressed: () async {
@@ -4151,7 +4164,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
         : FluentIcons.book_24_regular;
 
     return AppPopupMenuButton<PdfLayoutMode>(
-      tooltip: 'בחר מצב תצוגה',
+      tooltip: 'pdf_book.book_screen.choose_view_mode'.tr(),
       iconData: iconData,
       icon: Transform.scale(
         scaleX: isBookViewMode ? 1.0 : -1.0,
@@ -4203,13 +4216,13 @@ class _PdfBookScreenState extends State<PdfBookScreen>
         return [
           buildItem(
             value: PdfLayoutMode.regularView,
-            text: 'תצוגה רגילה',
+            text: 'pdf_book.book_screen.regular_view'.tr(),
             icon: FluentIcons.book_24_regular,
             isSelected: !isBookViewMode,
           ),
           buildItem(
             value: PdfLayoutMode.bookView,
-            text: 'תצוגת ספר',
+            text: 'pdf_book.book_screen.book_view'.tr(),
             icon: FluentIcons.book_open_24_regular,
             isSelected: isBookViewMode,
           ),

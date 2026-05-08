@@ -87,23 +87,20 @@ const List<LiveTipSpec> liveTipSpecs = [
   LiveTipSpec(
     id: LiveTipId.sideBySideSuggestion,
     area: TourSpotlightArea.tabs,
-    title: 'השוואה בין שני ספרים',
-    description:
-        'נראה שאתה מדלג שוב ושוב בין אותם ספרים. לחץ לחיצה ימנית על אחת הלשוניות כאן ובחר "הצג לצד".',
+    title: 'tour.compare_books_title',
+    description: 'tour.compare_books_body',
   ),
   LiveTipSpec(
     id: LiveTipId.dictionaryContextMenuHint,
     area: TourSpotlightArea.reading,
-    title: 'יש כאן פירוש זמין למילה שסימנת',
-    description:
-        'למילה המסומנת יש כאן פתיחת ראשי תיבות או פירוש מארמית. לחץ עליה בלחיצה ימנית כדי לראות את האפשרות עצמה.',
+    title: 'tour.word_meaning_title',
+    description: 'tour.word_meaning_body',
   ),
   LiveTipSpec(
     id: LiveTipId.commentaryHint,
     area: TourSpotlightArea.commentators,
-    title: 'כדאי לפתוח מפרשים',
-    description:
-        'לספר הזה יש מפרשים זמינים. אפשר לפתוח את סרגל הצד בלחצן הסמוך ולעבוד מהר יותר.',
+    title: 'tour.open_commentaries_title',
+    description: 'tour.open_commentaries_body',
   ),
 ];
 

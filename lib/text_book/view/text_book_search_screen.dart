@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -610,7 +611,8 @@ class TextBookSearchViewState extends State<TextBookSearchView>
       resultToolbar:
           searchResults.isNotEmpty ? _buildSearchResultNavigationBar() : null,
       resultCountString: searchResults.isNotEmpty
-          ? 'נמצאו ${searchResults.length} תוצאות'
+          ? 'text_book_search.found_results'
+              .tr(namedArgs: {'count': searchResults.length.toString()})
           : null,
       resultsWidget: ScrollablePositionedList.builder(
         itemScrollController: _resultsScrollController,
@@ -800,12 +802,12 @@ class TextBookSearchViewState extends State<TextBookSearchView>
             );
       },
       additionalActions: const [],
-      hintText: 'חפש כאן...',
+      hintText: 'text_book_search.search_hint'.tr(),
       onAdvancedSearch: () async {
         // מטמיעים את ה-configuration ישירות ב-Bloc במקום events, כי events
         // אסינכרוניים עלולים לרוץ אחרי שה-dialog פותח חיפוש ראשון.
         final tempTab = SearchingTab(
-          'חיפוש',
+          'text_book_search.search_default'.tr(),
           searchTextController.text,
           initialConfiguration: SearchConfiguration(
             searchMode: _searchMode,
@@ -895,13 +897,13 @@ class TextBookSearchViewState extends State<TextBookSearchView>
           children: [
             _buildResultNavigationButton(
               icon: FluentIcons.chevron_up_24_regular,
-              tooltip: 'התוצאה הקודמת',
+              tooltip: 'text_book_search.previous_result'.tr(),
               onPressed: isAtFirstResult ? null : () => _moveBetweenResults(-1),
             ),
             const SizedBox(width: 4),
             _buildResultNavigationButton(
               icon: FluentIcons.chevron_down_24_regular,
-              tooltip: 'התוצאה הבאה',
+              tooltip: 'text_book_search.next_result'.tr(),
               onPressed: isAtLastResult ? null : () => _moveBetweenResults(1),
             ),
           ],

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -277,29 +278,31 @@ class _TantivySearchResultsState extends State<TantivySearchResults> {
         // או כפתור pagination כשיש עוד תוצאות בשרת.
         if (index == state.results.length) {
           if (showInlineLoadingIndicator) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16.0),
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
               child: Center(
                 child: Column(
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 8),
-                    Text('טוען תוצאות...'),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 8),
+                    Text('search.loading_results'.tr()),
                   ],
                 ),
               ),
             );
           }
 
-          final remainingText =
-              'טען תוצאות נוספות (${state.totalResults - state.results.length})';
+          final remainingText = 'search.load_more_results'.tr(namedArgs: {
+            'count': (state.totalResults - state.results.length).toString(),
+          });
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 16.0),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 260),
                 child: NeutralActionButton(
-                  text: state.isLoading ? 'טוען...' : remainingText,
+                  text:
+                      state.isLoading ? 'search.loading'.tr() : remainingText,
                   onPressed: () {
                     context.read<SearchBloc>().add(
                           LoadMoreResults(

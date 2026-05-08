@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
@@ -44,9 +45,9 @@ class PdfZoomBar extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 minimumSize: const Size(60, 36),
               ),
-              child: const Text(
-                'אפס',
-                style: TextStyle(fontSize: 14),
+              child: Text(
+                'pdf_book.zoom.reset'.tr(),
+                style: const TextStyle(fontSize: 14),
               ),
             ),
             Container(
@@ -59,7 +60,7 @@ class PdfZoomBar extends StatelessWidget {
             IconButton(
               icon: const Icon(FluentIcons.add_24_regular, size: 20),
               onPressed: onZoomIn,
-              tooltip: 'הגדל את התצוגה',
+              tooltip: 'pdf_book.zoom.zoom_in'.tr(),
               padding: const EdgeInsets.all(8),
               constraints: const BoxConstraints(
                 minWidth: 36,
@@ -76,7 +77,7 @@ class PdfZoomBar extends StatelessWidget {
             IconButton(
               icon: const Icon(FluentIcons.subtract_24_regular, size: 20),
               onPressed: onZoomOut,
-              tooltip: 'הקטן את התצוגה',
+              tooltip: 'pdf_book.zoom.zoom_out'.tr(),
               padding: const EdgeInsets.all(8),
               constraints: const BoxConstraints(
                 minWidth: 36,

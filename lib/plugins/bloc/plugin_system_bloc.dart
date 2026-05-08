@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_event.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_state.dart';
@@ -84,7 +85,8 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
       emit(PluginSystemLoaded(plugins));
     } catch (e) {
       emit(PluginSystemError(e.toString()));
-      UiSnack.showError('שגיאה בטעינת תוספים: ${e.toString()}');
+      UiSnack.showError('plugins.system_bloc.load_error'
+          .tr(namedArgs: {'error': e.toString()}));
     }
   }
 
@@ -94,7 +96,8 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
       await repository.updatePinState(event.pluginId, true);
       add(LoadPlugins());
     } catch (e) {
-      UiSnack.showError('שגיאה בהצמדת התוסף: ${e.toString()}');
+      UiSnack.showError('plugins.system_bloc.pin_error'
+          .tr(namedArgs: {'error': e.toString()}));
     }
   }
 
@@ -104,7 +107,8 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
       await repository.updatePinState(event.pluginId, false);
       add(LoadPlugins());
     } catch (e) {
-      UiSnack.showError('שגיאה בהסרת הצמדת התוסף: ${e.toString()}');
+      UiSnack.showError('plugins.system_bloc.unpin_error'
+          .tr(namedArgs: {'error': e.toString()}));
     }
   }
 
@@ -114,7 +118,8 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
       await repository.updateNavRailPinState(event.pluginId, true);
       add(LoadPlugins());
     } catch (e) {
-      UiSnack.showError('שגיאה בהצמדת התוסף לסרגל הניווט: ${e.toString()}');
+      UiSnack.showError('plugins.system_bloc.pin_to_nav_rail_error'
+          .tr(namedArgs: {'error': e.toString()}));
     }
   }
 
@@ -125,8 +130,8 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
       await repository.updateNavRailPinState(event.pluginId, false);
       add(LoadPlugins());
     } catch (e) {
-      UiSnack.showError(
-          'שגיאה בהסרת הצמדת התוסף מסרגל הניווט: ${e.toString()}');
+      UiSnack.showError('plugins.system_bloc.unpin_from_nav_rail_error'
+          .tr(namedArgs: {'error': e.toString()}));
     }
   }
 
@@ -137,8 +142,10 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
       add(LoadPlugins());
     } catch (e) {
       UiSnack.showError(event.hidden
-          ? 'שגיאה בהסתרת התוסף: ${e.toString()}'
-          : 'שגיאה בהצגת התוסף: ${e.toString()}');
+          ? 'plugins.system_bloc.hide_error'
+              .tr(namedArgs: {'error': e.toString()})
+          : 'plugins.system_bloc.show_error'
+              .tr(namedArgs: {'error': e.toString()}));
     }
   }
 
@@ -148,7 +155,8 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
       await repository.reorderPlugins(event.orderedPluginIds);
       add(LoadPlugins());
     } catch (e) {
-      UiSnack.showError('שגיאה בעדכון סדר התוספים: ${e.toString()}');
+      UiSnack.showError('plugins.system_bloc.reorder_error'
+          .tr(namedArgs: {'error': e.toString()}));
     }
   }
 
@@ -173,7 +181,8 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
         version: e.version,
       ));
     } catch (e) {
-      UiSnack.showError('שגיאה בהתקנת התוסף: ${e.toString()}');
+      UiSnack.showError('plugins.system_bloc.install_error'
+          .tr(namedArgs: {'error': e.toString()}));
       add(LoadPlugins()); // Reset state
     }
   }
@@ -202,8 +211,7 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
       ));
     } on PluginOverwriteException catch (e) {
       UiSnack.show(
-        'תוסף זה כבר מותקן אצלך, באותה הגרסה. '
-        'להתקנה מחדש השתמש בקישור עם overwrite=true.',
+        'plugins.system_bloc.already_installed'.tr(),
       );
       debugPrint(
         'Plugin overwrite required for "${e.pluginName}" version ${e.version}',
@@ -211,11 +219,15 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
       add(LoadPlugins());
     } on PluginNewerVersionInstalledException catch (e) {
       UiSnack.show(
-        'כבר מותקנת אצלך גרסה חדשה יותר של "${e.pluginName}" (${e.installedVersion})',
+        'plugins.system_bloc.newer_installed'.tr(namedArgs: {
+          'name': e.pluginName,
+          'version': e.installedVersion,
+        }),
       );
       add(LoadPlugins());
     } catch (e) {
-      UiSnack.showError('שגיאה בהתקנת התוסף מהחנות: ${e.toString()}');
+      UiSnack.showError('plugins.system_bloc.install_from_store_error'
+          .tr(namedArgs: {'error': e.toString()}));
       add(LoadPlugins());
     } finally {
       if (archivePath != null) {
@@ -241,11 +253,12 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
             event.manifest.id, entry.key, entry.value);
       }
 
-      UiSnack.showSuccess('התוסף הותקן בהצלחה');
+      UiSnack.showSuccess('plugins.system_bloc.install_success'.tr());
       add(LoadPlugins());
     } catch (e) {
       await _installerService.cancelInstall(event.tempDirPath);
-      UiSnack.showError('שגיאה באישור התקנה: ${e.toString()}');
+      UiSnack.showError('plugins.system_bloc.install_confirm_error'
+          .tr(namedArgs: {'error': e.toString()}));
       add(LoadPlugins());
     }
   }
@@ -263,7 +276,8 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
       await _installerService.uninstallPlugin(event.pluginId);
       add(LoadPlugins());
     } catch (e) {
-      UiSnack.showError('שגיאה בהסרת התוסף: ${e.toString()}');
+      UiSnack.showError('plugins.system_bloc.remove_error'
+          .tr(namedArgs: {'error': e.toString()}));
     }
   }
 
@@ -277,7 +291,8 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
         add(LoadPlugins());
       }
     } catch (e) {
-      UiSnack.showError('שגיאה בהפעלת התוסף: ${e.toString()}');
+      UiSnack.showError('plugins.system_bloc.enable_error'
+          .tr(namedArgs: {'error': e.toString()}));
     }
   }
 
@@ -292,7 +307,8 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
         add(LoadPlugins());
       }
     } catch (e) {
-      UiSnack.showError('שגיאה בהשבתת התוסף: ${e.toString()}');
+      UiSnack.showError('plugins.system_bloc.disable_error'
+          .tr(namedArgs: {'error': e.toString()}));
     }
   }
 
@@ -314,7 +330,8 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
       );
       add(LoadPlugins());
     } catch (e) {
-      UiSnack.showError('שגיאה בעדכון הרשאה: ${e.toString()}');
+      UiSnack.showError('plugins.system_bloc.permission_error'
+          .tr(namedArgs: {'error': e.toString()}));
     }
   }
 
@@ -324,12 +341,13 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
     try {
       await devLoader.loadDevelopmentPlugin(event.directoryPath);
       add(LoadPlugins());
-      UiSnack.showSuccess('תוסף פיתוח נטען בהצלחה');
+      UiSnack.showSuccess('plugins.system_bloc.dev_loaded_success'.tr());
     } catch (e, stackTrace) {
       debugPrint(
           '[PluginDevLoader] Failed to load plugin from "${event.directoryPath}": $e');
       debugPrint('$stackTrace');
-      UiSnack.showError('שגיאה בטעינת תוסף פתוח: ${e.toString()}');
+      UiSnack.showError('plugins.system_bloc.dev_load_error'
+          .tr(namedArgs: {'error': e.toString()}));
     }
   }
 
@@ -342,7 +360,8 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
       devWatchService.stopWatcher(event.pluginId);
       add(LoadPlugins());
     } catch (e) {
-      UiSnack.showError('שגיאה בניתוק התוסף: ${e.toString()}');
+      UiSnack.showError('plugins.system_bloc.detach_error'
+          .tr(namedArgs: {'error': e.toString()}));
     }
   }
 

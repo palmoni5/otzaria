@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../../models/books.dart';
@@ -60,15 +61,19 @@ class OtzarBookDialog extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
                     _buildInfoRow(context, FluentIcons.document_text_24_regular,
-                        'תיאור', book.heShortDesc ?? 'לא קיים'),
+                        'otzar_dialog.description'.tr(),
+                        book.heShortDesc ?? 'otzar_dialog.missing'.tr()),
                     _buildInfoRow(context, FluentIcons.person_24_regular,
-                        'מחבר', book.author ?? 'לא ידוע'),
+                        'otzar_dialog.author'.tr(),
+                        book.author ?? 'otzar_dialog.unknown'.tr()),
                     _buildInfoRow(context, FluentIcons.location_24_regular,
-                        'מקום הדפסה', book.pubPlace ?? 'לא ידוע'),
+                        'otzar_dialog.pub_place'.tr(),
+                        book.pubPlace ?? 'otzar_dialog.unknown'.tr()),
                     _buildInfoRow(context, FluentIcons.calendar_24_regular,
-                        'שנת הדפסה', book.pubDate ?? 'לא ידוע'),
+                        'otzar_dialog.pub_date'.tr(),
+                        book.pubDate ?? 'otzar_dialog.unknown'.tr()),
                     _buildInfoRow(context, FluentIcons.apps_24_regular,
-                        'נושאים', book.topics),
+                        'otzar_dialog.topics'.tr(), book.topics),
                     const SizedBox(height: 24),
                     _buildButtons(context, canLaunchLocally, bookExists),
                   ],
@@ -119,7 +124,7 @@ class OtzarBookDialog extends StatelessWidget {
         if (canLaunchLocally && bookExists)
           ElevatedButton.icon(
             icon: const Icon(FluentIcons.desktop_24_regular),
-            label: const Text('פתח מקומית'),
+            label: Text('otzar_dialog.open_locally'.tr()),
             onPressed: () {
               Navigator.of(context).pop();
               OtzarUtils.launchOtzarLocal(book.id!);
@@ -131,13 +136,13 @@ class OtzarBookDialog extends StatelessWidget {
           ),
         ElevatedButton.icon(
           icon: const Icon(FluentIcons.open_24_regular),
-          label: const Text('פתח באתר'),
+          label: Text('otzar_dialog.open_in_browser'.tr()),
           onPressed: () async {
             Navigator.of(context).pop();
             if (await OtzarUtils.launchOtzarWeb(book.link)) {
               // Success
             } else {
-              UiSnack.showError('לא ניתן לפתוח את הקישור בדפדפן');
+              UiSnack.showError('otzar_dialog.browser_open_failed'.tr());
             }
           },
           style: ElevatedButton.styleFrom(
@@ -150,7 +155,7 @@ class OtzarBookDialog extends StatelessWidget {
           style: TextButton.styleFrom(
             foregroundColor: Theme.of(context).colorScheme.secondary,
           ),
-          child: const Text('סגור'),
+          child: Text('common.close'.tr()),
         ),
       ],
     );

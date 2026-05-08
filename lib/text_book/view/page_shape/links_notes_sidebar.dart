@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:otzaria/personal_notes/widgets/personal_notes_sidebar.dart';
@@ -77,14 +78,14 @@ class _LinksNotesSidebarState extends State<LinksNotesSidebar>
         PanelTabHeader(
           controller: _tabController,
           onClose: widget.onClosePane,
-          tabs: const [
+          tabs: [
             PanelTab(
               icon: FluentIcons.link_24_regular,
-              label: 'קישורים',
+              label: 'links_notes_sidebar.links'.tr(),
             ),
             PanelTab(
               icon: FluentIcons.note_24_regular,
-              label: 'הערות',
+              label: 'links_notes_sidebar.notes'.tr(),
             ),
           ],
         ),

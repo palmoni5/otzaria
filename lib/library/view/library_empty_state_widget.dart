@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
@@ -37,13 +38,13 @@ class LibraryEmptyStateWidget extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: onBack,
           icon: const Icon(FluentIcons.arrow_up_24_regular),
-          label: const Text('חזור'),
+          label: Text('library_empty_state.back'.tr()),
         ),
         const SizedBox(width: 8),
         OutlinedButton.icon(
           onPressed: onHome,
           icon: const Icon(FluentIcons.home_24_regular),
-          label: const Text('בית'),
+          label: Text('library_empty_state.home'.tr()),
         ),
       ],
     );
@@ -69,7 +70,7 @@ class LibraryEmptyStateWidget extends StatelessWidget {
           if (_isDeepLink) ...[
             const SizedBox(height: 8),
             Text(
-              'נראה שהכנסתם קישור ישיר',
+              'library_empty_state.deep_link_subtitle'.tr(),
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
@@ -77,7 +78,7 @@ class LibraryEmptyStateWidget extends StatelessWidget {
             FilledButton.icon(
               onPressed: onOpenLink,
               icon: const Icon(FluentIcons.link_24_regular),
-              label: const Text('פתיחת קישור'),
+              label: Text('library_empty_state.open_link'.tr()),
             ),
             const SizedBox(height: 12),
             _buildNavButtons(),
@@ -94,14 +95,14 @@ class LibraryEmptyStateWidget extends StatelessWidget {
             _buildNavButtons(),
             const SizedBox(height: 12),
             Text(
-              'ניתן לחפש גם טקסט ספציפי במאגר',
+              'library_empty_state.search_hint'.tr(),
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 8),
             FilledButton.icon(
               onPressed: onOpenSearch,
               icon: const Icon(FluentIcons.search_24_regular),
-              label: const Text('פתח חיפוש טקסט'),
+              label: Text('library_empty_state.open_search'.tr()),
             ),
           ],
         ],

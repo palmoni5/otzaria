@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -490,7 +491,7 @@ class _PageShapeScreenState extends State<PageShapeScreen> {
 
     // הודעה למשתמש (רק אם יזום)
     if (showSnack && global) {
-      UiSnack.show('הטור הוסתר בכל הספרים. ניתן לשנות בהגדרות צורת הדף.');
+      UiSnack.show('page_shape_screen.column_hidden_globally'.tr());
     }
 
     _refreshLinksForCurrentConfiguration(
@@ -515,13 +516,13 @@ class _PageShapeScreenState extends State<PageShapeScreen> {
             RecommendedActionButton(
               onPressed: onSelectCommentator,
               icon: FluentIcons.book_24_regular,
-              text: 'בחר מפרש',
+              text: 'page_shape_screen.select_commentator'.tr(),
             ),
             const SizedBox(height: 12),
             NeutralActionButton(
               onPressed: onHideColumn,
               icon: FluentIcons.eye_off_24_regular,
-              text: 'הסתר טור זה',
+              text: 'page_shape_screen.hide_this_column'.tr(),
             ),
           ],
         ),
@@ -1840,7 +1841,8 @@ class _CommentaryPaneState extends State<_CommentaryPane> {
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: Center(
           child: Text(
-            'לא ניתן לטעון את ${widget.commentatorName}',
+            'page_shape_screen.cant_load_commentator'
+                .tr(namedArgs: {'name': widget.commentatorName}),
             style: const TextStyle(fontSize: 14),
           ),
         ),
