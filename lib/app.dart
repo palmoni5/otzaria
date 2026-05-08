@@ -1,12 +1,12 @@
 import 'dart:io';
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:otzaria/theme/theme_exports.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/core/ui_snack.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:otzaria/navigation/view/main_window_screen.dart';
 import 'package:otzaria/settings/settings_exports.dart';
 import 'package:window_manager/window_manager.dart';
@@ -60,16 +60,11 @@ class App extends StatelessWidget {
             (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
         return MaterialApp(
           navigatorKey: navigatorKey,
-          localizationsDelegates: const [
-            GlobalCupertinoLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-          ],
-          supportedLocales: const [
-            Locale("he", "IL"),
-          ],
-          locale: const Locale("he", "IL"),
-          title: 'אוצריא',
+          scaffoldMessengerKey: scaffoldMessengerKey,
+          localizationsDelegates: context.localizationDelegates,
+          supportedLocales: context.supportedLocales,
+          locale: context.locale,
+          title: 'app.title'.tr(),
           theme: AppThemeData.light(lightColorScheme,
               compactMenuMode: state.compactMenuMode),
           darkTheme: AppThemeData.dark(darkColorScheme,

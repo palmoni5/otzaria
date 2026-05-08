@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -219,7 +220,7 @@ class TextSettingsTab extends StatelessWidget {
 
   Widget _buildFontSection(BuildContext context, SettingsState state) {
     return SettingsCard(
-      title: 'הגדרות גופן ועיצוב',
+      title: 'settings.text.font_section'.tr(),
       children: [
         // שורה 1: גודל גופן הספר + גופן טקסט
         LayoutBuilder(
@@ -266,7 +267,7 @@ class TextSettingsTab extends StatelessWidget {
                   Expanded(
                     child: _FontSizeSlider(
                       icon: FluentIcons.text_font_size_24_regular,
-                      label: 'גודל גופן הספר',
+                      label: 'settings.text.book_font_size'.tr(),
                       value: state.fontSize.clamp(15, 60),
                       min: 15,
                       max: 60,
@@ -279,7 +280,7 @@ class TextSettingsTab extends StatelessWidget {
                   Expanded(
                     child: _FontDropdown(
                       icon: FluentIcons.text_font_24_regular,
-                      label: 'גופן טקסט',
+                      label: 'settings.text.text_font'.tr(),
                       value: state.fontFamily,
                       onChanged: (value) {
                         if (value != null) {
@@ -309,7 +310,7 @@ class TextSettingsTab extends StatelessWidget {
                     if (!hideCommentaryFontSize) ...[
                       _FontSizeSlider(
                         icon: FluentIcons.text_font_size_24_regular,
-                        label: 'גודל גופן מפרשים',
+                        label: 'settings.text.commentators_font_size'.tr(),
                         value: state.commentatorsFontSize.clamp(10, 40),
                         min: 10,
                         max: 40,
@@ -323,7 +324,7 @@ class TextSettingsTab extends StatelessWidget {
                     ],
                     _FontDropdown(
                       icon: FluentIcons.book_24_regular,
-                      label: 'גופן מפרשים',
+                      label: 'settings.text.commentators_font'.tr(),
                       value: state.commentatorsFontFamily,
                       onChanged: (value) {
                         if (value != null) {
@@ -346,7 +347,7 @@ class TextSettingsTab extends StatelessWidget {
                     Expanded(
                       child: _FontSizeSlider(
                         icon: FluentIcons.text_font_size_24_regular,
-                        label: 'גודל גופן מפרשים',
+                        label: 'settings.text.commentators_font_size'.tr(),
                         value: state.commentatorsFontSize.clamp(10, 40),
                         min: 10,
                         max: 40,
@@ -362,7 +363,7 @@ class TextSettingsTab extends StatelessWidget {
                   Expanded(
                     child: _FontDropdown(
                       icon: FluentIcons.book_24_regular,
-                      label: 'גופן מפרשים',
+                      label: 'settings.text.commentators_font'.tr(),
                       value: state.commentatorsFontFamily,
                       onChanged: (value) {
                         if (value != null) {
@@ -389,7 +390,7 @@ class TextSettingsTab extends StatelessWidget {
                   ? _FontSizeSlider(
                       icon: FluentIcons
                           .text_align_distributed_vertical_24_regular,
-                      label: 'מרווח בין שורות',
+                      label: 'settings.text.line_height'.tr(),
                       value: state.lineHeight.clamp(1.0, 3.0),
                       min: 1.0,
                       max: 3.0,
@@ -407,7 +408,7 @@ class TextSettingsTab extends StatelessWidget {
                           child: _FontSizeSlider(
                             icon: FluentIcons
                                 .text_align_distributed_vertical_24_regular,
-                            label: 'מרווח בין שורות',
+                            label: 'settings.text.line_height'.tr(),
                             value: state.lineHeight.clamp(1.0, 3.0),
                             min: 1.0,
                             max: 3.0,
@@ -447,29 +448,35 @@ class TextSettingsTab extends StatelessWidget {
     String nikudSubtitle;
     switch (nikudValue) {
       case 'show_always':
-        nikudSubtitle = 'הניקוד יוצג בכל הספרים';
+        nikudSubtitle = 'settings.text.nikud_show_always_subtitle'.tr();
         break;
       case 'show_tanach_only':
-        nikudSubtitle = 'הניקוד יוצג בספרי התנ"ך בלבד';
+        nikudSubtitle = 'settings.text.nikud_show_tanach_only_subtitle'.tr();
         break;
       case 'hide_all':
-        nikudSubtitle = 'הניקוד לא יוצג בכלל';
+        nikudSubtitle = 'settings.text.nikud_hide_all_subtitle'.tr();
         break;
       default:
         nikudSubtitle = '';
     }
 
     return SettingsCard(
-      title: 'כתרי אותיות',
+      title: 'settings.text.nikud_section'.tr(),
       children: [
         SegmentedSettingsTile<String>(
-          icon: Icon(FluentIcons.text_font_info_24_regular),
-          title: 'הצגת הניקוד',
+          icon: const RtlIcon(FluentIcons.text_font_info_24_regular),
+          title: 'settings.text.nikud_title'.tr(),
           subtitle: nikudSubtitle,
-          options: const [
-            SegmentOption(value: 'show_always', label: 'הצג תמיד'),
-            SegmentOption(value: 'show_tanach_only', label: 'הצג בתנ"ך'),
-            SegmentOption(value: 'hide_all', label: 'אל תציג'),
+          options: [
+            SegmentOption(
+                value: 'show_always',
+                label: 'settings.text.nikud_show_always'.tr()),
+            SegmentOption(
+                value: 'show_tanach_only',
+                label: 'settings.text.nikud_show_tanach_only'.tr()),
+            SegmentOption(
+                value: 'hide_all',
+                label: 'settings.text.nikud_hide_all'.tr()),
           ],
           currentValue: nikudValue,
           onChanged: (value) {
@@ -500,10 +507,10 @@ class TextSettingsTab extends StatelessWidget {
         ),
         SwitchSettingsTile.text(
           icon: FluentIcons.shield_keyhole_24_regular,
-          title: 'הצגת שם הקודש',
+          title: 'settings.text.holy_names_title'.tr(),
           subtitle: !state.replaceHolyNames
-              ? 'השם הקדוש יוצג'
-              : 'השם הקדוש לא יוצג מפני קדושתו',
+              ? 'settings.text.holy_names_show'.tr()
+              : 'settings.text.holy_names_hide'.tr(),
           value: !state.replaceHolyNames,
           onChanged: (value) {
             context.read<SettingsBloc>().add(UpdateReplaceHolyNames(!value));
@@ -511,9 +518,10 @@ class TextSettingsTab extends StatelessWidget {
         ),
         SwitchSettingsTile.text(
           icon: FluentIcons.text_more_24_regular,
-          title: 'הצגת טעמי המקרא',
-          subtitle:
-              state.showTeamim ? 'המקרא יוצג עם טעמים' : 'המקרא יוצג ללא טעמים',
+          title: 'settings.text.teamim_title'.tr(),
+          subtitle: state.showTeamim
+              ? 'settings.text.teamim_on'.tr()
+              : 'settings.text.teamim_off'.tr(),
           value: state.showTeamim,
           onChanged: (value) {
             context.read<SettingsBloc>().add(UpdateShowTeamim(value));
@@ -528,13 +536,13 @@ class TextSettingsTab extends StatelessWidget {
     String copySubtitle;
     switch (state.copyWithHeaders) {
       case 'none':
-        copySubtitle = 'הטקסט יועתק ללא כותרות';
+        copySubtitle = 'settings.text.copy_none_subtitle'.tr();
         break;
       case 'book_name':
-        copySubtitle = 'הטקסט יועתק עם שם הספר בלבד';
+        copySubtitle = 'settings.text.copy_book_name_subtitle'.tr();
         break;
       case 'book_and_path':
-        copySubtitle = 'הטקסט יועתק עם שם הספר ונתיב הטקסט';
+        copySubtitle = 'settings.text.copy_book_and_path_subtitle'.tr();
         break;
       default:
         copySubtitle = '';
@@ -544,38 +552,49 @@ class TextSettingsTab extends StatelessWidget {
     String formatSubtitle;
     switch (state.copyHeaderFormat) {
       case 'same_line_after_brackets':
-        formatSubtitle = 'הכותרת תופיע באותה שורה אחרי הטקסט (עם סוגריים)';
+        formatSubtitle =
+            'settings.text.format_same_line_after_brackets_subtitle'.tr();
         break;
       case 'same_line_after_no_brackets':
-        formatSubtitle = 'הכותרת תופיע באותה שורה אחרי הטקסט (בלי סוגריים)';
+        formatSubtitle =
+            'settings.text.format_same_line_after_no_brackets_subtitle'.tr();
         break;
       case 'same_line_before_brackets':
-        formatSubtitle = 'הכותרת תופיע באותה שורה לפני הטקסט (עם סוגריים)';
+        formatSubtitle =
+            'settings.text.format_same_line_before_brackets_subtitle'.tr();
         break;
       case 'same_line_before_no_brackets':
-        formatSubtitle = 'הכותרת תופיע באותה שורה לפני הטקסט (בלי סוגריים)';
+        formatSubtitle =
+            'settings.text.format_same_line_before_no_brackets_subtitle'.tr();
         break;
       case 'separate_line_after':
-        formatSubtitle = 'הכותרת תופיע בפסקה נפרדת אחרי הטקסט';
+        formatSubtitle =
+            'settings.text.format_separate_line_after_subtitle'.tr();
         break;
       case 'separate_line_before':
-        formatSubtitle = 'הכותרת תופיע בפסקה נפרדת לפני הטקסט';
+        formatSubtitle =
+            'settings.text.format_separate_line_before_subtitle'.tr();
         break;
       default:
         formatSubtitle = '';
     }
 
     return SettingsCard(
-      title: 'העתקת כותרות ופרקים',
+      title: 'settings.text.copy_section'.tr(),
       children: [
         SegmentedSettingsTile<String>(
-          icon: Icon(FluentIcons.copy_24_regular),
-          title: 'העתקת הכותרת',
+          icon: const RtlIcon(FluentIcons.copy_24_regular),
+          title: 'settings.text.copy_title'.tr(),
           subtitle: copySubtitle,
-          options: const [
-            SegmentOption(value: 'none', label: 'ללא'),
-            SegmentOption(value: 'book_name', label: 'שם הספר'),
-            SegmentOption(value: 'book_and_path', label: 'שם וכותרת'),
+          options: [
+            SegmentOption(
+                value: 'none', label: 'settings.text.copy_none'.tr()),
+            SegmentOption(
+                value: 'book_name',
+                label: 'settings.text.copy_book_name'.tr()),
+            SegmentOption(
+                value: 'book_and_path',
+                label: 'settings.text.copy_book_and_path'.tr()),
           ],
           currentValue: state.copyWithHeaders,
           onChanged: (value) {
@@ -584,36 +603,37 @@ class TextSettingsTab extends StatelessWidget {
         ),
         if (state.copyWithHeaders != 'none')
           DropdownSettingsTile<String>(
-            icon: RtlIcon(FluentIcons.text_align_right_24_regular),
-            title: 'עיצוב כותרות',
+            icon: const RtlIcon(FluentIcons.text_align_right_24_regular),
+            title: 'settings.text.format_title'.tr(),
             subtitle: formatSubtitle,
             value: state.copyHeaderFormat,
             minFieldWidth: 220,
             maxFieldWidth: 320,
-            entries: const [
+            entries: [
               AppMenuEntry(
                 value: 'same_line_after_brackets',
-                label: 'אותה שורה אחרי (עם סוגריים)',
+                label: 'settings.text.format_same_line_after_brackets'.tr(),
               ),
               AppMenuEntry(
                 value: 'same_line_after_no_brackets',
-                label: 'אותה שורה אחרי (בלי סוגריים)',
+                label: 'settings.text.format_same_line_after_no_brackets'.tr(),
               ),
               AppMenuEntry(
                 value: 'same_line_before_brackets',
-                label: 'אותה שורה לפני (עם סוגריים)',
+                label: 'settings.text.format_same_line_before_brackets'.tr(),
               ),
               AppMenuEntry(
                 value: 'same_line_before_no_brackets',
-                label: 'אותה שורה לפני (בלי סוגריים)',
+                label:
+                    'settings.text.format_same_line_before_no_brackets'.tr(),
               ),
               AppMenuEntry(
                 value: 'separate_line_after',
-                label: 'פסקה נפרדת אחרי',
+                label: 'settings.text.format_separate_line_after'.tr(),
               ),
               AppMenuEntry(
                 value: 'separate_line_before',
-                label: 'פסקה נפרדת לפני',
+                label: 'settings.text.format_separate_line_before'.tr(),
               ),
             ],
             onSelected: (value) {
@@ -628,14 +648,14 @@ class TextSettingsTab extends StatelessWidget {
 
   Widget _buildPerBookSection(BuildContext context, SettingsState state) {
     return SettingsCard(
-      title: 'הגדרות לפי ספר',
+      title: 'settings.text.per_book_section'.tr(),
       children: [
         SwitchSettingsTile.text(
           icon: FluentIcons.book_open_24_regular,
-          title: 'שמירת התאמות לכל ספר בנפרד',
+          title: 'settings.text.per_book_title'.tr(),
           subtitle: state.enablePerBookSettings
-              ? 'שינויים בסרגל הלחצנים יישמרו לכל ספר בנפרד'
-              : 'כל הספרים ישתמשו בהגדרות הכלליות',
+              ? 'settings.text.per_book_on'.tr()
+              : 'settings.text.per_book_off'.tr(),
           value: state.enablePerBookSettings,
           onChanged: (value) {
             context
@@ -646,12 +666,12 @@ class TextSettingsTab extends StatelessWidget {
         if (state.enablePerBookSettings)
           SettingsActionTile.text(
             icon: FluentIcons.delete_24_regular,
-            title: 'איפוס הגדרות לפי ספר',
-            subtitle: 'מחיקת כל ההתאמות שנשמרו לכל ספר בנפרד',
+            title: 'settings.text.per_book_reset_title_tile'.tr(),
+            subtitle: 'settings.text.per_book_reset_subtitle_tile'.tr(),
             actions: [
               NeutralActionButton(
                 onPressed: () => _resetPerBookSettings(context),
-                text: 'איפוס',
+                text: 'settings.text.per_book_reset_button'.tr(),
               ),
             ],
           ),
@@ -662,16 +682,16 @@ class TextSettingsTab extends StatelessWidget {
   Future<void> _resetPerBookSettings(BuildContext context) async {
     final confirm = await showWarningDialog(
       context: context,
-      title: 'אישור איפוס הגדרות לפי ספר',
-      content: 'האם אתה בטוח שברצונך לאפס ולמחוק את כל ההגדרות לפי ספר?',
-      subtitle: 'פעולה זו אינה ניתנת לביטול.',
-      cancelText: 'ביטול',
-      confirmText: 'איפוס',
+      title: 'settings.text.per_book_reset_title'.tr(),
+      content: 'settings.text.per_book_reset_content'.tr(),
+      subtitle: 'settings.text.per_book_reset_subtitle'.tr(),
+      cancelText: 'common.cancel'.tr(),
+      confirmText: 'settings.text.per_book_reset_confirm'.tr(),
     );
 
     if (confirm == true && context.mounted) {
       await PerBookSettings.deleteAllSettings();
-      UiSnack.show('כל ההגדרות המיוחדות אופסו בהצלחה');
+      UiSnack.show('settings.text.per_book_reset_success'.tr());
     }
   }
 }
@@ -786,7 +806,10 @@ class _FontDropdown extends StatelessWidget {
     if (!hasSelectedFont) {
       fontEntries.insert(
         0,
-        AppMenuEntry(value: value, label: '$value (לא זמין במחשב זה)'),
+        AppMenuEntry(
+            value: value,
+            label: 'settings.text.font_unavailable'
+                .tr(namedArgs: {'font': value})),
       );
     }
 
@@ -864,7 +887,7 @@ class _TextWidthSliderState extends State<_TextWidthSlider> {
     }
 
     String getLevelDescription(int level) {
-      if (level == 0) return 'מלא';
+      if (level == 0) return 'settings.text.text_width_full'.tr();
       final percent = 100 - (level * 5);
       return '$percent%';
     }
@@ -873,14 +896,12 @@ class _TextWidthSliderState extends State<_TextWidthSlider> {
       children: [
         ListTile(
           leading: const RtlIcon(FluentIcons.text_align_distributed_24_regular),
-          title: const Text(
-            'רוחב הטקסט',
-            style: kSettingsTitleStyle,
-          ),
+          title: Text('settings.text.text_width'.tr(),
+              style: kSettingsTitleStyle),
           subtitle: Text(
             currentLevel == 0
-                ? 'הטקסט ימלא את כל הרוחב הזמין'
-                : 'הטקסט יהיה צר יותר ומרוכז במסך',
+                ? 'settings.text.text_width_full_subtitle'.tr()
+                : 'settings.text.text_width_narrow_subtitle'.tr(),
             style: kSettingsSubtitleStyle,
           ),
           trailing: Text(

@@ -20,6 +20,7 @@
 // await showWarningDialog(context: context, title: '...', content: '...');
 // ```
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:otzaria/widgets/misc/keyboard_dialog_navigation.dart';
 
@@ -30,7 +31,7 @@ class SingleActionDialog extends StatefulWidget {
   final dynamic title;
   final String? content;
   final Widget? customContent;
-  final String confirmText;
+  final String? confirmText;
   final TextDirection? textDirection;
 
   const SingleActionDialog({
@@ -38,7 +39,7 @@ class SingleActionDialog extends StatefulWidget {
     required this.title,
     this.content,
     this.customContent,
-    this.confirmText = 'אישור',
+    this.confirmText,
     this.textDirection,
   }) : assert(
           content != null || customContent != null,
@@ -70,7 +71,7 @@ class _SingleActionDialogState extends State<SingleActionDialog>
             style: FilledButton.styleFrom(
                 backgroundColor: cs.primary, foregroundColor: cs.onPrimary),
             child: Text(
-              widget.confirmText,
+              widget.confirmText ?? 'common.ok'.tr(),
               textDirection: widget.textDirection,
             ),
           ),
@@ -87,8 +88,8 @@ class TwoActionsDialog extends StatefulWidget {
   final dynamic title;
   final String content;
   final Widget? customContent;
-  final String cancelText;
-  final String confirmText;
+  final String? cancelText;
+  final String? confirmText;
   final bool handleEnterKey;
   final TextDirection? textDirection;
 
@@ -97,8 +98,8 @@ class TwoActionsDialog extends StatefulWidget {
     required this.title,
     required this.content,
     this.customContent,
-    this.cancelText = 'ביטול',
-    this.confirmText = 'אישור',
+    this.cancelText,
+    this.confirmText,
     this.handleEnterKey = true,
     this.textDirection,
   });
@@ -130,7 +131,7 @@ class _TwoActionsDialogState extends State<TwoActionsDialog>
                 backgroundColor: cs.secondaryContainer,
                 foregroundColor: cs.onSecondaryContainer),
             child: Text(
-              widget.cancelText,
+              widget.cancelText ?? 'common.cancel'.tr(),
               textDirection: widget.textDirection,
             ),
           ),
@@ -139,7 +140,7 @@ class _TwoActionsDialogState extends State<TwoActionsDialog>
             style: FilledButton.styleFrom(
                 backgroundColor: cs.primary, foregroundColor: cs.onPrimary),
             child: Text(
-              widget.confirmText,
+              widget.confirmText ?? 'common.ok'.tr(),
               textDirection: widget.textDirection,
             ),
           ),
@@ -156,8 +157,8 @@ class WarningDialog extends StatefulWidget {
   final dynamic title;
   final String content;
   final String? subtitle;
-  final String cancelText;
-  final String confirmText;
+  final String? cancelText;
+  final String? confirmText;
   final TextDirection? textDirection;
 
   const WarningDialog({
@@ -165,8 +166,8 @@ class WarningDialog extends StatefulWidget {
     required this.title,
     required this.content,
     this.subtitle,
-    this.cancelText = 'ביטול',
-    this.confirmText = 'המשך',
+    this.cancelText,
+    this.confirmText,
     this.textDirection,
   });
 
@@ -208,7 +209,7 @@ class _WarningDialogState extends State<WarningDialog>
             style: FilledButton.styleFrom(
                 backgroundColor: cs.primary, foregroundColor: cs.onPrimary),
             child: Text(
-              widget.cancelText,
+              widget.cancelText ?? 'common.cancel'.tr(),
               textDirection: widget.textDirection,
             ),
           ),
@@ -216,7 +217,7 @@ class _WarningDialogState extends State<WarningDialog>
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(foregroundColor: cs.error),
             child: Text(
-              widget.confirmText,
+              widget.confirmText ?? 'common.continue_action'.tr(),
               textDirection: widget.textDirection,
             ),
           ),
@@ -233,7 +234,7 @@ Future<bool?> showSingleActionDialog({
   required String title,
   String? content,
   Widget? customContent,
-  String confirmText = 'אישור',
+  String? confirmText,
   TextDirection? textDirection,
   bool barrierDismissible = true,
 }) =>
@@ -253,8 +254,8 @@ Future<bool?> showTwoActionsDialog({
   required String title,
   required String content,
   Widget? customContent,
-  String cancelText = 'ביטול',
-  String confirmText = 'אישור',
+  String? cancelText,
+  String? confirmText,
   TextDirection? textDirection,
   bool barrierDismissible = true,
   bool handleEnterKey = true,
@@ -277,8 +278,8 @@ Future<bool?> showWarningDialog({
   required String title,
   required String content,
   String? subtitle,
-  String cancelText = 'ביטול',
-  String confirmText = 'המשך',
+  String? cancelText,
+  String? confirmText,
   TextDirection? textDirection,
   bool barrierDismissible = true,
 }) =>
@@ -301,26 +302,26 @@ Future<bool?> showDbCopyRequiredDialog({
 }) =>
     showTwoActionsDialog(
       context: context,
-      title: 'נדרשת העתקה של קובץ הספרייה',
+      title: 'dialogs.db_copy_required.title'.tr(),
       content: '',
       barrierDismissible: barrierDismissible,
-      cancelText: 'העתק (שמור מקור)',
-      confirmText: 'העתק + נסה מחק מקור',
+      cancelText: 'dialogs.db_copy_required.cancel'.tr(),
+      confirmText: 'dialogs.db_copy_required.confirm'.tr(),
       customContent: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'לא ניתן לגשת ישירות לקובץ seforim.db (גודל: $sizeText) מכיוון שהוא נמצא באחסון חיצוני ב-Android.',
+            'dialogs.db_copy_required.intro'.tr(namedArgs: {'size': sizeText}),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'לחץ על כפתור למטה, נווט לאותה תיקייה ובחר את הקובץ seforim.db — האפליקציה תעתיק אותו לאחסון הפנימי.',
+          Text(
+            'dialogs.db_copy_required.instruction'.tr(),
           ),
           const SizedBox(height: 6),
-          const Text(
-            '(אפשרות "נסה מחק מקור" — ניסיון למחוק לאחר העתקה. עשויה שלא להצליח בכל גרסאות Android.)',
-            style: TextStyle(fontSize: 12),
+          Text(
+            'dialogs.db_copy_required.delete_note'.tr(),
+            style: const TextStyle(fontSize: 12),
           ),
         ],
       ),

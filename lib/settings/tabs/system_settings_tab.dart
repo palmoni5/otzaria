@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
@@ -13,6 +14,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 // import 'package:otzaria/data/constants/database_constants.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:otzaria/core/app_runtime_reset.dart';
+import 'package:otzaria/core/locale_service.dart';
 import 'package:otzaria/settings/engine/settings_engine_exports.dart';
 import 'package:otzaria/settings/search/settings_anchor.dart';
 import 'package:otzaria/settings/search/settings_search_models.dart';
@@ -33,6 +35,7 @@ import 'package:otzaria/models/direct_error_report.dart';
 import 'package:otzaria/services/direct_error_report_service.dart';
 import 'package:otzaria/services/data_collection_service.dart';
 import 'package:otzaria/data/repository/data_repository.dart';
+import 'package:otzaria/widgets/misc/app_menu_exports.dart';
 import 'package:otzaria/widgets/widgets_exports.dart';
 import 'package:otzaria/widgets/dialogs/error_report_sender_email_dialog.dart';
 import 'package:otzaria/widgets/text/rtl_text_field.dart';
@@ -681,6 +684,11 @@ class _SystemSettingsTabState extends State<SystemSettingsTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // 0. שפת ממשק
+                  if (LocaleService.availableLocales.length > 1) ...[
+                    _buildLanguageSection(context),
+                  ],
+
                   // 1. גרסאות + נתיב ספרייה
                   SettingsAnchor(
                     cardId: 'system.versions',
@@ -721,6 +729,55 @@ class _SystemSettingsTabState extends State<SystemSettingsTab> {
           ),
         );
       },
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  //  0. שפת ממשק
+  // ════════════════════════════════════════════════════════════════════════════
+
+  Widget _buildLanguageSection(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppTokens.spaceMD),
+      child: SettingsCard(
+        title: 'settings.system.language_section'.tr(),
+        children: [
+          ListTile(
+            leading: const Icon(FluentIcons.local_language_24_regular),
+            title: Text(
+              'settings.system.language_title'.tr(),
+              style: kSettingsTitleStyle,
+            ),
+            subtitle: Text(
+              'settings.system.language_subtitle'.tr(),
+              style: kSettingsSubtitleStyle,
+            ),
+            trailing: SizedBox(
+              width: 200,
+              child: AppDropdownField<Locale>(
+                value: context.locale,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                entries: LocaleService.availableLocales
+                    .map(
+                      (locale) => AppMenuEntry<Locale>(
+                        value: locale,
+                        label: LocaleService.displayNameOf(locale),
+                      ),
+                    )
+                    .toList(),
+                onSelected: (locale) async {
+                  if (locale != null && context.mounted) {
+                    await context.setLocale(locale);
+                  }
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
