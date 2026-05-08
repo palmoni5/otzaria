@@ -1,0 +1,98 @@
+{
+  "app": {
+    "title": "Otzaria",
+    "init_error": "Initialization error: {error}"
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "remove": "Remove",
+    "yes": "Yes",
+    "no": "No",
+    "continue_action": "Continue",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "search": "Search",
+    "loading": "Loading...",
+    "error": "Error",
+    "warning": "Warning",
+    "success": "Done",
+    "copy": "Copy",
+    "paste": "Paste",
+    "settings": "Settings",
+    "reset": "Reset",
+    "update": "Update",
+    "select": "Select",
+    "open": "Open",
+    "share": "Share"
+  },
+  "settings": {
+    "title": "Settings",
+    "back_tooltip": "Back (Backspace)",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "tabs": {
+      "design": "Appearance",
+      "text": "Text",
+      "library": "Library",
+      "tools": "Tools",
+      "shortcuts": "Shortcuts",
+      "system": "System",
+      "about": "About"
+    },
+    "mobile_groups": {
+      "display_and_content": "Display & Content",
+      "tools": "Tools",
+      "system": "System"
+    },
+    "system": {
+      "language_section": "Language",
+      "language_title": "Interface language",
+      "language_subtitle": "Choose the application's interface language"
+    },
+    "design": {
+      "display_section": "Display",
+      "fullscreen": "Fullscreen",
+      "fullscreen_subtitle": "Toggle fullscreen mode",
+      "theme_section": "Theme",
+      "theme_mode_title": "Theme mode",
+      "theme_mode_light": "Light",
+      "theme_mode_system": "System",
+      "theme_mode_dark": "Dark",
+      "theme_mode_system_subtitle": "The app will follow your operating system's appearance settings",
+      "theme_mode_light_subtitle": "The app will use light colors",
+      "theme_mode_dark_subtitle": "The app will use dark colors",
+      "follow_system_color": "Follow system color",
+      "dark_mode": "Dark mode",
+      "base_color": "Base color",
+      "pdf_section": "PDF view",
+      "pdf_book_view": "PDF book view",
+      "tabs_section": "Book tabs",
+      "compact_menus": "Compact menus",
+      "tabs_align_right": "Align tabs to the right",
+      "sidebar_section": "Side panels",
+      "sidebar_nav": "Headings navigation panel",
+      "sidebar_show": "Show",
+      "sidebar_auto": "Automatic",
+      "sidebar_hide": "Hide",
+      "personal_notes_collapsed": "Open personal notes collapsed",
+      "split_view": "Show commentaries in side panel"
+    }
+  },
+  "snack": {
+    "text_copied": "Text copied to clipboard",
+    "formatted_text_copied": "Formatted text copied to clipboard",
+    "copy_error": "Copy error",
+    "section_not_found": "Section not found in table of contents",
+    "book_not_found": "Book does not exist",
+    "saved_successfully": "Changes saved successfully",
+    "text_not_found": "Text not found",
+    "no_text_selected": "Please select text to copy"
+  }
+}

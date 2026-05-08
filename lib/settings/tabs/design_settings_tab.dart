@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart'
@@ -153,15 +154,16 @@ class DesignSettingsTab extends StatelessWidget {
                   SettingsAnchor(
                     cardId: 'design.display',
                     child: SettingsCard(
-                      title: 'תצוגה',
+                      title: 'settings.design.display_section'.tr(),
                       children: [
                         ListTile(
                           leading: Icon(state.isFullscreen
                               ? FluentIcons.full_screen_minimize_24_regular
                               : FluentIcons.full_screen_maximize_24_regular),
-                          title:
-                              const Text('מסך מלא', style: kSettingsTitleStyle),
-                          subtitle: const Text('החלף מצב מסך מלא',
+                          title: Text('settings.design.fullscreen'.tr(),
+                              style: kSettingsTitleStyle),
+                          subtitle: Text(
+                              'settings.design.fullscreen_subtitle'.tr(),
                               style: kSettingsSubtitleStyle),
                           trailing: Switch(
                             value: state.isFullscreen,
@@ -184,21 +186,27 @@ class DesignSettingsTab extends StatelessWidget {
                 SettingsAnchor(
                   cardId: 'design.theme',
                   child: SettingsCard(
-                    title: 'ערכת נושא',
+                    title: 'settings.design.theme_section'.tr(),
                     children: [
                       SegmentedSettingsTile<_ThemeMode>(
                         icon: FluentIcons.weather_sunny_24_regular,
-                        title: 'מצב ערכת נושא',
+                        title: 'settings.design.theme_mode_title'.tr(),
                         subtitle: state.followSystemTheme
-                            ? 'התוכנה תתאים את המראה באופן אוטומטי להגדרות מערכת ההפעלה'
+                            ? 'settings.design.theme_mode_system_subtitle'.tr()
                             : state.isDarkMode
-                                ? 'התוכנה תשתמש בצבעים כהים'
-                                : 'התוכנה תשתמש בצבעים בהירים',
-                        options: const [
-                          SegmentOption(value: _ThemeMode.light, label: 'בהיר'),
+                                ? 'settings.design.theme_mode_dark_subtitle'.tr()
+                                : 'settings.design.theme_mode_light_subtitle'
+                                    .tr(),
+                        options: [
                           SegmentOption(
-                              value: _ThemeMode.system, label: 'מערכת'),
-                          SegmentOption(value: _ThemeMode.dark, label: 'כהה'),
+                              value: _ThemeMode.light,
+                              label: 'settings.design.theme_mode_light'.tr()),
+                          SegmentOption(
+                              value: _ThemeMode.system,
+                              label: 'settings.design.theme_mode_system'.tr()),
+                          SegmentOption(
+                              value: _ThemeMode.dark,
+                              label: 'settings.design.theme_mode_dark'.tr()),
                         ],
                         currentValue: state.followSystemTheme
                             ? _ThemeMode.system
@@ -250,20 +258,24 @@ class DesignSettingsTab extends StatelessWidget {
                 SettingsAnchor(
                   cardId: 'design.pdf',
                   child: SettingsCard(
-                    title: 'תצוגת PDF',
+                    title: 'settings.design.pdf_section'.tr(),
                     children: [
                       SwitchSettingsTile(
                         leading: const Icon(FluentIcons.book_open_24_regular),
-                        title: const Text('תצוגת ספר בPDF',
+                        title: Text('settings.design.pdf_book_view'.tr(),
                             style: kSettingsTitleStyle),
                         subtitle: Text(
                           state.enablePerBookSettings
                               ? state.pdfBookViewByDefault
-                                  ? 'ספרי PDF ייפתחו בתצוגת ספר'
-                                  : 'ספרי PDF ייפתחו בתצוגה רגילה'
+                                  ? 'settings.design.pdf_book_view_only_book'
+                                      .tr()
+                                  : 'settings.design.pdf_book_view_only_normal'
+                                      .tr()
                               : state.pdfBookViewByDefault
-                                  ? 'כל ספרי ה-PDF ייפתחו בתצוגת ספר'
-                                  : 'כל ספרי ה-PDF ייפתחו בתצוגה רגילה',
+                                  ? 'settings.design.pdf_book_view_all_book'
+                                      .tr()
+                                  : 'settings.design.pdf_book_view_all_normal'
+                                      .tr(),
                           style: kSettingsSubtitleStyle,
                         ),
                         value: state.pdfBookViewByDefault,
@@ -283,19 +295,19 @@ class DesignSettingsTab extends StatelessWidget {
                 SettingsAnchor(
                   cardId: 'design.tabs',
                   child: SettingsCard(
-                    title: 'כרטיסיות הספרים',
+                    title: 'settings.design.tabs_section'.tr(),
                     children: [
                       if (!(Platform.isAndroid || Platform.isIOS))
                         SwitchSettingsTile(
                           leading: const Icon(FluentIcons.list_24_regular),
-                          title: const Text(
-                            'תפריטים קומפקטיים',
+                          title: Text(
+                            'settings.design.compact_menus'.tr(),
                             style: kSettingsTitleStyle,
                           ),
                           subtitle: Text(
                             state.compactMenuMode
-                                ? 'התפריטים יוצגו בצפיפות עבודה בסגנון Chrome'
-                                : 'התפריטים יוצגו במרווח נוח ובגרסה הרגילה',
+                                ? 'settings.design.compact_menus_on'.tr()
+                                : 'settings.design.compact_menus_off'.tr(),
                             style: kSettingsSubtitleStyle,
                           ),
                           value: state.compactMenuMode,
@@ -315,23 +327,28 @@ class DesignSettingsTab extends StatelessWidget {
                 SettingsAnchor(
                   cardId: 'design.layout',
                   child: SettingsCard(
-                    title: 'חלוניות עזר',
+                    title: 'settings.design.sidebar_section'.tr(),
                     children: [
                       SegmentedSettingsTile<_SidebarMode>(
-                        title: 'חלונית ניווט בין כותרות',
+                        title: 'settings.design.sidebar_nav'.tr(),
                         subtitle: state.pinSidebar
-                            ? 'החלונית תוצג באופן קבוע'
+                            ? 'settings.design.sidebar_pinned_subtitle'.tr()
                             : state.defaultSidebarOpen
-                                ? 'החלונית תוצג בפתיחת ספר ותיסגר בעת גלילה'
-                                : 'החלונית לא תוצג אוטומטית עם פתיחת הספר',
+                                ? 'settings.design.sidebar_open_on_book_subtitle'
+                                    .tr()
+                                : 'settings.design.sidebar_closed_subtitle'
+                                    .tr(),
                         icon: FluentIcons.panel_left_24_regular,
-                        options: const [
+                        options: [
                           SegmentOption(
-                              value: _SidebarMode.pinned, label: 'הצגה'),
+                              value: _SidebarMode.pinned,
+                              label: 'settings.design.sidebar_show'.tr()),
                           SegmentOption(
-                              value: _SidebarMode.openOnBook, label: 'אוטומטי'),
+                              value: _SidebarMode.openOnBook,
+                              label: 'settings.design.sidebar_auto'.tr()),
                           SegmentOption(
-                              value: _SidebarMode.closed, label: 'הסתרה'),
+                              value: _SidebarMode.closed,
+                              label: 'settings.design.sidebar_hide'.tr()),
                         ],
                         currentValue: state.pinSidebar
                             ? _SidebarMode.pinned
@@ -364,12 +381,15 @@ class DesignSettingsTab extends StatelessWidget {
                         },
                       ),
                       SwitchSettingsTile(
-                        title: const Text('פתיחת הערות אישיות במצב סגור',
+                        title: Text(
+                            'settings.design.personal_notes_collapsed'.tr(),
                             style: kSettingsTitleStyle),
                         subtitle: Text(
                             state.personalNotesCollapsedByDefault
-                                ? 'רשימות ההערות יוצגו כשהן סגורות'
-                                : 'רשימות ההערות יוצגו כשהן פתוחות',
+                                ? 'settings.design.personal_notes_collapsed_on'
+                                    .tr()
+                                : 'settings.design.personal_notes_collapsed_off'
+                                    .tr(),
                             style: kSettingsSubtitleStyle),
                         value: state.personalNotesCollapsedByDefault,
                         onChanged: (value) {
@@ -383,12 +403,12 @@ class DesignSettingsTab extends StatelessWidget {
                               Settings.getValue<bool>('key-splited-view') ??
                                   true;
                           return SwitchSettingsTile(
-                            title: const Text('הצגת המפרשים בחלונית בצד',
+                            title: Text('settings.design.split_view'.tr(),
                                 style: kSettingsTitleStyle),
                             subtitle: Text(
                                 splitedView
-                                    ? 'המפרשים יוצגו בחלונית מפוצלת'
-                                    : 'המפרשים יוצגו בתוך הטקסט',
+                                    ? 'settings.design.split_view_on'.tr()
+                                    : 'settings.design.split_view_off'.tr(),
                                 style: kSettingsSubtitleStyle),
                             value: splitedView,
                             onChanged: (value) {

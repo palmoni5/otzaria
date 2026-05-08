@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -219,25 +220,25 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
         Widget Function() pageBuilder
       })> _tabsData = [
     (
-      label: 'מראה',
+      label: 'settings.tabs.design'.tr(),
       icon: FluentIcons.paint_brush_24_regular,
       iconFilled: FluentIcons.paint_brush_24_filled,
       pageBuilder: () => const DesignSettingsTab(),
     ),
     (
-      label: 'כתב',
+      label: 'settings.tabs.text'.tr(),
       icon: FluentIcons.book_24_regular,
       iconFilled: FluentIcons.book_24_filled,
       pageBuilder: () => const TextSettingsTab(),
     ),
     (
-      label: 'ספריה',
+      label: 'settings.tabs.library'.tr(),
       icon: FluentIcons.library_24_regular,
       iconFilled: FluentIcons.library_24_filled,
       pageBuilder: () => const LibrarySettingsTab(),
     ),
     (
-      label: 'כלים',
+      label: 'settings.tabs.tools'.tr(),
       icon: FluentIcons.apps_24_regular,
       iconFilled: FluentIcons.apps_24_filled,
       pageBuilder: () => ToolsSettingsTab(
@@ -245,19 +246,19 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
           ),
     ),
     (
-      label: 'קיצורים',
+      label: 'settings.tabs.shortcuts'.tr(),
       icon: FluentIcons.keyboard_24_regular,
       iconFilled: FluentIcons.keyboard_24_filled,
       pageBuilder: () => const ShortcutsSettingsTab(),
     ),
     (
-      label: 'מערכת',
+      label: 'settings.tabs.system'.tr(),
       icon: FluentIcons.settings_24_regular,
       iconFilled: FluentIcons.settings_24_filled,
       pageBuilder: () => const SystemSettingsTab(),
     ),
     (
-      label: 'אודות',
+      label: 'settings.tabs.about'.tr(),
       icon: FluentIcons.people_team_24_regular,
       iconFilled: FluentIcons.people_team_24_filled,
       pageBuilder: () => const AboutDevTab(),
@@ -265,11 +266,11 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
   ];
 
   // ── קבוצות למובייל ────────────────────────────────────────────────────────
-  // כל קבוצה: (כותרת, רשימת אינדקסים מ-_tabsData)
+  // כל קבוצה: (מפתח כותרת, רשימת אינדקסים מ-_tabsData)
   static const _mobileGroups = [
-    (label: 'תצוגה ותוכן', indices: <int>[0, 1, 2]),
-    (label: 'כלים', indices: <int>[3, 4]),
-    (label: 'מערכת', indices: <int>[5, 6]),
+    (labelKey: 'settings.mobile_groups.display_and_content', indices: <int>[0, 1, 2]),
+    (labelKey: 'settings.mobile_groups.tools', indices: <int>[3, 4]),
+    (labelKey: 'settings.mobile_groups.system', indices: <int>[5, 6]),
   ];
 
   @override
@@ -299,7 +300,7 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
                     appBar: AppBar(
                       backgroundColor: bgColor,
                       elevation: 0,
-                      title: const Text('הגדרות'),
+                      title: Text('settings.title'.tr()),
                     ),
                     body: Column(
                       children: [
@@ -323,7 +324,7 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
                                   children: [
                                     for (final group in _mobileGroups) ...[
                                       SettingsCard(
-                                        title: group.label,
+                                        title: group.labelKey.tr(),
                                         children: [
                                           for (final idx in group.indices)
                                             ListTile(
@@ -370,7 +371,7 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
                       elevation: 0,
                       title: Text(_tabsData[_selectedIndex].label),
                       leading: Tooltip(
-                        message: 'חזור (Esc)',
+                        message: 'settings.back_tooltip'.tr(),
                         child: IconButton(
                           icon:
                               const RtlIcon(FluentIcons.arrow_right_24_regular),
@@ -444,7 +445,7 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
                                 padding: const EdgeInsets.only(
                                     right: 12, left: 12, bottom: 20),
                                 child: Text(
-                                  'הגדרות',
+                                  'settings.title'.tr(),
                                   style: Theme.of(context)
                                       .textTheme
                                       .headlineSmall

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/scheduler.dart';
@@ -219,18 +220,18 @@ class UiSnack {
     _currentOverlay = null;
   }
 
-  // ── קבועי טקסט ───────────────────────────────────────────────────────────
-  static const String textCopied = 'הטקסט הועתק ללוח';
-  static const String formattedTextCopied = 'הטקסט המעוצב הועתק ללוח';
-  static const String copyError = 'שגיאה בהעתקה';
-  static const String formattedCopyError = 'שגיאה בהעתקה מעוצבת';
-  static const String sectionNotFound = 'הדף לא נמצא בתוכן העניינים';
-  static const String bookNotFound = 'הספר איננו קיים';
-  static const String noteCreated = 'ההערה נוצרה והוצבה בסרגל';
-  static const String savedSuccessfully = 'השינויים נשמרו בהצלחה';
-  static const String textNotFound = 'הטקסט לא נמצא';
-  static const String noTextSelected = 'אנא בחר טקסט להעתקה';
-  static const String cleanupCompleted = 'ניקוי טיוטות הושלם';
+  // ── טקסטים מתורגמים ──────────────────────────────────────────────────────
+  static String get textCopied => 'snack.text_copied'.tr();
+  static String get formattedTextCopied => 'snack.formatted_text_copied'.tr();
+  static String get copyError => 'snack.copy_error'.tr();
+  static String get formattedCopyError => 'snack.formatted_copy_error'.tr();
+  static String get sectionNotFound => 'snack.section_not_found'.tr();
+  static String get bookNotFound => 'snack.book_not_found'.tr();
+  static String get noteCreated => 'snack.note_created'.tr();
+  static String get savedSuccessfully => 'snack.saved_successfully'.tr();
+  static String get textNotFound => 'snack.text_not_found'.tr();
+  static String get noTextSelected => 'snack.no_text_selected'.tr();
+  static String get cleanupCompleted => 'snack.cleanup_completed'.tr();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

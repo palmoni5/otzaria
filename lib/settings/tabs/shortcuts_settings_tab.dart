@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -255,7 +256,7 @@ class ShortcutsSettingsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (Platform.isAndroid || Platform.isIOS) {
-      return const Center(child: Text('קיצורי מקשים זמינים רק בדסקטופ'));
+      return Center(child: Text('settings.shortcuts.desktop_only'.tr()));
     }
 
     return SingleChildScrollView(
@@ -590,13 +591,13 @@ class ShortcutsSettingsTab extends StatelessWidget {
   Future<void> _resetShortcuts(BuildContext context) async {
     final confirmed = await showWarningDialog(
       context: context,
-      title: 'איפוס קיצורי מקשים?',
-      content: 'כל קיצורי המקשים המותאמים אישית יאופסו לברירת המחדל.',
-      subtitle: 'פעולה זו אינה הפיכה',
+      title: 'settings.shortcuts.reset_confirm_title'.tr(),
+      content: 'settings.shortcuts.reset_confirm_content'.tr(),
+      subtitle: 'settings.shortcuts.reset_confirm_subtitle'.tr(),
     );
     if (confirmed == true && context.mounted) {
       context.read<SettingsBloc>().add(ResetShortcuts());
-      UiSnack.showSuccess('קיצורי המקשים אופסו בהצלחה');
+      UiSnack.showSuccess('settings.shortcuts.reset_success'.tr());
     }
   }
 }
