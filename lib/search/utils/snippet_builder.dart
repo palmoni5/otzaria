@@ -884,7 +884,10 @@ class SnippetBuilder {
   static List<_SearchToken> _collectSearchTokens(String plainText) {
     final tokens = <_SearchToken>[];
     for (final match
-        in RegExp(r'[א-תA-Za-z0-9"״׳\u0591-\u05C7]+').allMatches(plainText)) {
+        // מחריגים ־ (U+05BE) ו-׀ (U+05C0) מהטווח כדי שמילים מופרדות במקף יפוצלו
+        // לטוקנים נפרדים — sanitizeQuery ממיר ־ לרווח בשאילתה.
+        in RegExp(r'[א-תA-Za-z0-9"״׳\u0591-\u05BD\u05BF\u05C1-\u05C7]+')
+            .allMatches(plainText)) {
       final token = match.group(0);
       if (token == null || token.isEmpty) {
         continue;
@@ -973,7 +976,15 @@ class SnippetBuilder {
 
     final buffer = StringBuffer();
     for (var i = 0; i < chars.length; i++) {
-      buffer.write(RegExp.escape(chars[i]));
+      final ch = chars[i];
+      // " ו-' בשאילתה מתאימים גם ל-״ ו-׳ בטקסט המוצג.
+      if (ch == '"') {
+        buffer.write('["\u05F4]');
+      } else if (ch == "'") {
+        buffer.write("['\u05F3]");
+      } else {
+        buffer.write(RegExp.escape(ch));
+      }
       buffer.write(r'[\u0591-\u05C7]*');
       if (i < chars.length - 1) {
         buffer.write(optionalQuotesAndMarks);

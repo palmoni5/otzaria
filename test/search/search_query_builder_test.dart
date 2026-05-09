@@ -13,13 +13,14 @@ void main() {
       expect(SearchQueryBuilder.sanitizeQuery('תורה, ומצוות'), 'תורה ומצוות');
     });
 
-    test('מסיר גרשיים', () {
-      expect(SearchQueryBuilder.sanitizeQuery("ה'"), 'ה');
+    test('שומר גרש וגרשיים לועזיים', () {
+      expect(SearchQueryBuilder.sanitizeQuery("ה'"), "ה'");
+      expect(SearchQueryBuilder.sanitizeQuery('רמב"ם'), 'רמב"ם');
     });
 
-    test('מסיר גרשיים עבריים (״ ו-׳)', () {
-      expect(SearchQueryBuilder.sanitizeQuery('ר״ן'), 'רן');
-      expect(SearchQueryBuilder.sanitizeQuery("א׳"), 'א');
+    test('ממיר גרשיים וגרש עבריים ללועזיים (״→", ׳→\')', () {
+      expect(SearchQueryBuilder.sanitizeQuery('ר״ן'), 'ר"ן');
+      expect(SearchQueryBuilder.sanitizeQuery("א׳"), "א'");
     });
 
     test('מסיר סימני שאלה וקריאה', () {
@@ -44,9 +45,8 @@ void main() {
       expect(SearchQueryBuilder.sanitizeQuery('a\\b|c'), 'abc');
     });
 
-    test('query עם רק תווים מיוחדים → ריק', () {
-      expect(SearchQueryBuilder.sanitizeQuery('*!?.,'), '');
-      expect(SearchQueryBuilder.sanitizeQuery('"..."'), '');
+    test('query עם רק תווים מוסרים → ריק', () {
+      expect(SearchQueryBuilder.sanitizeQuery('*!?.,;'), '');
     });
 
     test('query טהור עברי נשמר', () {
@@ -577,9 +577,9 @@ void main() {
 
   // ──────────────────────────────────────────────────────────────────────────
   group('תרחישי הבאג: אופרטורים ריקים', () {
-    test('sanitize של query עם רק גרשיים → regexTerms ריק, לא קורס', () {
+    test('sanitize של query עם רק תווים מוסרים → regexTerms ריק, לא קורס', () {
       final params = SearchQueryBuilder.prepareQueryParams(
-          '"""', false, 0, null, null, null);
+          '!?.,;', false, 0, null, null, null);
       final regexTerms = params['regexTerms'] as List<String>;
       expect(regexTerms, isEmpty);
     });
