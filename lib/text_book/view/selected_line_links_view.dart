@@ -31,7 +31,7 @@ RenderSettings buildSelectedLinkRenderSettings({
     fontSize: settingsState.commentatorsFontSize,
     fontFamily: settingsState.commentatorsFontFamily,
     lineHeight: settingsState.lineHeight,
-    justifyText: false,
+    justifyText: true,
   );
 }
 
