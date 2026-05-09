@@ -102,6 +102,10 @@ sentry.properties
 .sentry-native/
 linux/flutter/generated_plugin_registrant.cc
 linux/flutter/generated_plugins.cmake
+
+# קובץ אינדקס חיפוש בהגדרות — מחולל ע"י tool/generate_search_index.dart
+# ו-hook/build.dart בכל בנייה. אין לדחוף.
+lib/settings/search/settings_search_index.g.dart
 macos/Flutter/GeneratedPluginRegistrant.swift
 log.txt
 
