@@ -216,6 +216,11 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
       return;
     }
 
+    // אם המשתמש כותב בשדה חיפוש/קלט אחר - לא לגנוב ממנו פוקוס
+    if (_isTextInputFocused()) {
+      return;
+    }
+
     _shouldPreserveKeyboardFocus = true;
     focusNode.requestFocus();
   }
