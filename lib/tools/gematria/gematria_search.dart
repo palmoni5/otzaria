@@ -143,10 +143,10 @@ class GimatriaSearch {
   }
 
   /// Search in SQLite database for phrases whose gimatria equals [targetGimatria].
-  /// Falls back to file search if database is not available.
-  /// [maxPhraseWords] bounds phrase length to avoid explosion.
+  /// Falls back to file search across all [folders] if database is not available
+  /// or fails mid-query. [maxPhraseWords] bounds phrase length to avoid explosion.
   static Future<List<SearchResult>> searchInFiles(
-      String folder, int targetGimatria,
+      List<String> folders, int targetGimatria,
       {int maxPhraseWords = 8,
       int fileLimit = 1000,
       bool wholeVerseOnly = false,
@@ -172,21 +172,30 @@ class GimatriaSearch {
         if (debug) {
           debugPrint('Database search failed, falling back to file search: $e');
         }
-        // Fall through to file search
+        // Fall through to file search across all folders
       }
     }
 
-    // Fallback to file search
-    return await _searchInFilesLegacy(
-      folder,
-      targetGimatria,
-      maxPhraseWords: maxPhraseWords,
-      fileLimit: fileLimit,
-      wholeVerseOnly: wholeVerseOnly,
-      debug: debug,
-      gematriaMethod: gematriaMethod,
-      useWithKolel: useWithKolel,
-    );
+    // Fallback to file search across all folders.
+    // חלוקת ה-budget בין התיקיות כדי לכבד את fileLimit כסך כולל,
+    // ולא להשקיע עבודה מיותרת בתיקיות הבאות אחרי שכבר נצברו תוצאות.
+    final List<SearchResult> all = [];
+    for (final folder in folders) {
+      final remaining = fileLimit - all.length;
+      if (remaining <= 0) break;
+      final results = await _searchInFilesLegacy(
+        folder,
+        targetGimatria,
+        maxPhraseWords: maxPhraseWords,
+        fileLimit: remaining,
+        wholeVerseOnly: wholeVerseOnly,
+        debug: debug,
+        gematriaMethod: gematriaMethod,
+        useWithKolel: useWithKolel,
+      );
+      all.addAll(results);
+    }
+    return all;
   }
 
   /// Search in SQLite database for phrases whose gimatria equals [targetGimatria]
@@ -216,7 +225,8 @@ class GimatriaSearch {
         }
       }
     } else {
-      // Get all books in Tanach categories
+      // ⚠️ ללא bookTitles - סריקת כל הספרים בספרייה (כבד מאוד!).
+      // המסך אמור תמיד להעביר bookTitles כדי לתחום לתנ"ך.
       final allBooks = await repository.getAllBooks();
       bookIds = allBooks.map((b) => b.id).toList();
     }
