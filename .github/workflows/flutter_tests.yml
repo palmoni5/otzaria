@@ -1,0 +1,49 @@
+name: Flutter Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  test:
+    name: Run Tests on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    # מטריצה להרצה על מערכות הפעלה שונות (אופציונלי)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest] # אפשר להוסיף macos-latest אם יש טסטים ספציפיים ל-iOS
+
+    steps:
+      # 1. שליחת הקוד למכונה
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. התקנת סביבת Flutter
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x' # משתמש בגרסה היציבה האחרונה
+          channel: 'stable'
+          cache: true # שומר זיכרון מטמון כדי להריץ מהר יותר בפעמים הבאות
+
+      # 3. התקנת חבילות (Dependencies)
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 3.1 חילול אינדקס חיפוש בהגדרות (.g.dart) — gitignored, נדרש לפני הטסטים.
+      - name: Generate settings search index
+        run: dart run tool/generate_search_index.dart
+
+      # 4. הרצת הבדיקות (Unit & Widget Tests)
+      - name: Run tests with coverage
+        run: flutter test --coverage
+
+      # 5. העלאת דו"ח כיסוי קוד (Coverage)
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} # דורש הגדרה ב-Secrets של GitHub
