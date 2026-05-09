@@ -28,7 +28,7 @@ class DesignSettingsTab extends StatelessWidget {
       subtitle: 'החלף מצב מסך מלא',
       tab: SettingsTab.design,
       cardId: 'design.display',
-      keywords: ['מסך מלא', 'fullscreen'],
+      keywords: ['מסך מלא', 'fullscreen', 'מופעל', 'לא מופעל'],
     ),
     SettingsSearchEntry(
       id: 'design.theme.follow_system',
@@ -36,7 +36,7 @@ class DesignSettingsTab extends StatelessWidget {
       subtitle: 'התאמת ערכת הנושא לצבע מערכת ההפעלה',
       tab: SettingsTab.design,
       cardId: 'design.theme',
-      keywords: ['ערכת נושא', 'מערכת'],
+      keywords: ['ערכת נושא', 'מערכת', 'מופעל', 'לא מופעל'],
     ),
     SettingsSearchEntry(
       id: 'design.theme.dark_mode',
@@ -44,7 +44,14 @@ class DesignSettingsTab extends StatelessWidget {
       subtitle: 'מעבר בין מצב בהיר למצב כהה',
       tab: SettingsTab.design,
       cardId: 'design.theme',
-      keywords: ['ערכת נושא', 'בהיר', 'אפל', 'dark mode'],
+      keywords: [
+        'ערכת נושא',
+        'בהיר',
+        'אפל',
+        'dark mode',
+        'מופעל',
+        'לא מופעל',
+      ],
     ),
     SettingsSearchEntry(
       id: 'design.theme.seed_color',
@@ -60,7 +67,7 @@ class DesignSettingsTab extends StatelessWidget {
       subtitle: 'פתיחת ספרי PDF בתצוגת ספר או רגילה',
       tab: SettingsTab.design,
       cardId: 'design.pdf',
-      keywords: ['pdf', 'תצוגה'],
+      keywords: ['pdf', 'תצוגה', 'תצוגת ספר', 'רגילה', 'מופעל', 'לא מופעל'],
     ),
     SettingsSearchEntry(
       id: 'design.tabs.compact',
@@ -68,7 +75,15 @@ class DesignSettingsTab extends StatelessWidget {
       subtitle: 'צפיפות תפריטים בסגנון Chrome',
       tab: SettingsTab.design,
       cardId: 'design.tabs',
-      keywords: ['קומפקטי', 'צפוף'],
+      keywords: [
+        'קומפקטי',
+        'צפוף',
+        'chrome',
+        'נוח',
+        'מרווח',
+        'מופעל',
+        'לא מופעל',
+      ],
     ),
     SettingsSearchEntry(
       id: 'design.tabs.align_right',
@@ -76,7 +91,7 @@ class DesignSettingsTab extends StatelessWidget {
       subtitle: 'הצגת כרטיסיות הספרים בימין החלון',
       tab: SettingsTab.design,
       cardId: 'design.tabs',
-      keywords: ['ימין', 'מרכז', 'כרטיסיות'],
+      keywords: ['ימין', 'מרכז', 'כרטיסיות', 'מופעל', 'לא מופעל'],
     ),
     SettingsSearchEntry(
       id: 'design.layout.sidebar_mode',
@@ -84,7 +99,15 @@ class DesignSettingsTab extends StatelessWidget {
       subtitle: 'הצגה / אוטומטי / הסתרה של חלונית הניווט',
       tab: SettingsTab.design,
       cardId: 'design.layout',
-      keywords: ['סייד-בר', 'תפריט'],
+      keywords: [
+        'סייד-בר',
+        'תפריט',
+        'הצגה',
+        'אוטומטי',
+        'הסתרה',
+        'קבוע',
+        'גלילה',
+      ],
     ),
     SettingsSearchEntry(
       id: 'design.layout.notes_collapsed',
@@ -92,7 +115,14 @@ class DesignSettingsTab extends StatelessWidget {
       subtitle: 'תצוגת רשימות הערות בפתיחה',
       tab: SettingsTab.design,
       cardId: 'design.layout',
-      keywords: ['הערות', 'אישיות'],
+      keywords: [
+        'הערות',
+        'אישיות',
+        'סגורות',
+        'פתוחות',
+        'מופעל',
+        'לא מופעל',
+      ],
     ),
     SettingsSearchEntry(
       id: 'design.layout.split_view',
@@ -100,7 +130,14 @@ class DesignSettingsTab extends StatelessWidget {
       subtitle: 'מפרשים בחלונית מפוצלת או בתוך הטקסט',
       tab: SettingsTab.design,
       cardId: 'design.layout',
-      keywords: ['מפרשים', 'מפוצל'],
+      keywords: [
+        'מפרשים',
+        'מפוצל',
+        'מפוצלת',
+        'בתוך הטקסט',
+        'מופעל',
+        'לא מופעל',
+      ],
     ),
   ];
 

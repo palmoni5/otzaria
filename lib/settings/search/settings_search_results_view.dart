@@ -48,34 +48,44 @@ class SettingsSearchResultsView extends StatelessWidget {
 
   Widget _buildEmptyState(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              FluentIcons.search_info_24_regular,
-              size: 48,
-              color: colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'לא נמצאו הגדרות תואמות',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+    // עוטפים ב-CustomScrollView/SliverFillRemaining כדי שה-PrimaryScrollController
+    // העוטף יקבל ScrollPosition פעיל גם כשאין תוצאות (אחרת ה-Scrollbar
+    // החיצוני זורק "no ScrollPosition attached").
+    return CustomScrollView(
+      slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    FluentIcons.search_info_24_regular,
+                    size: 48,
                     color: colorScheme.onSurfaceVariant,
                   ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'נסה לחפש מילים אחרות',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+                  const SizedBox(height: 12),
+                  Text(
+                    'לא נמצאו הגדרות תואמות',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'נסה לחפש מילים אחרות',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }
