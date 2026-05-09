@@ -26,6 +26,7 @@ import 'package:otzaria/navigation/bloc/navigation_bloc.dart';
 import 'package:otzaria/navigation/bloc/navigation_event.dart';
 import 'package:otzaria/navigation/bloc/navigation_state.dart';
 import 'package:otzaria/widgets/feedback/indexing_warning.dart';
+import 'package:otzaria/data/data_providers/tantivy_data_provider.dart';
 import 'package:otzaria/core/ui_snack.dart';
 import 'package:otzaria/utils/text/text_manipulation.dart' as utils;
 import 'package:otzaria/tour/tour_target_keys.dart';
@@ -77,7 +78,7 @@ class SearchDialog extends StatefulWidget {
 class _SearchDialogState extends State<SearchDialog> {
   late SearchingTab _searchTab;
   FocusRestorer? _focusRestorer;
-  bool _showIndexWarning = false;
+  bool _showIndexInProgressWarning = false;
   bool _showHistoryDropdown = false;
   bool _searchAllCategories = true;
   Set<String> _manualFacets = {};
@@ -147,9 +148,9 @@ class _SearchDialogState extends State<SearchDialog> {
     _selectedCategoryFacets =
         _searchAllCategories ? {'/'} : Set<String>.from(_manualFacets);
 
-    // בדיקה אם האינדקס בתהליך בנייה
+    // בדיקה אם האינדקס בתהליך בנייה - האזהרה ניתנת לסגירה ואינה חוסמת חיפוש
     final indexingState = context.read<IndexingBloc>().state;
-    _showIndexWarning = indexingState is IndexingInProgress;
+    _showIndexInProgressWarning = indexingState is IndexingInProgress;
 
     // מאזין לשינויים בתיבת החיפוש כדי לעדכן את האפשרויות ולשמור את ההקלדה
     _queryListener = () {
@@ -179,14 +180,56 @@ class _SearchDialogState extends State<SearchDialog> {
     });
   }
 
-  Widget _buildIndexWarning() {
-    if (!_showIndexWarning) return const SizedBox.shrink();
+  /// מחזיר את מצב זמינות האינדקס לפי ה-Bloc + רשימת הספרים שאונדקסו.
+  /// "missing" - הסתיימה האתחול ואין שום ספר באינדקס.
+  /// "inProgress" - אינדוקס פעיל כעת.
+  /// null - אינדקס תקין, או שעוד לא ידוע (האתחול לא הסתיים).
+  ///
+  /// [providerInitialized] = true רק אחרי ש-TantivyDataProvider סיים לטעון את
+  /// booksDone מהדיסק. אסור להסיק "missing" לפני כן.
+  IndexingWarningMode? _resolveWarningMode(
+    IndexingState state, {
+    required bool providerInitialized,
+  }) {
+    if (providerInitialized &&
+        TantivyDataProvider.instance.booksDone.isEmpty) {
+      return IndexingWarningMode.missing;
+    }
+    if (state is IndexingInProgress && _showIndexInProgressWarning) {
+      return IndexingWarningMode.inProgress;
+    }
+    return null;
+  }
 
-    return IndexingWarning(
-      onDismiss: () {
-        setState(() {
-          _showIndexWarning = false;
-        });
+  /// האם יש לחסום את אישור החיפוש (אין אינדקס בכלל - אחרי שהטעינה הסתיימה).
+  bool _isSearchBlocked(IndexingState state, {required bool providerInitialized}) {
+    return providerInitialized &&
+        TantivyDataProvider.instance.booksDone.isEmpty;
+  }
+
+  Widget _buildIndexWarning() {
+    return ValueListenableBuilder<bool>(
+      valueListenable: TantivyDataProvider.instance.isInitialized,
+      builder: (context, providerInitialized, _) {
+        return BlocBuilder<IndexingBloc, IndexingState>(
+          builder: (context, state) {
+            final mode = _resolveWarningMode(
+              state,
+              providerInitialized: providerInitialized,
+            );
+            if (mode == null) return const SizedBox.shrink();
+            return IndexingWarning(
+              mode: mode,
+              onDismiss: mode == IndexingWarningMode.inProgress
+                  ? () {
+                      setState(() {
+                        _showIndexInProgressWarning = false;
+                      });
+                    }
+                  : null,
+            );
+          },
+        );
       },
     );
   }
@@ -309,6 +352,18 @@ class _SearchDialogState extends State<SearchDialog> {
   }
 
   void _performSearch() {
+    // חסימת חיפוש כשאין אינדקס - חיפוש שמשתמש באינדקס לא יכול לרוץ.
+    // אם ה-provider עוד לא הסתיים לטעון, לא חוסמים (השאילתה תמתין ל-engine).
+    if (_isSearchBlocked(
+      context.read<IndexingBloc>().state,
+      providerInitialized:
+          TantivyDataProvider.instance.isInitialized.value,
+    )) {
+      UiSnack.showError(
+          'אינדקס לא קיים, לא ניתן לבצע חיפוש זה ללא אינדקס.');
+      return;
+    }
+
     String query = _searchTab.queryController.text.trim();
 
     if (query.isEmpty) {
@@ -689,25 +744,51 @@ class _SearchDialogState extends State<SearchDialog> {
                                       top: 8,
                                       bottom: 8,
                                       child: Center(
-                                        child: IconButton(
-                                          icon: const Icon(
-                                            FluentIcons.search_24_filled,
-                                            size: 20,
-                                          ),
-                                          tooltip: 'חפש',
-                                          onPressed: _performSearch,
-                                          style: IconButton.styleFrom(
-                                            backgroundColor: Theme.of(context)
-                                                .colorScheme
-                                                .primaryContainer,
-                                            foregroundColor: Theme.of(context)
-                                                .colorScheme
-                                                .primary,
-                                            padding: const EdgeInsets.all(6),
-                                            minimumSize: const Size(32, 32),
-                                            tapTargetSize: MaterialTapTargetSize
-                                                .shrinkWrap,
-                                          ),
+                                        child: ValueListenableBuilder<bool>(
+                                          valueListenable: TantivyDataProvider
+                                              .instance.isInitialized,
+                                          builder: (context,
+                                              providerInitialized, _) {
+                                            return BlocBuilder<IndexingBloc,
+                                                IndexingState>(
+                                              builder: (context, indexingState) {
+                                                final blocked = _isSearchBlocked(
+                                                  indexingState,
+                                                  providerInitialized:
+                                                      providerInitialized,
+                                                );
+                                                return IconButton(
+                                                  icon: const Icon(
+                                                    FluentIcons.search_24_filled,
+                                                    size: 20,
+                                                  ),
+                                                  tooltip: blocked
+                                                      ? 'אינדקס לא קיים, לא ניתן לבצע חיפוש זה ללא אינדקס'
+                                                      : 'חפש',
+                                                  onPressed: blocked
+                                                      ? null
+                                                      : _performSearch,
+                                                  style: IconButton.styleFrom(
+                                                    backgroundColor: Theme.of(
+                                                            context)
+                                                        .colorScheme
+                                                        .primaryContainer,
+                                                    foregroundColor: Theme.of(
+                                                            context)
+                                                        .colorScheme
+                                                        .primary,
+                                                    padding:
+                                                        const EdgeInsets.all(6),
+                                                    minimumSize:
+                                                        const Size(32, 32),
+                                                    tapTargetSize:
+                                                        MaterialTapTargetSize
+                                                            .shrinkWrap,
+                                                  ),
+                                                );
+                                              },
+                                            );
+                                          },
                                         ),
                                       ),
                                     ),

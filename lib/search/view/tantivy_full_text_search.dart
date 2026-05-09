@@ -20,6 +20,7 @@ import 'package:otzaria/settings/settings_exports.dart';
 import 'package:otzaria/widgets/layout/resizable_facet_filtering.dart';
 import 'package:otzaria/widgets/feedback/indexing_warning.dart';
 import 'package:otzaria/widgets/misc/thin_divider.dart';
+import 'package:otzaria/data/data_providers/tantivy_data_provider.dart';
 
 class TantivyFullTextSearch extends StatefulWidget {
   final SearchingTab tab;
@@ -33,8 +34,52 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
   @override
   bool get wantKeepAlive => true;
 
-  bool _showIndexWarning = false;
+  bool _indexInProgressWarningDismissed = false;
   bool _showEditPanel = false;
+
+  /// מחזיר את מצב אזהרת האינדקס לפי ה-Bloc + רשימת הספרים שאונדקסו.
+  /// אסור להסיק "missing" לפני ש-TantivyDataProvider סיים לטעון את booksDone
+  /// מהדיסק (אחרת תוצג אזהרה שגויה בחלון אתחול האפליקציה).
+  IndexingWarningMode? _resolveIndexingWarningMode(
+    IndexingState state, {
+    required bool providerInitialized,
+  }) {
+    if (providerInitialized &&
+        TantivyDataProvider.instance.booksDone.isEmpty) {
+      return IndexingWarningMode.missing;
+    }
+    if (state is IndexingInProgress && !_indexInProgressWarningDismissed) {
+      return IndexingWarningMode.inProgress;
+    }
+    return null;
+  }
+
+  Widget _buildIndexingWarning() {
+    return ValueListenableBuilder<bool>(
+      valueListenable: TantivyDataProvider.instance.isInitialized,
+      builder: (context, providerInitialized, _) {
+        return BlocBuilder<IndexingBloc, IndexingState>(
+          builder: (context, state) {
+            final mode = _resolveIndexingWarningMode(
+              state,
+              providerInitialized: providerInitialized,
+            );
+            if (mode == null) return const SizedBox.shrink();
+            return IndexingWarning(
+              mode: mode,
+              onDismiss: mode == IndexingWarningMode.inProgress
+                  ? () {
+                      setState(() {
+                        _indexInProgressWarningDismissed = true;
+                      });
+                    }
+                  : null,
+            );
+          },
+        );
+      },
+    );
+  }
 
   // משמש כדי להבדיל בין "חיפוש חדש" (שבו נרצה להציג מסך טעינה מלא)
   // לבין "טען תוצאות נוספות" (שבו אסור להעלים את התוצאות הקיימות).
@@ -119,9 +164,6 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
   @override
   void initState() {
     super.initState();
-    // Check if indexing is in progress using the IndexingBloc
-    final indexingState = context.read<IndexingBloc>().state;
-    _showIndexWarning = indexingState is IndexingInProgress;
 
     // Request focus on search field when the widget is first created
     _requestSearchFieldFocus();
@@ -207,14 +249,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
           decoration: const BoxDecoration(),
           child: Column(
             children: [
-              if (_showIndexWarning)
-                IndexingWarning(
-                  onDismiss: () {
-                    setState(() {
-                      _showIndexWarning = false;
-                    });
-                  },
-                ),
+              _buildIndexingWarning(),
               Row(children: [_buildMenuButton()]),
               // השורה התחתונה - מוצגת תמיד!
               _buildBottomRow(state),
@@ -316,14 +351,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
       decoration: const BoxDecoration(),
       child: Column(
         children: [
-          if (_showIndexWarning)
-            IndexingWarning(
-              onDismiss: () {
-                setState(() {
-                  _showIndexWarning = false;
-                });
-              },
-            ),
+          _buildIndexingWarning(),
           Expanded(
             child: BlocBuilder<SearchBloc, SearchState>(
               builder: (context, state) {
