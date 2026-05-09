@@ -15,6 +15,7 @@ import 'dart:io';
 
 const _settingsRoot = 'lib/settings';
 const _outputPath = 'lib/settings/search/settings_search_index.g.dart';
+const _pubspecPath = 'pubspec.yaml';
 
 void main(List<String> args) {
   final root = Directory(_settingsRoot);
@@ -23,6 +24,8 @@ void main(List<String> args) {
     exit(1);
   }
 
+  final packageName = _readPackageName();
+
   final declarations = <_FoundDecl>[];
   for (final entity in root.listSync(recursive: true, followLinks: false)) {
     if (entity is! File) continue;
@@ -30,7 +33,11 @@ void main(List<String> args) {
     if (entity.path.endsWith('.g.dart')) continue;
 
     final content = entity.readAsStringSync();
-    declarations.addAll(_findDeclarations(content, _normalizePath(entity.path)));
+    declarations.addAll(_findDeclarations(
+      content,
+      _normalizePath(entity.path),
+      packageName,
+    ));
   }
 
   declarations.sort((a, b) {
@@ -59,7 +66,7 @@ void main(List<String> args) {
     ..writeln('// הצהרות `static const searchEntries` בקבצים תחת lib/settings/.')
     ..writeln('')
     ..writeln(
-        "import 'package:otzaria/settings/search/settings_search_models.dart';");
+        "import 'package:$packageName/settings/search/settings_search_models.dart';");
   for (final imp in sortedImports) {
     buffer.writeln("import '$imp';");
   }
@@ -91,7 +98,8 @@ void main(List<String> args) {
       'Generated $_outputPath with ${declarations.length} declaration(s).');
 }
 
-List<_FoundDecl> _findDeclarations(String content, String relPath) {
+List<_FoundDecl> _findDeclarations(
+    String content, String relPath, String packageName) {
   // הסר מחרוזות והערות לפני סריקה, כדי שאיזון הסוגריים יהיה מהימן
   // ולא יוטעה על-ידי `}` או `{` בתוך מחרוזת/הערה.
   final cleaned = _stripStringsAndComments(content);
@@ -125,7 +133,7 @@ List<_FoundDecl> _findDeclarations(String content, String relPath) {
 
     results.add(_FoundDecl(
       className: className,
-      importPath: 'package:otzaria/$libRelPath',
+      importPath: 'package:$packageName/$libRelPath',
       tabValue: tabValue,
     ));
   }
@@ -227,6 +235,24 @@ String? _extractBalanced(String src, int openIdx, String open, String close) {
 }
 
 String _normalizePath(String path) => path.replaceAll('\\', '/');
+
+/// קורא את שם החבילה מתוך `pubspec.yaml` כדי לבנות נתיבי `package:` נכונים
+/// במקום לקודד שם קשיח. נכשל בקול אם השדה לא נמצא — עדיף שגיאה ברורה
+/// מאשר אינדקס שגוי בשקט.
+String _readPackageName() {
+  final file = File(_pubspecPath);
+  if (!file.existsSync()) {
+    stderr.writeln('pubspec.yaml not found at: $_pubspecPath');
+    exit(1);
+  }
+  final match = RegExp(r'^name:\s*([A-Za-z_][A-Za-z0-9_]*)', multiLine: true)
+      .firstMatch(file.readAsStringSync());
+  if (match == null) {
+    stderr.writeln('Could not parse package name from $_pubspecPath');
+    exit(1);
+  }
+  return match.group(1)!;
+}
 
 class _FoundDecl {
   final String className;

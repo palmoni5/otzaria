@@ -28,6 +28,8 @@ Future<void> _generateSearchIndex(Directory packageRoot) async {
     return;
   }
 
+  final packageName = _readPackageName(packageRoot);
+
   final declarations = <_FoundDecl>[];
   for (final entity
       in settingsRoot.listSync(recursive: true, followLinks: false)) {
@@ -37,7 +39,7 @@ Future<void> _generateSearchIndex(Directory packageRoot) async {
 
     final content = entity.readAsStringSync();
     final relPath = _relativeToPackage(entity, packageRoot);
-    declarations.addAll(_findDeclarations(content, relPath));
+    declarations.addAll(_findDeclarations(content, relPath, packageName));
   }
 
   // גם כשהרשימה ריקה — נכתוב אינדקס ריק (במקום לוותר). אחרת ה-.g.dart
@@ -66,7 +68,7 @@ Future<void> _generateSearchIndex(Directory packageRoot) async {
     ..writeln('// הצהרות `static const searchEntries` בקבצים תחת lib/settings/.')
     ..writeln('')
     ..writeln(
-        "import 'package:otzaria/settings/search/settings_search_models.dart';");
+        "import 'package:$packageName/settings/search/settings_search_models.dart';");
   for (final imp in sortedImports) {
     buffer.writeln("import '$imp';");
   }
@@ -103,7 +105,8 @@ String _relativeToPackage(File file, Directory packageRoot) {
   return filePath;
 }
 
-List<_FoundDecl> _findDeclarations(String content, String relPath) {
+List<_FoundDecl> _findDeclarations(
+    String content, String relPath, String packageName) {
   // הסר מחרוזות והערות לפני סריקה, כדי שאיזון הסוגריים יהיה מהימן
   // ולא יוטעה על-ידי `}` או `{` בתוך מחרוזת/הערה.
   final cleaned = _stripStringsAndComments(content);
@@ -139,7 +142,7 @@ List<_FoundDecl> _findDeclarations(String content, String relPath) {
 
     results.add(_FoundDecl(
       className: className,
-      importPath: 'package:otzaria/$libRelPath',
+      importPath: 'package:$packageName/$libRelPath',
       tabValue: tabValue,
     ));
   }
@@ -228,6 +231,22 @@ String _stripStringsAndComments(String src) {
     i++;
   }
   return out.toString();
+}
+
+/// קורא את שם החבילה מתוך `pubspec.yaml` של ה-packageRoot כדי לבנות נתיבי
+/// `package:` נכונים במקום לקודד שם קשיח. נכשל בקול אם השדה לא נמצא —
+/// עדיף שגיאה ברורה מאשר אינדקס שגוי בשקט.
+String _readPackageName(Directory packageRoot) {
+  final pubspec = File.fromUri(packageRoot.uri.resolve('pubspec.yaml'));
+  if (!pubspec.existsSync()) {
+    throw StateError('pubspec.yaml not found at: ${pubspec.path}');
+  }
+  final match = RegExp(r'^name:\s*([A-Za-z_][A-Za-z0-9_]*)', multiLine: true)
+      .firstMatch(pubspec.readAsStringSync());
+  if (match == null) {
+    throw StateError('Could not parse package name from ${pubspec.path}');
+  }
+  return match.group(1)!;
 }
 
 String? _extractBalanced(String src, int openIdx, String open, String close) {

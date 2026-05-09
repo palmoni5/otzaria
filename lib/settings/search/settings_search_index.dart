@@ -4,7 +4,7 @@ import 'package:otzaria/settings/search/settings_search_models.dart';
 /// אינדקס חיפוש בהגדרות. הפריטים עצמם מוצהרים בכל טאב/פנל בנפרד
 /// (כ-`static const List<SettingsSearchEntry> searchEntries`),
 /// והאיחוד נוצר אוטומטית אל קובץ `settings_search_index.g.dart`
-/// (gitignored — לא דחוף לרפו).
+/// (gitignored — לא נדחף לרפו).
 ///
 /// **שתי דרכים לייצור הקובץ:**
 /// 1. אוטומטית — `hook/build.dart` רץ על `flutter run` / `flutter build`.
