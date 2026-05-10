@@ -53,12 +53,12 @@ bool FlutterWindow::OnCreate() {
               if (*timeout_value > 0) {
                 timeout_ms = static_cast<uint32_t>(*timeout_value);
               }
-            } else if (const auto* timeout_value =
+            } else if (const auto* timeout_value64 =
                            std::get_if<int64_t>(&timeout_it->second)) {
-              if (*timeout_value > 0 &&
-                  *timeout_value <
+              if (*timeout_value64 > 0 &&
+                  *timeout_value64 <
                       static_cast<int64_t>(std::numeric_limits<uint32_t>::max())) {
-                timeout_ms = static_cast<uint32_t>(*timeout_value);
+                timeout_ms = static_cast<uint32_t>(*timeout_value64);
               }
             }
           }
