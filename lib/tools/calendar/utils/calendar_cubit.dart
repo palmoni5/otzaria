@@ -361,6 +361,8 @@ class CalendarCubit extends Cubit<CalendarState> {
     // Add plugin published events via adapter
     events = await PluginCalendarAdapter().loadAndMergePluginEvents(events);
 
+    if (isClosed) return;
+
     emit(state.copyWith(
       calendarType: calendarType,
       dayTransition: dayTransition,
