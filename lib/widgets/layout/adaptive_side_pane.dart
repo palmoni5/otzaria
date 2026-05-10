@@ -401,7 +401,6 @@ class _AdaptiveSidePaneState extends State<AdaptiveSidePane> {
                 valueListenable: _livePaneWidth,
                 builder: (context, liveWidth, _) {
                   final currentWidth = liveWidth;
-                  final overhang = showHandle ? handleHitOverhang(context) : 0.0;
 
                   return Stack(
                     children: [
@@ -426,8 +425,8 @@ class _AdaptiveSidePaneState extends State<AdaptiveSidePane> {
                         Positioned(
                           top: _kNarrowTopGap,
                           bottom: _kNarrowBottomGap,
-                          right: paneOnRight ? currentWidth - overhang : null,
-                          left: paneOnRight ? null : currentWidth - overhang,
+                          right: paneOnRight ? 0 : null,
+                          left: paneOnRight ? null : 0,
                           child: AnimatedOpacity(
                             duration: AppTokens.animPanelOpacity,
                             opacity: widget.isOpen ? 1.0 : 0.0,
