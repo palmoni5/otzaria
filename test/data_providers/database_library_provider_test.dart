@@ -244,7 +244,7 @@ void main() {
         db.execute(
             "INSERT INTO line (id, lineIndex, heRef) VALUES (21, 1, 'ב')");
         db.execute(
-            "INSERT INTO connection_type (id, name) VALUES (5, 'reference')");
+            "INSERT INTO connection_type (id, name) VALUES (5, 'COMMENTARY')");
         db.execute(
             'INSERT INTO link (sourceBookId, sourceLineId, targetLineId, targetBookId, connectionTypeId) VALUES (1, 10, 20, 2, 5)');
         db.execute(
