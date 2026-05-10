@@ -239,6 +239,24 @@ class SeforimRepository {
     }
   }
 
+  /// מוסיף את הרשומות הנדרשות ל-category_closure עבור קטגוריה שזה עתה הוכנסה.
+  /// יש לקרוא לזה אחרי כל insertCategoryWithId מוצלח, כדי לשמור על הטבלה עקבית
+  /// בלי צורך ב-rebuildCategoryClosure גלובלי.
+  Future<void> _insertClosureForCategory(int categoryId, int? parentId) async {
+    final db = await _database.database;
+    // הפניה עצמית — כל קטגוריה היא צאצא של עצמה.
+    db.execute(
+        'INSERT OR IGNORE INTO category_closure (ancestorId, descendantId) VALUES (?, ?)',
+        [categoryId, categoryId]);
+    // ירושת כל האבות של ההורה — כולל ההורה עצמו (דרך ה-self-loop שלו).
+    if (parentId != null) {
+      db.execute(
+          'INSERT OR IGNORE INTO category_closure (ancestorId, descendantId) '
+          'SELECT ancestorId, ? FROM category_closure WHERE descendantId = ?',
+          [categoryId, parentId]);
+    }
+  }
+
   /// Returns all descendant category IDs (including the category itself) using the
   /// category_closure table.
   Future<List<int>> getDescendantCategoryIds(int ancestorId) async {
@@ -315,6 +333,10 @@ class SeforimRepository {
           categoryToInsert.parentId,
           categoryToInsert.title,
           categoryToInsert.level);
+
+      // עדכון אינקרמנטלי של category_closure — מונע rebuild גלובלי בעלייה.
+      await _insertClosureForCategory(
+          categoryToInsert.id, categoryToInsert.parentId);
 
       // ודא שההכנסה הצליחה
       if (insertedId == 0) {

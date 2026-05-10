@@ -435,7 +435,9 @@ class FileSyncService {
       await _refreshConfiguredCustomFolderSources(customFolders);
       await _storeCustomFoldersRefreshSignature(customFolders);
     }
-    await _repository.rebuildCategoryClosure();
+    // הערה: בעבר היה כאן rebuildCategoryClosure בלתי-מותנה שגרם להמון כתיבות
+    // לדיסק בכל עלייה. כיום insertCategory מתחזק את category_closure
+    // אינקרמנטלית, כך שה-rebuild המלא הזה כבר לא נחוץ כאן.
     await pruneRemovedCustomFoldersFromDatabase(customFolders);
   }
 
@@ -667,10 +669,8 @@ class FileSyncService {
         }
       }
 
-      if (addedCategories > 0) {
-        _reportProgress(0.95, 'מעדכן היררכיית קטגוריות...');
-        await _repository.rebuildCategoryClosure();
-      }
+      // category_closure מתעדכן אינקרמנטלית בכל insertCategory, אז אין צורך
+      // ב-rebuild גלובלי כאן גם כשהוספו קטגוריות חדשות.
 
       await pruneRemovedCustomFoldersFromDatabase(customFolders);
 
