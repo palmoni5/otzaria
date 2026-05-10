@@ -314,27 +314,28 @@ void main() {
 
     test('query עם רק תווים מוסרים → regexTerms ריק', () {
       // sanitizeQuery מסיר: , ! ? : * ( ) [ ] { } ^ $ | \\ + . ~ `
-      // splitQueryWords מפצל גם על: " ' ״ ׳ (גרשיים/גרש)
+      // " ו-' אינם מהווים טוקן בעצמם בלי תווי-מילה סביבם.
       final params = SearchQueryBuilder.prepareQueryParams(
           '!?.,*', false, 0, null, null, null);
       final regexTerms = params['regexTerms'] as List<String>;
       expect(regexTerms, isEmpty);
     });
 
-    test('ראשי תיבות עם גרשיים לועזיים → מתפצלים לטוקנים נפרדים', () {
-      // הטוקנייזר של Tantivy מפצל את `רמב"ם` ל-`רמב`,`ם` באינדוקס,
-      // לכן השאילתה חייבת לשלוח phrase של 2 טוקנים.
+    test('ראשי תיבות עם גרשיים לועזיים → טוקן יחיד עם " פנימי', () {
+      // ה-HebrewTokenizer בצד ה-Rust שומר `"` בין אותיות כחלק מהטוקן,
+      // כך ש-`רמב"ם` הופך לטוקן יחיד `רמב"ם`. השאילתה חייבת להתאים.
       final params = SearchQueryBuilder.prepareQueryParams(
           'רמב"ם', false, 0, null, null, null);
       final regexTerms = params['regexTerms'] as List<String>;
-      expect(regexTerms, ['רמב', 'ם']);
+      expect(regexTerms, ['רמב"ם']);
     });
 
-    test('ראשי תיבות עם גרשיים עבריים → מתפצלים לטוקנים נפרדים', () {
+    test('ראשי תיבות עם גרשיים עבריים → מנורמלים ל-" ונשארים טוקן יחיד', () {
+      // sanitize ממיר ״→", ואז הטוקן הסופי הוא `ר"ן` (תואם לטוקן באינדקס).
       final params = SearchQueryBuilder.prepareQueryParams(
           'ר״ן', false, 0, null, null, null);
       final regexTerms = params['regexTerms'] as List<String>;
-      expect(regexTerms, ['ר', 'ן']);
+      expect(regexTerms, ['ר"ן']);
     });
 
     test("מילה בודדת עם גרש סופי → נשמר כחלק מהטוקן", () {
@@ -347,21 +348,40 @@ void main() {
       expect(regexTerms, ["ה'"]);
     });
 
-    test('צירוף ראשי תיבות ומילה רגילה → טוקנים סמוכים', () {
+    test('צירוף ראשי תיבות ומילה רגילה → 2 טוקנים', () {
+      // `רמב"ם` → טוקן יחיד; `משה` → טוקן נפרד.
       final params = SearchQueryBuilder.prepareQueryParams(
           'רמב"ם משה', false, 0, null, null, null);
       final regexTerms = params['regexTerms'] as List<String>;
-      expect(regexTerms, ['רמב', 'ם', 'משה']);
+      expect(regexTerms, ['רמב"ם', 'משה']);
     });
 
-    test("ז\"ל → phrase של ['ז','ל'] (לא מילה אחת ולא 'למה זה')", () {
-      // הטקסט באינדקס: `הרב פלוני ז"ל` ⇒ Tantivy מפצל ל-`הרב`,`פלוני`,`ז`,`ל`.
-      // השאילתה צריכה לבקש שני טוקנים סמוכים, בדיוק `ז` ו-`ל`,
-      // כך שטקסטים כמו `למה זה` (טוקנים `למה`,`זה`) לא יתפסו.
+    test("תעתיקים עם גרש פנימי → טוקן יחיד", () {
+      // ג'ורג', ד'אש, צ'יפס: גרש בין אותיות נשמר כחלק מהטוקן
+      // (תואם את HebrewTokenizer בצד ה-Rust ששומר ' בין תווי-מילה).
+      var params = SearchQueryBuilder.prepareQueryParams(
+          "ג'ורג'", false, 0, null, null, null);
+      expect(params['regexTerms'], ["ג'ורג'"]);
+
+      params = SearchQueryBuilder.prepareQueryParams(
+          "ד'אש", false, 0, null, null, null);
+      expect(params['regexTerms'], ["ד'אש"]);
+    });
+
+    test("גרש עברי פנימי מנורמל ל-ASCII", () {
+      // ׳ (U+05F3) בין אותיות → ' (U+0027) בטוקן הסופי.
+      final params = SearchQueryBuilder.prepareQueryParams(
+          "ג׳ורג׳", false, 0, null, null, null);
+      expect(params['regexTerms'], ["ג'ורג'"]);
+    });
+
+    test("ז\"ל → טוקן יחיד `ז\"ל`", () {
+      // הטקסט באינדקס: `הרב פלוני ז"ל` ⇒ HebrewTokenizer מייצר
+      // `הרב`,`פלוני`,`ז"ל` (שמירה של " בין אותיות). השאילתה תואמת.
       final params =
           SearchQueryBuilder.prepareQueryParams('ז"ל', false, 0, null, null, null);
       final regexTerms = params['regexTerms'] as List<String>;
-      expect(regexTerms, ['ז', 'ל']);
+      expect(regexTerms, ['ז"ל']);
       expect(params['effectiveSlop'], 0);
     });
   });

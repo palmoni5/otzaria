@@ -492,7 +492,11 @@ class SnippetBuilder {
       return matches;
     }
 
-    final tokenRegex = RegExp(r'[א-תA-Za-z0-9]+');
+    // תואם לטוקנייזר ב-search_query_builder.dart: `"` ו-`'` בין אותיות
+    // נשמרים כחלק מהטוקן, כך ש-`רמב"ם`/`ז"ל`/`ג'ורג'` נשארים יחידה אחת.
+    // התווים העבריים `״` ו-`׳` נכללים כדי לתפוס טקסט גולמי שלא עבר sanitize.
+    final tokenRegex =
+        RegExp(r'''[א-תA-Za-z0-9]+(?:["'״׳][א-תA-Za-z0-9]+)*''');
     for (final tokenMatch in tokenRegex.allMatches(plainText)) {
       if (_overlapsExistingMatch(
           tokenMatch.start, tokenMatch.end, existingMatches)) {
@@ -909,7 +913,10 @@ class SnippetBuilder {
     for (final match
         // מחריגים ־ (U+05BE) ו-׀ (U+05C0) מהטווח כדי שמילים מופרדות במקף יפוצלו
         // לטוקנים נפרדים — sanitizeQuery ממיר ־ לרווח בשאילתה.
-        in RegExp(r'''[א-תA-Za-z0-9֑-ֽֿׁ-ׇ]+(?:['׳](?![א-תA-Za-z0-9֑-ֽֿׁ-ׇ]))?''')
+        // `"`/`'` (וגם `״`/`׳` עברי בטקסט גולמי) בין אותיות נשמרים כחלק
+        // מהטוקן — תואם להתנהגות `_tokenExtractor` ב-search_query_builder.dart
+        // ול-HebrewTokenizer בצד ה-Rust (כך `רמב"ם`, `ז"ל`, `ג'ורג'` יחידה אחת).
+        in RegExp(r'''[א-תA-Za-z0-9֑-ֽֿׁ-ׇ]+(?:["'״׳][א-תA-Za-z0-9֑-ֽֿׁ-ׇ]+)*(?:['׳](?![א-תA-Za-z0-9֑-ֽֿׁ-ׇ]))?''')
             .allMatches(plainText)) {
       final token = match.group(0);
       if (token == null || token.isEmpty) {
