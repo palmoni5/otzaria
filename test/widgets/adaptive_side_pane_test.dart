@@ -136,7 +136,7 @@ void main() {
     expect(find.text('count: 2'), findsOneWidget);
   });
 
-  testWidgets('AdaptiveSidePane places overlay drag handle on window edge',
+  testWidgets('AdaptiveSidePane places overlay drag handle at pane edge',
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -164,6 +164,8 @@ void main() {
       ),
     );
 
-    expect(tester.getTopRight(find.byType(ResizableDragHandle)).dx, 500);
+    // handle ממוקם בקצה השמאלי של הפאנל (right: paneWidth - overhang)
+    // → right edge dx = containerWidth - paneWidth + overhang = 500 - 300 + 12 = 212
+    expect(tester.getTopRight(find.byType(ResizableDragHandle)).dx, 212.0);
   });
 }
