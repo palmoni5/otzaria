@@ -28,8 +28,15 @@ class ReadingScreen extends StatefulWidget {
 }
 
 class _ReadingScreenState extends State<ReadingScreen>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
-  TabController? _tabController;
+    with WidgetsBindingObserver {
+  // PageController מנוהל ישירות במקום TabBarView: TabBarView עוטף ילדים
+  // ב-Semantics ללא key, וה-KeyedSubtree.wrap הפנימי שלו מקבע מפתח לפי
+  // אינדקס. בהזזת/סגירת טאב סמוך ה-reconciliation מצליח בחוץ אך נכשל
+  // ב-type-mismatch בילד הפנימי — מה שהורס את ה-State של ה-PDF
+  // (PdfViewerController + Bloc נוצרים מחדש → טעינה מחודשת של המסמך).
+  // PageView לא עוטף ב-Semantics, וה-SliverChildListDelegate משתמש ב-key
+  // של הילד עצמו, כך שהזזה שומרת על ה-State.
+  PageController? _pageController;
 
   @override
   void initState() {
@@ -52,46 +59,21 @@ class _ReadingScreenState extends State<ReadingScreen>
         // Ignore errors during disposal
       }
     }
-    _tabController?.dispose();
+    _pageController?.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  void _handleTabControllerChange() {
-    final controller = _tabController;
-    if (controller == null) return;
-    final tabsState = context.read<TabsBloc>().state;
-    if (!tabsState.hasOpenTabs) return;
-
-    if (controller.indexIsChanging &&
-        tabsState.currentTabIndex < tabsState.tabs.length) {
-      context.read<HistoryBloc>().add(
-          CaptureStateForHistory(tabsState.tabs[tabsState.currentTabIndex]));
-      context.read<TabsBloc>().add(const SaveTabs());
-    }
-
-    if (controller.index != tabsState.currentTabIndex) {
-      context.read<TabsBloc>().add(SetCurrentTab(controller.index));
-    }
+  void _ensurePageController(int initialIndex) {
+    _pageController ??= PageController(initialPage: initialIndex);
   }
 
-  void _ensureTabController(TabsState state) {
-    if (!state.hasOpenTabs) return;
-
-    final validIndex = state.currentTabIndex.clamp(0, state.tabs.length - 1);
-    if (_tabController == null || _tabController!.length != state.tabs.length) {
-      _tabController?.dispose();
-      _tabController = TabController(
-        length: state.tabs.length,
-        vsync: this,
-        initialIndex: validIndex,
-      )..addListener(_handleTabControllerChange);
-      return;
-    }
-
-    if (_tabController!.index != validIndex &&
-        !_tabController!.indexIsChanging) {
-      _tabController!.animateTo(validIndex);
+  void _syncPageController(int targetIndex) {
+    final controller = _pageController;
+    if (controller == null || !controller.hasClients) return;
+    final currentPage = controller.page?.round();
+    if (currentPage != null && currentPage != targetIndex) {
+      controller.jumpToPage(targetIndex);
     }
   }
 
@@ -115,15 +97,24 @@ class _ReadingScreenState extends State<ReadingScreen>
               context
                   .read<HistoryBloc>()
                   .add(CaptureStateForHistory(state.currentTab!));
+              context.read<TabsBloc>().add(const SaveTabs());
+              _syncPageController(
+                  state.currentTabIndex.clamp(0, state.tabs.length - 1));
             }
           },
           listenWhen: (previous, current) =>
-              previous.currentTabIndex != current.currentTabIndex,
+              previous.currentTabIndex != current.currentTabIndex ||
+              previous.tabs.length != current.tabs.length,
         ),
         BlocListener<TabsBloc, TabsState>(
           listener: (context, state) {
-            // כשסוגרים את הטאב האחרון, עוברים למסך הספרייה
+            // כשסוגרים את הטאב האחרון, עוברים למסך הספרייה.
+            // משחררים גם את ה-PageController כדי שכשייפתחו טאבים חדשים
+            // ייווצר controller חדש עם initialPage תקין; אחרת ה-page
+            // הפנימי הישן נשאר ו-_syncPageController נכשל ב-hasClients.
             if (!state.hasOpenTabs) {
+              _pageController?.dispose();
+              _pageController = null;
               context.read<NavigationBloc>().add(
                     const NavigateToScreen(Screen.library),
                   );
@@ -168,21 +159,24 @@ class _ReadingScreenState extends State<ReadingScreen>
                 );
               }
 
-              _ensureTabController(state);
+              final validIndex =
+                  state.currentTabIndex.clamp(0, state.tabs.length - 1);
+              _ensurePageController(validIndex);
 
               return Scaffold(
                 body: KeyedSubtree(
                   key: tourReadingScreenTargetKey,
                   child: SizedBox.fromSize(
                     size: MediaQuery.of(context).size,
-                    child: TabBarView(
+                    child: PageView(
                       key: const ValueKey('normal_tab_view'),
-                      controller: _tabController,
+                      controller: _pageController,
+                      physics: const NeverScrollableScrollPhysics(),
                       children: [
                         for (var i = 0; i < state.tabs.length; i++)
                           _buildTabView(
                             state.tabs[i],
-                            enableTourTargets: i == state.currentTabIndex,
+                            enableTourTargets: i == validIndex,
                           ),
                       ],
                     ),
@@ -211,6 +205,7 @@ class _ReadingScreenState extends State<ReadingScreen>
       );
     } else if (tab is TextBookTab) {
       return BlocProvider.value(
+          key: PageStorageKey(tab),
           value: tab.bloc,
           child: TextBookViewerBloc(
             openBookCallback: (tab, {int index = 1}) {
@@ -222,7 +217,7 @@ class _ReadingScreenState extends State<ReadingScreen>
             enableTourTargets: enableTourTargets,
           ));
     } else if (tab is SearchingTab) {
-      return FullTextSearchScreen(tab: tab);
+      return FullTextSearchScreen(key: PageStorageKey(tab), tab: tab);
     }
     return const SizedBox.shrink();
   }
