@@ -990,7 +990,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
       },
       backgroundColor:
           Colors.white, // תמיד לבן - ה-ColorFilter יהפוך לשחור במצב כהה
-      maxScale: 10,
+      sizeDelegateProvider: PdfViewerSizeDelegateProviderLegacy(maxScale: 10),
       horizontalCacheExtent: 0,
       verticalCacheExtent: layoutMode == PdfLayoutMode.bookView
           ? 2

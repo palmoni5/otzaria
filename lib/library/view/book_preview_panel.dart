@@ -389,7 +389,8 @@ class _BookPreviewPanelState extends State<BookPreviewPanel> {
           controller: _pdfController!,
           params: PdfViewerParams(
             backgroundColor: Theme.of(context).colorScheme.surface,
-            maxScale: 10,
+            sizeDelegateProvider:
+                PdfViewerSizeDelegateProviderLegacy(maxScale: 10),
             horizontalCacheExtent: 0,
             verticalCacheExtent: 1,
             pageAnchor: PdfPageAnchor.top,
