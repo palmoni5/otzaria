@@ -2,7 +2,12 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb, visibleForTesting;
+    show
+        TargetPlatform,
+        compute,
+        defaultTargetPlatform,
+        kIsWeb,
+        visibleForTesting;
 import 'package:system_fonts/system_fonts.dart' show SystemFonts;
 import 'package:otzaria/utils/file/font_file_reader.dart';
 
@@ -41,6 +46,7 @@ class AppFonts {
   ];
 
   static List<FontInfo>? _systemFontsHebrewCache;
+  static Future<void>? _warmUpFuture;
 
   /// רשימת כל הגופנים הזמינים לבחירה ב-UI.
   /// בדסקטופ: מתווספים גם גופנים שמותקנים במערכת (באמצעות system_fonts).
@@ -55,15 +61,48 @@ class AppFonts {
     return fonts;
   }
 
+  /// טוען מראש לקאש את גופני המערכת התומכים בעברית, ברקע (compute isolate).
+  /// נועד למניעת קפיאת UI בכניסה הראשונה לטאב הגדרות "כתב",
+  /// שבו `availableFonts` נקרא ומריץ סריקת בינארי על מאות קבצי גופן.
+  /// בטוח לקריאה מרובה — אם הקאש כבר חם או שכבר רצה משימת חימום, חוזר מיידית.
+  static Future<void> warmUpSystemFontsCache() {
+    if (_systemFontsHebrewCache != null) return Future.value();
+    if (!_supportsSystemFonts) return Future.value();
+    return _warmUpFuture ??= _runWarmUp();
+  }
+
+  static Future<void> _runWarmUp() async {
+    try {
+      final result = await compute(_computeSystemFontsHebrewOnly, 0);
+      _systemFontsHebrewCache ??= result;
+    } catch (_) {
+      // אם החימום ב-isolate נכשל מסיבה כלשהי - לא מאתחלים את הקאש,
+      // והנתיב הסינכרוני ב-_getSystemFontsHebrewOnly ירוץ בפעם הראשונה.
+    }
+  }
+
+  /// פונקציה שרצה ב-isolate נפרד דרך `compute`.
+  /// חייבת להיות סטטית/top-level וללא תלות במצב של isolate הראשי.
+  static List<FontInfo> _computeSystemFontsHebrewOnly(int _) {
+    return _scanSystemFontsHebrewOnly();
+  }
+
   static List<FontInfo> _getSystemFontsHebrewOnly() {
     if (_systemFontsHebrewCache != null) {
       return _systemFontsHebrewCache!;
     }
 
+    final result = _scanSystemFontsHebrewOnly();
+    _systemFontsHebrewCache = result;
+    return result;
+  }
+
+  static List<FontInfo> _scanSystemFontsHebrewOnly() {
     final result = <FontInfo>[];
     try {
       final map = SystemFonts().getFontMap(); // name -> path
-      final names = map.keys.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      final names = map.keys.toList()
+        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
       for (final name in names) {
         final path = map[name];
         if (path == null || path.isEmpty) continue;
@@ -74,8 +113,6 @@ class AppFonts {
     } catch (_) {
       // אם אין גישה לגופני מערכת מסיבה כלשהי, נחזיר רשימה ריקה.
     }
-
-    _systemFontsHebrewCache = result;
     return result;
   }
 
@@ -341,6 +378,24 @@ class AppFonts {
   @visibleForTesting
   static bool debugSfntSupportsHebrew(Uint8List data) =>
       _sfntSupportsHebrew(data);
+
+  @visibleForTesting
+  static List<FontInfo>? get debugSystemFontsHebrewCache =>
+      _systemFontsHebrewCache;
+
+  @visibleForTesting
+  static set debugSystemFontsHebrewCache(List<FontInfo>? cache) {
+    _systemFontsHebrewCache = cache;
+  }
+
+  @visibleForTesting
+  static Future<void>? get debugWarmUpFuture => _warmUpFuture;
+
+  @visibleForTesting
+  static void debugResetSystemFontsCache() {
+    _systemFontsHebrewCache = null;
+    _warmUpFuture = null;
+  }
 }
 
 /// מידע על גופן

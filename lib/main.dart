@@ -72,6 +72,7 @@ import 'package:otzaria/tools/calendar/services/notification_service.dart';
 import 'package:otzaria/plugins/database/plugin_database_bootstrap.dart';
 import 'package:logging/logging.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:otzaria/theme/app_fonts.dart';
 import 'package:otzaria/widgets/misc/restart_widget.dart';
 import 'package:otzaria/core/splash_screen.dart';
 import 'package:otzaria/plugins/services/plugin_protocol_registration_service.dart';
@@ -627,6 +628,9 @@ class _AppBootstrapState extends State<AppBootstrap> {
         }));
         unawaited(AcronymsCache.instance.warmUp().catchError((e) {
           if (kDebugMode) debugPrint('Failed to warm up AcronymsCache: $e');
+        }));
+        unawaited(AppFonts.warmUpSystemFontsCache().catchError((e) {
+          if (kDebugMode) debugPrint('Failed to warm up system fonts: $e');
         }));
       });
     }).catchError((Object error, StackTrace stackTrace) {

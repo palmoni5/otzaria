@@ -160,4 +160,86 @@ void main() {
       expect(AppFonts.debugSfntSupportsHebrew(bad), isFalse);
     });
   });
+
+  group('warmUpSystemFontsCache', () {
+    tearDown(() {
+      AppFonts.debugResetSystemFontsCache();
+    });
+
+    test('חוזר מיידית כשהקאש כבר חם, ולא מאתחל warm-up future', () async {
+      AppFonts.debugSystemFontsHebrewCache = const [
+        FontInfo(value: 'TestFont', label: 'TestFont'),
+      ];
+
+      final future = AppFonts.warmUpSystemFontsCache();
+
+      // הסתיים מיידית, ולא נוצר _warmUpFuture (כי הוחזר Future.value).
+      await future;
+      expect(AppFonts.debugWarmUpFuture, isNull);
+    });
+
+    test('שומר על הקאש הקיים אחרי קריאה לחימום', () async {
+      const existing = [
+        FontInfo(value: 'PreloadedFont', label: 'PreloadedFont'),
+      ];
+      AppFonts.debugSystemFontsHebrewCache = existing;
+
+      await AppFonts.warmUpSystemFontsCache();
+
+      expect(AppFonts.debugSystemFontsHebrewCache, same(existing));
+    });
+
+    test('availableFonts מחזיר bundled + cache כשהקאש מאוכלס', () {
+      const systemFont = FontInfo(value: 'MockSystemFont', label: 'MockSystemFont');
+      AppFonts.debugSystemFontsHebrewCache = const [systemFont];
+
+      final fonts = AppFonts.availableFonts;
+
+      // הגופנים המובנים תמיד נכללים
+      expect(
+        fonts.any((f) => f.value == AppFonts.defaultFont),
+        isTrue,
+        reason: 'הגופן המובנה ${AppFonts.defaultFont} צריך להופיע ב-availableFonts',
+      );
+      expect(
+        fonts.any((f) => f.value == AppFonts.defaultCommentatorsFont),
+        isTrue,
+        reason:
+            'גופן המפרשים המובנה ${AppFonts.defaultCommentatorsFont} צריך להופיע',
+      );
+
+      // בדסקטופ - גם גופן הקאש המוזרק. במובייל/web - לא.
+      final isDesktop = !kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.windows ||
+              defaultTargetPlatform == TargetPlatform.macOS ||
+              defaultTargetPlatform == TargetPlatform.linux);
+      if (isDesktop) {
+        expect(
+          fonts.any((f) => f.value == systemFont.value),
+          isTrue,
+          reason: 'גופן מערכת מהקאש צריך להופיע בתוצאה בדסקטופ',
+        );
+      }
+    });
+
+    test('availableFonts מחזיר את הרשימה המובנית גם בלי קאש מערכת', () {
+      AppFonts.debugSystemFontsHebrewCache = const [];
+
+      final fonts = AppFonts.availableFonts;
+
+      expect(fonts, isNotEmpty);
+      expect(fonts.any((f) => f.value == AppFonts.defaultFont), isTrue);
+    });
+
+    test('debugResetSystemFontsCache מנקה גם cache וגם warm-up future', () {
+      AppFonts.debugSystemFontsHebrewCache = const [
+        FontInfo(value: 'X', label: 'X'),
+      ];
+
+      AppFonts.debugResetSystemFontsCache();
+
+      expect(AppFonts.debugSystemFontsHebrewCache, isNull);
+      expect(AppFonts.debugWarmUpFuture, isNull);
+    });
+  });
 }
