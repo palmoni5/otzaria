@@ -344,6 +344,21 @@ void main(List<String> args) async {
 
 Future<void> _initializeSentry() async {
   try {
+    // Skip Sentry on Windows admin/system-wide installs (Program Files).
+    // The crashpad_handler child process + the security checks Windows runs on
+    // elevated processes' DLL load/unload meaningfully slow down both startup
+    // and shutdown. Users who chose system-wide install already accept less
+    // observability in exchange for shared installation.
+    if (!kIsWeb && Platform.isWindows) {
+      final mode = await AppPaths.detectInstallMode();
+      if (mode == InstallMode.systemWide) {
+        if (kDebugMode) {
+          debugPrint('Sentry skipped on Windows admin install.');
+        }
+        return;
+      }
+    }
+
     final info = await PackageInfo.fromPlatform();
     final currentBuild = int.tryParse(info.buildNumber.trim()) ?? 0;
 
