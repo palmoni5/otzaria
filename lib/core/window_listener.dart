@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:hive_ce/hive.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:otzaria/core/pre_close_registry.dart';
 import 'package:otzaria/core/window_persistence.dart';
@@ -52,8 +51,13 @@ class AppWindowListener extends WindowListener {
       return;
     }
 
+    // Backstop watchdog: kills the process if shutdown hangs for any reason.
+    // The native side (flutter_window.cpp) clamps the requested value to
+    // [5000, 60000] ms, so the effective timeout is 5 seconds — enough that
+    // a normal shutdown completes well within it, short enough that Windows
+    // doesn't put up a "Not Responding" dialog if something does block.
     await _processControlChannel.invokeMethod('armForceExitWatchdog', {
-      'timeoutMs': 15000,
+      'timeoutMs': 4500,
     });
   }
 
@@ -92,7 +96,8 @@ class AppWindowListener extends WindowListener {
       timeout: const Duration(seconds: 1),
     );
 
-    // Step 1: Non-critical cleanup — errors here must not block Hive.close().
+    // Step 1: Non-critical SQLite cleanup. Errors here must not block the
+    // remaining shutdown steps (PreCloseRegistry + exit).
     try {
       await UserBooksDatabaseHolder.instance.close();
       await SqliteDataProvider.instance.dispose();
@@ -100,9 +105,9 @@ class AppWindowListener extends WindowListener {
       if (kDebugMode) print('Non-critical cleanup error: $e');
     }
 
-    // Step 2: Flush pending in-memory writes to Hive.
-    // A flush failure must NOT prevent Hive.close() — closing Hive without
-    // flushing first is safe, but skipping Hive.close() would corrupt the DB.
+    // Step 2: Run registered pre-close callbacks (e.g. HistoryBloc flushing
+    // pending snapshots via `box.put()`). The writes go through Dart → OS
+    // file buffer; the OS flushes those buffers when handles close on exit.
     Object? flushFailure;
     try {
       await PreCloseRegistry.runAll();
@@ -111,16 +116,22 @@ class AppWindowListener extends WindowListener {
       if (kDebugMode) print('Flush failed at exit: $e');
     }
 
-    // Step 3: Storage close, error reporting, and window destruction.
+    // Step 3: Error reporting and window destruction.
+    //
+    // We intentionally do NOT call `WindowPersistence.saveNow()` or
+    // `Hive.close()` here. Both perform Hive writes, and in Windows admin
+    // installs (`Program Files\אוצריא\`) those writes block the entire Dart
+    // isolate indefinitely — likely Defender/AV scanning files written by
+    // elevated processes synchronously stalls FlushFileBuffers. Even per-call
+    // timeouts don't fire, because the isolate's event loop is frozen until
+    // the native call returns. User-install and portable builds were unaffected.
+    //
+    // Safety: window bounds are already on disk via `scheduleSave` (400ms
+    // debounce on every move/resize/maximize). Hive's append-only writes are
+    // sent to the OS file buffer on each `put()`, so the OS releases handles
+    // cleanly on `exit(0)`. Partial trailing records are detected and dropped
+    // on next open via checksum validation.
     try {
-      // שמירת מצב החלון חייבת להתבצע לפני Hive.close() כי Settings כותב ל-Hive
-      if (!kIsWeb &&
-          (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
-        await WindowPersistence.saveNow();
-      }
-
-      await Hive.close();
-
       if (flushFailure != null) {
         // Report BEFORE Sentry.close() so the event can still be sent.
         try {
