@@ -38,6 +38,7 @@ import 'pdf_thumbnails_screen.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:otzaria/utils/file/page_converter.dart';
 import 'package:otzaria/utils/ui/reading_left_pane_policy.dart';
+import 'package:otzaria/widgets/buttons/action_buttons.dart';
 import 'package:otzaria/widgets/layout/dual_adaptive_reader_pane.dart';
 import 'package:otzaria/widgets/navigation/responsive_action_bar.dart';
 import 'package:otzaria/widgets/navigation/book_view_actions.dart';
@@ -466,8 +467,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
     _toggleCommentatorsPaneListener = () {
       final current = _bloc.state;
       if (current is! PdfBookLoaded) return;
-      final isOnCommentary =
-          _currentRightPaneTabIndex == _kCommentaryTabIndex;
+      final isOnCommentary = _currentRightPaneTabIndex == _kCommentaryTabIndex;
       if (current.showRightPane && isOnCommentary) {
         _bloc.add(const pdf_events.ToggleRightPane(show: false));
       } else {
@@ -785,8 +785,8 @@ class _PdfBookScreenState extends State<PdfBookScreen>
       PdfBookLoaded(showRightPane: final isShown) => !isShown,
       _ => true,
     };
-    final isCommentatorsTabActive = !isRightPaneClosed &&
-        _currentRightPaneTabIndex == _kCommentaryTabIndex;
+    final isCommentatorsTabActive =
+        !isRightPaneClosed && _currentRightPaneTabIndex == _kCommentaryTabIndex;
     final isLinksTabActive =
         !isRightPaneClosed && _currentRightPaneTabIndex == _kLinksTabIndex;
     final shouldShowOpenPaneEntry = shouldShowOpenPdfCommentaryPaneEntry(
@@ -1297,6 +1297,9 @@ class _PdfBookScreenState extends State<PdfBookScreen>
                     controller: widget.tab.pdfViewerController,
                     initialPageNumber:
                         widget.tab.pageNumber < 1 ? 1 : widget.tab.pageNumber,
+                    // requiresStableLayout=true (פתיחה ישירה לעמוד גבוה
+                    // מסימניות/חיפוש/הפניות) → progressive loading כבוי כדי
+                    // למנוע קפיצות ויזואליות בזמן שטרם נטענו דפים קודמים.
                     useProgressiveLoading: !widget.tab.requiresStableLayout,
                     passwordProvider: () => passwordDialog(context),
                     params: _buildPdfViewerParams(layoutMode),
@@ -2776,12 +2779,26 @@ class _PdfBookScreenState extends State<PdfBookScreen>
                       child: ColoredBox(
                         color: Theme.of(context).colorScheme.surface,
                         child: Center(
-                          child: Text(
-                            state.message,
-                            textDirection: TextDirection.rtl,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                state.message,
+                                textDirection: TextDirection.rtl,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              RecommendedActionButton(
+                                text: 'נסה שוב',
+                                icon: FluentIcons.arrow_clockwise_24_regular,
+                                onPressed: () =>
+                                    _bloc.add(const pdf_events.RetryLoad()),
+                              ),
+                            ],
                           ),
                         ),
                       ),

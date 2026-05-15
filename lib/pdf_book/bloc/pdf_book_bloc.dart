@@ -31,17 +31,26 @@ class PdfBookBloc extends Bloc<PdfBookEvent, PdfBookState> {
   final PdfBookTab tab;
   final PdfViewerController pdfController;
 
+  /// משך הזמן המקסימלי שנמתין ל-`DocumentReady` או ל-`SetLoadingState` עם
+  /// כישלון לפני שמכריזים על timeout. מוגדר ב-constructor כדי שטסטים
+  /// יוכלו להזריק ערך קטן.
+  final Duration _loadTimeout;
+
   Timer? _zoomBarTimer;
+  Timer? _loadWatchdog;
 
   PdfBookBloc({
     required this.tab,
     required PdfBookInitial initialState,
+    Duration? loadTimeout,
   })  : pdfController = tab.pdfViewerController,
+        _loadTimeout = loadTimeout ?? const Duration(seconds: 10),
         super(initialState) {
     // Document events
     on<LoadPdfDocument>(_onLoadPdfDocument);
     on<DocumentReady>(_onDocumentReady);
     on<DocumentLoadFailed>(_onDocumentLoadFailed);
+    on<RetryLoad>(_onRetryLoad);
     on<LoadHeadingsAndLinks>(_onLoadHeadingsAndLinks);
 
     // Navigation events
@@ -90,7 +99,26 @@ class PdfBookBloc extends Bloc<PdfBookEvent, PdfBookState> {
   @override
   Future<void> close() {
     _zoomBarTimer?.cancel();
+    _loadWatchdog?.cancel();
     return super.close();
+  }
+
+  void _startLoadWatchdog() {
+    _loadWatchdog?.cancel();
+    // אם pdfrx לא קורא ל-onViewerReady ולא ל-onDocumentLoadFinished כלל
+    // (race-condition פנימי לפעמים בטעינת ה-PDF הראשון בסשן), ה-state נשאר
+    // ב-PdfBookLoading ל-נצח. אחרי [_loadTimeout] עוברים ל-PdfBookError.
+    _loadWatchdog = Timer(_loadTimeout, () {
+      if (isClosed) return;
+      if (state is PdfBookLoading) {
+        add(const DocumentLoadFailed('הטעינה ארכה זמן רב מדי'));
+      }
+    });
+  }
+
+  void _cancelLoadWatchdog() {
+    _loadWatchdog?.cancel();
+    _loadWatchdog = null;
   }
 
   // ============ Document Event Handlers ============
@@ -116,6 +144,7 @@ class PdfBookBloc extends Bloc<PdfBookEvent, PdfBookState> {
       searchMode: initial.searchMode,
       layoutMode: initial.layoutMode,
     ));
+    _startLoadWatchdog();
 
     // Load headings and links in background
     _loadHeadingsAndLinks(initial.book);
@@ -161,6 +190,7 @@ class PdfBookBloc extends Bloc<PdfBookEvent, PdfBookState> {
     DocumentReady event,
     Emitter<PdfBookState> emit,
   ) {
+    _cancelLoadWatchdog();
     final current = state;
     final PdfBook book;
     final String searchText;
@@ -234,10 +264,37 @@ class PdfBookBloc extends Bloc<PdfBookEvent, PdfBookState> {
     add(const LoadPerBookSettings());
   }
 
+  Future<void> _onRetryLoad(
+    RetryLoad event,
+    Emitter<PdfBookState> emit,
+  ) async {
+    final current = state;
+    if (current is! PdfBookError) return;
+
+    if (!File(current.book.path).existsSync()) {
+      emit(PdfBookError(book: current.book, message: 'הספר איננו קיים'));
+      return;
+    }
+
+    emit(PdfBookLoading(
+      book: current.book,
+      searchText: tab.searchText,
+      searchOptions: tab.searchOptions,
+      alternativeWords: tab.alternativeWords,
+      spacingValues: tab.spacingValues,
+      searchMode: tab.searchMode,
+      searchDistance: tab.searchDistance,
+      layoutMode: tab.savedLayoutMode ?? PdfLayoutMode.regularView,
+    ));
+    _startLoadWatchdog();
+    _loadHeadingsAndLinks(current.book);
+  }
+
   void _onDocumentLoadFailed(
     DocumentLoadFailed event,
     Emitter<PdfBookState> emit,
   ) {
+    _cancelLoadWatchdog();
     final current = state;
     final PdfBook book;
 
@@ -814,11 +871,27 @@ class PdfBookBloc extends Bloc<PdfBookEvent, PdfBookState> {
     Emitter<PdfBookState> emit,
   ) {
     final current = state;
-    if (current is! PdfBookLoaded) return;
 
-    emit(current.copyWith(
-      isLoading: event.isLoading,
-      loadSucceeded: event.succeeded,
-    ));
+    if (current is PdfBookLoaded) {
+      emit(current.copyWith(
+        isLoading: event.isLoading,
+        loadSucceeded: event.succeeded,
+      ));
+      return;
+    }
+
+    // pdfrx מדווח על סיום טעינה דרך onDocumentLoadFinished — לפעמים לפני (או
+    // במקום) onViewerReady. אם הדיווח הוא על כישלון בזמן שאנחנו עדיין
+    // ב-PdfBookLoading, ה-handler המקורי החזיר return מוקדם והאירוע נבלע.
+    // התוצאה: state נשאר Loading ל-נצח (אין DocumentReady שיירה כי הטעינה
+    // נכשלה), והמסך מציג ספינר אינסופי. עוברים ל-PdfBookError כדי שהמשתמש
+    // יקבל משוב במקום להיתקע.
+    if (current is PdfBookLoading && !event.succeeded) {
+      _cancelLoadWatchdog();
+      emit(PdfBookError(
+        book: current.book,
+        message: 'נכשלה טעינת ה-PDF',
+      ));
+    }
   }
 }

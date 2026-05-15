@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:bloc/bloc.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
@@ -44,12 +46,13 @@ PdfBook _book({String path = '/nonexistent/test.pdf'}) =>
 PdfBookTab _tab({String path = '/nonexistent/test.pdf', int page = 1}) =>
     PdfBookTab(book: _book(path: path), pageNumber: page);
 
-PdfBookBloc _makeBloc(PdfBookTab tab) => PdfBookBloc(
+PdfBookBloc _makeBloc(PdfBookTab tab, {Duration? loadTimeout}) => PdfBookBloc(
       tab: tab,
       initialState: PdfBookInitial(
         book: tab.book,
         initialPageNumber: tab.pageNumber,
       ),
+      loadTimeout: loadTimeout,
     );
 
 PdfBookLoaded _loaded({
@@ -783,10 +786,163 @@ void main() {
     );
 
     blocTest<PdfBookBloc, PdfBookState>(
-      'SetLoadingState מחוץ ל-Loaded → מוזנח',
+      'SetLoadingState מ-Initial (succeeded=true ברירת מחדל) → מוזנח',
       build: () => _makeBloc(_tab()),
       act: (b) => b.add(const SetLoadingState(isLoading: true)),
       expect: () => [],
+    );
+
+    // ─── רגרסיה: PDF הראשון בסשן נתקע לפעמים על ספינר אינסופי ───────────────
+    //
+    // pdfrx קורא ל-`onDocumentLoadFinished(succeeded)` כדי לדווח על סיום
+    // טעינה — לפעמים *לפני* או *במקום* `onViewerReady` (שמשגר DocumentReady).
+    // ה-handler הקודם של SetLoadingState החזיר `return` מוקדם כש-state אינו
+    // PdfBookLoaded, ולכן דיווח כישלון מ-Loading פשוט נבלע: state נשאר
+    // PdfBookLoading ל-נצח ואין אירוע נוסף שיוציא אותו ממנו → ספינר תקוע.
+    blocTest<PdfBookBloc, PdfBookState>(
+      'SetLoadingState(succeeded=false) מ-Loading → PdfBookError '
+      '(מונע ספינר אינסופי כש-onViewerReady לא נורה)',
+      build: () => _makeBloc(_tab()),
+      seed: () => PdfBookLoading(book: _book()),
+      act: (b) =>
+          b.add(const SetLoadingState(isLoading: false, succeeded: false)),
+      expect: () => [isA<PdfBookError>()],
+      verify: (b) {
+        final s = b.state as PdfBookError;
+        expect(s.book.title, 'ספר בדיקה');
+        expect(s.message, 'נכשלה טעינת ה-PDF');
+      },
+    );
+
+    blocTest<PdfBookBloc, PdfBookState>(
+      'SetLoadingState(succeeded=true) מ-Loading → לא משנה state '
+      '(ממתינים ל-DocumentReady מ-onViewerReady)',
+      build: () => _makeBloc(_tab()),
+      seed: () => PdfBookLoading(book: _book()),
+      act: (b) =>
+          b.add(const SetLoadingState(isLoading: false, succeeded: true)),
+      expect: () => [],
+    );
+
+    blocTest<PdfBookBloc, PdfBookState>(
+      'SetLoadingState(succeeded=false) מ-Initial לא מייצר אירוע '
+      '(LoadPdfDocument עוד לא רץ — לא קיים book context)',
+      build: () => _makeBloc(_tab()),
+      act: (b) =>
+          b.add(const SetLoadingState(isLoading: false, succeeded: false)),
+      expect: () => [],
+    );
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Watchdog: רגרסיה לבעיה ש-PDF הראשון בסשן לפעמים נתקע על ספינר אינסופי
+  // כש-pdfrx לא קורא לאף callback (לא onViewerReady ולא
+  // onDocumentLoadFinished) בגלל race-condition פנימי בטעינה הראשונה.
+  group('מצב טעינה - load watchdog', () {
+    late Directory tmpDir;
+    late String existingPdfPath;
+
+    setUp(() {
+      tmpDir = Directory.systemTemp.createTempSync('pdf_watchdog_');
+      // הקובץ לא חייב להיות PDF תקין — רק לעבור את בדיקת existsSync
+      // ב-`_onLoadPdfDocument`. pdfrx לא נטען בטסטים.
+      existingPdfPath = '${tmpDir.path}${Platform.pathSeparator}stub.pdf';
+      File(existingPdfPath).writeAsBytesSync(const [0x25, 0x50, 0x44, 0x46]);
+    });
+
+    tearDown(() {
+      try {
+        tmpDir.deleteSync(recursive: true);
+      } catch (_) {
+        // best-effort cleanup
+      }
+    });
+
+    blocTest<PdfBookBloc, PdfBookState>(
+      'אחרי loadTimeout בלי DocumentReady/SetLoadingState → PdfBookError',
+      build: () => _makeBloc(
+        _tab(path: existingPdfPath),
+        loadTimeout: const Duration(milliseconds: 50),
+      ),
+      act: (b) => b.add(const LoadPdfDocument()),
+      wait: const Duration(milliseconds: 150),
+      expect: () => [isA<PdfBookLoading>(), isA<PdfBookError>()],
+      verify: (b) {
+        final s = b.state as PdfBookError;
+        expect(s.message, 'הטעינה ארכה זמן רב מדי');
+      },
+    );
+
+    blocTest<PdfBookBloc, PdfBookState>(
+      'DocumentReady מבטל את ה-watchdog — לא עוברים ל-Error',
+      build: () => _makeBloc(
+        _tab(path: existingPdfPath),
+        loadTimeout: const Duration(milliseconds: 50),
+      ),
+      act: (b) async {
+        b.add(const LoadPdfDocument());
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        b.add(DocumentReady(documentRef: _FakeDocumentRef(), totalPages: 5));
+      },
+      wait: const Duration(milliseconds: 150),
+      expect: () => [
+        isA<PdfBookLoading>(),
+        isA<PdfBookLoaded>(),
+      ],
+    );
+
+    blocTest<PdfBookBloc, PdfBookState>(
+      'SetLoadingState(succeeded=false) מבטל את ה-watchdog — '
+      'לא מקבלים שני אירועי PdfBookError',
+      build: () => _makeBloc(
+        _tab(path: existingPdfPath),
+        loadTimeout: const Duration(milliseconds: 50),
+      ),
+      act: (b) async {
+        b.add(const LoadPdfDocument());
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        b.add(const SetLoadingState(isLoading: false, succeeded: false));
+      },
+      wait: const Duration(milliseconds: 150),
+      expect: () => [isA<PdfBookLoading>(), isA<PdfBookError>()],
+      verify: (b) {
+        final s = b.state as PdfBookError;
+        // ההודעה מ-SetLoadingState, לא מה-watchdog
+        expect(s.message, 'נכשלה טעינת ה-PDF');
+      },
+    );
+
+    blocTest<PdfBookBloc, PdfBookState>(
+      'RetryLoad מ-PdfBookError → PdfBookLoading (כפתור "נסה שוב")',
+      build: () => _makeBloc(_tab(path: existingPdfPath)),
+      seed: () => PdfBookError(
+        book: _book(path: existingPdfPath),
+        message: 'הטעינה ארכה זמן רב מדי',
+      ),
+      act: (b) => b.add(const RetryLoad()),
+      expect: () => [isA<PdfBookLoading>()],
+    );
+
+    blocTest<PdfBookBloc, PdfBookState>(
+      'RetryLoad מתעלם כשה-state אינו PdfBookError',
+      build: () => _makeBloc(_tab(path: existingPdfPath)),
+      seed: () => PdfBookLoading(book: _book(path: existingPdfPath)),
+      act: (b) => b.add(const RetryLoad()),
+      expect: () => [],
+    );
+
+    blocTest<PdfBookBloc, PdfBookState>(
+      'RetryLoad כשהקובץ הוסר → PdfBookError חדש עם הודעה מתאימה',
+      build: () => _makeBloc(_tab(path: '/totally/missing/file.pdf')),
+      seed: () => PdfBookError(
+        book: _book(path: '/totally/missing/file.pdf'),
+        message: 'שגיאה קודמת',
+      ),
+      act: (b) => b.add(const RetryLoad()),
+      expect: () => [isA<PdfBookError>()],
+      verify: (b) {
+        expect((b.state as PdfBookError).message, 'הספר איננו קיים');
+      },
     );
   });
 

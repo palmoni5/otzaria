@@ -46,6 +46,11 @@ class DocumentLoadFailed extends PdfBookEvent {
   List<Object?> get props => [message];
 }
 
+/// Request to retry loading after a previous failure (`PdfBookError`).
+class RetryLoad extends PdfBookEvent {
+  const RetryLoad();
+}
+
 /// Load PDF headings and links for commentary
 class LoadHeadingsAndLinks extends PdfBookEvent {
   final PdfHeadings? headings;
