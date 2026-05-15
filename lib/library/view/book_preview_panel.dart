@@ -84,19 +84,54 @@ class _BookPreviewPanelState extends State<BookPreviewPanel> {
   void _createNewTab() {
     if (widget.book == null) return;
 
-    if (widget.book is TextBook) {
+    // DocxBook יורש מ-FileBook ולא מ-TextBook, ולכן לא נופל בענף ה-TextBook
+    // למטה. עוטפים אותו כ-TextBook (בדיוק כפי שנעשה ב-OpenedTab.fromBook
+    // בעיון) כדי ש-TextBookBloc יוכל לטעון אותו ברגיל. חשוב לשמר id ו-
+    // categoryId — בלעדיהם getBookContent לא מאתר את הספר והתוכן יוצא ריק.
+    final book = widget.book;
+    final TextBook? textBook = book is TextBook
+        ? book
+        : (book is DocxBook
+            ? TextBook(
+                id: book.id,
+                title: book.title,
+                category: book.category,
+                author: book.author,
+                heCategories: book.heCategories,
+                heEra: book.heEra,
+                compDateStringHe: book.compDateStringHe,
+                compPlaceStringHe: book.compPlaceStringHe,
+                pubDateStringHe: book.pubDateStringHe,
+                pubPlaceStringHe: book.pubPlaceStringHe,
+                heShortDesc: book.heShortDesc,
+                heDesc: book.heDesc,
+                pubDate: book.pubDate,
+                pubPlace: book.pubPlace,
+                order: book.order,
+                topics: book.topics,
+                filePath: book.filePath ?? book.path,
+                fileType: book.fileType ?? 'docx',
+                categoryPath: book.categoryPath,
+                categoryId: book.categoryId,
+                extraTitles: book.extraTitles,
+                isUserBook: book.isUserBook,
+                externalLibraryId: book.externalLibraryId,
+              )
+            : null);
+
+    if (textBook != null) {
       setState(() {
         _isPdfViewerReady = false;
         _currentTextTab = TextBookTab(
-          book: widget.book as TextBook,
+          book: textBook,
           index: 0,
           searchText: '',
           openLeftPane: false,
           splitedView: Settings.getValue<bool>('key-splited-view') ?? true,
         );
       });
-    } else if (widget.book is PdfBook) {
-      final fileExists = File((widget.book! as PdfBook).path).existsSync();
+    } else if (book is PdfBook) {
+      final fileExists = File(book.path).existsSync();
       setState(() {
         _isPdfViewerReady = false;
         _pdfFileExists = fileExists;
@@ -114,8 +149,11 @@ class _BookPreviewPanelState extends State<BookPreviewPanel> {
       return;
     }
 
-    if (widget.book is TextBook) {
-      widget.onOpenInReader?.call(_currentTextTab?.index ?? 0);
+    // DOCX עובר ל-TextBookTab דרך _createNewTab, ולכן _currentTextTab קיים
+    // גם עבור DocxBook. בלי הבדיקה הזו לחיצה כפולה על preview של DOCX היתה
+    // נופלת ל-fallback של 0 ומאבדת את מיקום הגלילה הנוכחי.
+    if (_currentTextTab != null) {
+      widget.onOpenInReader?.call(_currentTextTab!.index);
       return;
     }
 
