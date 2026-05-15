@@ -199,13 +199,13 @@ class _ReadingScreenState extends State<ReadingScreen>
       return _buildCombinedTabView(tab);
     } else if (tab is PdfBookTab) {
       return PdfBookScreen(
-        key: PageStorageKey(tab),
+        key: ValueKey(tab),
         tab: tab,
         enableTourTargets: enableTourTargets,
       );
     } else if (tab is TextBookTab) {
       return BlocProvider.value(
-          key: PageStorageKey(tab),
+          key: ValueKey(tab),
           value: tab.bloc,
           child: TextBookViewerBloc(
             openBookCallback: (tab, {int index = 1}) {
@@ -217,7 +217,7 @@ class _ReadingScreenState extends State<ReadingScreen>
             enableTourTargets: enableTourTargets,
           ));
     } else if (tab is SearchingTab) {
-      return FullTextSearchScreen(key: PageStorageKey(tab), tab: tab);
+      return FullTextSearchScreen(key: ValueKey(tab), tab: tab);
     }
     return const SizedBox.shrink();
   }
@@ -241,7 +241,7 @@ class _ReadingScreenState extends State<ReadingScreen>
       {bool isInCombinedView = false}) {
     if (tab is PdfBookTab) {
       return PdfBookScreen(
-        key: PageStorageKey(tab),
+        key: ValueKey(tab),
         tab: tab,
         isInCombinedView: isInCombinedView,
         enableTourTargets: false,
