@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/core/focus_repository.dart';
@@ -32,7 +33,27 @@ import 'package:otzaria/tour/tour_target_keys.dart';
 /// מזהה הכלי שפעיל כרגע ב-ToolsScreen, או `null` אם המסך לא מוצג.
 /// משמש את ה-MainWindowScreen כדי להדגיש את התוסף שבחרת בסרגל הניווט/הבר
 /// כשנבחרה לשונית של תוסף-מוצמד-לסרגל.
-final ValueNotifier<String?> activeToolIdNotifier = ValueNotifier<String?>(null);
+final ValueNotifier<String?> activeToolIdNotifier =
+    ValueNotifier<String?>(null);
+
+/// מעדכן את [activeToolIdNotifier] באופן בטוח גם בזמן פאזת build:
+/// אם נקרא מתוך build/layout של פריים (למשל מ-`initState` של מסך שמורכב
+/// בתוך עץ הורה שבונה את עצמו כרגע), העדכון נדחה ל-`addPostFrameCallback`
+/// כדי למנוע `setState during build` אצל `ValueListenableBuilder`-ים שכבר
+/// מורכבים בעץ (סרגל הניווט הראשי ב-`MainWindowScreen`).
+///
+/// [isMounted] מאפשר לקורא לבטל את העדכון אם הוא נפטר בינתיים.
+@visibleForTesting
+void setActiveToolIdSafely(String? id, {bool Function()? isMounted}) {
+  final phase = SchedulerBinding.instance.schedulerPhase;
+  if (phase == SchedulerPhase.persistentCallbacks) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (isMounted?.call() ?? true) activeToolIdNotifier.value = id;
+    });
+  } else {
+    activeToolIdNotifier.value = id;
+  }
+}
 
 abstract class ToolDescriptor {
   final String toolId;
@@ -42,8 +63,10 @@ abstract class ToolDescriptor {
       {required this.toolId, required this.label, required this.order});
   Widget buildTab(BuildContext context);
   Widget buildPage(BuildContext context);
-  TopNavItem buildTopNavItem({required bool isSelected, required VoidCallback onTap, Key? key});
-  SidebarNavItem buildSidebarNavItem({required bool isSelected, required VoidCallback onTap, Key? key});
+  TopNavItem buildTopNavItem(
+      {required bool isSelected, required VoidCallback onTap, Key? key});
+  SidebarNavItem buildSidebarNavItem(
+      {required bool isSelected, required VoidCallback onTap, Key? key});
 }
 
 class BuiltInToolDescriptor extends ToolDescriptor {
@@ -81,7 +104,8 @@ class BuiltInToolDescriptor extends ToolDescriptor {
   Widget buildPage(BuildContext context) => pageBuilder();
 
   @override
-  TopNavItem buildTopNavItem({required bool isSelected, required VoidCallback onTap, Key? key}) {
+  TopNavItem buildTopNavItem(
+      {required bool isSelected, required VoidCallback onTap, Key? key}) {
     return TopNavItem(
       key: key,
       icon: icon,
@@ -94,7 +118,8 @@ class BuiltInToolDescriptor extends ToolDescriptor {
   }
 
   @override
-  SidebarNavItem buildSidebarNavItem({required bool isSelected, required VoidCallback onTap, Key? key}) {
+  SidebarNavItem buildSidebarNavItem(
+      {required bool isSelected, required VoidCallback onTap, Key? key}) {
     return SidebarNavItem(
       key: key,
       icon: icon,
@@ -138,7 +163,8 @@ class PluginToolDescriptor extends ToolDescriptor {
       FluentIcons.puzzle_piece_24_regular;
 
   @override
-  TopNavItem buildTopNavItem({required bool isSelected, required VoidCallback onTap, Key? key}) {
+  TopNavItem buildTopNavItem(
+      {required bool isSelected, required VoidCallback onTap, Key? key}) {
     final icon = _pluginIcon;
     return TopNavItem(
       key: key,
@@ -151,7 +177,8 @@ class PluginToolDescriptor extends ToolDescriptor {
   }
 
   @override
-  SidebarNavItem buildSidebarNavItem({required bool isSelected, required VoidCallback onTap, Key? key}) {
+  SidebarNavItem buildSidebarNavItem(
+      {required bool isSelected, required VoidCallback onTap, Key? key}) {
     final icon = _pluginIcon;
     return SidebarNavItem(
       key: key,
@@ -368,7 +395,7 @@ class ToolsScreenState extends State<ToolsScreen>
 
   void _setSelectedToolId(String? id) {
     _selectedToolId = id;
-    activeToolIdNotifier.value = id;
+    setActiveToolIdSafely(id, isMounted: () => mounted);
   }
 
   void _changeTab(int index) {
@@ -647,7 +674,8 @@ class ToolsScreenState extends State<ToolsScreen>
     Widget buildIcon(ToolDescriptor descriptor) {
       if (descriptor is BuiltInToolDescriptor) {
         if (descriptor.imageIcon != null) {
-          return ImageIcon(AssetImage(descriptor.imageIcon!), size: 22, color: cs.primary);
+          return ImageIcon(AssetImage(descriptor.imageIcon!),
+              size: 22, color: cs.primary);
         }
         return Icon(descriptor.icon, color: cs.primary);
       }
@@ -696,7 +724,8 @@ class ToolsScreenState extends State<ToolsScreen>
                     key: tourToolTabTargetKeys[descriptor.toolId],
                     leading: buildIcon(descriptor),
                     title: Text(descriptor.label),
-                    trailing: const RtlIcon(FluentIcons.chevron_left_24_regular),
+                    trailing:
+                        const RtlIcon(FluentIcons.chevron_left_24_regular),
                     onTap: () {
                       final index = _descriptors.indexOf(descriptor);
                       if (index != -1) _changeTab(index);
@@ -1006,4 +1035,3 @@ class ToolsScreenState extends State<ToolsScreen>
     );
   }
 }
-
