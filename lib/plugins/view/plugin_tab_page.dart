@@ -530,12 +530,6 @@ class _PluginTabPageState extends State<PluginTabPage> {
     return _webViewPrerequisitesFuture ??= _configureWebViewPrerequisites();
   }
 
-  static Future<void> _configureWebViewPrerequisites() async {
-    if (Platform.isAndroid) {
-      await InAppWebViewController.setWebContentsDebuggingEnabled(kDebugMode);
-    }
-    if (Platform.isWindows) {
-      await WebViewEnvironmentHolder.initialize();
-    }
-  }
+  static Future<void> _configureWebViewPrerequisites() =>
+      WebViewEnvironmentHolder.ensurePrerequisites();
 }

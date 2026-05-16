@@ -237,6 +237,7 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner> {
   late final PluginRegistryRepository _pluginRegistryRepository;
   late final PluginSystemBloc _pluginSystemBloc;
   late String _localHtmlPath;
+  bool _webViewPrereqsDone = false;
 
   @override
   void initState() {
@@ -244,6 +245,10 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner> {
     _pluginSystemBloc = context.read<PluginSystemBloc>();
     _localHtmlPath =
         '${widget.plugin.resolvedRootPath}/${widget.plugin.entrypointPath}';
+
+    WebViewEnvironmentHolder.ensurePrerequisites().then((_) {
+      if (mounted) setState(() => _webViewPrereqsDone = true);
+    });
 
     final historyBloc = context.read<HistoryBloc>();
     final tabsBloc = context.read<TabsBloc>();
@@ -368,6 +373,7 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_webViewPrereqsDone) return const SizedBox.shrink();
     if (!File(_localHtmlPath).existsSync()) {
       return const SizedBox.shrink();
     }
