@@ -16,6 +16,24 @@ CalendarPrintLayout resolveCalendarPrintLayout(CalendarView view) {
   };
 }
 
+List<String> _jewishEventsForDate(DateTime date, bool inIsrael) {
+  final jc = JewishCalendar.fromDateTime(date)..inIsrael = inIsrael;
+  final hdf = HebrewDateFormatter()..hebrewFormat = true;
+  final List<String> result = [];
+
+  final yomTov = hdf.formatYomTov(jc);
+  if (yomTov.isNotEmpty) result.addAll(yomTov.split(',').map((e) => e.trim()));
+
+  if (jc.isRoshChodesh() && !result.contains('ראש חודש')) result.add('ר"ח');
+
+  if (jc.getDayOfWeek() == 7) {
+    final parsha = hdf.formatParsha(jc);
+    if (parsha.isNotEmpty) result.add(parsha);
+  }
+
+  return result;
+}
+
 List<CustomEvent> _eventsForDate(DateTime date, CalendarState state) {
   final jewishDate = JewishDate.fromDateTime(date);
   final gregorianYear = date.year;
@@ -401,9 +419,10 @@ pw.Widget _buildGregorianCalendarGrid(
     final date = DateTime(current.year, current.month, day);
     final jd = JewishDate.fromDateTime(date);
     final events = _eventsForDate(date, state);
+    final jewishEvents = _jewishEventsForDate(date, state.inIsrael);
     cells.add(_buildDayCellPdf(
         '$day', formatHebrewDay(jd.getJewishDayOfMonth()), events, font,
-        height: cellHeight));
+        height: cellHeight, jewishEvents: jewishEvents));
   }
 
   return _buildGridFromCells(cells, days, font);
@@ -427,9 +446,10 @@ pw.Widget _buildHebrewCalendarGrid(
           currentJd.getJewishYear(), currentJd.getJewishMonth(), day);
     final date = jd.getGregorianCalendar();
     final events = _eventsForDate(date, state);
+    final jewishEvents = _jewishEventsForDate(date, state.inIsrael);
     cells.add(_buildDayCellPdf(
         formatHebrewDay(day), '${date.day}', events, font,
-        height: cellHeight));
+        height: cellHeight, jewishEvents: jewishEvents));
   }
 
   return _buildGridFromCells(cells, days, font);
@@ -470,7 +490,7 @@ pw.Widget _buildGridFromCells(
 
 pw.Widget _buildDayCellPdf(String primaryLabel, String secondaryLabel,
     List<CustomEvent> events, pw.Font font,
-    {double height = 80}) {
+    {double height = 80, List<String> jewishEvents = const []}) {
   return pw.Container(
     height: height,
     padding: const pw.EdgeInsets.all(4),
@@ -491,6 +511,13 @@ pw.Widget _buildDayCellPdf(String primaryLabel, String secondaryLabel,
                     font: font, fontSize: 11, fontWeight: pw.FontWeight.bold)),
           ],
         ),
+        for (final je in jewishEvents)
+          pw.Text(je,
+              style: pw.TextStyle(
+                  font: font, fontSize: 7),
+              maxLines: 1,
+              overflow: pw.TextOverflow.clip,
+              textAlign: pw.TextAlign.right),
         for (final event in events.take(2))
           pw.Text('• ${event.title}',
               style: pw.TextStyle(font: font, fontSize: 7),
@@ -512,6 +539,7 @@ pw.Widget _buildWeekGrid(CalendarState state, pw.Font font) {
       final jd = JewishDate.fromDateTime(date);
       final dailyTimes = calculateDailyTimes(date, state.selectedCity);
       final events = _eventsForDate(date, state);
+      final jewishEvents = _jewishEventsForDate(date, state.inIsrael);
       return pw.Expanded(
         child: pw.Container(
           padding: const pw.EdgeInsets.all(4),
@@ -530,6 +558,14 @@ pw.Widget _buildWeekGrid(CalendarState state, pw.Font font) {
                   style: pw.TextStyle(
                       font: font, fontSize: 8, color: PdfColors.grey600)),
               pw.SizedBox(height: 4),
+              for (final je in jewishEvents)
+                pw.Text(je,
+                    style: pw.TextStyle(
+                        font: font, fontSize: 7),
+                    maxLines: 1,
+                    overflow: pw.TextOverflow.clip,
+                    textAlign: pw.TextAlign.right),
+              if (jewishEvents.isNotEmpty) pw.SizedBox(height: 2),
               if (dailyTimes['sunrise'] case final sunrise?)
                 pw.Text('זריחה $sunrise',
                     style: pw.TextStyle(
