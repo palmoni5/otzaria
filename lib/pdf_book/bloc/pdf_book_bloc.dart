@@ -18,6 +18,9 @@ import 'package:otzaria/utils/ui/reading_left_pane_policy.dart';
 import 'package:otzaria/utils/text/ref_helper.dart';
 import 'package:pdfrx/pdfrx.dart';
 
+/// סוג לפונקציית אתחול pdfrx — ניתן להחלפה בטסטים.
+typedef PdfrxInitializer = Future<void> Function();
+
 /// Bloc for managing PDF book state
 ///
 /// This bloc handles:
@@ -30,21 +33,30 @@ import 'package:pdfrx/pdfrx.dart';
 class PdfBookBloc extends Bloc<PdfBookEvent, PdfBookState> {
   final PdfBookTab tab;
   final PdfViewerController pdfController;
+  final PdfrxInitializer _pdfrxInit;
 
-  /// משך הזמן המקסימלי שנמתין ל-`DocumentReady` או ל-`SetLoadingState` עם
-  /// כישלון לפני שמכריזים על timeout. מוגדר ב-constructor כדי שטסטים
-  /// יוכלו להזריק ערך קטן.
-  final Duration _loadTimeout;
+  /// זמן המתנה עד ל-retry אוטומטי שקט (ברירת מחדל: 3 שניות).
+  final Duration _autoRetryDelay;
+
+  /// זמן המתנה עד להצגת כפתור "נסה שוב" אחרי ה-retry האוטומטי (ברירת מחדל: 6 שניות).
+  final Duration _showButtonDelay;
 
   Timer? _zoomBarTimer;
   Timer? _loadWatchdog;
+
+  /// כמה פעמים ה-watchdog כבר ירה בסבב הנוכחי.
+  /// 0 → הירייה הבאה תהיה auto-retry; 1+ → הירייה הבאה תציג כפתור.
+  int _watchdogFiredCount = 0;
 
   PdfBookBloc({
     required this.tab,
     required PdfBookInitial initialState,
     Duration? loadTimeout,
+    PdfrxInitializer? pdfrxInit,
   })  : pdfController = tab.pdfViewerController,
-        _loadTimeout = loadTimeout ?? const Duration(seconds: 10),
+        _autoRetryDelay = loadTimeout ?? const Duration(seconds: 3),
+        _showButtonDelay = loadTimeout ?? const Duration(seconds: 6),
+        _pdfrxInit = pdfrxInit ?? pdfrxFlutterInitialize,
         super(initialState) {
     // Document events
     on<LoadPdfDocument>(_onLoadPdfDocument);
@@ -105,13 +117,18 @@ class PdfBookBloc extends Bloc<PdfBookEvent, PdfBookState> {
 
   void _startLoadWatchdog() {
     _loadWatchdog?.cancel();
-    // אם pdfrx לא קורא ל-onViewerReady ולא ל-onDocumentLoadFinished כלל
-    // (race-condition פנימי לפעמים בטעינת ה-PDF הראשון בסשן), ה-state נשאר
-    // ב-PdfBookLoading ל-נצח. אחרי [_loadTimeout] עוברים ל-PdfBookError.
-    _loadWatchdog = Timer(_loadTimeout, () {
+    // הירייה הראשונה (count==0): מפעיל retry שקט אחרי _autoRetryDelay.
+    // הירייה השנייה ואילך: מציג כפתור "נסה שוב" אחרי _showButtonDelay.
+    final isAutoRetry = _watchdogFiredCount == 0;
+    final timeout = isAutoRetry ? _autoRetryDelay : _showButtonDelay;
+    _loadWatchdog = Timer(timeout, () {
       if (isClosed) return;
       if (state is PdfBookLoading) {
-        add(const DocumentLoadFailed('הטעינה ארכה זמן רב מדי'));
+        _watchdogFiredCount++;
+        add(DocumentLoadFailed(
+          'הטעינה ארכה זמן רב מדי',
+          autoRetry: isAutoRetry,
+        ));
       }
     });
   }
@@ -135,6 +152,7 @@ class PdfBookBloc extends Bloc<PdfBookEvent, PdfBookState> {
       return;
     }
 
+    _watchdogFiredCount = 0;
     emit(PdfBookLoading(
       book: initial.book,
       searchText: initial.searchText,
@@ -144,6 +162,17 @@ class PdfBookBloc extends Bloc<PdfBookEvent, PdfBookState> {
       searchMode: initial.searchMode,
       layoutMode: initial.layoutMode,
     ));
+
+    // pdfrxFlutterInitialize() spawns a native Dart isolate on first call and
+    // can take 10–20 seconds. Don't start the watchdog until it returns so the
+    // timer only counts actual PDF loading time, not init time.
+    // _pdfrxInit is injectable for tests (pass () async {} to skip init).
+    // try/catch: אם האתחול עצמו זורק (למשל, platform channel חסר בבדיקות),
+    // ממשיכים — ה-watchdog ייתן timeout ויציג שגיאה במקום לתקוע לנצח.
+    try {
+      await _pdfrxInit();
+    } catch (_) {}
+    if (isClosed || state is! PdfBookLoading) return;
     _startLoadWatchdog();
 
     // Load headings and links in background
@@ -276,6 +305,13 @@ class PdfBookBloc extends Bloc<PdfBookEvent, PdfBookState> {
       return;
     }
 
+    // manual retry (משתמש לחץ כפתור — הייתה שגיאה ללא auto-retry):
+    // מאפסים כדי לתת ניסיון שקט נוסף לפני הצגת כפתור.
+    // auto-retry (BlocListener): לא מאפסים — הירייה הבאה תציג כפתור.
+    if (!current.autoRetry) {
+      _watchdogFiredCount = 0;
+    }
+
     emit(PdfBookLoading(
       book: current.book,
       searchText: tab.searchText,
@@ -306,7 +342,11 @@ class PdfBookBloc extends Bloc<PdfBookEvent, PdfBookState> {
       return;
     }
 
-    emit(PdfBookError(book: book, message: event.message));
+    emit(PdfBookError(
+      book: book,
+      message: event.message,
+      autoRetry: event.autoRetry,
+    ));
   }
 
   void _onLoadHeadingsAndLinks(

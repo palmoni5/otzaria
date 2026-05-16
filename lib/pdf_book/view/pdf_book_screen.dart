@@ -143,6 +143,11 @@ class _PdfBookScreenState extends State<PdfBookScreen>
   late final PdfViewerController pdfController;
   late final PdfBookBloc _bloc;
   late final bool _pdfFileExists;
+  // שמור reference יציב ל-PdfDocumentRefFile כדי למנוע race-condition ב-pdfrx:
+  // כל parent-rebuild יוצר widget חדש עם PdfDocumentRefFile חדש (object שונה).
+  // pdfrx משתמש ב-identical() לבדוק אם ה-document השתנה במהלך await.
+  // אם ה-object ישתנה, pdfrx מדלג על .load() והמסמך לא נטען לעולם.
+  late PdfDocumentRefFile _pdfDocumentRef;
   PdfTextSearcher? textSearcher;
   TabController? _leftPaneTabController;
   int _currentLeftPaneTabIndex = 0;
@@ -316,6 +321,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
     _initialPageNumber = widget.tab.pageNumber;
     pdfController = PdfViewerController();
     widget.tab.pdfViewerController = pdfController;
+    _pdfDocumentRef = _createDocumentRef();
 
     final settingsBloc = context.read<SettingsBloc>();
     final initialGlobalLayoutMode = settingsBloc.state.pdfBookViewByDefault
@@ -1192,6 +1198,12 @@ class _PdfBookScreenState extends State<PdfBookScreen>
     );
   }
 
+  PdfDocumentRefFile _createDocumentRef() => PdfDocumentRefFile(
+        widget.tab.book.path,
+        useProgressiveLoading: !widget.tab.requiresStableLayout,
+        passwordProvider: () => passwordDialog(context),
+      );
+
   Widget _buildPdfViewerFromFile(String filePath) {
     return BlocBuilder<PdfBookBloc, PdfBookState>(
       bloc: _bloc,
@@ -1292,16 +1304,11 @@ class _PdfBookScreenState extends State<PdfBookScreen>
                   onTap: () {
                     _pdfViewFocusNode.requestFocus();
                   },
-                  child: PdfViewer.file(
-                    filePath,
+                  child: PdfViewer(
+                    _pdfDocumentRef,
                     controller: widget.tab.pdfViewerController,
                     initialPageNumber:
                         widget.tab.pageNumber < 1 ? 1 : widget.tab.pageNumber,
-                    // requiresStableLayout=true (פתיחה ישירה לעמוד גבוה
-                    // מסימניות/חיפוש/הפניות) → progressive loading כבוי כדי
-                    // למנוע קפיצות ויזואליות בזמן שטרם נטענו דפים קודמים.
-                    useProgressiveLoading: !widget.tab.requiresStableLayout,
-                    passwordProvider: () => passwordDialog(context),
                     params: _buildPdfViewerParams(layoutMode),
                   ),
                 ),
@@ -2704,7 +2711,17 @@ class _PdfBookScreenState extends State<PdfBookScreen>
       bottom: _horizontalScrollbarGutter + _scrollbarGutterGap,
     );
 
-    return Stack(
+    return BlocListener<PdfBookBloc, PdfBookState>(
+      listenWhen: (prev, curr) =>
+          curr is PdfBookError && curr.autoRetry && !(prev is PdfBookError && prev.autoRetry),
+      listener: (context, state) {
+        // retry אוטומטי שקט — בדיוק כמו לחיצה על "נסה שוב"
+        setState(() {
+          _pdfDocumentRef = _createDocumentRef();
+        });
+        _bloc.add(const pdf_events.RetryLoad());
+      },
+      child: Stack(
       children: [
         NotificationListener<UserScrollNotification>(
           onNotification: (notification) {
@@ -2740,10 +2757,13 @@ class _PdfBookScreenState extends State<PdfBookScreen>
                             return true;
                           },
                           builder: (context, state) {
-                            if (state is PdfBookError) {
+                            // בזמן auto-retry נשאר הספינר על המסך
+                            if (state is PdfBookError && !state.autoRetry) {
                               return const SizedBox.shrink();
                             }
-                            if (state is! PdfBookLoaded || state.isLoading) {
+                            if (state is PdfBookError ||
+                                state is! PdfBookLoaded ||
+                                state.isLoading) {
                               return const Positioned.fill(
                                 child: ColoredBox(
                                   color: Color(0xFFFFFFFF),
@@ -2769,10 +2789,14 @@ class _PdfBookScreenState extends State<PdfBookScreen>
               ),
               // שגיאת טעינה - מחוץ ל-ColorFiltered כדי שהצבעים יהיו נכונים
               BlocBuilder<PdfBookBloc, PdfBookState>(
-                buildWhen: (prev, curr) =>
-                    (prev is PdfBookError) != (curr is PdfBookError),
+                buildWhen: (prev, curr) {
+                  final prevShow = prev is PdfBookError && !prev.autoRetry;
+                  final currShow = curr is PdfBookError && !curr.autoRetry;
+                  return prevShow != currShow;
+                },
                 builder: (context, state) {
-                  if (state is! PdfBookError) return const SizedBox.shrink();
+                  // הצג כפתור רק כשהכישלון הוא "אמיתי" (לא auto-retry)
+                  if (state is! PdfBookError || state.autoRetry) return const SizedBox.shrink();
                   return Positioned.fill(
                     child: Padding(
                       padding: readerContentPadding,
@@ -2795,8 +2819,12 @@ class _PdfBookScreenState extends State<PdfBookScreen>
                               RecommendedActionButton(
                                 text: 'נסה שוב',
                                 icon: FluentIcons.arrow_clockwise_24_regular,
-                                onPressed: () =>
-                                    _bloc.add(const pdf_events.RetryLoad()),
+                                onPressed: () {
+                                  setState(() {
+                                    _pdfDocumentRef = _createDocumentRef();
+                                  });
+                                  _bloc.add(const pdf_events.RetryLoad());
+                                },
                               ),
                             ],
                           ),
@@ -2922,6 +2950,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
           },
         ),
       ],
+      ),
     );
   }
 

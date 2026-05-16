@@ -74,6 +74,7 @@ PdfBookBloc _makeBloc(PdfBookTab tab) => PdfBookBloc(
         book: tab.book,
         initialPageNumber: tab.pageNumber,
       ),
+      pdfrxInit: () async {},
     );
 
 /// מחכה שה-bloc יגיע למצב מסוים

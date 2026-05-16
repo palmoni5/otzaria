@@ -80,11 +80,17 @@ class PdfBookLoading extends PdfBookState {
 class PdfBookError extends PdfBookState {
   final PdfBook book;
   final String message;
+  /// כשאמת — הבלוק מצפה שה-UI יריץ retry אוטומטי (ללא הצגת כפתור).
+  final bool autoRetry;
 
-  const PdfBookError({required this.book, required this.message});
+  const PdfBookError({
+    required this.book,
+    required this.message,
+    this.autoRetry = false,
+  });
 
   @override
-  List<Object?> get props => [book.title, message];
+  List<Object?> get props => [book.title, message, autoRetry];
 }
 
 /// Document is loaded and ready

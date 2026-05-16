@@ -53,6 +53,8 @@ PdfBookBloc _makeBloc(PdfBookTab tab, {Duration? loadTimeout}) => PdfBookBloc(
         initialPageNumber: tab.pageNumber,
       ),
       loadTimeout: loadTimeout,
+      // בטסטים: מדלגים על אתחול pdfrx (שדורש platform channels)
+      pdfrxInit: () async {},
     );
 
 PdfBookLoaded _loaded({
@@ -859,7 +861,7 @@ void main() {
     });
 
     blocTest<PdfBookBloc, PdfBookState>(
-      'אחרי loadTimeout בלי DocumentReady/SetLoadingState → PdfBookError',
+      'אחרי loadTimeout ראשון → PdfBookError עם autoRetry=true',
       build: () => _makeBloc(
         _tab(path: existingPdfPath),
         loadTimeout: const Duration(milliseconds: 50),
@@ -870,6 +872,35 @@ void main() {
       verify: (b) {
         final s = b.state as PdfBookError;
         expect(s.message, 'הטעינה ארכה זמן רב מדי');
+        expect(s.autoRetry, isTrue);
+      },
+    );
+
+    blocTest<PdfBookBloc, PdfBookState>(
+      'אחרי שני timeouts (auto-retry + show-button) → PdfBookError עם autoRetry=false',
+      build: () => _makeBloc(
+        _tab(path: existingPdfPath),
+        loadTimeout: const Duration(milliseconds: 50),
+      ),
+      act: (b) async {
+        b.add(const LoadPdfDocument());
+        // מחכה לiriyah הראשונה (auto-retry)
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+        // מדמה את מה שה-BlocListener בscreen יעשה
+        b.add(const RetryLoad());
+        // מחכה לiriyah השנייה (show button)
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+      },
+      wait: const Duration(milliseconds: 50),
+      expect: () => [
+        isA<PdfBookLoading>(),
+        isA<PdfBookError>(), // autoRetry=true
+        isA<PdfBookLoading>(), // אחרי RetryLoad
+        isA<PdfBookError>(), // autoRetry=false
+      ],
+      verify: (b) {
+        final s = b.state as PdfBookError;
+        expect(s.autoRetry, isFalse);
       },
     );
 
