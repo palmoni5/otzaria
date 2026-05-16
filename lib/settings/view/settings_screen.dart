@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:otzaria/core/error_log_file.dart';
 import 'package:otzaria/core/focus_repository.dart';
 import 'package:otzaria/tools/calendar/utils/calendar_cubit.dart';
 import 'package:otzaria/settings/search/settings_search_field.dart';
@@ -68,6 +69,7 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
   @override
   void initState() {
     super.initState();
+    ErrorLogFile.appendBreadcrumb('MySettingsScreen.initState');
     widget.controller?.addListener(_handleRequestedTab);
     _applyRequestedTab(widget.controller?.takeRequestedTab());
     FocusRepository().registerSettingsFocusRequester(_requestSettingsFocus);
@@ -76,6 +78,7 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
 
   @override
   void dispose() {
+    ErrorLogFile.appendBreadcrumb('MySettingsScreen.dispose');
     FocusRepository().unregisterSettingsFocusRequester(_requestSettingsFocus);
     SettingsSearchRegistry.instance.removeListener(_handleSearchNavigation);
     widget.controller?.removeListener(_handleRequestedTab);

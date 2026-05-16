@@ -30,6 +30,7 @@ import 'package:otzaria/plugins/view/webview_environment_holder.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_bloc.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_event.dart';
 import 'package:otzaria/plugins/services/plugin_store_link_parser.dart';
+import 'package:otzaria/core/error_log_file.dart';
 
 // ---------------------------------------------------------------------------
 // Stub SDK — injected at AT_DOCUMENT_START before any page JS runs.
@@ -98,6 +99,10 @@ class _PluginTabPageState extends State<PluginTabPage> {
   @override
   void initState() {
     super.initState();
+    ErrorLogFile.appendBreadcrumb('PluginTabPage.initState', details: {
+      'pluginId': widget.plugin.pluginId,
+      'version': widget.plugin.version,
+    });
     _pluginSystemBloc = context.read<PluginSystemBloc>();
     localHtmlPath =
         '${widget.plugin.resolvedRootPath}/${widget.plugin.entrypointPath}';
@@ -243,6 +248,9 @@ class _PluginTabPageState extends State<PluginTabPage> {
 
   @override
   void dispose() {
+    ErrorLogFile.appendBreadcrumb('PluginTabPage.dispose', details: {
+      'pluginId': widget.plugin.pluginId,
+    });
     _adapter.dispose();
     PluginRuntimeDispatcher.instance
         .unregisterController(widget.plugin.pluginId);
@@ -302,6 +310,12 @@ class _PluginTabPageState extends State<PluginTabPage> {
   }
 
   Widget _buildWebView() {
+    ErrorLogFile.appendBreadcrumb('PluginTabPage.buildWebView', details: {
+      'pluginId': widget.plugin.pluginId,
+      'envInitialized':
+          (WebViewEnvironmentHolder.environment != null).toString(),
+      'platform': Platform.operatingSystem,
+    });
     final webView = InAppWebView(
       webViewEnvironment: WebViewEnvironmentHolder.environment,
       initialUrlRequest: URLRequest(url: WebUri.uri(Uri.file(localHtmlPath))),
@@ -321,21 +335,35 @@ class _PluginTabPageState extends State<PluginTabPage> {
         ),
       ]),
       onWebViewCreated: (controller) {
+        ErrorLogFile.appendBreadcrumb('PluginTabPage.onWebViewCreated',
+            details: {'pluginId': widget.plugin.pluginId});
         try {
           webViewController = controller;
           PluginRuntimeDispatcher.instance
               .registerController(widget.plugin.pluginId, controller);
           _bridge.register(controller);
-        } catch (e) {
+        } catch (e, st) {
           // bridge.register נכשל — מנקים את ה-registration הלא שלם
           PluginRuntimeDispatcher.instance
               .unregisterController(widget.plugin.pluginId);
           debugPrint(
               'Plugin [${widget.plugin.pluginId}] WebView init error: $e');
+          ErrorLogFile.append(
+            title: 'PluginTabPage onWebViewCreated failed',
+            error: e,
+            stackTrace: st,
+            details: {'pluginId': widget.plugin.pluginId},
+          );
           if (mounted) setState(() => _hasError = true);
         }
       },
       shouldOverrideUrlLoading: (controller, navigationAction) async {
+        ErrorLogFile.appendBreadcrumb(
+            'PluginTabPage.shouldOverrideUrlLoading',
+            details: {
+              'pluginId': widget.plugin.pluginId,
+              'url': navigationAction.request.url?.toString() ?? '',
+            });
         try {
           final uri = navigationAction.request.url;
           if (uri == null) return NavigationActionPolicy.CANCEL;
@@ -378,9 +406,15 @@ class _PluginTabPageState extends State<PluginTabPage> {
           }
 
           return NavigationActionPolicy.CANCEL;
-        } catch (e) {
+        } catch (e, st) {
           debugPrint(
               'Plugin [${widget.plugin.pluginId}] URL override error: $e');
+          ErrorLogFile.append(
+            title: 'PluginTabPage shouldOverrideUrlLoading failed',
+            error: e,
+            stackTrace: st,
+            details: {'pluginId': widget.plugin.pluginId},
+          );
           return NavigationActionPolicy.CANCEL;
         }
       },
@@ -411,14 +445,22 @@ class _PluginTabPageState extends State<PluginTabPage> {
                 statusCode: 403, reasonPhrase: 'Forbidden');
           }
           return null;
-        } catch (e) {
+        } catch (e, st) {
           debugPrint(
               'Plugin [${widget.plugin.pluginId}] intercept request error: $e');
+          ErrorLogFile.append(
+            title: 'PluginTabPage shouldInterceptRequest failed',
+            error: e,
+            stackTrace: st,
+            details: {'pluginId': widget.plugin.pluginId},
+          );
           return WebResourceResponse(
               statusCode: 403, reasonPhrase: 'Forbidden');
         }
       },
       onLoadStop: (controller, url) async {
+        ErrorLogFile.appendBreadcrumb('PluginTabPage.onLoadStop',
+            details: {'pluginId': widget.plugin.pluginId});
         try {
           // לוכד theme לפני ה-await (context חייב להישמר synchronously)
           final theme = buildThemePayload(context);
@@ -489,6 +531,12 @@ class _PluginTabPageState extends State<PluginTabPage> {
           debugPrint('Plugin [${widget.plugin.pluginId}] boot error: $e\n$st');
           PluginSystemDatabase.instance
               .writeLog(widget.plugin.pluginId, 'ERROR', 'Boot failed: $e');
+          ErrorLogFile.append(
+            title: 'PluginTabPage onLoadStop boot failed',
+            error: e,
+            stackTrace: st,
+            details: {'pluginId': widget.plugin.pluginId},
+          );
           if (!mounted) return;
           if (widget.plugin.isDevelopment) {
             setState(() => _devErrorMessage = 'שגיאה באתחול התוסף:\n$e');
@@ -497,11 +545,63 @@ class _PluginTabPageState extends State<PluginTabPage> {
           }
         }
       },
+      onLoadStart: (controller, url) {
+        ErrorLogFile.appendBreadcrumb('PluginTabPage.onLoadStart', details: {
+          'pluginId': widget.plugin.pluginId,
+          'url': url?.toString() ?? '',
+        });
+      },
       onReceivedError: (controller, request, error) {
+        ErrorLogFile.appendBreadcrumb('PluginTabPage.onReceivedError',
+            details: {
+              'pluginId': widget.plugin.pluginId,
+              'url': request.url.toString(),
+              'error': error.description,
+            });
         // only fail the view for the entrypoint file load itself
         if (request.url.scheme == 'file') {
           if (mounted) setState(() => _hasError = true);
         }
+      },
+      onReceivedHttpError: (controller, request, errorResponse) {
+        ErrorLogFile.appendBreadcrumb('PluginTabPage.onReceivedHttpError',
+            details: {
+              'pluginId': widget.plugin.pluginId,
+              'url': request.url.toString(),
+              'status': errorResponse.statusCode?.toString() ?? '',
+              'reason': errorResponse.reasonPhrase ?? '',
+            });
+      },
+      onWebContentProcessDidTerminate: (controller) {
+        ErrorLogFile.appendBreadcrumb(
+            'PluginTabPage.onWebContentProcessDidTerminate',
+            details: {'pluginId': widget.plugin.pluginId});
+        ErrorLogFile.append(
+          title: 'PluginTabPage WebView process terminated',
+          error: 'WebView content process died (native crash)',
+          details: {'pluginId': widget.plugin.pluginId},
+        );
+      },
+      onProcessFailed: (controller, detail) {
+        ErrorLogFile.appendBreadcrumb('PluginTabPage.onProcessFailed',
+            details: {
+              'pluginId': widget.plugin.pluginId,
+              'kind': detail.kind.toString(),
+              'reason': detail.reason?.toString() ?? '',
+              'exitCode': detail.exitCode?.toString() ?? '',
+              'processDescription': detail.processDescription ?? '',
+              'failureSourceModulePath': detail.failureSourceModulePath ?? '',
+            });
+        ErrorLogFile.append(
+          title: 'PluginTabPage WebView2 process failed',
+          error:
+              'WebView2 process failed: kind=${detail.kind} reason=${detail.reason} exitCode=${detail.exitCode}',
+          details: {
+            'pluginId': widget.plugin.pluginId,
+            'processDescription': detail.processDescription ?? '',
+            'failureSourceModulePath': detail.failureSourceModulePath ?? '',
+          },
+        );
       },
       onConsoleMessage: (controller, consoleMessage) {
         try {
@@ -509,6 +609,11 @@ class _PluginTabPageState extends State<PluginTabPage> {
               consoleMessage.messageLevel == ConsoleMessageLevel.WARNING) {
             PluginSystemDatabase.instance.writeLog(widget.plugin.pluginId,
                 consoleMessage.messageLevel.toString(), consoleMessage.message);
+            ErrorLogFile.appendBreadcrumb('PluginTabPage.console', details: {
+              'pluginId': widget.plugin.pluginId,
+              'level': consoleMessage.messageLevel.toString(),
+              'msg': consoleMessage.message,
+            });
           }
           debugPrint(
               'Plugin [${widget.plugin.pluginId}]: ${consoleMessage.message}');

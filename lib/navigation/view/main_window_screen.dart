@@ -80,6 +80,7 @@ import 'package:otzaria/plugins/bridge/plugin_bridge_adapter.dart'
 import 'package:otzaria/core/external_activation_queue.dart';
 import 'package:otzaria/core/external_activation_channel.dart';
 import 'package:otzaria/core/external_uri_router.dart';
+import 'package:otzaria/core/error_log_file.dart';
 import 'package:otzaria/plugins/services/reader_location_tracker.dart';
 import 'package:otzaria/tour/bloc/tour_cubit.dart';
 import 'package:otzaria/tour/models/live_tip.dart';
@@ -806,6 +807,10 @@ class MainWindowScreenState extends State<MainWindowScreen>
     if (!mounted || !context.mounted) return;
 
     if (state.currentScreen != _lastScreen) {
+      ErrorLogFile.appendBreadcrumb('Navigation.screenChange', details: {
+        'from': _lastScreen.name,
+        'to': state.currentScreen.name,
+      });
       if (_lastScreen == Screen.library) {
         final libraryState = libraryBrowserKey.currentState;
         if (libraryState != null) {

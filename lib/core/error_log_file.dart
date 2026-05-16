@@ -109,6 +109,42 @@ class ErrorLogFile {
     );
   }
 
+  /// כותבת אירוע מעקב (breadcrumb) קצר לקובץ הלוג.
+  ///
+  /// משמש לתיעוד שלבי lifecycle לפני קריסות נטיביות שאינן נתפסות על ידי
+  /// FlutterError.onError/PlatformDispatcher.onError (למשל קריסת WebView2).
+  /// בעת קריסה, רצף ה-breadcrumbs נראה ישירות ב-errors.txt לפני סיום הקובץ.
+  ///
+  /// השורה היא חד-שורתית קצרה כדי לא להעמיס על הקובץ.
+  static void appendBreadcrumb(
+    String topic, {
+    Map<String, String?>? details,
+    Map<String, String>? environment,
+    ErrorLogPlatform? platform,
+    String? tempPath,
+  }) {
+    try {
+      final buffer =
+          StringBuffer('[bc] ${DateTime.now().toIso8601String()} $topic');
+      if (details != null) {
+        for (final entry in details.entries) {
+          final value = entry.value?.trim();
+          if (value == null || value.isEmpty) continue;
+          buffer.write(' | ${entry.key}=${value.replaceAll('\n', ' ')}');
+        }
+      }
+      buffer.writeln();
+      appendText(
+        buffer.toString(),
+        environment: environment,
+        platform: platform,
+        tempPath: tempPath,
+      );
+    } catch (_) {
+      // breadcrumbs לעולם לא יקרסו את האפליקציה
+    }
+  }
+
   /// מוסיפה רשומת שגיאה לקובץ הלוג המקומי.
   static void append({
     required String title,

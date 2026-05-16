@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:otzaria/core/error_log_file.dart';
 import 'package:otzaria/core/focus_repository.dart';
 import 'package:otzaria/core/ui_snack.dart';
 import 'package:otzaria/personal_notes/view/personal_notes_screen.dart';
@@ -444,6 +445,11 @@ class ToolsScreenState extends State<ToolsScreen>
     InstalledPlugin? transient,
     required bool notify,
   }) {
+    ErrorLogFile.appendBreadcrumb('ToolsScreen.applyTabState', details: {
+      'pinned': pinnedPlugins.length.toString(),
+      'transient': transient?.pluginId ?? '',
+      'notify': notify.toString(),
+    });
     final newDescriptors = <ToolDescriptor>[
       ..._buildBaseDescriptors(),
       ...pinnedPlugins.map((p) => PluginToolDescriptor(plugin: p)),
@@ -522,6 +528,7 @@ class ToolsScreenState extends State<ToolsScreen>
   @override
   void initState() {
     super.initState();
+    ErrorLogFile.appendBreadcrumb('ToolsScreen.initState');
     FocusRepository().registerMoreScreenFocusRequester(requestActiveTabFocus);
     _applyTabState([], notify: false);
     WidgetsBinding.instance
@@ -963,9 +970,18 @@ class ToolsScreenState extends State<ToolsScreen>
     );
   }
 
+  bool _loggedFirstBuild = false;
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    if (!_loggedFirstBuild) {
+      _loggedFirstBuild = true;
+      ErrorLogFile.appendBreadcrumb('ToolsScreen.firstBuild', details: {
+        'descriptors': _descriptors.length.toString(),
+        'selectedToolId': _selectedToolId ?? '',
+      });
+    }
 
     final bgColor = AppSurfaces.panelBackground(context);
 

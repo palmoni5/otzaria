@@ -10,6 +10,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 
+import 'package:otzaria/core/error_log_file.dart';
 import 'package:otzaria/core/ui_snack.dart';
 import 'package:otzaria/history/bloc/history_bloc.dart';
 import 'package:otzaria/navigation/bloc/navigation_bloc.dart';
@@ -99,6 +100,7 @@ class _PluginBackgroundHostState extends State<PluginBackgroundHost> {
   @override
   void initState() {
     super.initState();
+    ErrorLogFile.appendBreadcrumb('PluginBackgroundHost.initState');
     // BlocListener מופעל רק על שינויי state. אם הבלוק כבר ב-PluginSystemLoaded
     // כשה-widget נבנה (מסלול נפוץ — LoadPlugins ב-main.dart), הסנכרון לא יופעל.
     // addPostFrameCallback מבטיח שה-context בשל לפני שאנחנו קוראים לבלוק.
@@ -146,6 +148,10 @@ class _PluginBackgroundHostState extends State<PluginBackgroundHost> {
   }
 
   Future<void> _syncBackgroundPlugins(List<InstalledPlugin> plugins) async {
+    ErrorLogFile.appendBreadcrumb('PluginBackgroundHost.sync', details: {
+      'total': plugins.length.toString(),
+      'enabled': plugins.where((p) => p.enabled).length.toString(),
+    });
     final enabledById = {
       for (final p in plugins.where((p) => p.enabled)) p.pluginId: p,
     };
@@ -242,6 +248,10 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner> {
   @override
   void initState() {
     super.initState();
+    ErrorLogFile.appendBreadcrumb('BackgroundPluginRunner.initState', details: {
+      'pluginId': widget.plugin.pluginId,
+      'version': widget.plugin.version,
+    });
     _pluginSystemBloc = context.read<PluginSystemBloc>();
     _localHtmlPath =
         '${widget.plugin.resolvedRootPath}/${widget.plugin.entrypointPath}';
@@ -359,6 +369,9 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner> {
 
   @override
   void dispose() {
+    ErrorLogFile.appendBreadcrumb('BackgroundPluginRunner.dispose', details: {
+      'pluginId': widget.plugin.pluginId,
+    });
     _adapter.dispose();
     PluginRuntimeDispatcher.instance.unregisterController(
       widget.plugin.pluginId,
@@ -373,10 +386,29 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_webViewPrereqsDone) return const SizedBox.shrink();
-    if (!File(_localHtmlPath).existsSync()) {
+    if (!_webViewPrereqsDone) {
+      ErrorLogFile.appendBreadcrumb('BackgroundPluginRunner.build skipped',
+          details: {
+            'pluginId': widget.plugin.pluginId,
+            'reason': 'prereqs not ready',
+          });
       return const SizedBox.shrink();
     }
+    if (!File(_localHtmlPath).existsSync()) {
+      ErrorLogFile.appendBreadcrumb('BackgroundPluginRunner.build skipped',
+          details: {
+            'pluginId': widget.plugin.pluginId,
+            'reason': 'entrypoint missing',
+            'path': _localHtmlPath,
+          });
+      return const SizedBox.shrink();
+    }
+    ErrorLogFile.appendBreadcrumb('BackgroundPluginRunner.build', details: {
+      'pluginId': widget.plugin.pluginId,
+      'envInitialized':
+          (WebViewEnvironmentHolder.environment != null).toString(),
+      'platform': Platform.operatingSystem,
+    });
 
     return InAppWebView(
       webViewEnvironment: WebViewEnvironmentHolder.environment,
@@ -396,6 +428,8 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner> {
         ),
       ]),
       onWebViewCreated: (controller) {
+        ErrorLogFile.appendBreadcrumb('BackgroundPluginRunner.onWebViewCreated',
+            details: {'pluginId': widget.plugin.pluginId});
         try {
           _controller = controller;
           PluginRuntimeDispatcher.instance.registerController(
@@ -404,16 +438,28 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner> {
             instanceId: _backgroundInstanceId,
           );
           _bridge.register(controller);
-        } catch (e) {
+        } catch (e, st) {
           PluginRuntimeDispatcher.instance.unregisterController(
             widget.plugin.pluginId,
             instanceId: _backgroundInstanceId,
           );
           debugPrint(
               'Background plugin [${widget.plugin.pluginId}] init error: $e');
+          ErrorLogFile.append(
+            title: 'BackgroundPluginRunner onWebViewCreated failed',
+            error: e,
+            stackTrace: st,
+            details: {'pluginId': widget.plugin.pluginId},
+          );
         }
       },
       shouldOverrideUrlLoading: (controller, navigationAction) async {
+        ErrorLogFile.appendBreadcrumb(
+            'BackgroundPluginRunner.shouldOverrideUrlLoading',
+            details: {
+              'pluginId': widget.plugin.pluginId,
+              'url': navigationAction.request.url?.toString() ?? '',
+            });
         try {
           final uri = navigationAction.request.url;
           if (uri == null) return NavigationActionPolicy.CANCEL;
@@ -442,9 +488,15 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner> {
             }
           }
           return NavigationActionPolicy.CANCEL;
-        } catch (e) {
+        } catch (e, st) {
           debugPrint(
               'Background plugin [${widget.plugin.pluginId}] URL override error: $e');
+          ErrorLogFile.append(
+            title: 'BackgroundPluginRunner shouldOverrideUrlLoading failed',
+            error: e,
+            stackTrace: st,
+            details: {'pluginId': widget.plugin.pluginId},
+          );
           return NavigationActionPolicy.CANCEL;
         }
       },
@@ -475,14 +527,22 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner> {
                 statusCode: 403, reasonPhrase: 'Forbidden');
           }
           return null;
-        } catch (e) {
+        } catch (e, st) {
           debugPrint(
               'Background plugin [${widget.plugin.pluginId}] intercept request error: $e');
+          ErrorLogFile.append(
+            title: 'BackgroundPluginRunner shouldInterceptRequest failed',
+            error: e,
+            stackTrace: st,
+            details: {'pluginId': widget.plugin.pluginId},
+          );
           return WebResourceResponse(
               statusCode: 403, reasonPhrase: 'Forbidden');
         }
       },
       onLoadStop: (controller, url) async {
+        ErrorLogFile.appendBreadcrumb('BackgroundPluginRunner.onLoadStop',
+            details: {'pluginId': widget.plugin.pluginId});
         try {
           final theme = mounted
               ? buildThemePayload(context)
@@ -554,7 +614,69 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner> {
               'Background plugin [${widget.plugin.pluginId}] boot error: $e\n$st');
           PluginSystemDatabase.instance.writeLog(widget.plugin.pluginId,
               'ERROR', 'Background boot failed: $e');
+          ErrorLogFile.append(
+            title: 'BackgroundPluginRunner onLoadStop boot failed',
+            error: e,
+            stackTrace: st,
+            details: {'pluginId': widget.plugin.pluginId},
+          );
         }
+      },
+      onLoadStart: (controller, url) {
+        ErrorLogFile.appendBreadcrumb('BackgroundPluginRunner.onLoadStart',
+            details: {
+              'pluginId': widget.plugin.pluginId,
+              'url': url?.toString() ?? '',
+            });
+      },
+      onReceivedError: (controller, request, error) {
+        ErrorLogFile.appendBreadcrumb('BackgroundPluginRunner.onReceivedError',
+            details: {
+              'pluginId': widget.plugin.pluginId,
+              'url': request.url.toString(),
+              'error': error.description,
+            });
+      },
+      onReceivedHttpError: (controller, request, errorResponse) {
+        ErrorLogFile.appendBreadcrumb(
+            'BackgroundPluginRunner.onReceivedHttpError',
+            details: {
+              'pluginId': widget.plugin.pluginId,
+              'url': request.url.toString(),
+              'status': errorResponse.statusCode?.toString() ?? '',
+              'reason': errorResponse.reasonPhrase ?? '',
+            });
+      },
+      onWebContentProcessDidTerminate: (controller) {
+        ErrorLogFile.appendBreadcrumb(
+            'BackgroundPluginRunner.onWebContentProcessDidTerminate',
+            details: {'pluginId': widget.plugin.pluginId});
+        ErrorLogFile.append(
+          title: 'BackgroundPluginRunner WebView process terminated',
+          error: 'WebView content process died (native crash)',
+          details: {'pluginId': widget.plugin.pluginId},
+        );
+      },
+      onProcessFailed: (controller, detail) {
+        ErrorLogFile.appendBreadcrumb('BackgroundPluginRunner.onProcessFailed',
+            details: {
+              'pluginId': widget.plugin.pluginId,
+              'kind': detail.kind.toString(),
+              'reason': detail.reason?.toString() ?? '',
+              'exitCode': detail.exitCode?.toString() ?? '',
+              'processDescription': detail.processDescription ?? '',
+              'failureSourceModulePath': detail.failureSourceModulePath ?? '',
+            });
+        ErrorLogFile.append(
+          title: 'BackgroundPluginRunner WebView2 process failed',
+          error:
+              'WebView2 process failed: kind=${detail.kind} reason=${detail.reason} exitCode=${detail.exitCode}',
+          details: {
+            'pluginId': widget.plugin.pluginId,
+            'processDescription': detail.processDescription ?? '',
+            'failureSourceModulePath': detail.failureSourceModulePath ?? '',
+          },
+        );
       },
       onConsoleMessage: (controller, consoleMessage) {
         try {
@@ -565,6 +687,12 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner> {
               consoleMessage.messageLevel.toString(),
               '[background] ${consoleMessage.message}',
             );
+            ErrorLogFile.appendBreadcrumb('BackgroundPluginRunner.console',
+                details: {
+                  'pluginId': widget.plugin.pluginId,
+                  'level': consoleMessage.messageLevel.toString(),
+                  'msg': consoleMessage.message,
+                });
           }
           debugPrint(
               'Background plugin [${widget.plugin.pluginId}]: ${consoleMessage.message}');
