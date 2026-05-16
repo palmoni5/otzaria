@@ -17,11 +17,12 @@
 8. [ניהול ערכת נושא](#ניהול-ערכת-נושא)
 9. [אחסון פרטי](#אחסון-פרטי)
 10. [הרשאות](#הרשאות)
-11. [אבטחה ומגבלות](#אבטחה-ומגבלות)
-12. [packaging — יצירת קובץ `.otzplugin`](#packaging--יצירת-קובץ-otzplugin)
-13. [התקנה ובדיקה](#התקנה-ובדיקה)
-14. [שגיאות נפוצות](#שגיאות-נפוצות)
-15. [דוגמה מלאה](#דוגמה-מלאה)
+11. [ריצת רקע (app.run\_on\_startup)](#ריצת-רקע-apprun_on_startup)
+12. [אבטחה ומגבלות](#אבטחה-ומגבלות)
+13. [packaging — יצירת קובץ `.otzplugin`](#packaging--יצירת-קובץ-otzplugin)
+14. [התקנה ובדיקה](#התקנה-ובדיקה)
+15. [שגיאות נפוצות](#שגיאות-נפוצות)
+16. [דוגמה מלאה](#דוגמה-מלאה)
 
 ---
 
@@ -219,6 +220,7 @@ Otzaria.on('plugin.boot', (payload) => {
   payload.app.platform       // 'windows' | 'linux' | 'macos' | 'android' | 'ios'
   payload.app.locale         // 'he-IL'
   payload.app.textDirection  // 'rtl'
+  payload.app.runMode        // 'foreground' | 'background' — ראה §ריצת רקע
   payload.theme              // ThemePayload (ראה §ניהול ערכת נושא)
   payload.permissions        // string[] — הרשאות שאושרו
 });
@@ -447,8 +449,75 @@ const { data: keys } = await Otzaria.call('storage.list');
 | `published_data.write` | פרסום נתונים לאפליקציה |
 | `ui.feedback` | הצגת הודעות ודיאלוגים |
 | `network.access` | גישה לרשת (דורש `network.enabled: true` במניפסט + שה-URL מופיע ב-allowlist הגלובלי של אוצריא בקוד) |
+| `notifications.send` | הצגת הודעות בתוך האפליקציה (UiSnack) |
+| `notifications.system` | התראות מערכת הפעלה (Native notifications) |
+| `app.run_on_startup` | **הרשאה רגישה** — טעינת התוסף ברקע עם כל עליית אוצריא, גם ללא כניסה למסך "כלים". ברירת מחדל: **כבויה**. ראה §ריצת רקע. |
 
 > **עיקרון מינימום הרשאות:** בקש רק את מה שאתה צריך בפועל.
+
+---
+
+## ריצת רקע (app.run\_on\_startup)
+
+הרשאה זו מאפשרת לתוסף להיטען ולרוץ ברקע **מיד עם עליית אוצריא**, עוד לפני שהמשתמש נכנס למסך "כלים". היא מיועדת לתוספים שצריכים לבצע פעולות בזמן פתיחת האפליקציה — למשל שליחת הודעת ברוכים הבאים, טעינת נתונים ראשוניים, תזמון התראה, וכו'.
+
+### הצהרה במניפסט
+
+```json
+{
+  "permissions": [
+    "app.run_on_startup",
+    "notifications.send"
+  ]
+}
+```
+
+### התנהגות ברירת מחדל
+
+בניגוד לשאר ההרשאות (שמתחילות **מופעלות**), `app.run_on_startup` מתחילה **כבויה** — המשתמש צריך להפעיל אותה בכוונה במסך ההתקנה.
+
+במסך ההתקנה יוצג **באנר כתום בולט** שמסביר למשתמש שהתוסף מבקש לרוץ ברקע.
+
+### זיהוי מצב רקע ב-JavaScript
+
+כשהתוסף רץ ברקע, `payload.app.runMode === 'background'`.  
+כשהתוסף רץ בלשונית הנראית, `payload.app.runMode === 'foreground'`.
+
+השתמש בזה כדי **לשלוח הודעה פעם אחת בלבד** — מה-instance הרקע בלבד:
+
+```javascript
+Otzaria.on('plugin.boot', async (payload) => {
+  const isBackground = payload.app.runMode === 'background';
+  const hasStartupPerm = payload.permissions.includes('app.run_on_startup');
+
+  if (isBackground && hasStartupPerm) {
+    // רץ פעם אחת בעת עליית האפליקציה
+    await Otzaria.call('notifications.showInApp', {
+      message: 'שלום! התוסף נטען בהצלחה עם עליית אוצריא',
+      type: 'success'
+    });
+  }
+});
+```
+
+> ⚠️ **חשוב:** אם לא תבדוק את `runMode`, ההודעה תישלח **פעמיים** — פעם מה-instance הרקע ופעם נוספת כשהמשתמש נכנס ללשונית.
+
+### מה מותר לתוסף רקע לעשות
+
+תוסף שרץ ברקע יכול לקרוא לכל ה-APIs הרגילים — `notifications.showInApp`, `storage.set/get`, `calendar.getJewishDate`, וכו'. דיאלוגים (`ui.showConfirm` וכו') יופיעו מעל המסך הראשי.
+
+**מה שלא מומלץ ברקע:**
+- `navigation.goTo` — יגרום לניווט בלתי צפוי ברגע שהאפליקציה נפתחת
+- קריאות כבדות שיאטו את עליית האפליקציה
+
+### מחזור החיים של instance הרקע
+
+| מצב | מה קורה |
+|-----|---------|
+| אוצריא נפתחת + הרשאה מאושרת | WebView נסתר נוצר, `plugin.boot` נורה עם `runMode: 'background'` |
+| המשתמש נכנס ללשונית התוסף | **instance נוסף** נוצר (foreground), ה-background נמשך במקביל |
+| ההרשאה מבוטלת בהגדרות | ה-instance הרקע נסגר מיידית |
+| התוסף מוסר | שני ה-instances נסגרים |
 
 ---
 

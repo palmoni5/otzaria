@@ -30,6 +30,11 @@ const Map<String, PluginPermissionInfo> _permissionLabels = {
     label: 'כתובת מייל',
     description: 'גישה לכתובת המייל של המשתמש, לשימוש בדיווח שגיאות בלבד',
   ),
+  'app.run_on_startup': PluginPermissionInfo(
+    label: 'טעינה אוטומטית עם עליית האפליקציה',
+    description:
+        'התוסף ייטען ויפעל ברקע מיד עם עליית אוצריא, גם בלי להיכנס למסך "כלים". מומלץ רק לתוספים שצריכים לעקוב אחרי אירועים או לתזמן פעולות.',
+  ),
 
   // ===== ספרייה =====
   'library.books.read': PluginPermissionInfo(

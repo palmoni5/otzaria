@@ -1,11 +1,14 @@
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mockito/mockito.dart';
 import 'package:otzaria/plugins/view/plugin_install_screen.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_bloc.dart';
+import 'package:otzaria/plugins/bloc/plugin_system_event.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_state.dart';
 import 'package:otzaria/plugins/models/plugin_manifest.dart';
+import 'package:otzaria/plugins/models/plugin_valid_permissions.dart';
 import 'package:otzaria/plugins/repository/plugin_registry_repository.dart';
 import 'package:otzaria/plugins/models/installed_plugin.dart';
 import 'package:otzaria/plugins/models/plugin_permission_grant.dart';
@@ -43,6 +46,7 @@ class _FakeInstallerService extends PluginInstallerService {
 }
 
 /// מאפשר emit ידני מחוץ לבלוק בטסטים בלבד.
+/// מאחסן את כל האירועים שנשלחים ב-[capturedEvents] לאימות ב-payload tests.
 class _TestableBloc extends PluginSystemBloc {
   _TestableBloc()
       : super(
@@ -50,6 +54,14 @@ class _TestableBloc extends PluginSystemBloc {
           installerService: _FakeInstallerService(),
         );
   void testEmit(PluginSystemState state) => emit(state);
+
+  final List<PluginSystemEvent> capturedEvents = [];
+
+  @override
+  void add(PluginSystemEvent event) {
+    capturedEvents.add(event);
+    super.add(event);
+  }
 }
 
 PluginManifest _manifest({
@@ -77,14 +89,17 @@ PluginManifest _manifest({
     );
 
 /// פותח את PluginInstallScreen כ-Dialog (כמו בקוד האמיתי) ומחזיר את ה-Widget.
+///
+/// [screenHeight] — גובה מסך הבדיקה. ברירת מחדל 900px מתאימה לתוכן בסיסי.
+/// כשיש באנר + הרשאות (תוכן ארוך יותר) יש להעביר ערך גבוה יותר (למשל 1400).
 Future<void> _openDialog(
   WidgetTester tester,
   _TestableBloc bloc,
   PluginManifest manifest, {
   String? previousVersion,
+  double screenHeight = 900,
 }) async {
-  // Dialog height = screen_height - 2*60. Content ~570px → צריך מסך גבוה מ-690px.
-  tester.view.physicalSize = const Size(800, 900);
+  tester.view.physicalSize = Size(800, screenHeight);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
@@ -284,5 +299,173 @@ void main() {
     await tester.ensureVisible(find.text('התקן'));
     expect(find.text('התקן'), findsOneWidget);
     expect(find.text('עדכן'), findsNothing);
+  });
+
+  // ── הרשאת run_on_startup ──
+
+  testWidgets(
+      'תוסף שמבקש app.run_on_startup — מוצג באנר בולט עם אזהרה',
+      (tester) async {
+    await _openDialog(
+      tester,
+      bloc,
+      _manifest(permissions: [pluginRunOnStartupPermission]),
+    );
+
+    expect(
+      find.text('התוסף מבקש לפעול ברקע עם עליית האפליקציה'),
+      findsOneWidget,
+    );
+    expect(find.byIcon(FluentIcons.warning_24_filled), findsWidgets);
+  });
+
+  testWidgets(
+      'תוסף שלא מבקש app.run_on_startup — אין באנר בולט',
+      (tester) async {
+    await _openDialog(
+      tester,
+      bloc,
+      _manifest(permissions: ['app.info.read']),
+    );
+
+    expect(
+      find.text('התוסף מבקש לפעול ברקע עם עליית האפליקציה'),
+      findsNothing,
+    );
+  });
+
+  testWidgets(
+      'הרשאת app.run_on_startup — Switch מתחיל כבוי ברירת מחדל',
+      (tester) async {
+    await _openDialog(
+      tester,
+      bloc,
+      _manifest(permissions: [pluginRunOnStartupPermission]),
+    );
+
+    // מאתר את ה-SwitchListTile של ההרשאה לפי הכותרת
+    final switchFinder = find.ancestor(
+      of: find.text('טעינה אוטומטית עם עליית האפליקציה'),
+      matching: find.byType(SwitchListTile),
+    );
+    expect(switchFinder, findsOneWidget);
+    final switchTile = tester.widget<SwitchListTile>(switchFinder);
+    expect(switchTile.value, isFalse);
+  });
+
+  testWidgets(
+      'הרשאה רגילה — Switch מתחיל דלוק ברירת מחדל',
+      (tester) async {
+    await _openDialog(
+      tester,
+      bloc,
+      _manifest(permissions: ['app.info.read']),
+    );
+
+    final switchFinder = find.ancestor(
+      of: find.text('מידע אפליקציה'),
+      matching: find.byType(SwitchListTile),
+    );
+    expect(switchFinder, findsOneWidget);
+    final switchTile = tester.widget<SwitchListTile>(switchFinder);
+    expect(switchTile.value, isTrue);
+  });
+
+  // ── payload של ConfirmPluginInstall ──────────────────────────────────────
+  //
+  // בודקים שהאירוע שנשלח לבלוק מכיל את ערכי ההרשאות הנכונים —
+  // לא רק שה-UI מציג את מצב ה-Switch הנכון.
+
+  testWidgets(
+      'לחיצה על התקן שולחת ConfirmPluginInstall עם app.run_on_startup=false כברירת מחדל',
+      (tester) async {
+    await _openDialog(
+      tester,
+      bloc,
+      _manifest(permissions: [pluginRunOnStartupPermission]),
+      screenHeight: 1400,
+    );
+
+    await tester.ensureVisible(find.text('התקן'));
+    await tester.tap(find.text('התקן'));
+    await tester.pumpAndSettle();
+
+    final confirmEvents = bloc.capturedEvents.whereType<ConfirmPluginInstall>();
+    expect(confirmEvents, isNotEmpty);
+    final permissions = confirmEvents.first.grantedPermissions;
+    expect(permissions[pluginRunOnStartupPermission], isFalse,
+        reason: 'app.run_on_startup חייב להיות false ברירת מחדל');
+  });
+
+  testWidgets(
+      'לחיצה על התקן שולחת ConfirmPluginInstall עם הרשאה רגילה=true כברירת מחדל',
+      (tester) async {
+    await _openDialog(
+      tester,
+      bloc,
+      _manifest(permissions: ['app.info.read']),
+    );
+
+    await tester.ensureVisible(find.text('התקן'));
+    await tester.tap(find.text('התקן'));
+    await tester.pumpAndSettle();
+
+    final confirmEvents = bloc.capturedEvents.whereType<ConfirmPluginInstall>();
+    expect(confirmEvents, isNotEmpty);
+    expect(confirmEvents.first.grantedPermissions['app.info.read'], isTrue,
+        reason: 'הרשאה רגילה חייבת להיות true ברירת מחדל');
+  });
+
+  testWidgets(
+      'הפעלת Switch של app.run_on_startup ולחיצה על התקן → payload מכיל true',
+      (tester) async {
+    await _openDialog(
+      tester,
+      bloc,
+      _manifest(permissions: [pluginRunOnStartupPermission]),
+      screenHeight: 1400,
+    );
+
+    // מפעיל את ה-Switch של ההרשאה הרגישה
+    final switchFinder = find.ancestor(
+      of: find.text('טעינה אוטומטית עם עליית האפליקציה'),
+      matching: find.byType(SwitchListTile),
+    );
+    await tester.ensureVisible(switchFinder);
+    await tester.tap(switchFinder);
+    await tester.pump();
+
+    await tester.ensureVisible(find.text('התקן'));
+    await tester.tap(find.text('התקן'));
+    await tester.pumpAndSettle();
+
+    final confirmEvents = bloc.capturedEvents.whereType<ConfirmPluginInstall>();
+    expect(confirmEvents, isNotEmpty);
+    expect(confirmEvents.first.grantedPermissions[pluginRunOnStartupPermission],
+        isTrue,
+        reason: 'לאחר הפעלת ה-Switch, app.run_on_startup חייב להיות true ב-payload');
+  });
+
+  testWidgets(
+      'מעורב: app.run_on_startup=false, הרשאה רגילה=true בלחיצה ראשונה על התקן',
+      (tester) async {
+    await _openDialog(
+      tester,
+      bloc,
+      _manifest(permissions: [pluginRunOnStartupPermission, 'app.info.read']),
+      screenHeight: 1400,
+    );
+
+    await tester.ensureVisible(find.text('התקן'));
+    await tester.tap(find.text('התקן'));
+    await tester.pumpAndSettle();
+
+    final confirmEvents = bloc.capturedEvents.whereType<ConfirmPluginInstall>();
+    expect(confirmEvents, isNotEmpty);
+    final perms = confirmEvents.first.grantedPermissions;
+    expect(perms[pluginRunOnStartupPermission], isFalse,
+        reason: 'app.run_on_startup חייב להיות false');
+    expect(perms['app.info.read'], isTrue,
+        reason: 'app.info.read חייב להיות true');
   });
 }

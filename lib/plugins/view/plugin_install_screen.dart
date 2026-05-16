@@ -5,6 +5,7 @@ import 'package:otzaria/plugins/bloc/plugin_system_bloc.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_event.dart';
 import 'package:otzaria/plugins/models/plugin_manifest.dart';
 import 'package:otzaria/plugins/models/plugin_permission_labels.dart';
+import 'package:otzaria/plugins/models/plugin_valid_permissions.dart';
 import 'package:otzaria/widgets/buttons/action_buttons.dart';
 import 'package:otzaria/settings/settings_card.dart';
 
@@ -29,16 +30,21 @@ class PluginInstallScreen extends StatefulWidget {
 }
 
 class _PluginInstallScreenState extends State<PluginInstallScreen> {
-  /// מצב toggle לכל הרשאה — ברירת מחדל: הכל מופעל
+  /// מצב toggle לכל הרשאה — ברירת מחדל: הכל מופעל, פרט להרשאות רגישות
+  /// (למשל [pluginRunOnStartupPermission]) שמתחילות כבויות.
   late Map<String, bool> _permissionToggles;
 
   @override
   void initState() {
     super.initState();
     _permissionToggles = {
-      for (final p in widget.manifest.permissions) p: true,
+      for (final p in widget.manifest.permissions)
+        p: p != pluginRunOnStartupPermission,
     };
   }
+
+  bool get _requestsRunOnStartup =>
+      widget.manifest.permissions.contains(pluginRunOnStartupPermission);
 
   void _onInstall() {
     context.read<PluginSystemBloc>().add(
@@ -139,6 +145,12 @@ class _PluginInstallScreenState extends State<PluginInstallScreen> {
 
               const SizedBox(height: 16),
 
+              // ===== באנר בולט: בקשת טעינה אוטומטית עם עליית האפליקציה =====
+              if (_requestsRunOnStartup) ...[
+                _RunOnStartupBanner(colorScheme: colorScheme),
+                const SizedBox(height: 16),
+              ],
+
               // ===== הרשאות =====
               if (!hasPermissions)
                 SettingsCard(
@@ -169,18 +181,29 @@ class _PluginInstallScreenState extends State<PluginInstallScreen> {
                   children: widget.manifest.permissions.map((permission) {
                     final info = getPermissionInfo(permission);
                     final isGranted = _permissionToggles[permission] ?? true;
-                    return SwitchListTile(
-                      secondary: Icon(
-                        isGranted
+                    final isSensitive =
+                        permission == pluginRunOnStartupPermission;
+                    final iconData = isSensitive
+                        ? (isGranted
+                            ? FluentIcons.warning_24_filled
+                            : FluentIcons.warning_24_regular)
+                        : (isGranted
                             ? FluentIcons.shield_checkmark_24_regular
-                            : FluentIcons.shield_error_24_regular,
-                        color:
-                            isGranted ? colorScheme.primary : colorScheme.error,
-                      ),
+                            : FluentIcons.shield_error_24_regular);
+                    final iconColor = isSensitive
+                        ? colorScheme.tertiary
+                        : (isGranted
+                            ? colorScheme.primary
+                            : colorScheme.error);
+                    return SwitchListTile(
+                      secondary: Icon(iconData, color: iconColor),
                       title: Text(
                         info.label,
                         textDirection: TextDirection.rtl,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: isSensitive ? colorScheme.tertiary : null,
+                        ),
                       ),
                       subtitle: Text(
                         info.description,
@@ -245,6 +268,72 @@ class _PluginInstallScreenState extends State<PluginInstallScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// באנר בולט שמודיע למשתמש שהתוסף מבקש לרוץ ברקע עם עליית האפליקציה.
+///
+/// ההרשאה כבויה ברירת מחדל; הבאנר מסביר מה ההשלכות ומנחה להפעיל
+/// רק תוספים מהימנים.
+class _RunOnStartupBanner extends StatelessWidget {
+  final ColorScheme colorScheme;
+
+  const _RunOnStartupBanner({required this.colorScheme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.tertiaryContainer,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colorScheme.tertiary,
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            FluentIcons.warning_24_filled,
+            color: colorScheme.tertiary,
+            size: 28,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'התוסף מבקש לפעול ברקע עם עליית האפליקציה',
+                  textDirection: TextDirection.rtl,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: colorScheme.onTertiaryContainer,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'אם תאשר את ההרשאה, התוסף ייטען וירוץ ברקע בכל פעם '
+                  'שאוצריא נטענת, גם בלי שתיכנס למסך "כלים". '
+                  'הדבר עלול להכביד על זמן העלייה ועל צריכת המשאבים של האפליקציה. '
+                  'ברירת המחדל היא שההרשאה כבויה — הענק אותה רק לתוספים '
+                  'שאתה סומך עליהם.',
+                  textDirection: TextDirection.rtl,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: colorScheme.onTertiaryContainer,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

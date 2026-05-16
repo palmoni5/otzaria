@@ -87,6 +87,7 @@ import 'package:otzaria/tour/models/tour_step.dart';
 import 'package:otzaria/tour/tour_target_keys.dart';
 import 'package:otzaria/tour/view/tour_overlay_screen.dart';
 import 'package:otzaria/models/books.dart';
+import 'package:otzaria/plugins/view/plugin_background_host.dart';
 import 'package:otzaria/plugins/view/plugin_install_screen.dart';
 import 'package:otzaria/utils/navigation/open_book.dart';
 
@@ -2288,6 +2289,10 @@ class MainWindowScreenState extends State<MainWindowScreen>
                         WorkStatusOverlay(
                           onTap: _openIndexingSettings,
                         ),
+                        // host נסתר לתוספים שביקשו לרוץ ברקע עם עליית
+                        // האפליקציה. הוא חי כל זמן שה-MainWindowScreen קיים,
+                        // ולא תלוי במסך "כלים".
+                        const PluginBackgroundHost(),
                         ContextOverlayPanel(
                           isOpen: _isReadingSettingsPanelOpen &&
                               (state.currentScreen == Screen.reading ||

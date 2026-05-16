@@ -1072,7 +1072,7 @@ Otzaria.on('event.name', (data) => {
 
 **הרשאה נדרשת:** כל אירוע מצריך הרשאה מתאימה מסוג `events.subscribe:<event_name>`
 
-- `plugin.boot` - נורה פעם אחת בטעינת התוסף (ללא הרשאה)
+- `plugin.boot` - נורה פעם אחת בטעינת התוסף (ללא הרשאה). ה-payload כולל `app.runMode: 'foreground' | 'background'` — ראה §ריצת רקע.
 - `plugin.ready` - נורה אחרי boot (ללא הרשאה)
 - `theme.changed` - שינוי בערכת הצבעים (הרשאה: `events.subscribe:theme.changed`)
 - `navigation.changed` - מעבר בין מסכים ראשיים בלבד (library ↔ reading ↔ more ↔ settings) (הרשאה: `events.subscribe:navigation.changed`)
@@ -1217,6 +1217,46 @@ async function scheduleReminder(title, body, dateTime) {
 
 ---
 
+## ריצת רקע (app.run\_on\_startup)
+
+הרשאה `app.run_on_startup` מאפשרת לתוסף להיטען ולרוץ ברקע **מיד עם עליית אוצריא**, לפני שהמשתמש נכנס למסך "כלים".
+
+### הצהרה במניפסט
+
+```json
+{
+  "permissions": ["app.run_on_startup", "notifications.send"]
+}
+```
+
+### זיהוי מצב ב-plugin.boot
+
+```javascript
+Otzaria.on('plugin.boot', async (payload) => {
+  // payload.app.runMode === 'background'  → רץ ברקע (עם app.run_on_startup)
+  // payload.app.runMode === 'foreground' → רץ בלשונית הנראית
+
+  if (payload.app.runMode === 'background'
+      && payload.permissions.includes('app.run_on_startup')) {
+    // קוד שירוץ פעם אחת בעת עליית האפליקציה
+    await Otzaria.call('notifications.showInApp', {
+      message: 'התוסף נטען בהצלחה עם עליית אוצריא',
+      type: 'success'
+    });
+  }
+});
+```
+
+> ⚠️ **חשוב:** בלי בדיקת `runMode`, הקוד ירוץ **פעמיים** — פעם מה-instance הרקע ופעם נוספת כשהמשתמש נכנס ללשונית.
+
+### התנהגות ברירת מחדל
+
+- **ברירת מחדל: כבויה** — שונה מכל שאר ההרשאות שמופעלות כברירת מחדל
+- בעת ההתקנה מוצג **באנר כתום בולט** שמסביר שהתוסף מבקש לרוץ ברקע
+- המשתמש יכול להפעיל/לכבות את ההרשאה בכל עת מהגדרות התוסף
+
+---
+
 ## רשימת הרשאות מלאה
 
 הרשאות שתוסף יכול לבקש ב-`manifest.json`:
@@ -1245,6 +1285,7 @@ async function scheduleReminder(title, body, dateTime) {
     "history.write",
     "notifications.send",
     "notifications.system",
+    "app.run_on_startup",
     "database.read",
     "events.subscribe:navigation.changed",
     "events.subscribe:reader.current_book_changed",

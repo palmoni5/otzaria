@@ -6,6 +6,7 @@ import 'package:otzaria/plugins/bloc/plugin_system_bloc.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_event.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_state.dart';
 import 'package:otzaria/plugins/models/plugin_permission_labels.dart';
+import 'package:otzaria/plugins/models/plugin_valid_permissions.dart';
 import 'package:otzaria/plugins/repository/plugin_registry_repository.dart';
 import 'package:otzaria/widgets/buttons/action_buttons.dart';
 import 'package:otzaria/widgets/dialogs/dialogs_exports.dart';
@@ -34,7 +35,10 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
     Map<String, bool> map = {};
     for (final p in widget.plugin.manifest.permissions) {
       final granted = await _repo.getPermission(widget.plugin.pluginId, p);
-      map[p] = granted ?? true; // True is default per the bridge logic
+      // הרשאות רגישות (כמו טעינה ברקע) ברירת מחדל = false;
+      // שאר ההרשאות ברירת מחדל = true כפי שמטופל בגשר.
+      final defaultValue = p != pluginRunOnStartupPermission;
+      map[p] = granted ?? defaultValue;
     }
     setState(() {
       _permissions = map;
@@ -114,20 +118,29 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
                 subtitle: 'אפשר או חסום הרשאות ספציפיות כפי שנדרש במניפסט',
                 children: currentPlugin.manifest.permissions.map((p) {
                   final info = getPermissionInfo(p);
-                  final isGranted = _permissions[p] ?? true;
-                  return SwitchListTile(
-                    secondary: Icon(
-                      isGranted
+                  final defaultValue = p != pluginRunOnStartupPermission;
+                  final isGranted = _permissions[p] ?? defaultValue;
+                  final isSensitive = p == pluginRunOnStartupPermission;
+                  final colorScheme = Theme.of(context).colorScheme;
+                  final iconData = isSensitive
+                      ? (isGranted
+                          ? FluentIcons.warning_24_filled
+                          : FluentIcons.warning_24_regular)
+                      : (isGranted
                           ? FluentIcons.shield_checkmark_24_regular
-                          : FluentIcons.shield_error_24_regular,
-                      color: isGranted
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.error,
-                    ),
+                          : FluentIcons.shield_error_24_regular);
+                  final iconColor = isSensitive
+                      ? colorScheme.tertiary
+                      : (isGranted ? colorScheme.primary : colorScheme.error);
+                  return SwitchListTile(
+                    secondary: Icon(iconData, color: iconColor),
                     title: Text(
                       info.label,
                       textDirection: TextDirection.rtl,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: isSensitive ? colorScheme.tertiary : null,
+                      ),
                     ),
                     subtitle: Text(
                       info.description,
