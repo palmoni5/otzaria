@@ -30,6 +30,8 @@ import 'package:otzaria/plugins/view/webview_environment_holder.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_bloc.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_event.dart';
 import 'package:otzaria/plugins/services/plugin_store_link_parser.dart';
+import 'package:otzaria/plugins/services/webview2_compat_check.dart';
+import 'package:otzaria/plugins/view/webview2_unsupported_view.dart';
 import 'package:otzaria/core/error_log_file.dart';
 import 'package:otzaria/settings/engine/settings_bloc.dart';
 
@@ -302,12 +304,40 @@ class _PluginTabPageState extends State<PluginTabPage> {
               ),
             );
           }
-          return _buildWebView();
+          return _buildWithCompatCheck();
         },
       );
     }
 
-    return _buildWebView();
+    return _buildWithCompatCheck();
+  }
+
+  /// בודק את גרסת WebView2 לפני יצירת ה-WebView. אם הגרסה ישנה
+  /// (v143 ומטה — ידוע כקורסת native ב-MSVCP140 על Windows 10 ישן),
+  /// מציג מסך הסבר במקום לאפשר ל-WebView להיווצר ולקרוס.
+  Widget _buildWithCompatCheck() {
+    return FutureBuilder<WebView2CompatResult>(
+      future: WebView2CompatCheck.check(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const SizedBox.shrink();
+        }
+        final result = snapshot.data;
+        if (result != null && !result.supported) {
+          ErrorLogFile.appendBreadcrumb('PluginTabPage.unsupportedWebView2',
+              details: {
+                'pluginId': widget.plugin.pluginId,
+                'version': result.version ?? '',
+                'majorVersion': result.majorVersion?.toString() ?? '',
+              });
+          return WebView2UnsupportedView(
+            result: result,
+            pluginName: widget.plugin.name,
+          );
+        }
+        return _buildWebView();
+      },
+    );
   }
 
   Widget _buildWebView() {
