@@ -1661,8 +1661,10 @@ class _SystemSettingsTabState extends State<SystemSettingsTab> {
           ),
           subtitle: Text(
             state.pluginWebViewCompatMode
-                ? 'מצב תאימות פעיל. נדרשת הפעלה מחדש של התוכנה כדי שהשינוי יחול על תוספים שכבר נטענו.'
-                : 'משבית hook חודרני ב-WebView שגורם לחלק מתוכנות אבטחה לסיים את התהליך. יוריד שכבת הגנה אחת על subresources בתוספים.',
+                ? 'מצב תאימות פעיל — יש להפעיל את התוכנה מחדש כדי שהשינוי יחול. '
+                    'WebView יורץ בתהליך אחד (single-process) ללא sandbox, וההוק לסינון בקשות מושבת.'
+                : 'מריץ את ה-WebView של התוספים בתהליך אחד וללא sandbox כדי שמנועי AV/EDR '
+                    '(למשל ESET) לא יסיימו את התוכנה כשנפתח תוסף. דורש הפעלה מחדש להחלה.',
             style: kSettingsSubtitleStyle,
             textDirection: TextDirection.rtl,
           ),

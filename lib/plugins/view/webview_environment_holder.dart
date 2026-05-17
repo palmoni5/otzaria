@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:path/path.dart' as p;
 import 'package:otzaria/core/app_paths.dart';
+import 'package:otzaria/settings/engine/settings_repository.dart';
 
 /// מחזיק את ה-WebViewEnvironment הסינגלטוני עם userDataFolder הניתן לכתיבה.
 ///
@@ -36,8 +38,25 @@ class WebViewEnvironmentHolder {
     final dataRoot = await AppPaths.getDataRootPath();
     final webviewDataFolder = p.join(dataRoot, 'webview2');
     await Directory(webviewDataFolder).create(recursive: true);
+
+    // במצב תאימות (AV/EDR ארגוני כמו ESET) מעבירים flags ל-Chromium שגורמים
+    // ל-WebView2 לא ליצור renderer/utility child processes נפרדים. ESET תופס
+    // את יצירת תהליכי-הילד של Chromium ומסיים את ה-host process; הימנעות מ-
+    // sandboxing/forking בכלל עוקפת את ההיוריסטיקה הזו.
+    final compatMode = Settings.getValue<bool>(
+          SettingsRepository.keyPluginWebViewCompatMode,
+          defaultValue: false,
+        ) ??
+        false;
+    final browserArgs = compatMode
+        ? '--no-sandbox --single-process --disable-features=RendererCodeIntegrity'
+        : null;
+
     _environment = await WebViewEnvironment.create(
-      settings: WebViewEnvironmentSettings(userDataFolder: webviewDataFolder),
+      settings: WebViewEnvironmentSettings(
+        userDataFolder: webviewDataFolder,
+        additionalBrowserArguments: browserArgs,
+      ),
     );
   }
 
