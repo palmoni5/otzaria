@@ -371,6 +371,15 @@ class UpdateCompactMenuMode extends SettingsEvent {
   List<Object?> get props => [compactMenuMode];
 }
 
+class UpdatePluginWebViewCompatMode extends SettingsEvent {
+  final bool enabled;
+
+  const UpdatePluginWebViewCompatMode(this.enabled);
+
+  @override
+  List<Object?> get props => [enabled];
+}
+
 class UpdateProtectedModeEnabled extends SettingsEvent {
   final bool enabled;
 

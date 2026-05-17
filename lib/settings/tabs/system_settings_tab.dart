@@ -689,6 +689,12 @@ class _SystemSettingsTabState extends State<SystemSettingsTab> {
                     child: _buildAdvancedSection(context, state),
                   ),
 
+                  // 4.1. תאימות תוספים (AV/EDR ארגוני)
+                  SettingsAnchor(
+                    cardId: 'system.plugin_compat',
+                    child: _buildPluginCompatSection(context, state),
+                  ),
+
                   SettingsAnchor(
                     cardId: 'system.tour',
                     child: _buildGuidedTourSection(context),
@@ -1633,6 +1639,39 @@ class _SystemSettingsTabState extends State<SystemSettingsTab> {
                   ],
                 )
               : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPluginCompatSection(
+      BuildContext context, SettingsState state) {
+    return SettingsCard(
+      title: 'תאימות תוספים',
+      subtitle:
+          'הפעל אם תוסף קורס/סוגר את התוכנה בעת פתיחת מסך "כלים" או "הגדרות" '
+          '(נצפה במכשירים עם אנטי-וירוס ארגוני כמו ESET).',
+      children: [
+        SwitchListTile(
+          secondary: const Icon(FluentIcons.shield_24_regular),
+          title: const Text(
+            'מצב תאימות AV/EDR לתוספים',
+            style: kSettingsTitleStyle,
+            textDirection: TextDirection.rtl,
+          ),
+          subtitle: Text(
+            state.pluginWebViewCompatMode
+                ? 'מצב תאימות פעיל. נדרשת הפעלה מחדש של התוכנה כדי שהשינוי יחול על תוספים שכבר נטענו.'
+                : 'משבית hook חודרני ב-WebView שגורם לחלק מתוכנות אבטחה לסיים את התהליך. יוריד שכבת הגנה אחת על subresources בתוספים.',
+            style: kSettingsSubtitleStyle,
+            textDirection: TextDirection.rtl,
+          ),
+          value: state.pluginWebViewCompatMode,
+          onChanged: (value) {
+            context
+                .read<SettingsBloc>()
+                .add(UpdatePluginWebViewCompatMode(value));
+          },
         ),
       ],
     );

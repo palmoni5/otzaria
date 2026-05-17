@@ -42,6 +42,7 @@ class SettingsState extends Equatable {
   final bool protectedModeEnabled;
   final bool autoSyncCatalogs;
   final bool compactMenuMode;
+  final bool pluginWebViewCompatMode;
   final bool? _softwareAndBookUpdatesEnabled;
 
   const SettingsState({
@@ -84,6 +85,7 @@ class SettingsState extends Equatable {
     required this.protectedModeEnabled,
     required this.autoSyncCatalogs,
     this.compactMenuMode = false,
+    this.pluginWebViewCompatMode = false,
     bool? softwareAndBookUpdatesEnabled,
   }) : _softwareAndBookUpdatesEnabled = softwareAndBookUpdatesEnabled;
 
@@ -128,6 +130,7 @@ class SettingsState extends Equatable {
       personalNotesCollapsedByDefault: true,
       protectedModeEnabled: false,
       autoSyncCatalogs: false,
+      pluginWebViewCompatMode: false,
       softwareAndBookUpdatesEnabled: true,
     );
   }
@@ -172,6 +175,7 @@ class SettingsState extends Equatable {
     bool? protectedModeEnabled,
     bool? autoSyncCatalogs,
     bool? compactMenuMode,
+    bool? pluginWebViewCompatMode,
     bool? softwareAndBookUpdatesEnabled,
   }) {
     return SettingsState(
@@ -219,6 +223,8 @@ class SettingsState extends Equatable {
       protectedModeEnabled: protectedModeEnabled ?? this.protectedModeEnabled,
       autoSyncCatalogs: autoSyncCatalogs ?? this.autoSyncCatalogs,
       compactMenuMode: compactMenuMode ?? this.compactMenuMode,
+      pluginWebViewCompatMode:
+          pluginWebViewCompatMode ?? this.pluginWebViewCompatMode,
       softwareAndBookUpdatesEnabled:
           softwareAndBookUpdatesEnabled ?? this.softwareAndBookUpdatesEnabled,
     );
@@ -271,6 +277,7 @@ class SettingsState extends Equatable {
         protectedModeEnabled,
         autoSyncCatalogs,
         compactMenuMode,
+        pluginWebViewCompatMode,
         softwareAndBookUpdatesEnabled,
       ];
 }

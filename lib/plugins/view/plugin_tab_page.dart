@@ -31,6 +31,7 @@ import 'package:otzaria/plugins/bloc/plugin_system_bloc.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_event.dart';
 import 'package:otzaria/plugins/services/plugin_store_link_parser.dart';
 import 'package:otzaria/core/error_log_file.dart';
+import 'package:otzaria/settings/engine/settings_bloc.dart';
 
 // ---------------------------------------------------------------------------
 // Stub SDK — injected at AT_DOCUMENT_START before any page JS runs.
@@ -310,11 +311,14 @@ class _PluginTabPageState extends State<PluginTabPage> {
   }
 
   Widget _buildWebView() {
+    final compatMode =
+        context.read<SettingsBloc>().state.pluginWebViewCompatMode;
     ErrorLogFile.appendBreadcrumb('PluginTabPage.buildWebView', details: {
       'pluginId': widget.plugin.pluginId,
       'envInitialized':
           (WebViewEnvironmentHolder.environment != null).toString(),
       'platform': Platform.operatingSystem,
+      'compatMode': compatMode.toString(),
     });
     final webView = InAppWebView(
       webViewEnvironment: WebViewEnvironmentHolder.environment,
@@ -323,7 +327,9 @@ class _PluginTabPageState extends State<PluginTabPage> {
         allowFileAccessFromFileURLs: false,
         allowUniversalAccessFromFileURLs: false,
         useShouldOverrideUrlLoading: true,
-        useShouldInterceptRequest: true,
+        // במצב תאימות (AV/EDR ארגוני, למשל ESET) משביתים את ה-hook החודרני
+        // שגורם ל-renderer process של WebView2 להיהרג מבחוץ.
+        useShouldInterceptRequest: !compatMode,
         cacheEnabled: !widget.plugin.isDevelopment,
         isInspectable: kDebugMode,
       ),

@@ -69,6 +69,13 @@ class SettingsRepository {
       'key-personal-notes-collapsed';
   static const String keyCompactMenuMode = 'key-compact-menu-mode';
 
+  /// מצב תאימות לתוספים מול AV/EDR ארגוני (למשל ESET).
+  /// כשמופעל: WebView2 לא יבצע `useShouldInterceptRequest` (ה-hook החודרני
+  /// שגורם ל-AV-ים מסוימים לסיים את התהליך). בתמורה — תאבד שכבת הגנה
+  /// מסננת subresources (תמונות/scripts מ-http חיצוני בתוסף offline).
+  static const String keyPluginWebViewCompatMode =
+      'key-plugin-webview-compat-mode';
+
   // Protected Mode Settings
   static const String keyProtectedModeEnabled = 'key-protected-mode-enabled';
   static const String keyProtectedModePasswordHash =
@@ -269,6 +276,10 @@ class SettingsRepository {
       ),
       'compactMenuMode': _settings.getValue<bool>(
         keyCompactMenuMode,
+        defaultValue: false,
+      ),
+      'pluginWebViewCompatMode': _settings.getValue<bool>(
+        keyPluginWebViewCompatMode,
         defaultValue: false,
       ),
 
@@ -501,6 +512,10 @@ class SettingsRepository {
 
   Future<void> updateCompactMenuMode(bool value) async {
     await _settings.setValue(keyCompactMenuMode, value);
+  }
+
+  Future<void> updatePluginWebViewCompatMode(bool value) async {
+    await _settings.setValue(keyPluginWebViewCompatMode, value);
   }
 
   // Protected Mode

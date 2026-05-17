@@ -56,6 +56,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     on<UpdatePersonalNotesCollapsedByDefault>(
         _onUpdatePersonalNotesCollapsedByDefault);
     on<UpdateCompactMenuMode>(_onUpdateCompactMenuMode);
+    on<UpdatePluginWebViewCompatMode>(_onUpdatePluginWebViewCompatMode);
     on<UpdateProtectedModeEnabled>(_onUpdateProtectedModeEnabled);
     on<UpdateProtectedModePassword>(_onUpdateProtectedModePassword);
   }
@@ -115,6 +116,8 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       personalNotesCollapsedByDefault:
           settings['personalNotesCollapsedByDefault'] ?? true,
       compactMenuMode: settings['compactMenuMode'] ?? false,
+      pluginWebViewCompatMode:
+          settings['pluginWebViewCompatMode'] ?? false,
       protectedModeEnabled: settings['protectedModeEnabled'] ?? false,
     ));
   }
@@ -191,6 +194,14 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   ) async {
     await _repository.updateCompactMenuMode(event.compactMenuMode);
     emit(state.copyWith(compactMenuMode: event.compactMenuMode));
+  }
+
+  Future<void> _onUpdatePluginWebViewCompatMode(
+    UpdatePluginWebViewCompatMode event,
+    Emitter<SettingsState> emit,
+  ) async {
+    await _repository.updatePluginWebViewCompatMode(event.enabled);
+    emit(state.copyWith(pluginWebViewCompatMode: event.enabled));
   }
 
   Future<void> _onUpdateProtectedModeEnabled(

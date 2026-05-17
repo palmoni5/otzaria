@@ -12,6 +12,7 @@ import 'package:path/path.dart' as p;
 
 import 'package:otzaria/core/error_log_file.dart';
 import 'package:otzaria/core/ui_snack.dart';
+import 'package:otzaria/settings/engine/settings_bloc.dart';
 import 'package:otzaria/history/bloc/history_bloc.dart';
 import 'package:otzaria/navigation/bloc/navigation_bloc.dart';
 import 'package:otzaria/personal_notes/repository/personal_notes_repository.dart';
@@ -403,11 +404,14 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner> {
           });
       return const SizedBox.shrink();
     }
+    final compatMode =
+        context.read<SettingsBloc>().state.pluginWebViewCompatMode;
     ErrorLogFile.appendBreadcrumb('BackgroundPluginRunner.build', details: {
       'pluginId': widget.plugin.pluginId,
       'envInitialized':
           (WebViewEnvironmentHolder.environment != null).toString(),
       'platform': Platform.operatingSystem,
+      'compatMode': compatMode.toString(),
     });
 
     return InAppWebView(
@@ -417,7 +421,9 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner> {
         allowFileAccessFromFileURLs: false,
         allowUniversalAccessFromFileURLs: false,
         useShouldOverrideUrlLoading: true,
-        useShouldInterceptRequest: true,
+        // במצב תאימות (AV/EDR ארגוני, למשל ESET) משביתים את ה-hook החודרני
+        // שגורם ל-renderer process של WebView2 להיהרג מבחוץ.
+        useShouldInterceptRequest: !compatMode,
         cacheEnabled: !widget.plugin.isDevelopment,
         isInspectable: kDebugMode,
       ),
