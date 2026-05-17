@@ -1,0 +1,249 @@
+name: "Build, Release and Announce"
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - main
+      - build
+
+  workflow_dispatch:
+
+  release:
+    types: [published, prereleased]
+
+jobs:
+  build_windows:
+    if: github.event_name != 'release' && github.event_name != 'pull_request'
+    runs-on: windows-2022
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.0
+          cache: true
+
+      - name: Get Flutter packages
+        shell: pwsh
+        run: flutter pub get
+
+      - name: Generate settings search index
+        shell: pwsh
+        run: dart run tool/generate_search_index.dart
+
+      - name: Create Google Calendar Credentials
+        shell: pwsh
+        run: |
+          $clientId = '${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}'
+          $clientSecret = '${{ secrets.GOOGLE_CALENDAR_CLIENT_SECRET }}'
+          $credentialsContent = @"
+          class GoogleCalendarCredentials {
+            static const String clientId = '$clientId';
+            static const String clientSecret = '$clientSecret';
+          }
+          "@
+          $credentialsContent | Out-File -FilePath "lib/tools/calendar/services/google_calendar_credentials.dart" -Encoding UTF8
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) {
+            choco install innosetup -y --no-progress
+          }
+          $iscc = (Get-ChildItem "C:\Program Files*\Inno Setup*\ISCC.exe" -Recurse | Select-Object -First 1).FullName
+          "ISCC=$iscc" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Bundle latest VC++ Redistributable runtime DLLs (app-local)
+        shell: pwsh
+        run: |
+          # מטרה: לארוז את ה-DLLs של MSVC runtime (MSVCP140 וחבריו) ליד
+          # otzaria.exe כך שיינטענו ע"י סדר חיפוש ה-DLL של ויינדוס במקום
+          # הגרסה שמותקנת ב-System32 אצל המשתמש. רקע: גרסה ספציפית של
+          # MSVCP140.dll (14.36.32532.0 שהגיעה עם VS 2022 17.6, יוני 2023)
+          # מכילה NULL-deref ב-+0x12f58 שמקריס כל std::string concat
+          # בקוד החם של flutter_inappwebview, ובלי שדרוג מבחוץ הוא נשאר
+          # תקוע במכונת המשתמש. בנדול app-local פותר את זה לכל מסלולי
+          # ההפצה — ה-FULL installer ממילא מריץ vc_redist.x64.exe בנפרד.
+          #
+          # אנחנו מורידים את vc_redist.x64.exe (תמיד הגרסה האחרונה דרך
+          # aka.ms/vs/17), מתקינים אותו על ה-runner (שהוא VM זמני ולכן
+          # שינוי ה-System32 שלו לא משנה כלום), ואז מעתיקים את ה-DLLs
+          # מ-System32 ל-installer\vcredist\x64. ה-install(DIRECTORY)
+          # ב-windows\CMakeLists.txt קולט אותם משם וממקם ליד otzaria.exe
+          # בתיקיית Release. שלב ה-Zip של ה-portable וגם ה-installers
+          # אחר כך מורידים מאותה Release\* — כולם מקבלים את ה-DLLs
+          # אוטומטית, בלי לשנות עוד שום .iss או שלב CI.
+          $ErrorActionPreference = 'Stop'
+          if (-not (Test-Path "installer\vc_redist.x64.exe")) {
+            Write-Host "Downloading latest vc_redist.x64.exe..."
+            Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile "installer\vc_redist.x64.exe"
+          } else {
+            Write-Host "vc_redist.x64.exe already present, reusing"
+          }
+          Write-Host "Installing vc_redist.x64.exe on the runner..."
+          $proc = Start-Process -FilePath "installer\vc_redist.x64.exe" `
+            -ArgumentList '/install','/quiet','/norestart' -Wait -PassThru
+          # exit codes: 0=success, 1638=newer-version-already-installed, 3010=ok-needs-reboot
+          if ($proc.ExitCode -notin @(0, 1638, 3010)) {
+            throw "vc_redist.x64.exe install failed with exit code $($proc.ExitCode)"
+          }
+          Write-Host "vc_redist exit code: $($proc.ExitCode)"
+          $destDir = "installer\vcredist\x64"
+          New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+          $dlls = @(
+            'msvcp140.dll', 'msvcp140_1.dll', 'msvcp140_2.dll',
+            'msvcp140_atomic_wait.dll', 'msvcp140_codecvt_ids.dll',
+            'vcruntime140.dll', 'vcruntime140_1.dll', 'vcruntime140_threads.dll',
+            'concrt140.dll', 'vccorlib140.dll'
+          )
+          foreach ($d in $dlls) {
+            $src = Join-Path $env:SystemRoot "System32\$d"
+            if (Test-Path $src) {
+              Copy-Item -Path $src -Destination (Join-Path $destDir $d) -Force
+              $ver = (Get-Item $src).VersionInfo.FileVersion
+              Write-Host "  copied $d (v$ver)"
+            } else {
+              Write-Host "::warning::$d not found in System32 — skipping"
+            }
+          }
+          Write-Host "VC++ runtime DLLs staged in $destDir"
+
+      - name: Build Flutter Windows app
+        run: flutter build windows --release
+
+      - name: Zip Windows build
+        shell: pwsh
+        run: |
+          $relDir = Get-ChildItem -Directory build\windows | Where-Object { Test-Path "$($_.FullName)\runner\Release" } | Select-Object -First 1 -ExpandProperty FullName
+          $portableMarker = Join-Path $relDir 'runner\Release\portable_install.marker'
+          New-Item -ItemType File -Path $portableMarker -Force | Out-Null
+          Compress-Archive -Path "$relDir\runner\Release\*" -DestinationPath otzaria-windows.zip
+          Remove-Item -Path $portableMarker -Force
+
+      - name: Upload Windows ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: otzaria-windows-zip
+          path: otzaria-windows.zip
+
+      - name: Download library assets for full installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Path "installer\library_db" -Force | Out-Null
+          $ProgressPreference = 'SilentlyContinue'
+          
+          # הורדת ה-DB הראשי
+          $latestRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/Otzaria/SeforimLibrary/releases/latest"
+          $dbAsset = $latestRelease.assets | Where-Object { $_.name -eq "seforim.db.zst" }
+          Invoke-WebRequest -Uri $dbAsset.browser_download_url -OutFile "installer\library_db\seforim.db.zst" -UseBasicParsing
+          
+          # הורדת הקטלוג
+          $catalogRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/Otzaria/otzar-HB_catalog/releases/latest"
+          $catalogAsset = $catalogRelease.assets | Where-Object { $_.name -eq "otzar-HB_catalog.db.zst" }
+          Invoke-WebRequest -Uri $catalogAsset.browser_download_url -OutFile "installer\library_db\otzar-HB_catalog.db.zst" -UseBasicParsing
+
+          # הורדת תלמוד בבלי
+          $talmudUrl = "https://github.com/Otzaria/otzaria-library/releases/latest/download/talmud_bavli_latest.tar.zst"
+          Invoke-WebRequest -Uri $talmudUrl -OutFile "installer\library_db\talmud_bavli_latest.tar.zst" -UseBasicParsing
+
+          # הורדת כלי עזר (zstd, 7za)
+          $zstdRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/facebook/zstd/releases/latest"
+          $zstdAsset = $zstdRelease.assets | Where-Object { $_.name -like "zstd-*-win64.zip" } | Select-Object -First 1
+          Invoke-WebRequest -Uri $zstdAsset.browser_download_url -OutFile "installer\zstd-win64.zip" -UseBasicParsing
+          Expand-Archive -Path "installer\zstd-win64.zip" -DestinationPath "installer\zstd_tmp" -Force
+          Copy-Item -Path (Get-ChildItem "installer\zstd_tmp" -Filter "zstd.exe" -Recurse).FullName -Destination "installer\zstd.exe" -Force
+          
+          $sevenZipRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/ip7z/7zip/releases/latest"
+          Invoke-WebRequest -Uri ($sevenZipRelease.assets | Where-Object { $_.name -eq "7zr.exe" }).browser_download_url -OutFile "installer\7zr.exe" -UseBasicParsing
+          Invoke-WebRequest -Uri ($sevenZipRelease.assets | Where-Object { $_.name -like "7z*-extra.7z" }).browser_download_url -OutFile "installer\7zip-extra.7z" -UseBasicParsing
+          & "installer\7zr.exe" x "installer\7zip-extra.7z" "-oinstaller\7zip_tmp" -y
+          Copy-Item -Path (Get-ChildItem "installer\7zip_tmp" -Filter "7za.exe" -Recurse).FullName -Destination "installer\7za.exe" -Force
+
+      - name: Download Visual C++ Redistributable
+        shell: pwsh
+        run: |
+          # אם השלב המוקדם של בנדול ה-DLLs כבר הוריד את הקובץ — מדלגים.
+          if (-not (Test-Path "installer\vc_redist.x64.exe")) {
+            Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile "installer\vc_redist.x64.exe"
+          } else {
+            Write-Host "vc_redist.x64.exe already downloaded earlier, skipping"
+          }
+
+      - name: Download WebView2 Bootstrapper
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://go.microsoft.com/fwlink/p/?LinkId=2124703" -OutFile "installer\MicrosoftEdgeWebview2Setup.exe"
+
+      - name: Build Inno Setup installer
+        shell: pwsh
+        run: |
+          & "$env:ISCC" installer\otzaria_full.iss
+          if ($LASTEXITCODE -ne 0) { throw "FULL installer build failed" }
+          & "$env:ISCC" installer\otzaria.iss
+          if ($LASTEXITCODE -ne 0) { throw "Regular installer build failed" }
+          & "$env:ISCC" installer\otzaria_silent.iss
+          if ($LASTEXITCODE -ne 0) { throw "Silent installer build failed" }
+
+      - name: Upload regular Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: otzaria-windows-installer
+          path: installer/otzaria-*-windows.exe
+          compression-level: 0
+
+      - name: Upload full Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: otzaria-windows-full-installer
+          path: installer/otzaria-*-windows-full.exe
+          compression-level: 0
+
+      - name: Upload silent Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: otzaria-windows-silent-installer
+          path: installer/otzaria-*-windows-silent.exe
+          compression-level: 0
+
+      - name: Prepare release assets
+        if: github.ref == 'refs/heads/migrationDB_V2_palmoni'
+        id: release_info
+        shell: pwsh
+        run: |
+          $commitMsg = git log -1 --pretty=%s
+          $commitMsgSafe = ($commitMsg -replace '[\\/:*?"<>|]', '_').TrimEnd(' .')
+          if ($commitMsgSafe.Length -gt 100) { $commitMsgSafe = $commitMsgSafe.Substring(0, 100) }
+          $sha = git log -1 --pretty=%h
+          $zipName = "$commitMsgSafe.zip"
+          Copy-Item -Path "otzaria-windows.zip" -Destination $zipName
+          $encodedZip = [Uri]::EscapeDataString($zipName)
+          $tagName = "palmoni-$sha"
+          "COMMIT_MSG=$commitMsg" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "COMMIT_MSG_SAFE=$commitMsgSafe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "COMMIT_SHA=$sha" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "ZIP_NAME=$zipName" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "ENCODED_ZIP=$encodedZip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "TAG_NAME=$tagName" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/migrationDB_V2_palmoni'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: ${{ env.COMMIT_MSG }}
+          prerelease: true
+          body: |
+            גרסה ניידת (Portable) לחלונות
+
+            **הורדה ישירה:** [${{ env.ZIP_NAME }}](${{ github.server_url }}/${{ github.repository }}/releases/download/${{ env.TAG_NAME }}/${{ env.ENCODED_ZIP }})
+          files: ${{ env.ZIP_NAME }}
