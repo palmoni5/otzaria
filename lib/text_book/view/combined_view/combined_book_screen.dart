@@ -147,26 +147,6 @@ bool shouldShowSelectCommentatorsEntry({
   return hasOpenCommentatorsPaneWithFilterCallback && !isCommentatorsTabActive;
 }
 
-/// קובע האם צריך לבנות מחדש את ה-SelectionArea החיצוני בתגובה לשינוי בעלות
-/// ב-[SelectionSyncController]. הבנייה מחדש מתבצעת על-ידי קידום ערך
-/// `_selectionAreaRevision` ששימש כ-`ValueKey` של ה-SelectionArea — ולכן
-/// היא משחזרת את כל עץ הצאצאים, כולל `_CommentaryCard` במצב 'מפרשים מתחת'.
-///
-/// מטרת הבנייה היא לנקות בחירה ויזואלית של ה-SelectionArea שלנו כשאזור אחר
-/// תפס בעלות. אם אין לנו בחירה משלנו — אין מה לנקות, ו-rebuild רק יהרוס
-/// את עץ הצאצאים (במצב 'מפרשים מתחת' זה גורם לטעינה מחדש של המפרשים בכל
-/// פעם שמנסים לסמן בהם טקסט).
-@visibleForTesting
-bool shouldRebuildSelectionAreaOnExternalChange({
-  required Object? activeOwner,
-  required Object selfOwner,
-  required bool hasOwnSelection,
-}) {
-  if (activeOwner == null) return false;
-  if (identical(activeOwner, selfOwner)) return false;
-  return hasOwnSelection;
-}
-
 class _CombinedViewState extends State<CombinedView> {
   // שמירת הטקסט הנבחר האחרון
   final ValueNotifier<String?> _savedSelectedText =

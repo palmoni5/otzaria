@@ -32,3 +32,22 @@ class SelectionSyncController extends ChangeNotifier {
     notifyListeners();
   }
 }
+
+/// קובע האם צריך לבנות מחדש את ה-SelectionArea של אזור בתגובה לשינוי בעלות
+/// ב-[SelectionSyncController]. הבנייה מחדש מתבצעת על-ידי קידום ערך revision
+/// ששימש כ-`ValueKey` של ה-SelectionArea — ולכן היא משחזרת את כל עץ הצאצאים.
+///
+/// מטרת הבנייה היא לנקות בחירה ויזואלית של ה-SelectionArea שלנו כשאזור אחר
+/// תפס בעלות. אם אין לנו בחירה משלנו — אין מה לנקות, ו-rebuild רק יהרוס
+/// את עץ הצאצאים שלא לצורך (במצב 'מפרשים מתחת' זה גורם לטעינה מחדש של
+/// המפרשים בכל פעם שמנסים לסמן בהם טקסט; ב'צורת הדף' זה גורם לאיפוס
+/// סטייט פנימי של הצאצאים).
+bool shouldRebuildSelectionAreaOnExternalChange({
+  required Object? activeOwner,
+  required Object selfOwner,
+  required bool hasOwnSelection,
+}) {
+  if (activeOwner == null) return false;
+  if (identical(activeOwner, selfOwner)) return false;
+  return hasOwnSelection;
+}

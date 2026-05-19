@@ -439,13 +439,16 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
 
   void _handleExternalSelectionChange() {
     final controller = widget.selectionSyncController;
-    if (controller == null ||
-        controller.activeOwner == null ||
-        identical(controller.activeOwner, _selectionOwner)) {
+    if (controller == null || !mounted) {
       return;
     }
 
-    if (!mounted) {
+    final shouldRebuild = shouldRebuildSelectionAreaOnExternalChange(
+      activeOwner: controller.activeOwner,
+      selfOwner: _selectionOwner,
+      hasOwnSelection: _savedSelectedText != null,
+    );
+    if (!shouldRebuild) {
       return;
     }
 

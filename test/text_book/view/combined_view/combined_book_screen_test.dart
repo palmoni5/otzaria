@@ -16,6 +16,7 @@ import 'package:otzaria/text_book/bloc/text_book_event.dart';
 import 'package:otzaria/text_book/bloc/text_book_state.dart';
 import 'package:otzaria/text_book/view/combined_view/combined_book_screen.dart';
 import 'package:otzaria/text_book/view/selection/enhanced_gesture_detector.dart';
+import 'package:otzaria/text_book/view/selection/selection_sync_controller.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../../../test_helpers/memory_cache_provider.dart';
 

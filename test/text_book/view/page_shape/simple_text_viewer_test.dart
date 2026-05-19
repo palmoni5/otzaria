@@ -583,8 +583,14 @@ void main() {
     otherButtonFocusNode.dispose();
   });
 
-  testWidgets('SelectionArea נבנה מחדש כשאזור אחר נעשה פעיל (key משתנה)',
-      (tester) async {
+  testWidgets(
+      'SelectionArea לא נבנה מחדש כשאזור חיצוני נעשה פעיל ואין לנו בחירה משלנו '
+      '(מונע טעינה מחדש של תוכן בעת בחירה במפרש בצורת הדף)', (tester) async {
+    // רגרסיה: לפני התיקון, כל הפעלה של אזור חיצוני (למשל בחירת טקסט במפרש
+    // אחר) גרמה לאזור שלנו לקדם את revision ולבנות מחדש את ה-SelectionArea
+    // — מה שהשמיד את עץ הצאצאים (ScrollablePositionedList) וגרם לאיפוס
+    // מצב פנימי/קפיצות גלילה. אם אין לנו בחירה משלנו אין מה לנקות, ולכן
+    // אסור לבנות מחדש.
     final controller = SelectionSyncController();
     addTearDown(controller.dispose);
     final otherOwner = Object();
@@ -629,16 +635,15 @@ void main() {
     final initialKey = _findSelectionAreaKey(tester);
     expect(initialKey, isNotNull);
 
-    // אזור אחר נעשה פעיל - האזור שלנו חייב לבנות מחדש את ה-SelectionArea
-    // כדי לשחרר את הבחירה החזותית.
     controller.activate(otherOwner);
     await tester.pump();
 
     final keyAfterExternalActivate = _findSelectionAreaKey(tester);
     expect(
       keyAfterExternalActivate,
-      isNot(equals(initialKey)),
-      reason: 'הפעלת אזור חיצוני חייבת להחליף את ה-key כדי לאלץ rebuild',
+      equals(initialKey),
+      reason: 'בלי בחירה משלנו, הפעלת אזור חיצוני אסור שתגרום ל-rebuild — '
+          'אחרת עץ הצאצאים נהרס לחינם',
     );
   });
 
