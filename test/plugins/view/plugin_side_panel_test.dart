@@ -162,6 +162,7 @@ class FakePluginRegistryRepository extends Mock implements PluginRegistryReposit
   @override Future<bool?> getPermission(String id, String perm) async => true;
   @override Future<void> setPermission(String id, String perm, bool granted) async {}
   @override Future<List<PluginPermissionGrant>> getPluginPermissions(String id) async => [];
+  @override Future<int?> getNextUserOrderForNewPlugin() async => null;
 }
 
 void main() {
@@ -506,7 +507,12 @@ void main() {
       await gesture.moveTo(centerC);
       await tester.pump(const Duration(milliseconds: 100));
       await gesture.up();
-      await tester.pumpAndSettle();
+      // לא משתמשים ב-pumpAndSettle כי ה-Tooltip על drag handle מציג
+      // fade-out animation עם showDuration ארוך שגורם ל-pumpAndSettle
+      // להישאר תקוע. די בכמה pumps כדי לתת ל-Bloc dispatch להסתיים.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 50));
 
       // ה-repository קיבל קריאה ל-reorder עם הסדר החדש.
       expect(repo.reorderCalls, isNotEmpty,
@@ -544,7 +550,10 @@ void main() {
       await gesture.moveBy(const Offset(5, 5));
       await tester.pump(const Duration(milliseconds: 100));
       await gesture.up();
-      await tester.pumpAndSettle();
+      // ראו ההסבר על Tooltip+pumpAndSettle בטסט שלפני.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 50));
 
       expect(repo.reorderCalls, isEmpty,
           reason: 'self-drop must be a no-op (DragTarget rejects own data)');
@@ -593,7 +602,10 @@ void main() {
       await gesture.moveTo(centerC);
       await tester.pump(const Duration(milliseconds: 100));
       await gesture.up();
-      await tester.pumpAndSettle();
+      // ראו ההסבר על Tooltip+pumpAndSettle בטסט הראשון של Reorder UI.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 50));
 
       expect(repo.reorderCalls, isNotEmpty);
       // הקריטריון הקריטי: גם 'b' המוסתר חייב להיות ברשימה שנשלחת
