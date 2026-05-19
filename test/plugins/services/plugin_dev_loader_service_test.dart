@@ -297,5 +297,61 @@ void main() {
             'app.info.read כבר היה קיים ב-recordedGrants – לא אמור להיות נכתב מחדש',
       );
     });
+
+    test(
+        'loadDevelopmentPlugin preserves existingPlugin.userOrder on reload — '
+        'manual ordering must survive dev plugin hot-reloads/manifest edits',
+        () async {
+      fakeRepo.mockExistingPlugin = InstalledPlugin(
+        pluginId: 'test.dev.repo.plugin',
+        name: 'Real Loader Test',
+        version: '0.9.0',
+        installPath: tempDir.path,
+        entrypointPath: 'index.html',
+        enabled: true,
+        pinned: true,
+        manifest: PluginManifest(
+          schemaVersion: 1,
+          id: 'test.dev.repo.plugin',
+          version: '0.9.0',
+          minAppVersion: '1.0.0',
+          name: 'Real Loader Test',
+          entrypoint: 'index.html',
+          defaultPinned: true,
+          permissions: ['app.info.read'],
+          description: '',
+          author: '',
+          homepage: '',
+          sdkVersion: '',
+          networkEnabled: false,
+          networkAllowlist: const [],
+          toolTabTitle: '',
+          toolTabOrder: 900,
+          publishedDataTypes: const [],
+        ),
+        installedAt: DateTime.utc(2024),
+        updatedAt: DateTime.utc(2024),
+        sourceType: 'development',
+        devRootPath: tempDir.path,
+        userOrder: 3,
+      );
+
+      await devLoader.loadDevelopmentPlugin(tempDir.path);
+
+      expect(fakeRepo.savedPlugin, isNotNull);
+      expect(fakeRepo.savedPlugin!.userOrder, 3,
+          reason:
+              'userOrder of the existing dev plugin must be preserved across '
+              'reload — otherwise editing the manifest resets manual ordering.');
+    });
+
+    test('loadDevelopmentPlugin leaves userOrder=null on a first-time load',
+        () async {
+      // אין mockExistingPlugin = טעינה ראשונה
+      await devLoader.loadDevelopmentPlugin(tempDir.path);
+
+      expect(fakeRepo.savedPlugin!.userOrder, isNull,
+          reason: 'first-time dev load must default to manifest order');
+    });
   });
 }

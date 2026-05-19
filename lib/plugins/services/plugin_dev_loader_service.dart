@@ -46,7 +46,7 @@ class PluginDevLoaderService {
       pluginId: manifest.id,
       name: manifest.name,
       version: manifest.version,
-      installPath: directoryPath, 
+      installPath: directoryPath,
       entrypointPath: manifest.entrypoint,
       iconPath: manifest.icon,
       enabled: existingPlugin?.enabled ?? true,
@@ -57,6 +57,9 @@ class PluginDevLoaderService {
       updatedAt: DateTime.now(),
       sourceType: 'development',
       devRootPath: directoryPath,
+      // משמרים את הסדר הידני של המשתמש בטעינה-מחדש של תוסף פיתוח —
+      // ראו [InstalledPlugin.userOrder].
+      userOrder: existingPlugin?.userOrder,
     );
 
     await _repository.saveDevelopmentPlugin(plugin);

@@ -117,5 +117,57 @@ void main() {
       expect(rows.first['pinned'], 0);
       expect(rows.first['pinned_to_nav_rail'], 0);
     });
+
+    test('adds user_order column when missing on legacy schema', () {
+      db.execute(_legacyCreateTable);
+      expect(_hasColumn(db, 'user_order'), isFalse);
+
+      PluginSystemDatabase.ensureSchemaUpgrades(db);
+
+      expect(_hasColumn(db, 'user_order'), isTrue);
+    });
+
+    test('existing rows get NULL for user_order column (no forced default)',
+        () {
+      db.execute(_legacyCreateTable);
+      _seedLegacyRow(db, 'legacy.a');
+
+      PluginSystemDatabase.ensureSchemaUpgrades(db);
+
+      final rows = db.select(
+          'SELECT user_order FROM plugin_installation WHERE plugin_id = ?',
+          ['legacy.a']);
+      expect(rows.first['user_order'], isNull,
+          reason:
+              'legacy rows must default to NULL so manifest.toolTabOrder '
+              'is used until the user explicitly reorders');
+    });
+
+    test('user_order migration is idempotent', () {
+      db.execute(_legacyCreateTable);
+
+      PluginSystemDatabase.ensureSchemaUpgrades(db);
+      expect(() => PluginSystemDatabase.ensureSchemaUpgrades(db),
+          returnsNormally);
+
+      final cols =
+          db.select('PRAGMA table_info(plugin_installation)').toMapList();
+      final userOrderCols =
+          cols.where((c) => c['name'] == 'user_order').toList();
+      expect(userOrderCols, hasLength(1));
+    });
+
+    test(
+        'both pinned_to_nav_rail and user_order added together when both '
+        'are missing', () {
+      db.execute(_legacyCreateTable);
+      expect(_hasColumn(db, 'pinned_to_nav_rail'), isFalse);
+      expect(_hasColumn(db, 'user_order'), isFalse);
+
+      PluginSystemDatabase.ensureSchemaUpgrades(db);
+
+      expect(_hasColumn(db, 'pinned_to_nav_rail'), isTrue);
+      expect(_hasColumn(db, 'user_order'), isTrue);
+    });
   });
 }

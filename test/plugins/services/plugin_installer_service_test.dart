@@ -14,9 +14,25 @@ import 'package:path/path.dart' as p;
 class FakePluginRegistryRepository extends Mock
     implements PluginRegistryRepository {
   InstalledPlugin? plugin;
+  final List<InstalledPlugin> savedPlugins = [];
+  final Map<String, bool?> permissions = {};
 
   @override
   Future<InstalledPlugin?> getPlugin(String id) async => plugin;
+
+  @override
+  Future<void> savePlugin(InstalledPlugin plugin) async {
+    savedPlugins.add(plugin);
+  }
+
+  @override
+  Future<bool?> getPermission(String id, String perm) async =>
+      permissions['$id|$perm'];
+
+  @override
+  Future<void> setPermission(String id, String perm, bool granted) async {
+    permissions['$id|$perm'] = granted;
+  }
 }
 
 void main() {
@@ -158,6 +174,94 @@ void main() {
       final preparedInstall = await installer.prepareInstall(archivePath);
       expect(preparedInstall.manifest.version, '1.0.1');
       await Directory(preparedInstall.tempDirPath).delete(recursive: true);
+    });
+
+    test(
+        'finalizeInstall preserves existingPlugin.userOrder on update — '
+        'manual reorder must survive plugin updates/reinstalls', () async {
+      const pluginId = 'test.reorder.persist';
+      repository.plugin = InstalledPlugin(
+        pluginId: pluginId,
+        name: 'Reorder Persist',
+        version: '1.0.0',
+        installPath: tempDir.path,
+        entrypointPath: 'index.html',
+        enabled: true,
+        pinned: true,
+        manifest: _buildInstalledManifest(
+          id: pluginId,
+          version: '1.0.0',
+          name: 'Reorder Persist',
+        ),
+        installedAt: DateTime(2024),
+        updatedAt: DateTime(2024),
+        userOrder: 7,
+      );
+
+      // מכינים tempDir שמדמה את מה ש-prepareInstall מייצר.
+      final stagedDir =
+          Directory.systemTemp.createTempSync('otzaria_install_staging_');
+      File(p.join(stagedDir.path, 'manifest.json')).writeAsStringSync(
+        jsonEncode({
+          'schemaVersion': 1,
+          'id': pluginId,
+          'version': '1.0.1',
+          'name': 'Reorder Persist',
+          'entrypoint': 'index.html',
+        }),
+      );
+      File(p.join(stagedDir.path, 'index.html')).writeAsStringSync('<html/>');
+
+      final newManifest = PluginManifest.fromJson({
+        'schemaVersion': 1,
+        'id': pluginId,
+        'version': '1.0.1',
+        'name': 'Reorder Persist',
+        'entrypoint': 'index.html',
+      });
+
+      await installer.finalizeInstall(stagedDir.path, newManifest);
+
+      expect(repository.savedPlugins, hasLength(1));
+      expect(repository.savedPlugins.single.userOrder, 7,
+          reason:
+              'userOrder of the previously installed plugin must be '
+              'preserved across updates — otherwise the user loses their '
+              'manual ordering on every reinstall.');
+    });
+
+    test(
+        'finalizeInstall leaves userOrder=null on a fresh first-time install',
+        () async {
+      // אין plugin קיים — repository.plugin = null
+      const pluginId = 'test.fresh.install';
+
+      final stagedDir =
+          Directory.systemTemp.createTempSync('otzaria_install_staging_');
+      File(p.join(stagedDir.path, 'manifest.json')).writeAsStringSync(
+        jsonEncode({
+          'schemaVersion': 1,
+          'id': pluginId,
+          'version': '1.0.0',
+          'name': 'Fresh',
+          'entrypoint': 'index.html',
+        }),
+      );
+      File(p.join(stagedDir.path, 'index.html')).writeAsStringSync('<html/>');
+
+      final newManifest = PluginManifest.fromJson({
+        'schemaVersion': 1,
+        'id': pluginId,
+        'version': '1.0.0',
+        'name': 'Fresh',
+        'entrypoint': 'index.html',
+      });
+
+      await installer.finalizeInstall(stagedDir.path, newManifest);
+
+      expect(repository.savedPlugins.single.userOrder, isNull,
+          reason: 'a fresh install should default to manifest order — '
+              'no userOrder until the user reorders manually');
     });
   });
 }

@@ -125,6 +125,15 @@ class UnpinPluginFromNavRailRequested extends PluginSystemEvent {
   List<Object?> get props => [pluginId];
 }
 
+class ReorderPluginsRequested extends PluginSystemEvent {
+  /// רשימת מזהי תוספים בסדר החדש שנקבע ע"י המשתמש.
+  final List<String> orderedPluginIds;
+  const ReorderPluginsRequested(this.orderedPluginIds);
+
+  @override
+  List<Object?> get props => [orderedPluginIds];
+}
+
 class RefreshPlugins extends PluginSystemEvent {}
 
 class LoadDevelopmentPluginRequested extends PluginSystemEvent {

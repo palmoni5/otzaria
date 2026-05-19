@@ -10,7 +10,10 @@ class PluginRegistryRepository {
       : _db = database ?? PluginSystemDatabase.instance;
 
   Future<List<InstalledPlugin>> getAllPlugins() async {
-    return _db.getAllInstalledPlugins();
+    final plugins = await _db.getAllInstalledPlugins();
+    plugins.sort(
+        (a, b) => a.effectiveToolTabOrder.compareTo(b.effectiveToolTabOrder));
+    return plugins;
   }
 
   Future<InstalledPlugin?> getPlugin(String pluginId) async {
@@ -59,6 +62,18 @@ class PluginRegistryRepository {
   Future<void> updateNavRailPinState(
       String pluginId, bool pinnedToNavRail) async {
     await _db.updatePluginNavRailPinState(pluginId, pinnedToNavRail);
+  }
+
+  /// שומר סדר מותאם אישית של תוספים לפי מיקומם ברשימה הנתונה.
+  ///
+  /// המיקום הראשון מקבל סדר 0, השני 1 וכן הלאה. מזהים שלא קיימים ב-DB
+  /// יתעלמו בשקט (UPDATE ללא שורות תואמות).
+  Future<void> reorderPlugins(List<String> orderedPluginIds) async {
+    final ordering = <String, int>{
+      for (var i = 0; i < orderedPluginIds.length; i++)
+        orderedPluginIds[i]: i,
+    };
+    await _db.updatePluginsUserOrder(ordering);
   }
 
   Future<void> setPermission(

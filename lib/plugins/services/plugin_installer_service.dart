@@ -130,6 +130,9 @@ class PluginInstallerService {
         manifest: manifest,
         installedAt: existingPlugin?.installedAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
+        // משמרים את הסדר הידני של המשתמש בעדכון/התקנה-מחדש —
+        // ראו [InstalledPlugin.userOrder].
+        userOrder: existingPlugin?.userOrder,
       );
 
       await _repository.savePlugin(plugin);

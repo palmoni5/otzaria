@@ -138,7 +138,7 @@ class PluginToolDescriptor extends ToolDescriptor {
       : super(
             toolId: plugin.pluginId,
             label: plugin.manifest.toolTabTitle,
-            order: plugin.manifest.toolTabOrder);
+            order: plugin.effectiveToolTabOrder);
 
   @override
   Widget buildTab(BuildContext context) {
@@ -467,8 +467,27 @@ class ToolsScreenState extends State<ToolsScreen>
     }
 
     void applyState() {
+      // re-use של widgets קיימים לפי toolId+updatedAt — כשמשתמש מסדר מחדש
+      // תוספים (drag-and-drop) הסדר משתנה אבל אותם תוספים נמצאים. בנייה
+      // מחדש של PluginTabPage גורמת ל-IndexedStack לבצע dispose ל-WebView
+      // של תוסף שלא בתצוגה, וזה גורם לקריסה ב-flutter_inappwebview_windows.
+      // הצמדת updatedAt למפתח מבטיחה שעדכון תוסף *כן* יבנה widget חדש.
+      String reuseKey(ToolDescriptor d) {
+        if (d is PluginToolDescriptor) {
+          return '${d.toolId}|${d.plugin.updatedAt.microsecondsSinceEpoch}';
+        }
+        return d.toolId;
+      }
+
+      final oldPagesByKey = <String, Widget>{};
+      for (var i = 0; i < _descriptors.length && i < _pages.length; i++) {
+        oldPagesByKey[reuseKey(_descriptors[i])] = _pages[i];
+      }
       _descriptors = newDescriptors;
-      _pages = newDescriptors.map((t) => t.buildPage(context)).toList();
+      _pages = newDescriptors.map((t) {
+        final existing = oldPagesByKey[reuseKey(t)];
+        return existing ?? t.buildPage(context);
+      }).toList();
       _setSelectedToolId(newToolId);
     }
 

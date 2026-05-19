@@ -37,6 +37,11 @@ class PluginSystemDatabase {
       db.execute(
           'ALTER TABLE plugin_installation ADD COLUMN pinned_to_nav_rail INTEGER NOT NULL DEFAULT 0');
     }
+    final hasUserOrderCol = cols.any((c) => c['name'] == 'user_order');
+    if (!hasUserOrderCol) {
+      db.execute(
+          'ALTER TABLE plugin_installation ADD COLUMN user_order INTEGER');
+    }
   }
 
   void _createSchema(Database db) {
@@ -56,7 +61,8 @@ class PluginSystemDatabase {
         installed_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         source_type TEXT NOT NULL DEFAULT 'packaged',
-        dev_root_path TEXT
+        dev_root_path TEXT,
+        user_order INTEGER
       )
     ''');
 
@@ -174,6 +180,51 @@ class PluginSystemDatabase {
           DateTime.now().toIso8601String(),
           pluginId,
         ]);
+  }
+
+  /// שומר סדר מותאם אישית של תוספים.
+  ///
+  /// המפתחות הם plugin_id והערכים הם מספרי סדר (קטן יותר = מוקדם יותר).
+  /// העדכון מתבצע ב-transaction כדי לשמור על עקביות.
+  ///
+  /// הערה: אין עדכון של `updated_at` — סדר התצוגה אינו מאפיין של ההתקנה
+  /// עצמה, ועדכון `updated_at` היה גורם ל-`ToolsScreen` לבנות מחדש את כל
+  /// ה-`PluginTabPage` (כולל ה-WebView), מה שגרם לקריסה בעת dispose
+  /// ב-Windows.
+  Future<void> updatePluginsUserOrder(Map<String, int> ordering) async {
+    if (ordering.isEmpty) return;
+    final db = await database;
+    applyUserOrderUpdates(db, ordering);
+  }
+
+  /// הלוגיקה הטהורה של [updatePluginsUserOrder] על Database נתון.
+  /// חשוף לבדיקות שלא צריכות לעבור דרך ה-singleton וה-FS.
+  ///
+  /// משתמש ב-SAVEPOINT ולא ב-`BEGIN TRANSACTION` כדי שהקריאה תעבוד גם
+  /// בתוך טרנזקציה חיצונית פתוחה (SQLite לא תומך בטרנזקציות מקוננות
+  /// אבל כן ב-savepoints מקוננים).
+  @visibleForTesting
+  static void applyUserOrderUpdates(
+      Database db, Map<String, int> ordering) {
+    if (ordering.isEmpty) return;
+    const savepoint = 'sp_plugin_user_order';
+    db.execute('SAVEPOINT $savepoint');
+    try {
+      for (final entry in ordering.entries) {
+        db.execute(
+          'UPDATE plugin_installation SET user_order = ? WHERE plugin_id = ?',
+          [entry.value, entry.key],
+        );
+      }
+      db.execute('RELEASE SAVEPOINT $savepoint');
+    } catch (e, stackTrace) {
+      // מתעדים לפני ה-rethrow כדי שלא נאבד את הסיבה
+      // (database locked, constraint violation, SQL syntax וכו').
+      debugPrint('applyUserOrderUpdates failed: $e\n$stackTrace');
+      db.execute('ROLLBACK TO SAVEPOINT $savepoint');
+      db.execute('RELEASE SAVEPOINT $savepoint');
+      rethrow;
+    }
   }
 
   // --- CRUD for Permissions ---

@@ -17,6 +17,25 @@ class InstalledPlugin {
   final String sourceType;
   final String? devRootPath;
 
+  /// סדר מותאם אישית שנקבע ע"י המשתמש (גרירה ושחרור). `null` = להשתמש
+  /// בסדר ברירת המחדל מתוך המניפסט ([PluginManifest.toolTabOrder]).
+  ///
+  /// הערכים נשמרים כאינדקסים פשוטים (0,1,2...) ומומרים בתצוגה לטווח
+  /// שמבטיח שהתוספים יישארו אחרי הכלים המובנים — ראו
+  /// [effectiveToolTabOrder] ו-[userOrderToolTabOffset].
+  final int? userOrder;
+
+  /// בסיס הסדר עבור תוספים בעלי [userOrder]. ערך גבוה מספיק כדי שכל הכלים
+  /// המובנים (`builtin.*`, סדרים 10-100) יישארו לפני התוספים.
+  static const int userOrderToolTabOffset = 1000;
+
+  /// הסדר האפקטיבי שבו יוצג התוסף ברשימת הכלים. אם המשתמש קבע סדר ידני
+  /// משתמשים בו (עם [userOrderToolTabOffset] כדי להישאר אחרי הכלים המובנים);
+  /// אחרת משתמשים בערך מהמניפסט.
+  int get effectiveToolTabOrder => userOrder != null
+      ? userOrderToolTabOffset + userOrder!
+      : manifest.toolTabOrder;
+
   bool get isDevelopment => sourceType == 'development';
   String get resolvedRootPath => isDevelopment ? devRootPath! : installPath;
 
@@ -39,6 +58,7 @@ class InstalledPlugin {
     required this.updatedAt,
     this.sourceType = 'packaged',
     this.devRootPath,
+    this.userOrder,
   });
 
   factory InstalledPlugin.fromDbMap(Map<String, dynamic> map) {
@@ -57,6 +77,7 @@ class InstalledPlugin {
       updatedAt: DateTime.parse(map['updated_at'] as String),
       sourceType: map['source_type'] as String? ?? 'packaged',
       devRootPath: map['dev_root_path'] as String?,
+      userOrder: map['user_order'] as int?,
     );
   }
 
@@ -76,6 +97,7 @@ class InstalledPlugin {
       'updated_at': updatedAt.toIso8601String(),
       'source_type': sourceType,
       'dev_root_path': devRootPath,
+      'user_order': userOrder,
     };
   }
 
@@ -95,6 +117,8 @@ class InstalledPlugin {
     String? sourceType,
     String? devRootPath,
     bool clearDevRootPath = false,
+    int? userOrder,
+    bool clearUserOrder = false,
   }) {
     return InstalledPlugin(
       pluginId: pluginId ?? this.pluginId,
@@ -111,6 +135,7 @@ class InstalledPlugin {
       updatedAt: updatedAt ?? this.updatedAt,
       sourceType: sourceType ?? this.sourceType,
       devRootPath: clearDevRootPath ? null : (devRootPath ?? this.devRootPath),
+      userOrder: clearUserOrder ? null : (userOrder ?? this.userOrder),
     );
   }
 }
