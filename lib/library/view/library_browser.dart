@@ -417,23 +417,14 @@ class _LibraryBrowserState extends State<LibraryBrowser>
       );
     }
 
-    // אייקון לוח שנה — תמיד בשורה העליונה
-    trailingItems.add(
-      AppTopBarItem(
-        widget: ToolbarActionButton(
-          compact: isCompact,
-          tooltip: 'פתח לוח שנה',
-          icon: FluentIcons.calendar_24_regular,
-          emphasis: ToolbarActionButtonEmphasis.subtle,
-          onPressed: () {
-            (moreScreenKey.currentState as dynamic)?.resetToCalendar();
-            context.read<NavigationBloc>().add(
-                  const NavigateToScreen(Screen.more),
-                );
-          },
+    // אייקון לוח שנה — בשורה העליונה כשהדף היומי שם, אחרת יורד לשורה השנייה
+    if (dafYomiInline) {
+      trailingItems.add(
+        AppTopBarItem(
+          widget: _buildCalendarButton(context, isCompact: isCompact),
         ),
-      ),
-    );
+      );
+    }
 
     trailingItems.addAll([
       AppTopBarItem(
@@ -486,6 +477,26 @@ class _LibraryBrowserState extends State<LibraryBrowser>
     );
   }
 
+  // ── Calendar button ──────────────────────────────────────────────────────
+
+  Widget _buildCalendarButton(
+    BuildContext context, {
+    required bool isCompact,
+  }) {
+    return ToolbarActionButton(
+      compact: isCompact,
+      tooltip: 'פתח לוח שנה',
+      icon: FluentIcons.calendar_24_regular,
+      emphasis: ToolbarActionButtonEmphasis.subtle,
+      onPressed: () {
+        (moreScreenKey.currentState as dynamic)?.resetToCalendar();
+        context.read<NavigationBloc>().add(
+              const NavigateToScreen(Screen.more),
+            );
+      },
+    );
+  }
+
   // ── Secondary row ─────────────────────────────────────────────────────────
 
   Widget? _buildSecondaryRow(
@@ -516,6 +527,7 @@ class _LibraryBrowserState extends State<LibraryBrowser>
                 onDafYomiTap: (tractate, daf) =>
                     openDafYomiBook(context, tractate, ' $daf.'),
               ),
+              _buildCalendarButton(context, isCompact: isCompact),
             ],
           ),
         ),
