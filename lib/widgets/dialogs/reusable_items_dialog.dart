@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:otzaria/theme/layout_tokens.dart';
 
 class ReusableItemsDialog extends StatelessWidget {
   final String title;
@@ -13,11 +14,17 @@ class ReusableItemsDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    // במסך צר רוחב 50% מקריס את שורות הרשימה לתו-לשורה. מרחיבים ל-95%
+    // וב-desktop משאירים 50% כפי שהיה.
+    final isNarrow = size.width < LayoutBreakpoints.compact;
+    final width = isNarrow ? size.width * 0.95 : size.width * 0.5;
+
     return Dialog(
       insetPadding: const EdgeInsets.all(16),
       child: Container(
-        width: MediaQuery.of(context).size.width * 0.5,
-        height: MediaQuery.of(context).size.height * 0.8,
+        width: width,
+        height: size.height * 0.8,
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

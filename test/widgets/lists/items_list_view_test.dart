@@ -22,22 +22,27 @@ void main() {
     bool Function(dynamic)? additionalFilter,
     String Function(dynamic)? searchKeyBuilder,
     void Function(BuildContext, dynamic, int)? onItemTap,
+    String? Function(dynamic)? subtitleBuilder,
+    double? width,
   }) {
+    Widget child = ItemsListView(
+      items: testItems,
+      onItemTap: onItemTap ?? (_, __, ___) {},
+      onDelete: (_, __) {},
+      onClearAll: (_) {},
+      hintText: 'חיפוש...',
+      emptyText: 'ריק',
+      notFoundText: 'לא נמצא',
+      clearAllText: 'נקה',
+      additionalFilter: additionalFilter,
+      searchKeyBuilder: searchKeyBuilder,
+      subtitleBuilder: subtitleBuilder,
+    );
+    if (width != null) {
+      child = Center(child: SizedBox(width: width, child: child));
+    }
     return MaterialApp(
-      home: Scaffold(
-        body: ItemsListView(
-          items: testItems,
-          onItemTap: onItemTap ?? (_, __, ___) {},
-          onDelete: (_, __) {},
-          onClearAll: (_) {},
-          hintText: 'חיפוש...',
-          emptyText: 'ריק',
-          notFoundText: 'לא נמצא',
-          clearAllText: 'נקה',
-          additionalFilter: additionalFilter,
-          searchKeyBuilder: searchKeyBuilder,
-        ),
-      ),
+      home: Scaffold(body: child),
     );
   }
 
@@ -194,6 +199,83 @@ void main() {
           reason:
               'כאשר אותו מופע מופיע יותר מפעם אחת, indexOf(item) תמיד מחזיר את ההופעה הראשונה. '
               'הווידג׳ט צריך לשמר את האינדקס המקורי של הרשומה שסוננה.');
+    });
+  });
+
+  group('ItemsListView — פריסה רספונסיבית', () {
+    // הבעיה שמנעו: ב-Row(ref|subtitle|delete) ה-subtitle בלי הגבלת רוחב
+    // חוטף את כל המקום של ref, וטקסט ארוך מתקפל לתו-לשורה. במסך צר עוברים
+    // למבנה Column(ref, subtitle), במסך רחב נשארת שורה אחת.
+    const longRef = 'חזון איש, יורה דעה, סימן יב, סעיף ג';
+    const subtitleText = 'שולחן עבודה 1';
+
+    testWidgets('מסך רחב: ref ו-subtitle באותה שורה (y זהה)', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1024, 768));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(buildWidget(
+        testItems: [const _Item(longRef)],
+        subtitleBuilder: (_) => subtitleText,
+      ));
+      await tester.pump();
+
+      final refTop = tester.getTopLeft(find.text(longRef)).dy;
+      final subtitleTop = tester.getTopLeft(find.text(subtitleText)).dy;
+      // מותר הפרש קטן בגלל גובה שונה בין הטקסטים, אבל הם באותו row.
+      expect((refTop - subtitleTop).abs(), lessThan(8));
+    });
+
+    testWidgets('מסך צר: subtitle מתחת ל-ref (y גדול יותר)', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(400, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(buildWidget(
+        testItems: [const _Item(longRef)],
+        subtitleBuilder: (_) => subtitleText,
+        width: 360,
+      ));
+      await tester.pump();
+
+      final refBottom = tester.getBottomLeft(find.text(longRef)).dy;
+      final subtitleTop = tester.getTopLeft(find.text(subtitleText)).dy;
+      expect(subtitleTop, greaterThanOrEqualTo(refBottom),
+          reason: 'subtitle צריך להופיע מתחת ל-ref בפריסת מסך צר');
+    });
+
+    testWidgets('מסך צר: ref ארוך תופס רוחב מלא ולא מתקפל לתו-לשורה',
+        (tester) async {
+      // בלי 2 השורות, מקום ה-Expanded של ref מצטמצם ל~30 פיקסל ועלול לקרוס.
+      // אנו מוודאים שהוא מקבל לפחות 200 פיקסל רוחב.
+      await tester.binding.setSurfaceSize(const Size(400, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(buildWidget(
+        testItems: [const _Item(longRef)],
+        subtitleBuilder: (_) => subtitleText,
+        width: 360,
+      ));
+      await tester.pump();
+
+      final refWidth = tester.getSize(find.text(longRef)).width;
+      expect(refWidth, greaterThan(200),
+          reason: 'במסך צר ל-ref צריך להיות רוחב סביר; בלי הפריסה הדו-שורתית '
+              'ה-Row היה דוחס אותו לרוחב של תו אחד.');
+    });
+
+    testWidgets('מסך צר ללא subtitle: ref ממשיך להיות מוצג בשורה אחת',
+        (tester) async {
+      await tester.binding.setSurfaceSize(const Size(400, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(buildWidget(
+        testItems: [const _Item(longRef)],
+        // ללא subtitleBuilder אין שורה שנייה כלל
+        width: 360,
+      ));
+      await tester.pump();
+
+      expect(find.text(longRef), findsOneWidget);
+      expect(find.text(subtitleText), findsNothing);
     });
   });
 }

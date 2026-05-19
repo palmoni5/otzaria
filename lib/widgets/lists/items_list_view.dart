@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:otzaria/theme/layout_tokens.dart';
 import 'package:otzaria/widgets/buttons/action_buttons.dart';
 import 'package:otzaria/widgets/text/otzaria_search_field.dart';
 
@@ -47,12 +48,13 @@ class _ItemsListViewState extends State<ItemsListView> {
   Widget _buildSubtitle(
     BuildContext context,
     String centerText,
-    String? centerTooltip,
-  ) {
+    String? centerTooltip, {
+    required bool isNarrow,
+  }) {
     final cs = Theme.of(context).colorScheme;
 
     final subtitle = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: EdgeInsets.symmetric(horizontal: isNarrow ? 0 : 16.0),
       child: Text(
         centerText,
         maxLines: 1,
@@ -177,50 +179,84 @@ class _ItemsListViewState extends State<ItemsListView> {
                     textDirection: TextDirection.rtl,
                   ),
                 )
-              : ListView.builder(
-                  itemCount: filteredEntries.length,
-                  itemBuilder: (context, index) {
-                    final entry = filteredEntries[index];
-                    final item = entry.value;
-                    final originalIndex = entry.key;
-                    final centerText = widget.subtitleBuilder?.call(item);
-                    final centerTooltip =
-                        widget.subtitleTooltipBuilder?.call(item);
-                    return InkWell(
-                      onTap: () =>
-                          widget.onItemTap(context, item, originalIndex),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16.0, vertical: 12.0),
-                        child: Row(
-                          children: [
-                            if (widget.leadingIconBuilder?.call(item) != null)
-                              Padding(
-                                padding: const EdgeInsets.only(left: 12.0),
-                                child: widget.leadingIconBuilder!.call(item),
-                              ),
-                            Expanded(
-                              child: Text(
-                                item.ref,
-                                style: const TextStyle(fontSize: 16),
-                                textDirection: TextDirection.rtl,
-                              ),
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow =
+                        constraints.maxWidth < LayoutBreakpoints.compact;
+                    return ListView.builder(
+                      itemCount: filteredEntries.length,
+                      itemBuilder: (context, index) {
+                        final entry = filteredEntries[index];
+                        final item = entry.value;
+                        final originalIndex = entry.key;
+                        final centerText = widget.subtitleBuilder?.call(item);
+                        final centerTooltip =
+                            widget.subtitleTooltipBuilder?.call(item);
+                        final leading = widget.leadingIconBuilder?.call(item);
+                        return InkWell(
+                          onTap: () =>
+                              widget.onItemTap(context, item, originalIndex),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0, vertical: 12.0),
+                            child: Row(
+                              crossAxisAlignment: isNarrow
+                                  ? CrossAxisAlignment.start
+                                  : CrossAxisAlignment.center,
+                              children: [
+                                if (leading != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 12.0),
+                                    child: leading,
+                                  ),
+                                Expanded(
+                                  child: isNarrow
+                                      ? Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            Text(
+                                              item.ref,
+                                              style:
+                                                  const TextStyle(fontSize: 16),
+                                              textDirection: TextDirection.rtl,
+                                            ),
+                                            if (centerText != null) ...[
+                                              const SizedBox(height: 4),
+                                              _buildSubtitle(
+                                                context,
+                                                centerText,
+                                                centerTooltip,
+                                                isNarrow: true,
+                                              ),
+                                            ],
+                                          ],
+                                        )
+                                      : Text(
+                                          item.ref,
+                                          style: const TextStyle(fontSize: 16),
+                                          textDirection: TextDirection.rtl,
+                                        ),
+                                ),
+                                if (!isNarrow && centerText != null)
+                                  _buildSubtitle(
+                                    context,
+                                    centerText,
+                                    centerTooltip,
+                                    isNarrow: false,
+                                  ),
+                                IconButton(
+                                  icon:
+                                      const Icon(FluentIcons.delete_24_regular),
+                                  tooltip: 'מחק',
+                                  onPressed: () =>
+                                      widget.onDelete(context, originalIndex),
+                                ),
+                              ],
                             ),
-                            if (centerText != null)
-                              _buildSubtitle(
-                                context,
-                                centerText,
-                                centerTooltip,
-                              ),
-                            IconButton(
-                              icon: const Icon(FluentIcons.delete_24_regular),
-                              tooltip: 'מחק',
-                              onPressed: () =>
-                                  widget.onDelete(context, originalIndex),
-                            ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
