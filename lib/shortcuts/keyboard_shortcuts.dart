@@ -149,7 +149,6 @@ class _KeyboardShortcutsState extends State<KeyboardShortcuts> {
       return KeyEventResult.ignored;
     }
 
-    // ספרייה
     if (ShortcutHelper.matchesShortcut(event, libraryShortcut)) {
       context
           .read<NavigationBloc>()

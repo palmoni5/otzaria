@@ -57,7 +57,6 @@ class PdfBookTab extends OpenedTab {
   /// גלובלי. המאזין הוא [PdfBookScreen] בלבד; כל הגדלה = toggle יחיד.
   final ValueNotifier<int> toggleCommentatorsPaneNotifier =
       ValueNotifier<int>(0);
-
   /// PDF headings mapping for commentaries and links
   PdfHeadings? pdfHeadings;
 
@@ -66,6 +65,11 @@ class PdfBookTab extends OpenedTab {
 
   /// Active commentators to show
   Set<String> activeCommentators = <String>{};
+
+  /// מצב טעינת הקישורים/המפרשים עבור ה-PDF המשותף.
+  /// משמש גם את כרטסיית המפרשים העצמאית כדי להציג "טוען מפרשים..."
+  /// בדיוק כמו הפאנל הראשי.
+  final ValueNotifier<bool> linksLoadingNotifier = ValueNotifier<bool>(true);
 
   /// Current line number in text (based on PDF heading)
   int? currentTextLineNumber;
@@ -165,6 +169,7 @@ class PdfBookTab extends OpenedTab {
     outline.dispose();
     documentRef.dispose();
     currentTitle.dispose();
+    linksLoadingNotifier.dispose();
     showLeftPane.dispose();
     pinLeftPane.dispose();
     toggleNavPaneNotifier.dispose();

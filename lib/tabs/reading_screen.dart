@@ -15,8 +15,12 @@ import 'package:otzaria/tabs/models/searching_tab.dart';
 import 'package:otzaria/tabs/models/tab.dart';
 import 'package:otzaria/tabs/models/text_tab.dart';
 import 'package:otzaria/tabs/models/combined_tab.dart';
+import 'package:otzaria/tabs/models/commentators_tab.dart';
+import 'package:otzaria/tabs/models/pdf_commentators_tab.dart';
 import 'package:otzaria/search/view/full_text_search_screen.dart';
 import 'package:otzaria/text_book/view/text_book_screen.dart';
+import 'package:otzaria/text_book/view/commentators_tab_screen.dart';
+import 'package:otzaria/pdf_book/view/pdf_commentators_tab_screen.dart';
 import 'package:otzaria/settings/settings_exports.dart';
 import 'package:otzaria/tour/tour_target_keys.dart';
 
@@ -218,6 +222,19 @@ class _ReadingScreenState extends State<ReadingScreen>
           ));
     } else if (tab is SearchingTab) {
       return FullTextSearchScreen(key: ValueKey(tab), tab: tab);
+    } else if (tab is CommentatorsTab) {
+      return CommentatorsTabScreen(
+        key: ValueKey(tab),
+        tab: tab,
+        openBookCallback: (t, {int index = 1}) {
+          context.read<TabsBloc>().add(OpenOrFocusTab(t, insertAdjacent: true));
+        },
+      );
+    } else if (tab is PdfCommentatorsTab) {
+      return PdfCommentatorsTabScreen(
+        key: ValueKey(tab),
+        tab: tab,
+      );
     }
     return const SizedBox.shrink();
   }

@@ -11,6 +11,10 @@ import 'package:otzaria/personal_notes/bloc/personal_notes_state.dart';
 import 'package:otzaria/settings/engine/settings_bloc.dart';
 import 'package:otzaria/settings/engine/settings_event.dart';
 import 'package:otzaria/settings/engine/settings_state.dart';
+import 'package:otzaria/tabs/bloc/tabs_bloc.dart';
+import 'package:otzaria/tabs/bloc/tabs_event.dart';
+import 'package:otzaria/tabs/bloc/tabs_state.dart';
+import 'package:otzaria/tabs/models/pdf_commentators_tab.dart';
 import 'package:otzaria/tabs/models/pdf_tab.dart';
 import '../helpers/memory_settings_cache.dart';
 
@@ -78,12 +82,13 @@ Link _regularLink({required int index1}) => Link(
       connectionType: 'NONE',
     );
 
-Widget _wrap(Widget child) => MaterialApp(
+Widget _wrap(Widget child, {_RecordingTabsBloc? tabsBloc}) => MaterialApp(
       home: MultiBlocProvider(
         providers: [
           BlocProvider<SettingsBloc>.value(value: _FakeSettingsBloc()),
           BlocProvider<PersonalNotesBloc>.value(
               value: _FakePersonalNotesBloc()),
+          if (tabsBloc != null) BlocProvider<TabsBloc>.value(value: tabsBloc),
         ],
         child: Scaffold(body: child),
       ),
@@ -336,4 +341,39 @@ void main() {
       expect(find.text('בחירת מפרשים'), findsOneWidget);
     });
   });
+
+  testWidgets('כפתור ההרחבה מוסיף PdfCommentatorsTab ל-TabsBloc',
+      (tester) async {
+    final tab = _tab(currentLine: 10, links: []);
+    final tabsBloc = _RecordingTabsBloc();
+    addTearDown(tab.dispose);
+    addTearDown(tabsBloc.close);
+
+    await tester.pumpWidget(
+      _wrap(_panel(tab, linksLoading: false, initialTabIndex: 0),
+          tabsBloc: tabsBloc),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('פתח כרטסיית מפרשים'));
+    await tester.pump();
+
+    expect(tabsBloc.recordedEvents, hasLength(1));
+    final event = tabsBloc.recordedEvents.single as AddTab;
+    expect(event.tab, isA<PdfCommentatorsTab>());
+    expect((event.tab as PdfCommentatorsTab).sourceTab, same(tab));
+  });
+}
+
+class _RecordingTabsBloc extends Bloc<TabsEvent, TabsState> implements TabsBloc {
+  _RecordingTabsBloc() : super(TabsState.initial()) {
+    on<TabsEvent>((event, emit) {
+      recordedEvents.add(event);
+    });
+  }
+
+  final List<TabsEvent> recordedEvents = [];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

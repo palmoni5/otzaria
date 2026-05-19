@@ -17,6 +17,8 @@ import 'package:otzaria/tabs/models/pdf_tab.dart';
 import 'package:otzaria/tabs/models/text_tab.dart';
 import 'package:otzaria/tabs/models/combined_tab.dart';
 import 'package:otzaria/tabs/models/searching_tab.dart';
+import 'package:otzaria/tabs/models/commentators_tab.dart';
+import 'package:otzaria/tabs/models/pdf_commentators_tab.dart';
 import 'package:otzaria/widgets/navigation/scrollable_tab_bar.dart';
 import 'package:otzaria/tabs/models/tab.dart';
 import 'package:otzaria/history/view/history_screen.dart';
@@ -752,6 +754,32 @@ class _CustomTitleBarState extends State<CustomTitleBar>
               titleMaxWidth: titleMaxWidth,
             );
           },
+        );
+      }
+
+      if (tab is PdfCommentatorsTab) {
+        return buildListenableTitle(
+          listenable: tab.sourceTab.currentTitle,
+          builder: (currentTitleValue) {
+            final tooltipMessage = currentTitleValue.isNotEmpty
+                ? '${tab.title}, $currentTitleValue'
+                : tab.title;
+            return buildTitleContent(
+              title: tab.title,
+              tooltip: tooltipMessage,
+              icon: FluentIcons.document_pdf_24_regular,
+              titleMaxWidth: titleMaxWidth,
+            );
+          },
+        );
+      }
+
+      if (tab is CommentatorsTab) {
+        return buildTitleContent(
+          title: tab.title,
+          tooltip: tab.title,
+          icon: FluentIcons.book_24_regular,
+          titleMaxWidth: titleMaxWidth,
         );
       }
 

@@ -256,6 +256,8 @@ class _PdfBookScreenState extends State<PdfBookScreen>
   // קבוצות מפרשים לסדר בתפריט
   List<CommentatorGroup> _commentatorGroups = [];
 
+  final ValueNotifier<int> _openPdfFilterNotifier = ValueNotifier<int>(0);
+
   // Named listeners for proper cleanup
   late final VoidCallback _leftPaneTabControllerListener;
   late final VoidCallback _showLeftPaneListener;
@@ -785,9 +787,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
 
     AppContextMenuEntry buildItem(String commentator) => AppContextMenuEntry(
           label: commentator,
-          trailing: widget.tab.activeCommentators.contains(commentator)
-              ? const Icon(FluentIcons.checkmark_24_regular)
-              : null,
+          isSelected: widget.tab.activeCommentators.contains(commentator),
           onTap: () => _toggleCommentator(commentator),
         );
 
@@ -851,17 +851,19 @@ class _PdfBookScreenState extends State<PdfBookScreen>
     final commentatorChildren = <AppContextMenuEntry>[
       if (shouldShowOpenPaneEntry)
         AppContextMenuEntry(
-          label: 'פתח מפרשים בחלונית צד',
+          label: 'פתח את חלונית המפרשים',
+          icon: FluentIcons.panel_right_24_regular,
+          isHighlighted: true,
           onTap: () => _openCommentaryPane(),
         ),
       if (shouldShowSelectEntry)
         AppContextMenuEntry(
-          label: 'פתח בחירת מפרשים בחלונית צד',
+          label: 'בחר מפרשים מרובים',
+          icon: FluentIcons.filter_24_regular,
+          isHighlighted: true,
           onTap: () {
             _openCommentaryPane();
-            // דחייה לפריים הבא: ה-PdfCommentaryPanelState נרשם
-            // ל-listener רק אחרי שהפאנל נבנה. הקפיצה מבטיחה שה-listener
-            // קיים בעת הירייה — גם בפתיחה ראשונה.
+            _openPdfFilterNotifier.value++;
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
               _openFilterRequest.value++;
@@ -872,8 +874,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
         const AppContextMenuEntry.divider(),
       AppContextMenuEntry(
         label: 'הצג את כל המפרשים',
-        trailing:
-            allActive ? const Icon(FluentIcons.checkmark_24_regular) : null,
+        isSelected: allActive,
         onTap: () => _toggleAllCommentators(relevantCommentators),
       ),
       if (relevantCommentators.isNotEmpty) const AppContextMenuEntry.divider(),
@@ -2462,18 +2463,20 @@ class _PdfBookScreenState extends State<PdfBookScreen>
       widget.tab.currentTextLineNumber = resolved.start;
       widget.tab.currentTextLineNumberEnd = resolved.end;
 
-      if (mounted) {
-        _linksLoading = false;
-        _maybeRegisterPdfCommentaryOpportunity();
-        setState(() {});
-      }
+        if (mounted) {
+          _linksLoading = false;
+          widget.tab.linksLoadingNotifier.value = false;
+          _maybeRegisterPdfCommentaryOpportunity();
+          setState(() {});
+        }
     } catch (e, stackTrace) {
       debugPrint(
           '📚 [PDF-DEBUG] ERROR in _loadPdfHeadingsAndLinks: $e\n$stackTrace');
-      if (mounted) {
-        _linksLoading = false;
-        setState(() {});
-      }
+        if (mounted) {
+          _linksLoading = false;
+          widget.tab.linksLoadingNotifier.value = false;
+          setState(() {});
+        }
     }
   }
 
@@ -2498,6 +2501,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
     _pdfViewFocusNode.dispose();
     _settingsSub.cancel();
     _bloc.close();
+    _openPdfFilterNotifier.dispose();
 
     // לא מוחקים את הקובץ הזמני - הוא משותף בין tabs
     // הקבצים יימחקו אוטומטית כשהמערכת תנקה את temp directory
@@ -3145,6 +3149,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
           _currentRightPaneTabIndex = index;
         });
       },
+      openFilterNotifier: _openPdfFilterNotifier,
     );
   }
 

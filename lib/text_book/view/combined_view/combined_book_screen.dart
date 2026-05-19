@@ -445,8 +445,7 @@ class _CombinedViewState extends State<CombinedView> {
     return [
       AppContextMenuEntry(
         label: 'הצג את כל $groupName',
-        trailing:
-            groupActive ? const Icon(FluentIcons.checkmark_24_regular) : null,
+        isSelected: groupActive,
         onTap: () {
           _selectParagraphForContextMenu(paragraphIndex);
           final current = List<String>.from(st.activeCommentators);
@@ -466,8 +465,7 @@ class _CombinedViewState extends State<CombinedView> {
         final bool isActive = st.activeCommentators.contains(title);
         return AppContextMenuEntry(
           label: title,
-          trailing:
-              isActive ? const Icon(FluentIcons.checkmark_24_regular) : null,
+          isSelected: isActive,
           onTap: () {
             _selectParagraphForContextMenu(paragraphIndex);
             final current = List<String>.from(st.activeCommentators);
@@ -533,7 +531,9 @@ class _CombinedViewState extends State<CombinedView> {
     final commentatorChildren = <AppContextMenuEntry>[
       if (shouldShowOpenPaneEntry)
         AppContextMenuEntry(
-          label: 'פתח מפרשים בחלונית צד',
+          label: 'פתח את חלונית המפרשים',
+          icon: FluentIcons.panel_right_24_regular,
+          isHighlighted: true,
           onTap: () {
             _selectParagraphForContextMenu(paragraphIndex);
             _openCommentatorsPane(isAdding: true);
@@ -541,7 +541,9 @@ class _CombinedViewState extends State<CombinedView> {
         ),
       if (shouldShowSelectEntry)
         AppContextMenuEntry(
-          label: 'פתח בחירת מפרשים בחלונית צד',
+          label: 'בחר מפרשים מרובים',
+          icon: FluentIcons.filter_24_regular,
+          isHighlighted: true,
           onTap: () {
             _selectParagraphForContextMenu(paragraphIndex);
             widget.onOpenCommentatorsPaneWithFilter!();
@@ -551,8 +553,7 @@ class _CombinedViewState extends State<CombinedView> {
         const AppContextMenuEntry.divider(),
       AppContextMenuEntry(
         label: 'הצג את כל המפרשים',
-        trailing:
-            allActive ? const Icon(FluentIcons.checkmark_24_regular) : null,
+        isSelected: allActive,
         onTap: () {
           _selectParagraphForContextMenu(paragraphIndex);
           context.read<TextBookBloc>().add(

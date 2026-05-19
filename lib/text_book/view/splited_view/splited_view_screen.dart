@@ -60,6 +60,10 @@ class _SplitedViewScreenState extends State<SplitedViewScreen> {
   final SelectionSyncController _selectionSyncController =
       SelectionSyncController();
   final ValueNotifier<int> _openFilterRequest = ValueNotifier<int>(0);
+  final ValueNotifier<int> _openCommentatorsFilterNotifier =
+      ValueNotifier<int>(0);
+  final ValueNotifier<int> _closeCommentatorsFilterNotifier =
+      ValueNotifier<int>(0);
 
   @override
   void initState() {
@@ -247,6 +251,8 @@ class _SplitedViewScreenState extends State<SplitedViewScreen> {
     _savedSelectedText.dispose();
     _selectionSyncController.dispose();
     _openFilterRequest.dispose();
+    _openCommentatorsFilterNotifier.dispose();
+    _closeCommentatorsFilterNotifier.dispose();
     super.dispose();
   }
 
@@ -310,6 +316,11 @@ class _SplitedViewScreenState extends State<SplitedViewScreen> {
                       onClosePane: _togglePane,
                       initialTabIndex: _currentTabIndex,
                       showSplitView: widget.showSplitView,
+                      tab: widget.tab,
+                      openCommentatorsFilterNotifier:
+                          _openCommentatorsFilterNotifier,
+                      closeCommentatorsFilterNotifier:
+                          _closeCommentatorsFilterNotifier,
                       onTabChanged: (index) {
                         debugPrint(
                             'DEBUG: Tab changed to $index, showSplitView: ${widget.showSplitView}');
@@ -350,7 +361,13 @@ class _SplitedViewScreenState extends State<SplitedViewScreen> {
                       onOpenCommentatorsPane: () {
                         setState(() {
                           _paneOpen = true;
-                          _currentTabIndex = 0;
+                        });
+                        Future.delayed(const Duration(milliseconds: 280), () {
+                          if (!mounted) return;
+                          _closeCommentatorsFilterNotifier.value++;
+                          setState(() {
+                            _currentTabIndex = 0;
+                          });
                         });
                       },
                       onOpenCommentatorsPaneWithFilter: () {
@@ -358,10 +375,7 @@ class _SplitedViewScreenState extends State<SplitedViewScreen> {
                           _paneOpen = true;
                           _currentTabIndex = 0;
                         });
-                        // דחייה לפריים הבא: ה-CommentaryListBaseState נרשם
-                        // ל-listener רק אחרי שהפאנל נבנה (פתיחה ראשונה / טעינת
-                        // טאב). הקפיצה כאן מבטיחה שה-listener קיים בעת
-                        // הירייה של ה-counter, כך שגם פתיחה ראשונה מטופלת.
+                        _openCommentatorsFilterNotifier.value++;
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           if (!mounted) return;
                           _openFilterRequest.value++;
