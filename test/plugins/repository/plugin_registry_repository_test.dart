@@ -24,6 +24,7 @@ InstalledPlugin _plugin({
   required String id,
   int? userOrder,
   int? manifestToolTabOrder,
+  DateTime? installedAt,
 }) {
   return InstalledPlugin(
     pluginId: id,
@@ -34,7 +35,7 @@ InstalledPlugin _plugin({
     enabled: true,
     pinned: true,
     manifest: _manifest(id: id, toolTabOrder: manifestToolTabOrder),
-    installedAt: DateTime.utc(2026, 1, 1),
+    installedAt: installedAt ?? DateTime.utc(2026, 1, 1),
     updatedAt: DateTime.utc(2026, 1, 1),
     userOrder: userOrder,
   );
@@ -153,6 +154,105 @@ void main() {
       final fake = _FakeDb([]);
       final repo = PluginRegistryRepository(database: fake);
       expect(await repo.getAllPlugins(), isEmpty);
+    });
+
+    test(
+        'ties on effectiveToolTabOrder are broken deterministically by '
+        'installedAt then pluginId (the common case: many plugins with the '
+        'default manifest order of 900)', () async {
+      // הקלט מסודר *הפוך* מהצפי כדי לוודא שהמיון באמת רץ.
+      final fake = _FakeDb([
+        _plugin(
+            id: 'z',
+            manifestToolTabOrder: 900,
+            installedAt: DateTime.utc(2026, 1, 3)),
+        _plugin(
+            id: 'a',
+            manifestToolTabOrder: 900,
+            installedAt: DateTime.utc(2026, 1, 1)),
+        _plugin(
+            id: 'm',
+            manifestToolTabOrder: 900,
+            installedAt: DateTime.utc(2026, 1, 2)),
+      ]);
+      final repo = PluginRegistryRepository(database: fake);
+
+      final result = await repo.getAllPlugins();
+
+      expect(result.map((p) => p.pluginId).toList(), ['a', 'm', 'z'],
+          reason: 'tied orders must be broken by installedAt (ascending)');
+    });
+
+    test(
+        'identical installedAt falls back to pluginId — fully deterministic '
+        'even when timestamps collide', () async {
+      final sameTime = DateTime.utc(2026, 1, 1, 12);
+      final fake = _FakeDb([
+        _plugin(
+            id: 'beta',
+            manifestToolTabOrder: 900,
+            installedAt: sameTime),
+        _plugin(
+            id: 'alpha',
+            manifestToolTabOrder: 900,
+            installedAt: sameTime),
+      ]);
+      final repo = PluginRegistryRepository(database: fake);
+
+      final result = await repo.getAllPlugins();
+
+      expect(result.map((p) => p.pluginId).toList(), ['alpha', 'beta'],
+          reason: 'tied orders + tied installedAt → pluginId asc');
+    });
+  });
+
+  group('PluginRegistryRepository.getNextUserOrderForNewPlugin', () {
+    test('returns null when no plugin has a manual userOrder', () async {
+      final fake = _FakeDb([
+        _plugin(id: 'a'),
+        _plugin(id: 'b'),
+      ]);
+      final repo = PluginRegistryRepository(database: fake);
+
+      expect(await repo.getNextUserOrderForNewPlugin(), isNull,
+          reason: 'no manual order yet → new plugin keeps manifest order');
+    });
+
+    test('returns null when the plugin list is empty (very first install)',
+        () async {
+      final fake = _FakeDb([]);
+      final repo = PluginRegistryRepository(database: fake);
+
+      expect(await repo.getNextUserOrderForNewPlugin(), isNull);
+    });
+
+    test(
+        'returns max(userOrder) + 1 so a freshly installed plugin lands '
+        'AFTER the user-ordered block — not before (which is what would '
+        'happen with userOrder=null, since manifest.toolTabOrder defaults '
+        'to 900 which is below the 1000 offset)', () async {
+      final fake = _FakeDb([
+        _plugin(id: 'a', userOrder: 0),
+        _plugin(id: 'b', userOrder: 1),
+        _plugin(id: 'c', userOrder: 2),
+      ]);
+      final repo = PluginRegistryRepository(database: fake);
+
+      expect(await repo.getNextUserOrderForNewPlugin(), 3);
+    });
+
+    test(
+        'ignores plugins with userOrder=null when computing the max — '
+        'mixed state (some sorted, some not) still picks the highest '
+        'manual value', () async {
+      final fake = _FakeDb([
+        _plugin(id: 'a', userOrder: 5),
+        _plugin(id: 'b'), // userOrder=null
+        _plugin(id: 'c', userOrder: 2),
+      ]);
+      final repo = PluginRegistryRepository(database: fake);
+
+      expect(await repo.getNextUserOrderForNewPlugin(), 6);
     });
   });
 }

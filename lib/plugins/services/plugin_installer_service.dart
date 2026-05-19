@@ -117,6 +117,13 @@ class PluginInstallerService {
       await _copyDirectory(tempDir, installDir);
 
       // 4. Save to DB
+      // לעדכון/התקנה-מחדש: שומרים את הסדר הידני של המשתמש.
+      // להתקנה חדשה: אם כבר יש תוספים שסודרו ידנית, התוסף החדש מצטרף
+      // בסוף הסדר — אחרת הוא היה נכנס *לפני* הבלוק המסודר (raw 900 < 1000+).
+      final newUserOrder = existingPlugin != null
+          ? existingPlugin.userOrder
+          : await _repository.getNextUserOrderForNewPlugin();
+
       final plugin = InstalledPlugin(
         pluginId: manifest.id,
         name: manifest.name,
@@ -130,9 +137,7 @@ class PluginInstallerService {
         manifest: manifest,
         installedAt: existingPlugin?.installedAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
-        // משמרים את הסדר הידני של המשתמש בעדכון/התקנה-מחדש —
-        // ראו [InstalledPlugin.userOrder].
-        userOrder: existingPlugin?.userOrder,
+        userOrder: newUserOrder,
       );
 
       await _repository.savePlugin(plugin);

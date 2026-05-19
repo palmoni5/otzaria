@@ -18,6 +18,13 @@ class FakePluginRegistryRepository extends Mock
   List<PluginPermissionGrant> mockExistingGrants = [];
   Map<String, bool> recordedGrants = {};
 
+  /// מה ש-getNextUserOrderForNewPlugin יחזיר. ברירת מחדל null = אין סדר ידני.
+  int? nextUserOrderForNewPlugin;
+
+  @override
+  Future<int?> getNextUserOrderForNewPlugin() async =>
+      nextUserOrderForNewPlugin;
+
   @override
   Future<void> saveDevelopmentPlugin(InstalledPlugin plugin) async {
     savedPlugin = plugin;
@@ -345,13 +352,30 @@ void main() {
               'reload — otherwise editing the manifest resets manual ordering.');
     });
 
-    test('loadDevelopmentPlugin leaves userOrder=null on a first-time load',
+    test(
+        'loadDevelopmentPlugin leaves userOrder=null on a first-time load '
+        'when no other plugin has a manual order yet',
         () async {
-      // אין mockExistingPlugin = טעינה ראשונה
+      // אין mockExistingPlugin ואין סדר ידני שמור — userOrder צריך להישאר null
       await devLoader.loadDevelopmentPlugin(tempDir.path);
 
       expect(fakeRepo.savedPlugin!.userOrder, isNull,
-          reason: 'first-time dev load must default to manifest order');
+          reason: 'first-time dev load with no prior manual order must '
+              'default to manifest order');
+    });
+
+    test(
+        'loadDevelopmentPlugin assigns userOrder=max+1 for a new dev plugin '
+        'when others were already ordered manually', () async {
+      // אין mockExistingPlugin (זה דגם של "first-time load") אבל
+      // כן יש סדר ידני קיים, אז התוסף החדש מצטרף לסוף.
+      fakeRepo.nextUserOrderForNewPlugin = 7;
+
+      await devLoader.loadDevelopmentPlugin(tempDir.path);
+
+      expect(fakeRepo.savedPlugin!.userOrder, 7,
+          reason: 'new dev plugin should be appended after the manual '
+              'block — not inserted before it');
     });
   });
 }

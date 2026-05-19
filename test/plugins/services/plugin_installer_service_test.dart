@@ -17,6 +17,9 @@ class FakePluginRegistryRepository extends Mock
   final List<InstalledPlugin> savedPlugins = [];
   final Map<String, bool?> permissions = {};
 
+  /// מה ש-getNextUserOrderForNewPlugin יחזיר. ברירת מחדל null = אין סדר ידני.
+  int? nextUserOrderForNewPlugin;
+
   @override
   Future<InstalledPlugin?> getPlugin(String id) async => plugin;
 
@@ -33,6 +36,10 @@ class FakePluginRegistryRepository extends Mock
   Future<void> setPermission(String id, String perm, bool granted) async {
     permissions['$id|$perm'] = granted;
   }
+
+  @override
+  Future<int?> getNextUserOrderForNewPlugin() async =>
+      nextUserOrderForNewPlugin;
 }
 
 void main() {
@@ -231,9 +238,11 @@ void main() {
     });
 
     test(
-        'finalizeInstall leaves userOrder=null on a fresh first-time install',
+        'finalizeInstall leaves userOrder=null on a fresh first-time install '
+        'when no other plugin has a manual order yet',
         () async {
       // אין plugin קיים — repository.plugin = null
+      // וגם אין סדר ידני בשום תוסף אחר — nextUserOrderForNewPlugin = null
       const pluginId = 'test.fresh.install';
 
       final stagedDir =
@@ -260,8 +269,46 @@ void main() {
       await installer.finalizeInstall(stagedDir.path, newManifest);
 
       expect(repository.savedPlugins.single.userOrder, isNull,
-          reason: 'a fresh install should default to manifest order — '
-              'no userOrder until the user reorders manually');
+          reason: 'a fresh install with no prior manual order should '
+              'default to manifest order');
+    });
+
+    test(
+        'finalizeInstall assigns userOrder=max+1 for a new plugin when '
+        'others were already ordered manually — preserves the manual block '
+        'and appends the new plugin at the end', () async {
+      // user already reordered some plugins — repository tells us the next
+      // free slot is 3 (i.e. existing manual orders were 0,1,2).
+      repository.plugin = null; // new install
+      repository.nextUserOrderForNewPlugin = 3;
+
+      const pluginId = 'test.append.after.manual';
+      final stagedDir =
+          Directory.systemTemp.createTempSync('otzaria_install_staging_');
+      File(p.join(stagedDir.path, 'manifest.json')).writeAsStringSync(
+        jsonEncode({
+          'schemaVersion': 1,
+          'id': pluginId,
+          'version': '1.0.0',
+          'name': 'New',
+          'entrypoint': 'index.html',
+        }),
+      );
+      File(p.join(stagedDir.path, 'index.html')).writeAsStringSync('<html/>');
+
+      final newManifest = PluginManifest.fromJson({
+        'schemaVersion': 1,
+        'id': pluginId,
+        'version': '1.0.0',
+        'name': 'New',
+        'entrypoint': 'index.html',
+      });
+
+      await installer.finalizeInstall(stagedDir.path, newManifest);
+
+      expect(repository.savedPlugins.single.userOrder, 3,
+          reason: 'new plugin must inherit max+1 so it lands AFTER the '
+              'manually-ordered block, not before it');
     });
   });
 }
