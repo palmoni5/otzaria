@@ -252,6 +252,146 @@ void main() {
     expect(find.text('מפרשים | ספר א'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  group('פריסת מסך צר (portrait) — טאבים בשורה תחתונה', () {
+    // הטריגר לפריסה התחתונה הוא Orientation.portrait — אותו טריגר שמעביר
+    // את סרגל הניווט הראשי ל-NavigationBar למטה (main_window_screen.dart).
+    testWidgets('landscape: הטאבים באותה שורה של כפתורי הפעולה', (tester) async {
+      final tab = _makeTextTab('ספר א');
+      final tabsBloc = _TestTabsBloc(
+        TabsState(tabs: [tab], currentTabIndex: 0),
+      );
+      final navigationBloc = _TestNavigationBloc(
+        const NavigationState(currentScreen: Screen.reading),
+      );
+      final settingsBloc = _TestSettingsBloc(SettingsState.initial());
+
+      addTearDown(() async {
+        tab.dispose();
+        await tabsBloc.close();
+        await navigationBloc.close();
+        await settingsBloc.close();
+      });
+
+      await _setSurfaceSize(tester, const Size(1200, 800));
+      await _pumpTitleBar(
+        tester,
+        tabsBloc: tabsBloc,
+        navigationBloc: navigationBloc,
+        settingsBloc: settingsBloc,
+      );
+
+      final tabsBarSize =
+          tester.getSize(find.byType(ScrollableTabBarWithArrows));
+      expect(tabsBarSize.height, lessThanOrEqualTo(40),
+          reason: 'במצב רחב הטאבים בתוך שורת הכותרת 40px');
+
+      final tabsTop =
+          tester.getTopLeft(find.byType(ScrollableTabBarWithArrows)).dy;
+      expect(tabsTop, lessThan(40),
+          reason: 'בלנדסקייפ הטאבים בשורה העליונה (y < 40)');
+    });
+
+    testWidgets('portrait: הטאבים בשורה תחתונה מתחת לשורת הכותרת',
+        (tester) async {
+      final tab = _makeTextTab('ספר א');
+      final tabsBloc = _TestTabsBloc(
+        TabsState(tabs: [tab], currentTabIndex: 0),
+      );
+      final navigationBloc = _TestNavigationBloc(
+        const NavigationState(currentScreen: Screen.reading),
+      );
+      final settingsBloc = _TestSettingsBloc(SettingsState.initial());
+
+      addTearDown(() async {
+        tab.dispose();
+        await tabsBloc.close();
+        await navigationBloc.close();
+        await settingsBloc.close();
+      });
+
+      await _setSurfaceSize(tester, const Size(400, 800));
+      await _pumpTitleBar(
+        tester,
+        tabsBloc: tabsBloc,
+        navigationBloc: navigationBloc,
+        settingsBloc: settingsBloc,
+      );
+
+      final tabsTop =
+          tester.getTopLeft(find.byType(ScrollableTabBarWithArrows)).dy;
+      expect(tabsTop, greaterThanOrEqualTo(40),
+          reason:
+              'ב-portrait הטאבים בשורה תחתונה (y ≥ 40, כי השורה העליונה היא 40)');
+    });
+
+    testWidgets('portrait: הטאבים מקבלים רוחב מלא ולא נדחסים',
+        (tester) async {
+      // הבעיה המקורית: הטאבים נדחקו לרצועה צרה בין כפתורי הפעולה
+      // לכפתורי החלון. בשורה התחתונה הם צריכים לקבל את כל הרוחב הזמין.
+      final first = _makeTextTab('ספר א');
+      final second = _makeTextTab('ספר ב');
+      final tabsBloc = _TestTabsBloc(
+        TabsState(tabs: [first, second], currentTabIndex: 0),
+      );
+      final navigationBloc = _TestNavigationBloc(
+        const NavigationState(currentScreen: Screen.reading),
+      );
+      final settingsBloc = _TestSettingsBloc(SettingsState.initial());
+
+      addTearDown(() async {
+        first.dispose();
+        second.dispose();
+        await tabsBloc.close();
+        await navigationBloc.close();
+        await settingsBloc.close();
+      });
+
+      await _setSurfaceSize(tester, const Size(400, 800));
+      await _pumpTitleBar(
+        tester,
+        tabsBloc: tabsBloc,
+        navigationBloc: navigationBloc,
+        settingsBloc: settingsBloc,
+      );
+
+      final tabsBarWidth =
+          tester.getSize(find.byType(ScrollableTabBarWithArrows)).width;
+      // ה-pumpTitleBar עוטף ב-SizedBox(width: 900) אבל ב-MediaQuery 400×800
+      // ה-Scaffold מצמצם את הרוחב ל-400. עיקר הבדיקה: לטאבים יש רוב הרוחב.
+      expect(tabsBarWidth, greaterThan(300),
+          reason: 'בשורה התחתונה הטאבים מקבלים את הרוחב כמעט-מלא');
+    });
+
+    testWidgets('portrait בלי טאבים פתוחים: השורה התחתונה לא מופיעה',
+        (tester) async {
+      final tabsBloc = _TestTabsBloc(
+        const TabsState(tabs: [], currentTabIndex: 0),
+      );
+      final navigationBloc = _TestNavigationBloc(
+        const NavigationState(currentScreen: Screen.reading),
+      );
+      final settingsBloc = _TestSettingsBloc(SettingsState.initial());
+
+      addTearDown(() async {
+        await tabsBloc.close();
+        await navigationBloc.close();
+        await settingsBloc.close();
+      });
+
+      await _setSurfaceSize(tester, const Size(400, 800));
+      await _pumpTitleBar(
+        tester,
+        tabsBloc: tabsBloc,
+        navigationBloc: navigationBloc,
+        settingsBloc: settingsBloc,
+      );
+
+      // כשאין טאבים פתוחים אין מה לרנדר בשורה התחתונה.
+      expect(find.byType(ScrollableTabBarWithArrows), findsNothing);
+    });
+
+  });
 }
 
 Future<void> _pumpTitleBar(

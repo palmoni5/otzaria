@@ -152,13 +152,26 @@ class _CustomTitleBarState extends State<CustomTitleBar>
     }
   }
 
+  /// פריסת מסך צר: כשהאוריינטציה portrait סרגל הניווט הראשי יורד למטה
+  /// ([main_window_screen.dart]), ובאופן דומה אזור הטאבים של מסך עיון/חיפוש
+  /// צריך לעבור לשורה תחתונה משלו כדי לא להידחס בין כפתורי הפעולה לכפתורי
+  /// החלון. השאר (כפתורי פעולה, כפתורי חלון, כפתור ההגדרות) נשארים בשורה
+  /// העליונה כרגיל.
+  bool _useStackedTabs(BuildContext context, NavigationState navState) {
+    final isReading = navState.currentScreen == Screen.reading ||
+        navState.currentScreen == Screen.search;
+    if (!isReading) return false;
+    return MediaQuery.of(context).orientation == Orientation.portrait;
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<NavigationBloc, NavigationState>(
       builder: (context, navState) {
         return BlocBuilder<SettingsBloc, SettingsState>(
           builder: (context, settingsState) {
-            return SizedBox(
+            final stackedTabs = _useStackedTabs(context, navState);
+            final topBar = SizedBox(
               height: 40, // גובה הכותרת
               child: Stack(
                 clipBehavior: Clip.none,
@@ -270,6 +283,16 @@ class _CustomTitleBarState extends State<CustomTitleBar>
                 ],
               ),
             );
+
+            if (!stackedTabs) return topBar;
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                topBar,
+                _buildNarrowTabsRow(context),
+              ],
+            );
           },
         );
       },
@@ -332,6 +355,18 @@ class _CustomTitleBarState extends State<CustomTitleBar>
       SettingsState settingsState) {
     if (navState.currentScreen == Screen.reading ||
         navState.currentScreen == Screen.search) {
+      // במסך צר הטאבים יורדים לשורה תחתונה; בשורה העליונה משאירים רק
+      // אזור גרירה + כפתור ההגדרות כדי שלא נדחס בין כפתורי הצדדים.
+      if (_useStackedTabs(context, navState)) {
+        return Row(
+          children: [
+            const Expanded(
+              child: DragToMoveArea(child: SizedBox.expand()),
+            ),
+            _buildReadingSettingsButton(context),
+          ],
+        );
+      }
       return _buildReadingTabs(context, settingsState);
     } else if (navState.currentScreen == Screen.library) {
       return _buildLibraryTitle(context);
@@ -445,102 +480,128 @@ class _CustomTitleBarState extends State<CustomTitleBar>
               DragToMoveArea(
                 child: SizedBox(width: leftSpacerWidth),
               ),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  double? tabWidth;
-                  if (settingsState.alignTabsToRight) {
-                    final displayCount =
-                        max(_displayedTabCount, state.tabs.length)
-                            .clamp(1, 9999);
-                    if (displayCount > 1) {
-                      tabWidth = (constraints.maxWidth / displayCount)
-                          .clamp(_kMinTabWidth, _kMaxTabWidth);
-                    }
-                  }
-
-                  return DragTarget<OpenedTab>(
-                    onWillAcceptWithDetails: (details) => state.tabs.length > 1,
-                    onAcceptWithDetails: (details) {
-                      final renderBox = context.findRenderObject() as RenderBox;
-                      final localOffset =
-                          renderBox.globalToLocal(details.offset);
-                      final isLeftHalf =
-                          localOffset.dx < (renderBox.size.width / 2);
-                      final isRtl =
-                          Directionality.of(context) == TextDirection.rtl;
-
-                      final newIndex = isRtl
-                          ? (isLeftHalf ? state.tabs.length - 1 : 0)
-                          : (isLeftHalf ? 0 : state.tabs.length - 1);
-
-                      final draggedTab = details.data;
-                      final currentIndex = state.tabs.indexOf(draggedTab);
-                      if (currentIndex != -1 && currentIndex != newIndex) {
-                        context
-                            .read<TabsBloc>()
-                            .add(MoveTab(draggedTab, newIndex));
-                      }
-                    },
-                    builder: (context, candidateData, rejectedData) {
-                      return DragToMoveArea(
-                        child: KeyedSubtree(
-                          key: tourReadingTabsTargetKey,
-                          child: ScrollableTabBarWithArrows(
-                            controller: _tabController!,
-                            tabAlignment: settingsState.alignTabsToRight
-                                ? TabAlignment.start
-                                : TabAlignment.center,
-                            hideArrowsWhenNotScrollable:
-                                settingsState.alignTabsToRight,
-                            onOverflowChanged: (overflow) {
-                              if (mounted && _tabsOverflow != overflow) {
-                                setState(() => _tabsOverflow = overflow);
-                              }
-                            },
-                            tabWidth: tabWidth,
-                            tabs: state.tabs
-                                .map((tab) => _buildTab(
-                                    context, tab, state, settingsState,
-                                    tabWidth: tabWidth))
-                                .toList(),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
+            Expanded(child: _buildScrollableTabsArea(state, settingsState)),
             if (settingsState.alignTabsToRight) const SizedBox(width: 36),
-
-            // כפתורים נוספים (הגדרות)
-            DragToMoveArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                child: IconButton(
-                  key: tourReadingSettingsButtonTargetKey,
-                  icon: Icon(
-                    widget.isReadingSettingsPanelOpen
-                        ? FluentIcons.settings_24_filled
-                        : FluentIcons.settings_24_regular,
-                    size: 18,
-                  ),
-                  tooltip: 'הגדרות תצוגת הספרים',
-                  onPressed: widget.onReadingSettingsPressed ??
-                      () => showReadingSettingsDialog(context),
-                  style: _kIconButtonStyle.copyWith(
-                    foregroundColor: WidgetStatePropertyAll(
-                        Theme.of(context).colorScheme.onSurfaceVariant),
-                  ),
-                ),
-              ),
-            ),
+            _buildReadingSettingsButton(context),
             if (rightSpacerWidth > 0)
               DragToMoveArea(
                 child: SizedBox(width: rightSpacerWidth),
               ),
           ],
+        );
+      },
+    );
+  }
+
+  /// אזור הטאבים הניתן לגלילה. מופרד מ-[_buildReadingTabs] כדי שניתן יהיה
+  /// להשתמש בו גם בשורה תחתונה נפרדת (פריסת מסך צר), בלי כפתור ההגדרות
+  /// והמרווחים.
+  Widget _buildScrollableTabsArea(
+      TabsState state, SettingsState settingsState) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        double? tabWidth;
+        if (settingsState.alignTabsToRight) {
+          final displayCount =
+              max(_displayedTabCount, state.tabs.length).clamp(1, 9999);
+          if (displayCount > 1) {
+            tabWidth = (constraints.maxWidth / displayCount)
+                .clamp(_kMinTabWidth, _kMaxTabWidth);
+          }
+        }
+
+        return DragTarget<OpenedTab>(
+          onWillAcceptWithDetails: (details) => state.tabs.length > 1,
+          onAcceptWithDetails: (details) {
+            final renderBox = context.findRenderObject() as RenderBox;
+            final localOffset = renderBox.globalToLocal(details.offset);
+            final isLeftHalf = localOffset.dx < (renderBox.size.width / 2);
+            final isRtl = Directionality.of(context) == TextDirection.rtl;
+
+            final newIndex = isRtl
+                ? (isLeftHalf ? state.tabs.length - 1 : 0)
+                : (isLeftHalf ? 0 : state.tabs.length - 1);
+
+            final draggedTab = details.data;
+            final currentIndex = state.tabs.indexOf(draggedTab);
+            if (currentIndex != -1 && currentIndex != newIndex) {
+              context.read<TabsBloc>().add(MoveTab(draggedTab, newIndex));
+            }
+          },
+          builder: (context, candidateData, rejectedData) {
+            return DragToMoveArea(
+              child: KeyedSubtree(
+                key: tourReadingTabsTargetKey,
+                child: ScrollableTabBarWithArrows(
+                  controller: _tabController!,
+                  tabAlignment: settingsState.alignTabsToRight
+                      ? TabAlignment.start
+                      : TabAlignment.center,
+                  hideArrowsWhenNotScrollable: settingsState.alignTabsToRight,
+                  onOverflowChanged: (overflow) {
+                    if (mounted && _tabsOverflow != overflow) {
+                      setState(() => _tabsOverflow = overflow);
+                    }
+                  },
+                  tabWidth: tabWidth,
+                  tabs: state.tabs
+                      .map((tab) => _buildTab(
+                          context, tab, state, settingsState,
+                          tabWidth: tabWidth))
+                      .toList(),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// כפתור הגדרות תצוגת הספרים (גלגל שיניים). מופרד כדי שיוכל להופיע בשורה
+  /// העליונה גם בפריסת מסך צר שבה הטאבים בשורה תחתונה.
+  Widget _buildReadingSettingsButton(BuildContext context) {
+    return DragToMoveArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+        child: IconButton(
+          key: tourReadingSettingsButtonTargetKey,
+          icon: Icon(
+            widget.isReadingSettingsPanelOpen
+                ? FluentIcons.settings_24_filled
+                : FluentIcons.settings_24_regular,
+            size: 18,
+          ),
+          tooltip: 'הגדרות תצוגת הספרים',
+          onPressed: widget.onReadingSettingsPressed ??
+              () => showReadingSettingsDialog(context),
+          style: _kIconButtonStyle.copyWith(
+            foregroundColor: WidgetStatePropertyAll(
+                Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// שורת טאבים תחתונה לפריסת מסך צר. מציגה רק את הטאבים, ברוחב מלא,
+  /// בלי הכפתורים של השורה העליונה.
+  Widget _buildNarrowTabsRow(BuildContext context) {
+    return BlocConsumer<TabsBloc, TabsState>(
+      listener: (context, state) => _updateTabsDisplay(state),
+      builder: (context, state) {
+        if (_previousTabs == null) {
+          _displayedTabCount = state.tabs.length;
+          _previousTabs = List.unmodifiable(state.tabs);
+        }
+        if (!state.hasOpenTabs) return const SizedBox.shrink();
+        _ensureReadingTabController(state);
+
+        final settingsState = context.watch<SettingsBloc>().state;
+        return Container(
+          color: Theme.of(context).colorScheme.surface,
+          height: 40,
+          child: _buildScrollableTabsArea(state, settingsState),
         );
       },
     );
@@ -833,16 +894,15 @@ class _CustomTitleBarState extends State<CustomTitleBar>
                       ? _TabBackgroundPainter(
                           Theme.of(context).colorScheme.surfaceContainer)
                       : null,
-                child: Tab(
+                  child: Tab(
                     child: Padding(
                       padding: EdgeInsets.symmetric(
                           horizontal: isRightAligned ? 1 : 3),
                       child: DefaultTextStyle(
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurface,
-                          fontWeight: isSelected
-                              ? FontWeight.w600
-                              : FontWeight.normal,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.normal,
                           fontSize: 14,
                         ),
                         child: Row(
