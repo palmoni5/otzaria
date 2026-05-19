@@ -33,6 +33,11 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
 
   bool _indexInProgressWarningDismissed = false;
   bool _showEditPanel = false;
+  // במסך צר עץ הקטגוריות תופס את כל הרוחב ומסתיר את התוצאות. לכן בכניסה
+  // הראשונה לכל טאב במסך צר סוגרים את העץ אוטומטית; המשתמש עדיין יכול
+  // לפתוח אותו ידנית, וזה לא משפיע על מסכים רחבים שבהם השניים מוצגים זה
+  // לצד זה.
+  bool _appliedNarrowLeftPaneDefault = false;
 
   Widget _buildIndexingWarning() {
     return IndexingWarningContainer(
@@ -194,7 +199,18 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
       child: Scaffold(
         body: LayoutBuilder(
           builder: (context, constraints) {
-            if (constraints.maxWidth < 800) return _buildForSmallScreens();
+            final isNarrow = constraints.maxWidth < 800;
+            // במסך צר, בכניסה הראשונה של הטאב, סוגרים את עץ הקטגוריות
+            // כדי שהתוצאות יוצגו ולא יוסתרו ע"י העץ ברוחב מלא.
+            if (isNarrow &&
+                !_appliedNarrowLeftPaneDefault &&
+                widget.tab.isLeftPaneOpen.value) {
+              _appliedNarrowLeftPaneDefault = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) widget.tab.isLeftPaneOpen.value = false;
+              });
+            }
+            if (isNarrow) return _buildForSmallScreens();
             return _buildForWideScreens();
           },
         ),
@@ -213,22 +229,27 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
           child: Column(
             children: [
               _buildIndexingWarning(),
-              Row(children: [_buildMenuButton()]),
               // השורה התחתונה - מוצגת תמיד!
               _buildBottomRow(state),
               const ThinDivider(),
               // חיווי סינון קטגוריות
               if (_shouldShowFacetFilterBanner(state))
                 _buildFacetFilterBanner(context, state),
-              // פאנל עריכה - מופיע מתחת לשורה התחתונה
+              // פאנל עריכה - מופיע מתחת לשורה התחתונה.
+              // עטוף ב-Flexible+SingleChildScrollView כדי לאפשר גלילה
+              // כאשר התוכן גבוה מהמקום הזמין (במיוחד במסכים צרים).
               if (_showEditPanel)
-                SearchEditPanel(
-                  tab: widget.tab,
-                  onClose: () {
-                    setState(() {
-                      _showEditPanel = false;
-                    });
-                  },
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: SearchEditPanel(
+                      tab: widget.tab,
+                      onClose: () {
+                        setState(() {
+                          _showEditPanel = false;
+                        });
+                      },
+                    ),
+                  ),
                 ),
               Expanded(
                 child: Stack(
@@ -468,15 +489,21 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // פאנל עריכה - מופיע מתחת לשורה העליונה
+                          // פאנל עריכה - מופיע מתחת לשורה העליונה.
+                          // עטוף ב-Flexible+SingleChildScrollView כדי לאפשר
+                          // גלילה אם התוכן גבוה מהמקום הזמין.
                           if (_showEditPanel)
-                            SearchEditPanel(
-                              tab: widget.tab,
-                              onClose: () {
-                                setState(() {
-                                  _showEditPanel = false;
-                                });
-                              },
+                            Flexible(
+                              child: SingleChildScrollView(
+                                child: SearchEditPanel(
+                                  tab: widget.tab,
+                                  onClose: () {
+                                    setState(() {
+                                      _showEditPanel = false;
+                                    });
+                                  },
+                                ),
+                              ),
                             ),
                           Expanded(
                             child: Row(
@@ -584,19 +611,6 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildMenuButton() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 0, 8, 0),
-      child: IconButton(
-        tooltip: "הגדרות חיפוש",
-        icon: const Icon(FluentIcons.navigation_24_regular),
-        onPressed: () {
-          widget.tab.isLeftPaneOpen.value = !widget.tab.isLeftPaneOpen.value;
-        },
       ),
     );
   }
