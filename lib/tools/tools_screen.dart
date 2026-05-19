@@ -564,12 +564,13 @@ class ToolsScreenState extends State<ToolsScreen>
   }
 
   void resetToCalendar() {
-    if (_selectedToolId != 'builtin.calendar') {
+    // _showMobileMenu חייב להתאפס גם כשהכלי כבר הוא לוח השנה, אחרת במסך צר
+    // המשתמש שהיה בתפריט "כלים" וחזר ללוח שנה ימשיך לראות את התפריט.
+    if (_selectedToolId != 'builtin.calendar' || _showMobileMenu) {
       setState(() {
         _setSelectedToolId('builtin.calendar');
         _showMobileMenu = false;
       });
-      return;
     }
     _requestCalendarFocus();
   }

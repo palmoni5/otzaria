@@ -489,12 +489,31 @@ class _LibraryBrowserState extends State<LibraryBrowser>
       icon: FluentIcons.calendar_24_regular,
       emphasis: ToolbarActionButtonEmphasis.subtle,
       onPressed: () {
-        (moreScreenKey.currentState as dynamic)?.resetToCalendar();
         context.read<NavigationBloc>().add(
               const NavigateToScreen(Screen.more),
             );
+        // ToolsScreen נבנה lazy ב-PageView, ולכן בלחיצה הראשונה ייתכן ש-
+        // moreScreenKey.currentState עדיין null. ניסיונות חוזרים עם hop קצר
+        // מבטיחים שהלוח ייפתח גם בפעם הראשונה שנכנסים למסך הכלים.
+        _resetCalendarWhenAvailable();
       },
     );
+  }
+
+  void _resetCalendarWhenAvailable({int attemptsLeft = 6}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final toolsState = moreScreenKey.currentState;
+      if (toolsState != null) {
+        toolsState.resetToCalendar();
+        return;
+      }
+      if (attemptsLeft <= 0) return;
+      Future<void>.delayed(const Duration(milliseconds: 50), () {
+        if (!mounted) return;
+        _resetCalendarWhenAvailable(attemptsLeft: attemptsLeft - 1);
+      });
+    });
   }
 
   // ── Secondary row ─────────────────────────────────────────────────────────
