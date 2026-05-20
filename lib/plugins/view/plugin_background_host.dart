@@ -11,7 +11,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:otzaria/core/ui_snack.dart';
-import 'package:otzaria/plugins/services/webview2_compat_check.dart';
 import 'package:otzaria/history/bloc/history_bloc.dart';
 import 'package:otzaria/navigation/bloc/navigation_bloc.dart';
 import 'package:otzaria/personal_notes/repository/personal_notes_repository.dart';
@@ -147,15 +146,6 @@ class _PluginBackgroundHostState extends State<PluginBackgroundHost> {
   }
 
   Future<void> _syncBackgroundPlugins(List<InstalledPlugin> plugins) async {
-    // אם גרסת WebView2 במכשיר ידועה כקורסת (v143 על Win 10 ישן), לא טוענים
-    // תוספים ברקע כדי שלא נקריס את התוכנה לפני שהמשתמש בכלל ניסה לפתוח אותם.
-    final compat = await WebView2CompatCheck.check();
-    if (!compat.supported) {
-      if (_activeBackgroundPlugins.isNotEmpty && mounted) {
-        setState(() => _activeBackgroundPlugins.clear());
-      }
-      return;
-    }
     final enabledById = {
       for (final p in plugins.where((p) => p.enabled)) p.pluginId: p,
     };

@@ -32,9 +32,7 @@ import 'package:otzaria/plugins/bloc/plugin_system_bloc.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_event.dart';
 import 'package:otzaria/plugins/services/plugin_crash_guard.dart';
 import 'package:otzaria/plugins/services/plugin_store_link_parser.dart';
-import 'package:otzaria/plugins/services/webview2_compat_check.dart';
 import 'package:otzaria/plugins/view/plugin_crashed_view.dart';
-import 'package:otzaria/plugins/view/webview2_unsupported_view.dart';
 
 // ---------------------------------------------------------------------------
 // Stub SDK — injected at AT_DOCUMENT_START before any page JS runs.
@@ -292,7 +290,7 @@ class _PluginTabPageState extends State<PluginTabPage> {
     // אם בהפעלה הקודמת התוסף הזה הקריס את התוכנה (נשאר ב-PluginCrashGuard),
     // אנחנו לא טוענים אותו אוטומטית — מציגים מסך הסבר עם כפתור "נסה שוב".
     // כשהבאג יתוקן (upstream או דרך עדכון WebView2), הטעינה הראשונה
-    // הצלוחה תקרא ל-markLoadSuccess ותסיר את הסימון לבד.
+    // המוצלחת תקרא ל-markLoadSuccess ותסיר את הסימון לבד.
     if (PluginCrashGuard.isBlocked(widget.plugin.pluginId)) {
       return PluginCrashedView(
         pluginId: widget.plugin.pluginId,
@@ -303,50 +301,28 @@ class _PluginTabPageState extends State<PluginTabPage> {
       );
     }
 
-    // הסדר חשוב: בדיקת תאימות חייבת לרוץ *לפני* יצירת WebViewEnvironment.
-    // הקריאה הזו היא static ולא דורשת אתחול של WebView — היא רק שואלת
-    // את ה-Loader DLL איזו גרסת Runtime מותקנת. כך אם הגרסה ידועה כקורסת,
-    // נחזיר מסך הסבר עוד לפני שניגענו ב-WebView2 בכלל.
-    return FutureBuilder<WebView2CompatResult>(
-      future: WebView2CompatCheck.check(),
-      builder: (context, compatSnapshot) {
-        if (compatSnapshot.connectionState != ConnectionState.done) {
-          return const SizedBox.shrink();
-        }
-        final compatResult = compatSnapshot.data;
-        if (compatResult != null && !compatResult.supported) {
-          return WebView2UnsupportedView(
-            result: compatResult,
-            pluginName: widget.plugin.name,
-          );
-        }
+    if (_needsWebViewPrerequisites) {
+      return FutureBuilder<void>(
+        future: _ensureWebViewPrerequisitesConfigured(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const SizedBox.shrink();
+          }
+          if (snapshot.hasError) {
+            debugPrint('WebView prerequisites init error: ${snapshot.error}');
+            return Center(
+              child: Text(
+                'שגיאה באתחול סביבת הדפדפן: ${snapshot.error}',
+                textDirection: TextDirection.rtl,
+              ),
+            );
+          }
+          return _buildWebView();
+        },
+      );
+    }
 
-        // רק כעת — אחרי שאישרנו שהגרסה תומכת — נאתחל את ה-prerequisites
-        // ונבנה את ה-WebView עצמו.
-        if (_needsWebViewPrerequisites) {
-          return FutureBuilder<void>(
-            future: _ensureWebViewPrerequisitesConfigured(),
-            builder: (context, prereqSnapshot) {
-              if (prereqSnapshot.connectionState != ConnectionState.done) {
-                return const SizedBox.shrink();
-              }
-              if (prereqSnapshot.hasError) {
-                debugPrint(
-                    'WebView prerequisites init error: ${prereqSnapshot.error}');
-                return Center(
-                  child: Text(
-                    'שגיאה באתחול סביבת הדפדפן: ${prereqSnapshot.error}',
-                    textDirection: TextDirection.rtl,
-                  ),
-                );
-              }
-              return _buildWebView();
-            },
-          );
-        }
-        return _buildWebView();
-      },
-    );
+    return _buildWebView();
   }
 
   Widget _buildWebView() {
