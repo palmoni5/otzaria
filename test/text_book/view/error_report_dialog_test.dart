@@ -642,6 +642,93 @@ void main() {
       expect(textField.focusNode?.hasFocus ?? textField.autofocus, isTrue);
     });
   });
+
+  group('TabbedReportDialog — מסך צר', () {
+    // רגרסיה: ב-405×800 (פלאפון בלנדסקייפ) הצירוף minWidth=400 + maxWidth=screen*0.6
+    // יצר BoxConstraints לא-נורמליזיים (400<=w<=243) וזרק חריגה.
+    testWidgets('לא קורס במסך צר (405 רוחב)', (tester) async {
+      tester.view.physicalSize = const Size(405, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (ctx) => ElevatedButton(
+                onPressed: () {
+                  showDialog<void>(
+                    context: ctx,
+                    builder: (_) => TabbedReportDialog(
+                      selectedText: 'טקסט',
+                      fontSize: 18,
+                      bookTitle: 'ספר בדיקה',
+                      currentLineNumber: 0,
+                      state: _loadedState(),
+                      directReportTargetLabel: 'אוצריא',
+                    ),
+                  );
+                },
+                child: const Text('פתח'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('פתח'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull,
+          reason: 'במסך צר (405px) הקונסטריינטים חייבים להישאר נורמליזיים: '
+              'minWidth ≤ maxWidth, ו-maxWidth מותאם ל-95% מהרוחב במסך צר.');
+      expect(find.text('דיווח על טעות בספר'), findsOneWidget);
+    });
+
+    testWidgets('במסך רחב נשארת ההתנהגות המקורית (~60% מהרוחב)',
+        (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (ctx) => ElevatedButton(
+                onPressed: () {
+                  showDialog<void>(
+                    context: ctx,
+                    builder: (_) => TabbedReportDialog(
+                      selectedText: 'טקסט',
+                      fontSize: 18,
+                      bookTitle: 'ספר בדיקה',
+                      currentLineNumber: 0,
+                      state: _loadedState(),
+                      directReportTargetLabel: 'אוצריא',
+                    ),
+                  );
+                },
+                child: const Text('פתח'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('פתח'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('דיווח על טעות בספר'), findsOneWidget);
+    });
+  });
 }
 
 TextBookLoaded _loadedState() {

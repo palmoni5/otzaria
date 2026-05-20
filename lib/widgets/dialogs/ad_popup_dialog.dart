@@ -826,10 +826,9 @@ class _ExpandableOrgCardState extends State<_ExpandableOrgCard> {
             borderRadius: BorderRadius.circular(12),
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  // לוגו
-                  Container(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final logo = Container(
                     width: 50,
                     height: 50,
                     decoration: BoxDecoration(
@@ -847,20 +846,15 @@ class _ExpandableOrgCardState extends State<_ExpandableOrgCard> {
                         },
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  // שם
-                  Expanded(
-                    child: Text(
-                      widget.org['name'],
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  );
+                  final name = Text(
+                    widget.org['name'],
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
-                  ),
-                  // טלפון
-                  Text(
+                  );
+                  final phone = Text(
                     widget.org['phone'],
                     style: TextStyle(
                       fontSize: 20,
@@ -871,16 +865,52 @@ class _ExpandableOrgCardState extends State<_ExpandableOrgCard> {
                       letterSpacing: 1.2,
                     ),
                     textDirection: TextDirection.ltr,
-                  ),
-                  const SizedBox(width: 8),
-                  // חץ
-                  Icon(
+                  );
+                  final arrow = Icon(
                     _isExpanded
                         ? Icons.keyboard_arrow_up
                         : Icons.keyboard_arrow_down,
                     color: Colors.grey[600],
-                  ),
-                ],
+                  );
+
+                  // הסף 400 הוא הרוחב המינימלי לפריסה השורתית בלי שהשם
+                  // יתקפל לתו-לשורה: 50 (לוגו) + 16 + ~150 (טלפון מלא) +
+                  // 8 + 24 (חץ) = ~250 קבועים, פלוס ~150 מינימום ל-שם.
+                  final isNarrow = constraints.maxWidth < 400;
+                  if (isNarrow) {
+                    return Row(
+                      children: [
+                        logo,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              name,
+                              const SizedBox(height: 4),
+                              Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: phone,
+                              ),
+                            ],
+                          ),
+                        ),
+                        arrow,
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      logo,
+                      const SizedBox(width: 16),
+                      Expanded(child: name),
+                      phone,
+                      const SizedBox(width: 8),
+                      arrow,
+                    ],
+                  );
+                },
               ),
             ),
           ),

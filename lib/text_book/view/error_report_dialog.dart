@@ -1003,6 +1003,16 @@ class _TabbedReportDialogState extends State<TabbedReportDialog>
         mediaQuery.padding.top -
         mediaQuery.padding.bottom;
 
+    // במסך צר 0.6 * screenWidth קטן מהמינימום (400) ויוצר קונסטריינטים
+    // לא-נורמליזיים → BoxConstraints assertion crash (Sentry). מרחיבים את
+    // ה-maxWidth ל-95% במסך צר, וסוגרים את minWidth כך שלא יחרוג מ-maxWidth.
+    final screenWidth = mediaQuery.size.width;
+    final isNarrow = screenWidth < 600;
+    final maxWidth = isNarrow ? screenWidth * 0.95 : screenWidth * 0.6;
+    final minWidth = maxWidth < 400 ? maxWidth : 400.0;
+    final maxHeight = availableHeight * 0.7;
+    final minHeight = maxHeight < 400 ? maxHeight : 400.0;
+
     return Dialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -1010,10 +1020,10 @@ class _TabbedReportDialogState extends State<TabbedReportDialog>
       clipBehavior: Clip.antiAlias,
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          minWidth: 400,
-          maxWidth: mediaQuery.size.width * 0.6,
-          minHeight: 400,
-          maxHeight: availableHeight * 0.7,
+          minWidth: minWidth,
+          maxWidth: maxWidth,
+          minHeight: minHeight,
+          maxHeight: maxHeight,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
