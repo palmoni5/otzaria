@@ -76,6 +76,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:otzaria/theme/app_fonts.dart';
 import 'package:otzaria/widgets/misc/restart_widget.dart';
 import 'package:otzaria/core/splash_screen.dart';
+import 'package:otzaria/plugins/services/plugin_crash_guard.dart';
 import 'package:otzaria/plugins/services/plugin_packager_cli.dart';
 import 'package:otzaria/plugins/services/plugin_protocol_registration_service.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -514,6 +515,15 @@ Future<void> _initializeRestartableRuntime() async {
   }
 
   await initPluginDatabaseSources();
+
+  // טעינת רשימת ה-quarantine של תוספים שהקריסו את התוכנה בהפעלה הקודמת.
+  // חייב להיות זמין לפני שמסך "כלים" מנסה ליצור PluginTabPage.
+  try {
+    await PluginCrashGuard.ensureInitialized();
+  } catch (error, stackTrace) {
+    _logNonFatalInitializationError(
+        'Plugin crash guard initialization', error, stackTrace);
+  }
 
   try {
     if (await BackupService.shouldPerformAutoBackup()) {
