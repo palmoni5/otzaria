@@ -1022,7 +1022,20 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
                   },
                 );
 
-                return commentaryWidget;
+                if (notesWidget == null) {
+                  return commentaryWidget;
+                }
+
+                return Column(
+                  children: [
+                    Flexible(
+                      fit: FlexFit.loose,
+                      child: notesWidget,
+                    ),
+                    const Divider(height: 1),
+                    Expanded(child: commentaryWidget),
+                  ],
+                );
               },
             );
           }

@@ -1289,8 +1289,10 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
         for (final entry in chapter.children.asMap().entries) {
           final i = entry.key;
           final child = entry.value;
-          final preview = child.index < content.length
-              ? _getParaPreview(content[child.index])
+          final textFromContent =
+              child.index < content.length ? content[child.index] : '';
+          final preview = textFromContent.trim().isNotEmpty
+              ? _getParaPreview(textFromContent)
               : child.text;
           if (preview.isEmpty) continue;
           items.add(
@@ -1307,8 +1309,11 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
       final lineCount = _chapterLineCount(allChapters, chapter);
       for (int i = 0; i < lineCount; i++) {
         final lineIndex = chapter.index + i;
-        if (lineIndex >= content.length) break;
-        final preview = _getParaPreview(content[lineIndex]);
+        final textFromContent =
+            lineIndex < content.length ? content[lineIndex] : '';
+        final preview = textFromContent.trim().isNotEmpty
+            ? _getParaPreview(textFromContent)
+            : 'פסקה ${i + 1}';
         if (preview.isEmpty) continue;
         items.add(
           _TocListItem.subItem(
