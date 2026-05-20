@@ -9,6 +9,7 @@ import 'package:otzaria/tabs/models/text_tab.dart';
 import 'package:otzaria/utils/text/text_manipulation.dart' as utils;
 import 'package:otzaria/widgets/feedback/app_future_builder.dart';
 import 'package:otzaria/widgets/smart_text/smart_text.dart';
+import 'package:otzaria/search/utils/snippet_builder.dart';
 
 class CommentaryContent extends StatefulWidget {
   const CommentaryContent({
@@ -21,6 +22,7 @@ class CommentaryContent extends StatefulWidget {
     this.searchQuery = '',
     this.currentSearchIndex = 0,
     this.onSearchResultsCountChanged,
+    this.onSearchSnippetsChanged,
   });
   final bool removeNikud;
   final bool removePunctuation;
@@ -30,6 +32,7 @@ class CommentaryContent extends StatefulWidget {
   final String searchQuery;
   final int currentSearchIndex;
   final Function(int)? onSearchResultsCountChanged;
+  final Function(List<String>)? onSearchSnippetsChanged;
 
   @override
   State<CommentaryContent> createState() => _CommentaryContentState();
@@ -76,7 +79,7 @@ class _CommentaryContentState extends State<CommentaryContent> {
   Future<bool> _resolveRemoveNikud(SettingsState settingsState) {
     final title = utils.getTitleFromPath(widget.link.path2);
     final cacheKey =
-        '$title|${settingsState.defaultRemoveNikud}|${settingsState.removeNikudFromTanach}';
+        '$title|${settingsState.defaultRemoveNikud}|${settingsState.removeNikudFromTanach}|${widget.removeNikud}';
 
     if (_removeNikudFuture != null && _removeNikudCacheKey == cacheKey) {
       return _removeNikudFuture!;
@@ -85,7 +88,7 @@ class _CommentaryContentState extends State<CommentaryContent> {
     _removeNikudCacheKey = cacheKey;
     _removeNikudFuture = resolveRemoveNikudForBook(
       title: title,
-      defaultRemoveNikud: settingsState.defaultRemoveNikud,
+      defaultRemoveNikud: settingsState.defaultRemoveNikud || widget.removeNikud,
       removeNikudFromTanach: settingsState.removeNikudFromTanach,
     );
     return _removeNikudFuture!;
@@ -130,6 +133,21 @@ class _CommentaryContentState extends State<CommentaryContent> {
                           _countSearchMatches(textForCount, widget.searchQuery);
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         widget.onSearchResultsCountChanged?.call(searchCount);
+                        if (widget.onSearchSnippetsChanged != null &&
+                            searchCount > 0) {
+                          final plainText = utils.stripHtmlIfNeeded(textForCount);
+                          final excerpt = SnippetBuilder.buildExcerptText(
+                            fullText: plainText,
+                            query: widget.searchQuery,
+                            maxChars: 220,
+                            searchOptions: const {},
+                            alternativeWords: const {},
+                            spacingValues: const {},
+                            searchDistance: 0,
+                            fallbackToIndividualWords: true,
+                          );
+                          widget.onSearchSnippetsChanged!.call([excerpt]);
+                        }
                       });
                     }
 
@@ -142,7 +160,7 @@ class _CommentaryContentState extends State<CommentaryContent> {
                         replaceHolyNames: settingsState.replaceHolyNames,
                         searchText: widget.searchQuery,
                         currentSearchIndex: widget.currentSearchIndex,
-                        fontSize: settingsState.commentatorsFontSize,
+                        fontSize: widget.fontSize,
                         fontFamily: settingsState.commentatorsFontFamily,
                         lineHeight: settingsState.lineHeight,
                       ),

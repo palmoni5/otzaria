@@ -49,9 +49,18 @@ class Link {
     this.end,
   });
 
+  static final Map<String, Future<String>> _contentCache = {};
+
   /// Returns the content of the link as a [Future] of [String].
-  Future<String> get content =>
-      LibraryProviderManager.instance.getLinkContent(this);
+  /// The result is cached per (path2, index2) so repeated calls are instant.
+  Future<String> get content {
+    if (path2.isEmpty || index2 <= 0) {
+      return Future.value('שגיאה: קישור לא תקין');
+    }
+    final key = '$path2:$index2';
+    return _contentCache.putIfAbsent(
+        key, () => LibraryProviderManager.instance.getLinkContent(this));
+  }
 
   /// מחזירה כתובת תצוגה בטוחה גם כאשר לא ניתן לחשב TOC מלא.
   String get fallbackDisplayReference {

@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/models/books.dart';
@@ -8,11 +9,14 @@ import 'package:otzaria/text_book/bloc/text_book_bloc.dart';
 import 'package:otzaria/text_book/bloc/text_book_event.dart';
 import 'package:otzaria/text_book/bloc/text_book_state.dart';
 import 'package:otzaria/text_book/view/commentary_list_base.dart';
-import 'package:otzaria/widgets/text/rtl_text_field.dart';
 import 'package:otzaria/widgets/misc/commentators_filter_button.dart';
 import 'package:otzaria/settings/engine/settings_bloc.dart';
-import 'package:otzaria/widgets/smart_text/smart_text_widget.dart';
-import 'package:otzaria/widgets/smart_text/render_settings.dart';
+import 'package:otzaria/settings/engine/settings_state.dart';
+import 'package:otzaria/widgets/layout/adaptive_side_pane.dart';
+import 'package:otzaria/widgets/navigation/responsive_action_bar.dart';
+import 'package:otzaria/utils/text/text_manipulation.dart' as utils;
+import 'package:otzaria/search/utils/snippet_builder.dart';
+
 
 const _kAllChapter = -1;
 
@@ -30,21 +34,47 @@ class CommentatorsTabScreen extends StatefulWidget {
   State<CommentatorsTabScreen> createState() => _CommentatorsTabScreenState();
 }
 
-class _CommentatorsTabScreenState extends State<CommentatorsTabScreen> {
+class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
+    with TickerProviderStateMixin {
   TocEntry? _selectedChapter;
   int _selectedVerseIdx = _kAllChapter;
-  bool _previewExpanded = false;
 
-  final _searchController = TextEditingController();
-  final _totalResultsNotifier = ValueNotifier<int>(0);
-  final _currentIdxNotifier = ValueNotifier<int>(0);
   final _openFilterNotifier = ValueNotifier<int>(0);
-
   final _commentaryKey = GlobalKey<CommentaryListBaseState>();
+  bool _navPaneOpen = false;
+  bool _pinLeftPane = false;
+  // רשימת המפרשים הנבחרים (עצמאית לחלונית זו, מסונכרנת פעם אחת עם מקור הפתיחה)
+  List<String>? _selectedCommentatorsOverride;
+  bool _navPaneAutoCloseQueued = false;
+  final _commentarySearchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
+  final _tocSearchController = TextEditingController();
+  final _externalCurrentIndex = ValueNotifier<int>(0);
+  final _externalTotalResults = ValueNotifier<int>(0);
+  final _externalSearchResultsByPath = ValueNotifier<Map<String, int>>({});
+  final _externalSearchSnippets =
+      ValueNotifier<List<CommentarySearchSnippet>>([]);
+
+  late final TabController _navTabController;
 
   @override
   void initState() {
     super.initState();
+    _navTabController = TabController(length: 2, vsync: this);
+    _navTabController.addListener(() {
+      if (_navTabController.index == 1) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _searchFocusNode.requestFocus();
+        });
+      }
+    });
+    // סנכרון חד-פעמי של המפרשים הנבחרים עם חלונית המקור
+    final sourceState = widget.tab.sourceTab.bloc.state;
+    if (sourceState is TextBookLoaded &&
+        sourceState.activeCommentators.isNotEmpty) {
+      _selectedCommentatorsOverride =
+          List<String>.from(sourceState.activeCommentators);
+    }
     // טעינת הספר והמפרשים ב-BLoC העצמאי
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -60,9 +90,14 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen> {
 
   @override
   void dispose() {
-    _searchController.dispose();
-    _totalResultsNotifier.dispose();
-    _currentIdxNotifier.dispose();
+    _navTabController.dispose();
+    _commentarySearchController.dispose();
+    _searchFocusNode.dispose();
+    _tocSearchController.dispose();
+    _externalCurrentIndex.dispose();
+    _externalTotalResults.dispose();
+    _externalSearchResultsByPath.dispose();
+    _externalSearchSnippets.dispose();
     _openFilterNotifier.dispose();
     super.dispose();
   }
@@ -181,7 +216,6 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen> {
     setState(() {
       _selectedChapter = ch;
       _selectedVerseIdx = _kAllChapter;
-      _previewExpanded = false;
     });
     // טוען links לכל הפרק
     final ci = chapters.indexOf(ch);
@@ -203,20 +237,174 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen> {
       value: widget.tab.bloc,
       child: Builder(builder: (context) {
         return BlocConsumer<TextBookBloc, TextBookState>(
-          listenWhen: (_, __) => false, // BLoC עצמאי — לא עוקב אחרי שינויים חיצוניים
-          listener: (_, __) {},
+          listenWhen: (prev, curr) {
+            if (prev is! TextBookLoaded || curr is! TextBookLoaded) {
+              return false;
+            }
+            return prev.selectedIndex != curr.selectedIndex;
+          },
+          listener: (context, state) {
+            if (state is! TextBookLoaded) return;
+            if (_navTabController.index != 1) return;
+            final idx = state.selectedIndex;
+            if (idx == null) return;
+            final chapters = _getChapters(state.tableOfContents);
+            final pos = _findPos(chapters, idx);
+            if (pos.chapter != null) {
+              _onChapterSelected(pos.chapter!, chapters);
+            }
+          },
           buildWhen: (prev, curr) {
             if (prev is TextBookLoaded && curr is TextBookLoaded) {
               return prev.fontSize != curr.fontSize ||
                   prev.tableOfContents != curr.tableOfContents ||
                   prev.links != curr.links ||
-                  prev.availableCommentators != curr.availableCommentators;
+                  prev.availableCommentators != curr.availableCommentators ||
+                  prev.removeNikud != curr.removeNikud ||
+                  prev.removePunctuation != curr.removePunctuation;
             }
             return true;
           },
           builder: (context, state) {
+            final colorScheme = Theme.of(context).colorScheme;
+            final appBarDecoration = Border(
+              bottom: BorderSide(
+                color: colorScheme.outlineVariant,
+                width: 0.3,
+              ),
+            );
+
             if (state is! TextBookLoaded) {
-              return const Center(child: CircularProgressIndicator());
+              return Scaffold(
+                appBar: AppBar(
+                  backgroundColor: colorScheme.surfaceContainer,
+                  shape: appBarDecoration,
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  centerTitle: false,
+                  leading: const IconButton(
+                    icon: Icon(FluentIcons.navigation_24_regular, size: 20),
+                    tooltip: 'ניווט',
+                    onPressed: null,
+                  ),
+                  title: Text(
+                    'מפרשים על ${widget.tab.sourceTab.book.title}',
+                    style: const TextStyle(fontSize: 16),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  actions: [
+                    ResponsiveActionBar(
+                      overflowMenuOffset: const Offset(0, 8),
+                      maxVisibleButtons: 999,
+                      originalOrder: const [],
+                      actions: [
+                        ActionButtonData(
+                          widget: const IconButton(
+                            icon: Icon(FluentIcons.text_font_24_regular),
+                            tooltip: 'ניקוד',
+                            onPressed: null,
+                          ),
+                          icon: FluentIcons.text_font_24_regular,
+                          tooltip: 'ניקוד',
+                          onPressed: null,
+                        ),
+                        ActionButtonData(
+                          widget: const IconButton(
+                            icon: Icon(
+                                FluentIcons.text_clear_formatting_24_regular),
+                            tooltip: 'פיסוק',
+                            onPressed: null,
+                          ),
+                          icon: FluentIcons.text_clear_formatting_24_regular,
+                          tooltip: 'פיסוק',
+                          onPressed: null,
+                        ),
+                        ActionButtonData(
+                          widget: const IconButton(
+                            icon: Icon(FluentIcons.search_24_regular),
+                            tooltip: 'חיפוש',
+                            onPressed: null,
+                          ),
+                          icon: FluentIcons.search_24_regular,
+                          tooltip: 'חיפוש',
+                          onPressed: null,
+                        ),
+                        ActionButtonData(
+                          widget: const IconButton(
+                            icon: Icon(FluentIcons.filter_24_regular),
+                            tooltip: 'בחירת מפרשים',
+                            onPressed: null,
+                          ),
+                          icon: FluentIcons.filter_24_regular,
+                          tooltip: 'בחירת מפרשים',
+                          onPressed: null,
+                        ),
+                        ActionButtonData(
+                          widget: const IconButton(
+                            icon: Icon(FluentIcons.zoom_in_24_regular),
+                            tooltip: 'הגדל את גודל הטקסט',
+                            onPressed: null,
+                          ),
+                          icon: FluentIcons.zoom_in_24_regular,
+                          tooltip: 'הגדל את גודל הטקסט',
+                          onPressed: null,
+                        ),
+                        ActionButtonData(
+                          widget: const IconButton(
+                            icon: Icon(FluentIcons.zoom_out_24_regular),
+                            tooltip: 'הקטן את גודל הטקסט',
+                            onPressed: null,
+                          ),
+                          icon: FluentIcons.zoom_out_24_regular,
+                          tooltip: 'הקטן את גודל הטקסט',
+                          onPressed: null,
+                        ),
+                        ActionButtonData(
+                          widget: const IconButton(
+                            icon: Icon(FluentIcons.arrow_previous_24_filled),
+                            tooltip: 'הפרק הקודם',
+                            onPressed: null,
+                          ),
+                          icon: FluentIcons.arrow_previous_24_filled,
+                          tooltip: 'הפרק הקודם',
+                          onPressed: null,
+                        ),
+                        ActionButtonData(
+                          widget: const IconButton(
+                            icon: Icon(FluentIcons.chevron_left_24_regular),
+                            tooltip: 'הקטע הקודם',
+                            onPressed: null,
+                          ),
+                          icon: FluentIcons.chevron_left_24_regular,
+                          tooltip: 'הקטע הקודם',
+                          onPressed: null,
+                        ),
+                        ActionButtonData(
+                          widget: const IconButton(
+                            icon: Icon(FluentIcons.chevron_right_24_regular),
+                            tooltip: 'הקטע הבא',
+                            onPressed: null,
+                          ),
+                          icon: FluentIcons.chevron_right_24_regular,
+                          tooltip: 'הקטע הבא',
+                          onPressed: null,
+                        ),
+                        ActionButtonData(
+                          widget: const IconButton(
+                            icon: Icon(FluentIcons.arrow_next_24_filled),
+                            tooltip: 'הפרק הבא',
+                            onPressed: null,
+                          ),
+                          icon: FluentIcons.arrow_next_24_filled,
+                          tooltip: 'הפרק הבא',
+                          onPressed: null,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                body: const Center(child: CircularProgressIndicator()),
+              );
             }
 
             final chapters = _getChapters(state.tableOfContents);
@@ -268,39 +456,73 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen> {
             final effectiveIndexes =
                 _computeIndexes(chapters, _selectedChapter, _selectedVerseIdx);
 
-            final chapterLabel = _tocLabel(chapters, 'פרק');
-            final hasVerses =
-                _selectedChapter != null && _selectedChapter!.children.isNotEmpty;
-            final verseLabel = hasVerses
-                ? _tocLabel(_selectedChapter!.children, 'פסוק')
-                : 'פסוק';
-
-            return Column(
-              children: [
-                _buildHeader(
-                  context,
-                  state: state,
-                  chapters: chapters,
-                  chapterLabel: chapterLabel,
-                  verseLabel: verseLabel,
-                  hasVerses: hasVerses,
-                  effectiveIndexes: effectiveIndexes,
-                ),
-                Expanded(
-                  child: CommentaryListBase(
-                    key: _commentaryKey,
-                    openBookCallback: widget.openBookCallback,
-                    fontSize: state.fontSize,
-                    indexes: effectiveIndexes,
-                    showSearch: true,
-                    useAvailableCommentators: true,
-                    externalSearchController: _searchController,
-                    externalTotalResultsNotifier: _totalResultsNotifier,
-                    externalCurrentIndexNotifier: _currentIdxNotifier,
-                    openFilterNotifier: _openFilterNotifier,
+            return Scaffold(
+              appBar: _buildAppBar(context, state, chapters),
+              body: Stack(
+                children: [
+                  AdaptiveSidePane(
+                    isOpen: _navPaneOpen || _pinLeftPane,
+                    onClose: () {
+                      if (!_pinLeftPane) setState(() => _navPaneOpen = false);
+                    },
+                    alignment: AlignmentDirectional.centerEnd,
+                    paneWidth: 320,
+                    minMainContentWidth: 400,
+                    mainContent: NotificationListener<UserScrollNotification>(
+                      onNotification: (notification) {
+                        if (notification.direction != ScrollDirection.idle &&
+                            _navPaneOpen &&
+                            !_pinLeftPane &&
+                            !_navPaneAutoCloseQueued) {
+                          _navPaneAutoCloseQueued = true;
+                          Future.microtask(() {
+                            if (!mounted) {
+                              _navPaneAutoCloseQueued = false;
+                              return;
+                            }
+                            if (_navPaneOpen && !_pinLeftPane) {
+                              setState(() {
+                                _navPaneOpen = false;
+                                _navPaneAutoCloseQueued = false;
+                              });
+                            } else {
+                              _navPaneAutoCloseQueued = false;
+                            }
+                          });
+                        }
+                        return false;
+                      },
+                      child: CommentaryListBase(
+                        key: _commentaryKey,
+                        openBookCallback: widget.openBookCallback,
+                        fontSize: state.fontSize,
+                        indexes: effectiveIndexes,
+                        showSearch: true,
+                        useAvailableCommentators:
+                            _selectedCommentatorsOverride == null,
+                        selectedCommentatorsOverride:
+                            _selectedCommentatorsOverride,
+                        onSelectedCommentatorsOverrideChanged: (list) {
+                          setState(
+                              () => _selectedCommentatorsOverride = list);
+                        },
+                        openFilterNotifier: _openFilterNotifier,
+                        externalSearchController: _commentarySearchController,
+                        externalCurrentIndexNotifier: _externalCurrentIndex,
+                        externalTotalResultsNotifier: _externalTotalResults,
+                        externalSearchResultsByPathNotifier:
+                            _externalSearchResultsByPath,
+                        externalSearchSnippetsNotifier: _externalSearchSnippets,
+                      ),
+                    ),
+                    paneContent: _buildNavPanel(
+                      context,
+                      state: state,
+                      chapters: chapters,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             );
           },
         );
@@ -308,394 +530,882 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen> {
     );
   }
 
-  Widget _buildHeader(
+  void _selectVerseAndLoad(int verseIdx, List<TocEntry> chapters) {
+    setState(() => _selectedVerseIdx = verseIdx);
+    if (verseIdx == _kAllChapter) {
+      _onChapterSelected(_selectedChapter!, chapters);
+    } else if (_selectedChapter != null &&
+        verseIdx < _selectedChapter!.children.length) {
+      final verse = _selectedChapter!.children[verseIdx];
+      final int endIdx = (verseIdx + 1 < _selectedChapter!.children.length)
+          ? _selectedChapter!.children[verseIdx + 1].index - 1
+          : verse.index + 50;
+      final count = (endIdx - verse.index + 1).clamp(1, 200);
+      _triggerLinkLoad(List.generate(count, (j) => verse.index + j));
+    }
+  }
+
+  void _selectParaAndLoad(int paraIdx, List<TocEntry> chapters) {
+    setState(() => _selectedVerseIdx = paraIdx);
+    if (paraIdx == _kAllChapter) {
+      _onChapterSelected(_selectedChapter!, chapters);
+    } else if (_selectedChapter != null) {
+      _triggerLinkLoad([_selectedChapter!.index + paraIdx]);
+    }
+  }
+
+  // ── ניווט בין פרקים ────────────────────────────────────────────────────────
+
+  void _navigateToPrevChapter(List<TocEntry> chapters) {
+    if (_selectedChapter == null) return;
+    final ci = chapters.indexOf(_selectedChapter!);
+    if (ci > 0) _onChapterSelected(chapters[ci - 1], chapters);
+  }
+
+  void _navigateToNextChapter(List<TocEntry> chapters) {
+    if (_selectedChapter == null) return;
+    final ci = chapters.indexOf(_selectedChapter!);
+    if (ci >= 0 && ci + 1 < chapters.length) {
+      _onChapterSelected(chapters[ci + 1], chapters);
+    }
+  }
+
+  void _navigateToPrevVerse(List<TocEntry> chapters) {
+    final hasVerses = _selectedChapter?.children.isNotEmpty ?? false;
+    final listIdx = _selectedVerseIdx == _kAllChapter ? 0 : _selectedVerseIdx + 1;
+    if (listIdx <= 0) return;
+    final newIdx = listIdx - 1 == 0 ? _kAllChapter : listIdx - 2;
+    if (hasVerses) {
+      _selectVerseAndLoad(newIdx, chapters);
+    } else {
+      _selectParaAndLoad(newIdx, chapters);
+    }
+  }
+
+  void _navigateToNextVerse(List<TocEntry> chapters) {
+    final hasVerses = _selectedChapter?.children.isNotEmpty ?? false;
+    final verseCount = hasVerses
+        ? _selectedChapter!.children.length
+        : _chapterLineCount(chapters, _selectedChapter!);
+    final listIdx = _selectedVerseIdx == _kAllChapter ? 0 : _selectedVerseIdx + 1;
+    if (listIdx >= verseCount) return;
+    final newIdx = listIdx;
+    if (hasVerses) {
+      _selectVerseAndLoad(newIdx, chapters);
+    } else {
+      _selectParaAndLoad(newIdx, chapters);
+    }
+  }
+
+  // ── AppBar ─────────────────────────────────────────────────────────────────
+
+  PreferredSizeWidget _buildAppBar(
+    BuildContext context,
+    TextBookLoaded state,
+    List<TocEntry> chapters,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return AppBar(
+      backgroundColor: colorScheme.surfaceContainer,
+      shape: Border(
+        bottom: BorderSide(
+          color: colorScheme.outlineVariant,
+          width: 0.3,
+        ),
+      ),
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: false,
+      leading: IconButton(
+        icon: const Icon(FluentIcons.navigation_24_regular, size: 20),
+        tooltip: 'ניווט',
+        onPressed: () => setState(() => _navPaneOpen = !_navPaneOpen),
+      ),
+      title: Text(
+        'מפרשים על ${state.book.title}',
+        style: const TextStyle(fontSize: 16),
+        overflow: TextOverflow.ellipsis,
+      ),
+      actions: [
+        ResponsiveActionBar(
+          overflowMenuOffset: const Offset(0, 8),
+          maxVisibleButtons: 999,
+          actions: [
+            // ניקוד
+            ActionButtonData(
+              widget: IconButton(
+                icon: Icon(state.removeNikud
+                    ? FluentIcons.text_font_24_regular
+                    : FluentIcons.text_font_info_24_regular),
+                tooltip: state.removeNikud ? 'הצג ניקוד' : 'הסתר ניקוד',
+                onPressed: () => context
+                    .read<TextBookBloc>()
+                    .add(ToggleNikud(!state.removeNikud)),
+              ),
+              icon: state.removeNikud
+                  ? FluentIcons.text_font_24_regular
+                  : FluentIcons.text_font_info_24_regular,
+              tooltip: state.removeNikud ? 'הצג ניקוד' : 'הסתר ניקוד',
+              onPressed: () => context
+                  .read<TextBookBloc>()
+                  .add(ToggleNikud(!state.removeNikud)),
+            ),
+            // פיסוק (רק אם לא תנ"ך)
+            if (!state.isTanach)
+              ActionButtonData(
+                widget: IconButton(
+                  icon: Icon(state.removePunctuation
+                      ? FluentIcons.text_quote_24_regular
+                      : FluentIcons.text_clear_formatting_24_regular),
+                  tooltip:
+                      state.removePunctuation ? 'הצג פיסוק' : 'הסתר פיסוק',
+                  onPressed: () => context
+                      .read<TextBookBloc>()
+                      .add(TogglePunctuation(!state.removePunctuation)),
+                ),
+                icon: state.removePunctuation
+                    ? FluentIcons.text_quote_24_regular
+                    : FluentIcons.text_clear_formatting_24_regular,
+                tooltip:
+                    state.removePunctuation ? 'הצג פיסוק' : 'הסתר פיסוק',
+                onPressed: () => context
+                    .read<TextBookBloc>()
+                    .add(TogglePunctuation(!state.removePunctuation)),
+              ),
+            // חיפוש
+            ActionButtonData(
+              widget: IconButton(
+                icon: const Icon(FluentIcons.search_24_regular),
+                tooltip: 'חיפוש',
+                onPressed: () => setState(() => _navPaneOpen = false),
+              ),
+              icon: FluentIcons.search_24_regular,
+              tooltip: 'חיפוש',
+              onPressed: () => setState(() => _navPaneOpen = false),
+            ),
+            // בחירת מפרשים
+            ActionButtonData(
+              widget: CommentatorsFilterButton(
+                isActive: false,
+                onPressed: () => _openFilterNotifier.value++,
+              ),
+              icon: FluentIcons.apps_list_24_regular,
+              tooltip: 'בחירת מפרשים',
+              onPressed: () => _openFilterNotifier.value++,
+            ),
+            // הגדל טקסט
+            ActionButtonData(
+              widget: IconButton(
+                icon: const Icon(FluentIcons.zoom_in_24_regular),
+                tooltip: 'הגדל את גודל הטקסט',
+                onPressed: () => context
+                    .read<TextBookBloc>()
+                    .add(UpdateFontSize((state.fontSize + 3).clamp(15, 50))),
+              ),
+              icon: FluentIcons.zoom_in_24_regular,
+              tooltip: 'הגדל את גודל הטקסט',
+              onPressed: () => context
+                  .read<TextBookBloc>()
+                  .add(UpdateFontSize((state.fontSize + 3).clamp(15, 50))),
+            ),
+            // הקטן טקסט
+            ActionButtonData(
+              widget: IconButton(
+                icon: const Icon(FluentIcons.zoom_out_24_regular),
+                tooltip: 'הקטן את גודל הטקסט',
+                onPressed: () => context
+                    .read<TextBookBloc>()
+                    .add(UpdateFontSize((state.fontSize - 3).clamp(15, 50))),
+              ),
+              icon: FluentIcons.zoom_out_24_regular,
+              tooltip: 'הקטן את גודל הטקסט',
+              onPressed: () => context
+                  .read<TextBookBloc>()
+                  .add(UpdateFontSize((state.fontSize - 3).clamp(15, 50))),
+            ),
+            // פרק קודם
+            ActionButtonData(
+              widget: IconButton(
+                icon: const Icon(FluentIcons.arrow_previous_24_filled),
+                tooltip: 'הפרק הקודם',
+                onPressed: () => _navigateToPrevChapter(chapters),
+              ),
+              icon: FluentIcons.arrow_previous_24_filled,
+              tooltip: 'הפרק הקודם',
+              onPressed: () => _navigateToPrevChapter(chapters),
+            ),
+            // קטע קודם
+            ActionButtonData(
+              widget: IconButton(
+                icon: const Icon(FluentIcons.chevron_left_24_regular),
+                tooltip: 'הקטע הקודם',
+                onPressed: () => _navigateToPrevVerse(chapters),
+              ),
+              icon: FluentIcons.chevron_left_24_regular,
+              tooltip: 'הקטע הקודם',
+              onPressed: () => _navigateToPrevVerse(chapters),
+            ),
+            // קטע הבא
+            ActionButtonData(
+              widget: IconButton(
+                icon: const Icon(FluentIcons.chevron_right_24_regular),
+                tooltip: 'הקטע הבא',
+                onPressed: () => _navigateToNextVerse(chapters),
+              ),
+              icon: FluentIcons.chevron_right_24_regular,
+              tooltip: 'הקטע הבא',
+              onPressed: () => _navigateToNextVerse(chapters),
+            ),
+            // פרק הבא
+            ActionButtonData(
+              widget: IconButton(
+                icon: const Icon(FluentIcons.arrow_next_24_filled),
+                tooltip: 'הפרק הבא',
+                onPressed: () => _navigateToNextChapter(chapters),
+              ),
+              icon: FluentIcons.arrow_next_24_filled,
+              tooltip: 'הפרק הבא',
+              onPressed: () => _navigateToNextChapter(chapters),
+            ),
+          ],
+          alwaysInMenu: [
+            ActionButtonData(
+              widget: IconButton(
+                icon: const Icon(FluentIcons.bookmark_add_24_regular),
+                tooltip: 'הוסף סימניה',
+                onPressed: () {},
+              ),
+              icon: FluentIcons.bookmark_add_24_regular,
+              tooltip: 'הוסף סימניה',
+              onPressed: () {},
+            ),
+            ActionButtonData(
+              widget: IconButton(
+                icon: const Icon(FluentIcons.note_24_regular),
+                tooltip: 'הצג הערות אישיות',
+                onPressed: () {},
+              ),
+              icon: FluentIcons.note_24_regular,
+              tooltip: 'הצג הערות אישיות',
+              onPressed: () {},
+            ),
+            ActionButtonData(
+              widget: IconButton(
+                icon: const Icon(FluentIcons.print_24_regular),
+                tooltip: 'הדפסה',
+                onPressed: () {},
+              ),
+              icon: FluentIcons.print_24_regular,
+              tooltip: 'הדפסה',
+              onPressed: () {},
+            ),
+            ActionButtonData(
+              widget: IconButton(
+                icon: const Icon(FluentIcons.info_24_regular),
+                tooltip: 'אודות הספר',
+                onPressed: () {},
+              ),
+              icon: FluentIcons.info_24_regular,
+              tooltip: 'אודות הספר',
+              onPressed: () {},
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ── פאנל ניווט (paneContent) ───────────────────────────────────────────────
+
+  Widget _buildNavPanel(
     BuildContext context, {
     required TextBookLoaded state,
     required List<TocEntry> chapters,
-    required String chapterLabel,
-    required String verseLabel,
-    required bool hasVerses,
-    required List<int>? effectiveIndexes,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    // אוסף שורות תוכן עבור האינדקסים הנבחרים
-    final previewLines = effectiveIndexes == null
-        ? const <String>[]
-        : effectiveIndexes
-            .where((i) => i >= 0 && i < state.content.length)
-            .map((i) => state.content[i].trim())
-            .where((l) => l.isNotEmpty)
-            .toList();
-
-    final hasPreview = previewLines.isNotEmpty;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
-      ),
-      padding: const EdgeInsetsDirectional.only(start: 8, end: 8, top: 6, bottom: 6),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // שורה 1: שם ספר
-          Row(
-            children: [
-              const Icon(FluentIcons.book_24_regular, size: 16),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'מפרשים | ${state.book.title}',
-                  style: Theme.of(context).textTheme.titleSmall,
-                  overflow: TextOverflow.ellipsis,
+    return Column(
+      children: [
+        // ─── כותרת TabBar (זהה לטאב הטקסט) ─────────────────────────
+        SizedBox(
+          height: 44,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).dividerColor,
+                  width: 1,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          // שורה 2: כל הפקדים באותה שורה עם Flexible
-          Row(
-            children: [
-              // Dropdown פרק
-              if (chapters.isNotEmpty)
-                Flexible(
-                  flex: 3,
-                  child: _CompactDropdown<int>(
-                    items: List.generate(chapters.length, (i) => i),
-                    labelOf: (i) => chapters[i].text,
-                    selected: _selectedChapter == null
-                        ? null
-                        : () {
-                            final i = chapters.indexOf(_selectedChapter!);
-                            return i >= 0 ? i : null;
-                          }(),
-                    hint: chapterLabel,
-                    onChanged: (i) {
-                      if (i != null) {
-                        setState(() {
-                          _selectedChapter = chapters[i];
-                          _selectedVerseIdx = _kAllChapter;
-                        });
-                        _onChapterSelected(chapters[i], chapters);
-                      }
-                    },
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TabBar(
+                    controller: _navTabController,
+                    tabs: const [
+                      Tab(
+                        icon: Icon(FluentIcons.navigation_24_regular, size: 16),
+                        iconMargin: EdgeInsets.only(bottom: 1),
+                        height: 44,
+                        child: Text('ניווט', style: TextStyle(fontSize: 11)),
+                      ),
+                      Tab(
+                        icon: Icon(FluentIcons.search_24_regular, size: 16),
+                        iconMargin: EdgeInsets.only(bottom: 1),
+                        height: 44,
+                        child: Text('חיפוש', style: TextStyle(fontSize: 11)),
+                      ),
+                    ],
+                    labelColor: colorScheme.primary,
+                    unselectedLabelColor:
+                        colorScheme.onSurface.withValues(alpha: 0.6),
+                    indicatorColor: colorScheme.primary,
+                    dividerColor: Colors.transparent,
+                    splashBorderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              // Dropdown פסוק
-              if (hasVerses) ...[
-                const SizedBox(width: 4),
-                Flexible(
-                  flex: 3,
-                  child: _CompactDropdown<int>(
-                    items: [
-                      _kAllChapter,
-                      ...List.generate(_selectedChapter!.children.length, (i) => i)
-                    ],
-                    labelOf: (i) => i == _kAllChapter
-                        ? 'כל ה$chapterLabel'
-                        : _selectedChapter!.children[i].text,
-                    selected: _selectedVerseIdx,
-                    hint: verseLabel,
-                    onChanged: (i) {
-                      if (i != null) {
-                        setState(() {
-                          _selectedVerseIdx = i;
-                          _previewExpanded = false;
-                        });
-                        if (i == _kAllChapter) {
-                          _onChapterSelected(_selectedChapter!, chapters);
-                        } else if (i < _selectedChapter!.children.length) {
-                          final verse = _selectedChapter!.children[i];
-                          final int endIdx;
-                          if (i + 1 < _selectedChapter!.children.length) {
-                            endIdx = _selectedChapter!.children[i + 1].index - 1;
-                          } else {
-                            endIdx = verse.index + 50;
-                          }
-                          final count = (endIdx - verse.index + 1).clamp(1, 200);
-                          _triggerLinkLoad(
-                              List.generate(count, (j) => verse.index + j));
-                        }
-                      }
-                    },
+                IconButton(
+                  onPressed: () => setState(() => _pinLeftPane = !_pinLeftPane),
+                  icon: AnimatedRotation(
+                    turns: _pinLeftPane ? -0.125 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      _pinLeftPane
+                          ? FluentIcons.pin_24_filled
+                          : FluentIcons.pin_24_regular,
+                    ),
                   ),
+                  color: _pinLeftPane ? colorScheme.primary : null,
+                  tooltip: _pinLeftPane ? 'בטל נעיצה' : 'נעץ את הפאנל',
                 ),
               ],
-              // Dropdown שורה/פסקה (לספרים ללא מבנה פסוק ב-TOC)
-              if (!hasVerses && _selectedChapter != null) ...() {
-                final lineCount =
-                    _chapterLineCount(chapters, _selectedChapter!);
-                if (lineCount <= 1) return const <Widget>[];
-                return [
-                  const SizedBox(width: 4),
-                  Flexible(
-                    flex: 3,
-                    child: _CompactDropdown<int>(
-                      items: [
-                        _kAllChapter,
-                        ...List.generate(lineCount, (i) => i),
-                      ],
-                      labelOf: (i) =>
-                          i == _kAllChapter ? 'כל ה$chapterLabel' : 'פסקה ${i + 1}',
-                      selected: _selectedVerseIdx,
-                      hint: 'פסקה',
-                      onChanged: (i) {
-                        if (i != null) {
-                          setState(() {
-                            _selectedVerseIdx = i;
-                            _previewExpanded = false;
-                          });
-                          if (i == _kAllChapter) {
-                            _onChapterSelected(_selectedChapter!, chapters);
-                          } else {
-                            _triggerLinkLoad([_selectedChapter!.index + i]);
-                          }
-                        }
-                      },
-                    ),
-                  ),
-                ];
-              }(),
-              const SizedBox(width: 4),
-              // כפתור בחירת מפרשים
-              CommentatorsFilterButton(
-                isActive: false,
-                onPressed: () => _openFilterNotifier.value++,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                iconSize: 18,
-              ),
-              const SizedBox(width: 4),
-              // שדה חיפוש — באותה שורה
-              Flexible(
-                flex: 4,
-                child: ValueListenableBuilder<int>(
-                  valueListenable: _totalResultsNotifier,
-                  builder: (context, total, _) {
-                    return ValueListenableBuilder<int>(
-                      valueListenable: _currentIdxNotifier,
-                      builder: (context, currentIdx, _) {
-                        return RtlTextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            hintText: 'חיפוש...',
-                            prefixIcon: const Icon(
-                                FluentIcons.search_24_regular, size: 16),
-                            suffixIcon: _searchController.text.isNotEmpty
-                                ? Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (total > 1) ...[
-                                        Text('${currentIdx + 1}/$total',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodySmall),
-                                        IconButton(
-                                          icon: const Icon(
-                                              FluentIcons
-                                                  .chevron_up_24_regular,
-                                              size: 16),
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(
-                                              minWidth: 24, minHeight: 24),
-                                          onPressed: currentIdx > 0
-                                              ? () => _commentaryKey
-                                                  .currentState
-                                                  ?.navigateSearchPrev()
-                                              : null,
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(
-                                              FluentIcons
-                                                  .chevron_down_24_regular,
-                                              size: 16),
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(
-                                              minWidth: 24, minHeight: 24),
-                                          onPressed: currentIdx < total - 1
-                                              ? () => _commentaryKey
-                                                  .currentState
-                                                  ?.navigateSearchNext()
-                                              : null,
-                                        ),
-                                      ],
-                                      IconButton(
-                                        icon: const Icon(
-                                            FluentIcons.dismiss_24_regular,
-                                            size: 16),
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(
-                                            minWidth: 24, minHeight: 24),
-                                        onPressed: () {
-                                          _searchController.clear();
-                                          setState(() {});
-                                        },
-                                      ),
-                                    ],
-                                  )
-                                : null,
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 6),
-                            border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8.0)),
-                          ),
-                          onChanged: (_) => setState(() {}),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
+            ),
+          ),
+        ),
+        // ─── תוכן TabBarView ──────────────────────────────────────────
+        Expanded(
+          child: TabBarView(
+            controller: _navTabController,
+            children: [
+              _buildTocList(context, chapters: chapters, content: state.content),
+              _buildCommentarySearchPanel(context),
             ],
           ),
-          // שורה 3: תצוגת הטקסט (expandable, inline)
-          if (hasPreview) ...[
-            const SizedBox(height: 4),
-            LayoutBuilder(builder: (context, constraints) {
-              final plainText = previewLines.first
-                  .replaceAll(RegExp(r'<[^>]*>'), '')
-                  .replaceAll('&nbsp;', ' ')
-                  .trim();
-              final textStyle =
-                  Theme.of(context).textTheme.bodySmall ?? const TextStyle();
-              // בדיקה אם הטקסט גולש — אם כן, מציגים חץ הרחבה
-              final tp = TextPainter(
-                text: TextSpan(text: plainText, style: textStyle),
-                maxLines: 1,
-                textDirection: TextDirection.rtl,
-              )..layout(maxWidth: constraints.maxWidth - 24);
-              final overflows = tp.didExceedMaxLines || previewLines.length > 1;
+        ),
+      ],
+    );
+  }
 
-              return GestureDetector(
-                onTap: overflows
-                    ? () => setState(
-                        () => _previewExpanded = !_previewExpanded)
-                    : null,
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface,
-                    borderRadius: BorderRadius.circular(8),
-                    border:
-                        Border.all(color: colorScheme.outlineVariant),
-                  ),
-                  clipBehavior: Clip.hardEdge,
-                  child: AnimatedSize(
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeInOut,
-                    child: _previewExpanded
-                        ? ConstrainedBox(
-                            constraints:
-                                const BoxConstraints(maxHeight: 160),
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.all(8),
-                              child: SmartTextWidget(
-                                text: previewLines.join('\n'),
-                                settings: RenderSettings(
-                                  removeNikud: state.removeNikud,
-                                  fontSize: state.fontSize * 0.82,
-                                  lineHeight: 1.6,
-                                ),
-                              ),
-                            ),
-                          )
-                        : Column(
+  // ── פאנל חיפוש ────────────────────────────────────────────────────────────
+
+  Widget _buildCommentarySearchPanel(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _commentarySearchController,
+            builder: (_, val, __) => ValueListenableBuilder<int>(
+              valueListenable: _externalTotalResults,
+              builder: (_, total, __) => ValueListenableBuilder<int>(
+                valueListenable: _externalCurrentIndex,
+                builder: (_, current, __) => TextField(
+                  controller: _commentarySearchController,
+                  focusNode: _searchFocusNode,
+                  textDirection: TextDirection.rtl,
+                  decoration: InputDecoration(
+                    hintText: 'חפש בתוך המפרשים המוצגים...',
+                    prefixIcon: const Icon(FluentIcons.search_24_regular),
+                    suffixIcon: val.text.isNotEmpty
+                        ? Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Padding(
-                                padding: const EdgeInsetsDirectional.only(
-                                    start: 8, end: 8, top: 5, bottom: 5),
-                                child: Text(
-                                  plainText,
-                                  style: textStyle,
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
+                              if (total > 0) ...[
+                                Text(
+                                  '${current + 1}/$total',
+                                  style: Theme.of(context).textTheme.bodySmall,
                                 ),
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  icon: const Icon(
+                                      FluentIcons.chevron_up_24_regular),
+                                  iconSize: 20,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                      minWidth: 24, minHeight: 24),
+                                  onPressed: current > 0
+                                      ? () => _commentaryKey.currentState
+                                          ?.navigateSearchPrev()
+                                      : null,
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                      FluentIcons.chevron_down_24_regular),
+                                  iconSize: 20,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                      minWidth: 24, minHeight: 24),
+                                  onPressed: current < total - 1
+                                      ? () => _commentaryKey.currentState
+                                          ?.navigateSearchNext()
+                                      : null,
+                                ),
+                              ],
+                              IconButton(
+                                icon: const Icon(
+                                    FluentIcons.dismiss_24_regular),
+                                iconSize: 20,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                    minWidth: 24, minHeight: 24),
+                                onPressed: () =>
+                                    _commentarySearchController.clear(),
                               ),
-                              // חץ הרחבה — רק אם הטקסט גולש
-                              if (overflows)
-                                Icon(
-                                  FluentIcons.chevron_down_24_regular,
-                                  size: 10,
-                                  color: colorScheme.onSurface
-                                      .withValues(alpha: 0.4),
-                                ),
-                              if (overflows) const SizedBox(height: 2),
                             ],
-                          ),
+                          )
+                        : null,
+                    isDense: true,
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 8, horizontal: 12),
                   ),
                 ),
+              ),
+            ),
+          ),
+        ),
+        // רשימת תוצאות עם קטעי טקסט, מקובצת לפי מפרש
+        Expanded(
+          child: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _commentarySearchController,
+            builder: (_, val, __) {
+              if (val.text.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              return ValueListenableBuilder<List<CommentarySearchSnippet>>(
+                valueListenable: _externalSearchSnippets,
+                builder: (_, snippets, __) {
+                  if (snippets.isEmpty) {
+                    return ValueListenableBuilder<int>(
+                      valueListenable: _externalTotalResults,
+                      builder: (_, total, __) => Center(
+                        child: Text(
+                          total == 0 ? 'אין תוצאות' : 'טוען תוצאות...',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    );
+                  }
+
+                  // בניית רשימה מקובצת עם כותרות מפרשים
+                  final List<_SearchResultItem> items = [];
+                  String? lastPath;
+                  for (final snippet in snippets) {
+                    if (snippet.path != lastPath) {
+                      items.add(_SearchResultItem.header(
+                          utils.getTitleFromPath(snippet.path)));
+                      lastPath = snippet.path;
+                    }
+                    items.add(_SearchResultItem.result(snippet));
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(8),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      if (item.isHeader) {
+                        return Padding(
+                          padding: const EdgeInsets.only(
+                              top: 8, bottom: 4, right: 4, left: 4),
+                          child: Row(
+                            children: [
+                              Icon(
+                                FluentIcons.text_align_right_24_regular,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  item.header!,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      final snippet = item.snippet!;
+                      return ValueListenableBuilder<int>(
+                        valueListenable: _externalCurrentIndex,
+                        builder: (_, currentIdx, __) {
+                          final isSelected =
+                              snippet.globalIndex == currentIdx &&
+                                  val.text.isNotEmpty;
+                          return BlocBuilder<SettingsBloc, SettingsState>(
+                            builder: (context, settingsState) {
+                              final highlightedSpans =
+                                  SnippetBuilder.buildHighlightSpans(
+                                plainText: snippet.snippet,
+                                query: val.text,
+                                defaultStyle: TextStyle(
+                                  fontSize: 14,
+                                  fontFamily:
+                                      settingsState.commentatorsFontFamily,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface,
+                                  height: 1.5,
+                                ),
+                                highlightStyle: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Color(0xFFD32F2F),
+                                ),
+                                searchOptions: const {},
+                                alternativeWords: const {},
+                                searchDistance: 0,
+                                spacingValues: const {},
+                                fallbackToIndividualWords: true,
+                              );
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 6),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Theme.of(context)
+                                          .colorScheme
+                                          .primaryContainer
+                                          .withValues(alpha: 0.35)
+                                      : null,
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? Theme.of(context)
+                                            .colorScheme
+                                            .primary
+                                        : Theme.of(context)
+                                            .colorScheme
+                                            .outline
+                                            .withValues(alpha: 0.3),
+                                    width: 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: InkWell(
+                                  onTap: () => _commentaryKey.currentState
+                                      ?.navigateToGlobalIndex(
+                                          snippet.globalIndex),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(10),
+                                    child: Text.rich(
+                                      TextSpan(children: highlightedSpans),
+                                      textDirection: TextDirection.rtl,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
               );
-            }),
-          ],
-        ],
-      ),
+            },
+          ),
+        ),
+      ],
     );
   }
 
-  String _tocLabel(List<TocEntry> entries, String fallback) {
-    if (entries.isEmpty) return fallback;
-    final text = entries.first.text.trim();
-    // רק המילה הראשונה — למשל "דף א" → "דף", "פרק ב" → "פרק"
-    final match = RegExp(r'^([\u05d0-\u05ea]+)').firstMatch(text);
-    final base = match?.group(1)?.trim() ?? '';
-    return base.isNotEmpty ? base : fallback;
-  }
-}
+  // ── רשימת פרקים (לשונית ניווט) ────────────────────────────────────────────
 
-class _CompactDropdown<T> extends StatelessWidget {
-  final List<T> items;
-  final String Function(T) labelOf;
-  final T? selected;
-  final String hint;
-  final ValueChanged<T?> onChanged;
-
-  const _CompactDropdown({
-    required this.items,
-    required this.labelOf,
-    required this.selected,
-    required this.hint,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildTocList(
+    BuildContext context, {
+    required List<TocEntry> chapters,
+    required List<String> content,
+  }) {
+    if (chapters.isEmpty) {
+      return const Center(child: Text('אין תוכן עניינים'));
+    }
     final colorScheme = Theme.of(context).colorScheme;
-    return DropdownButtonHideUnderline(
-      child: Container(
-        height: 30,
-        padding: const EdgeInsetsDirectional.only(start: 8, end: 2),
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: colorScheme.outlineVariant),
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _tocSearchController,
+            builder: (_, val, __) => TextField(
+              controller: _tocSearchController,
+              textDirection: TextDirection.rtl,
+              decoration: InputDecoration(
+                hintText: 'איתור כותרת...',
+                prefixIcon: const Icon(FluentIcons.search_24_regular),
+                suffixIcon: val.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(FluentIcons.dismiss_24_regular),
+                        onPressed: () => _tocSearchController.clear(),
+                      )
+                    : null,
+                isDense: true,
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              ),
+            ),
+          ),
         ),
-        child: DropdownButton<T>(
-          isExpanded: true,
-          value: selected,
-          hint: Text(hint,
-              style: Theme.of(context).textTheme.bodySmall,
-              overflow: TextOverflow.ellipsis),
-          items: items
-              .map((item) => DropdownMenuItem<T>(
-                    value: item,
-                    child: Text(
-                      labelOf(item),
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
+        Expanded(
+          child: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _tocSearchController,
+            builder: (context, val, _) {
+              final query = val.text;
+              final filteredChapters = query.isEmpty
+                  ? chapters
+                  : chapters.where((ch) => ch.text.contains(query)).toList();
+              return ListView.builder(
+                itemCount: filteredChapters.length,
+            itemBuilder: (context, index) {
+              final ch = filteredChapters[index];
+              final isSelected = ch == _selectedChapter;
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: () {
+                      if (isSelected) {
+                        // לחיצה חוזרת — סגירת תת-הרשימה
+                        setState(() => _selectedChapter = null);
+                      } else {
+                        setState(() {
+                          _selectedChapter = ch;
+                          _selectedVerseIdx = _kAllChapter;
+                        });
+                        _onChapterSelected(ch, chapters);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? colorScheme.primaryContainer
+                                .withValues(alpha: 0.3)
+                            : null,
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Theme.of(context).dividerColor,
+                            width: 0.5,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            FluentIcons.text_bullet_list_24_regular,
+                            color: isSelected
+                                ? colorScheme.primary
+                                : colorScheme.secondary,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              ch.text,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                                color: isSelected ? colorScheme.primary : null,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isSelected)
+                            Icon(Icons.expand_less,
+                                size: 16, color: colorScheme.primary)
+                          else
+                            Icon(Icons.expand_more,
+                                size: 16,
+                                color: colorScheme.onSurface
+                                    .withValues(alpha: 0.4)),
+                        ],
+                      ),
                     ),
-                  ))
-              .toList(),
-          onChanged: onChanged,
-          style: Theme.of(context).textTheme.bodySmall,
-          icon: const Icon(FluentIcons.chevron_down_24_regular, size: 16),
-          isDense: true,
+                  ),
+                  if (isSelected)
+                    _buildParagraphSubList(context,
+                        chapter: ch, chapters: chapters, content: content),
+                ],
+              );
+            },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// מחזיר תצוגה מקדימה של ~4 מילים ראשונות של הפסקה
+  String _getParaPreview(String rawText) {
+    final plain = utils
+        .stripHtmlIfNeeded(rawText)
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (plain.isEmpty) return '';
+    const maxChars = 40;
+    if (plain.length <= maxChars) return plain;
+    final lastSpace = plain.lastIndexOf(' ', maxChars);
+    final cut = lastSpace > 0 ? lastSpace : maxChars;
+    return '${plain.substring(0, cut)}...';
+  }
+
+  /// בונה תת-רשימה של פסקאות עבור פרק נבחר
+  Widget _buildParagraphSubList(
+    BuildContext context, {
+    required TocEntry chapter,
+    required List<TocEntry> chapters,
+    required List<String> content,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasVerseChildren = chapter.children.isNotEmpty;
+
+    // פריט "כל הפרק"
+    Widget allChapterTile = _buildSubItem(
+      context,
+      text: 'כל הפרק',
+      isSelected: _selectedVerseIdx == _kAllChapter,
+      onTap: () {
+        setState(() => _selectedVerseIdx = _kAllChapter);
+        _onChapterSelected(chapter, chapters);
+      },
+      colorScheme: colorScheme,
+      isAllChapter: true,
+    );
+
+    if (hasVerseChildren) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          allChapterTile,
+          ...chapter.children.asMap().entries.map((entry) {
+            final i = entry.key;
+            final child = entry.value;
+            final preview = child.index < content.length
+                ? _getParaPreview(content[child.index])
+                : child.text;
+            if (preview.isEmpty) return const SizedBox.shrink();
+            return _buildSubItem(
+              context,
+              text: preview,
+              isSelected: _selectedVerseIdx == i,
+              onTap: () => _selectVerseAndLoad(i, chapters),
+              colorScheme: colorScheme,
+            );
+          }),
+        ],
+      );
+    } else {
+      // ספר לא-פסוקי: שורות הפרק
+      final lineCount = _chapterLineCount(chapters, chapter);
+      final subItems = <Widget>[allChapterTile];
+      for (int i = 0; i < lineCount; i++) {
+        final lineIndex = chapter.index + i;
+        if (lineIndex >= content.length) break;
+        final preview = _getParaPreview(content[lineIndex]);
+        if (preview.isEmpty) continue;
+        subItems.add(_buildSubItem(
+          context,
+          text: preview,
+          isSelected: _selectedVerseIdx == i,
+          onTap: () => _selectParaAndLoad(i, chapters),
+          colorScheme: colorScheme,
+        ));
+      }
+      return Column(mainAxisSize: MainAxisSize.min, children: subItems);
+    }
+  }
+
+  Widget _buildSubItem(
+    BuildContext context, {
+    required String text,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required ColorScheme colorScheme,
+    bool isAllChapter = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding:
+            const EdgeInsets.only(right: 36, left: 12, top: 6, bottom: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? colorScheme.primaryContainer.withValues(alpha: 0.5)
+              : colorScheme.surfaceContainerLow.withValues(alpha: 0.4),
+          border: Border(
+            bottom: BorderSide(
+              color: Theme.of(context).dividerColor,
+              width: 0.3,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isAllChapter
+                  ? Icons.menu_book_outlined
+                  : Icons.short_text,
+              color: isSelected ? colorScheme.primary : colorScheme.outline,
+              size: 14,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isSelected
+                      ? colorScheme.primary
+                      : colorScheme.onSurface.withValues(alpha: 0.7),
+                  fontWeight:
+                      isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                textDirection: TextDirection.rtl,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
+/// פריט עזר לרשימת תוצאות חיפוש מקובצת (כותרת או תוצאה)
+class _SearchResultItem {
+  final String? header;
+  final CommentarySearchSnippet? snippet;
+
+  const _SearchResultItem.header(this.header) : snippet = null;
+  const _SearchResultItem.result(this.snippet) : header = null;
+
+  bool get isHeader => header != null;
+}
