@@ -154,7 +154,14 @@ class PluginToolDescriptor extends ToolDescriptor {
 
   @override
   Widget buildPage(BuildContext context) => PluginTabPage(
-        key: ValueKey(plugin.pluginId),
+        // ה-key כולל גם את `version` ו-`updatedAt` כדי שעדכון של התוסף יאלץ
+        // יצירה מחדש של ה-State. ל-PluginTabPage יש לוגיקה ב-initState
+        // שתלויה ב-plugin (resolvedRootPath, bridge, adapter) — בלי הרחבת
+        // ה-key Flutter היה משתמש שוב ב-State הישן עם הנתיב הישן.
+        key: ValueKey(
+          'plugin-tab-${plugin.pluginId}-${plugin.version}-'
+          '${plugin.updatedAt.millisecondsSinceEpoch}',
+        ),
         plugin: plugin,
       );
 
@@ -216,6 +223,13 @@ class ToolsScreenState extends State<ToolsScreen>
   bool _showMobileMenu = true;
   InstalledPlugin? _transientPlugin;
   bool _didInitFromBloc = false;
+
+  /// toolId-ים שכבר הוצגו פעם אחת לפחות. בדסקטופ ה-IndexedStack בונה את
+  /// הילדים שלו עצלן: רק כלים שמופיעים פה נבנים בפועל, השאר נשארים
+  /// SizedBox.shrink(). זה מונע יצירה מקבילית של כל ה-WebViews של תוספים
+  /// כשהמשתמש נכנס למסך "כלים", ומקטין את החשיפה לבאגים native של
+  /// flutter_inappwebview_windows בעת אתחול מרובה.
+  final Set<String> _activatedToolIds = {};
   // מונע rebuild מרובה של הטאבים כאשר הזהות המלאה של הלשוניות לא השתנתה
   String _lastDescriptorsSignature = '';
 
@@ -395,6 +409,11 @@ class ToolsScreenState extends State<ToolsScreen>
 
   void _setSelectedToolId(String? id) {
     _selectedToolId = id;
+    if (id != null) {
+      // מסמנים את הכלי כ"הופעל" כדי שה-IndexedStack בדסקטופ יבנה אותו
+      // ויחזיק אותו בחיים מכאן והלאה.
+      _activatedToolIds.add(id);
+    }
     setActiveToolIdSafely(id, isMounted: () => mounted);
   }
 
@@ -954,7 +973,18 @@ class ToolsScreenState extends State<ToolsScreen>
                                       : IndexedStack(
                                           sizing: StackFit.expand,
                                           index: safeIndex,
-                                          children: _pages,
+                                          // בנייה עצלנית: רק כלים שכבר נבחרו
+                                          // פעם אחת מוצגים כ-widget אמיתי.
+                                          // אחרים נשארים SizedBox.shrink() —
+                                          // החיסכון העיקרי: לא יוצרים WebView
+                                          // לכל תוסף בכניסה למסך "כלים".
+                                          children: List<Widget>.generate(
+                                            _pages.length,
+                                            (i) => _activatedToolIds.contains(
+                                                    _descriptors[i].toolId)
+                                                ? _pages[i]
+                                                : const SizedBox.shrink(),
+                                          ),
                                         ),
                                 ),
                               ),
