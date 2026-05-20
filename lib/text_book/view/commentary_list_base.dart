@@ -128,6 +128,8 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
       ValueNotifier<String?>(null); // טקסט נבחר לתפריט הקשר
   final ValueNotifier<Link?> _lastSelectedLink =
       ValueNotifier<Link?>(null); // ה-link האחרון שנוגעו בו (לכותרות בהעתקה)
+  final Object _selectionOwner = Object(); // מזהה ייחודי לבעלות על הבחירה
+  int _selectionRevision = 0; // גרסה לאיפוס SelectionArea כשבחירה חיצונית מנקה
   bool _showCommentatorsFilter = false; // האם להציג את מסך בחירת המפרשים
   bool _filterWasAutoOpened = false; // האם מסך הסינון נפתח אוטומטית (לא ידנית)
   bool _userInteractedWithFilter =
@@ -246,6 +248,7 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
     super.initState();
     // האזנה לשינויים במיקום הגלילה כדי לשמור את המיקום האחרון
     _itemPositionsListener.itemPositions.addListener(_updateLastScrollIndex);
+    widget.selectionSyncController?.addListener(_handleExternalSelectionChange);
     widget.openFilterNotifier?.addListener(_onOpenFilterRequest);
     widget.openFilterRequest?.addListener(_onOpenFilterRequest);
     widget.closeFilterNotifier?.addListener(_onCloseFilterRequest);
@@ -266,6 +269,12 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
   @override
   void didUpdateWidget(CommentaryListBase oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectionSyncController != widget.selectionSyncController) {
+      oldWidget.selectionSyncController
+          ?.removeListener(_handleExternalSelectionChange);
+      widget.selectionSyncController
+          ?.addListener(_handleExternalSelectionChange);
+    }
     // סגירה אוטומטית של מסך הסינון כאשר המפרשים עוברים מריק לא-ריק
     // (קורה כאשר המשתמש בוחר "כל המפרשים" מהתפריט הימני)
     if (_showCommentatorsFilter &&
@@ -330,6 +339,8 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
   void dispose() {
     _searchUpdateDebounce?.cancel();
     _itemPositionsListener.itemPositions.removeListener(_updateLastScrollIndex);
+    widget.selectionSyncController
+        ?.removeListener(_handleExternalSelectionChange);
     widget.openFilterNotifier?.removeListener(_onOpenFilterRequest);
     widget.openFilterRequest?.removeListener(_onOpenFilterRequest);
     widget.closeFilterNotifier?.removeListener(_onCloseFilterRequest);
@@ -342,6 +353,21 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
     _totalSearchResultsNotifier.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  void _handleExternalSelectionChange() {
+    final controller = widget.selectionSyncController;
+    if (controller == null ||
+        controller.activeOwner == null ||
+        identical(controller.activeOwner, _selectionOwner)) {
+      return;
+    }
+    if (!mounted) return;
+    _savedSelectedText.value = null;
+    _lastSelectedLink.value = null;
+    setState(() {
+      _selectionRevision = controller.revision;
+    });
   }
 
   Future<void> _scrollToSearchResult() async {
@@ -620,6 +646,9 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
         _savedSelectedText.value = null;
         _lastSelectedLink.value = null;
       },
+      selectionSyncController: widget.selectionSyncController,
+      selectionOwner: _selectionOwner,
+      selectionRevision: _selectionRevision,
     );
   }
 
@@ -1257,6 +1286,9 @@ class _CollapsibleCommentaryGroup extends StatefulWidget {
   final void Function(bool) onExpansionChanged;
   final void Function(Link link, String text) onLinkSelected;
   final VoidCallback onLinkSelectionCleared;
+  final SelectionSyncController? selectionSyncController;
+  final Object? selectionOwner;
+  final int selectionRevision;
 
   const _CollapsibleCommentaryGroup({
     super.key,
@@ -1281,6 +1313,9 @@ class _CollapsibleCommentaryGroup extends StatefulWidget {
     required this.onExpansionChanged,
     required this.onLinkSelected,
     required this.onLinkSelectionCleared,
+    this.selectionSyncController,
+    this.selectionOwner,
+    this.selectionRevision = 0,
   });
 
   @override
@@ -1364,13 +1399,25 @@ class _CollapsibleCommentaryGroupState
         if (_isExpanded)
           ...widget.group.links.map((link) {
             return SelectionArea(
+              key: ValueKey(
+                'commentary_${widget.getLinkKey(link)}_${widget.selectionRevision}',
+              ),
               contextMenuBuilder: (context, selectableRegionState) {
                 return const SizedBox.shrink();
               },
               onSelectionChanged: (selection) {
                 if (selection != null && selection.plainText.isNotEmpty) {
+                  final owner = widget.selectionOwner;
+                  if (owner != null) {
+                    widget.selectionSyncController?.activate(owner);
+                  }
                   widget.onLinkSelected(link, selection.plainText);
-                } else if (selection == null) {
+                } else if (selection == null ||
+                    selection.plainText.trim().isEmpty) {
+                  final owner = widget.selectionOwner;
+                  if (owner != null) {
+                    widget.selectionSyncController?.clear(owner);
+                  }
                   widget.onLinkSelectionCleared();
                 }
               },
