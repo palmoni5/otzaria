@@ -1119,10 +1119,16 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
     TextBookLoaded state,
     Iterable<ItemPosition> visibleItemPositions,
   ) {
-    final itemPositions = visibleItemPositions.toList();
-    if (itemPositions.isEmpty) {
+    final allItemPositions = visibleItemPositions.toList();
+    if (allItemPositions.isEmpty) {
       return const [];
     }
+
+    // גלילה ע"י ניווט משתמשת ב-alignment: 0.05, כך שהקטע הקודם נשאר גלוי
+    // ב-5% העליונים של ה-viewport. בלי סינון, visibleIndices.first נופל על
+    // השורה האחרונה של הקטע הקודם, וזיהוי הכותרת (currentTitle ו-
+    // closestTocEntryIndex) מצביע על הסעיף הקודם במקום על זה שאליו ניווטו.
+    final itemPositions = _filterBarelyVisiblePositions(allItemPositions);
 
     if (!state.continuousReadingMode) {
       return itemPositions.map((position) => position.index).toSet().toList()
@@ -1139,6 +1145,34 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
         ),
       ),
     );
+  }
+
+  /// סינון item positions שגלויים מאוד מעט (פחות מ-15% מה-segment גלוי). כך
+  /// "שיירי" הסעיף הקודם, שגלויים לרוב 5% מה-viewport אחרי גלילה עם
+  /// alignment: 0.05, לא נספרים כחלק מהמיקום הנוכחי בספר.
+  ///
+  /// אם הסינון מותיר רשימה ריקה (כל ה-positions גלויים פחות מהסף - לא צפוי
+  /// בפועל), חוזרים לרשימה המקורית כ-fallback.
+  @visibleForTesting
+  static List<ItemPosition> filterBarelyVisiblePositionsForTesting(
+    List<ItemPosition> positions,
+  ) =>
+      _filterBarelyVisiblePositions(positions);
+
+  static List<ItemPosition> _filterBarelyVisiblePositions(
+    List<ItemPosition> positions,
+  ) {
+    if (positions.length <= 1) return positions;
+    final filtered = positions.where((p) {
+      final extent = p.itemTrailingEdge - p.itemLeadingEdge;
+      if (extent <= 0) return false;
+      final visibleTop = p.itemLeadingEdge.clamp(0.0, 1.0);
+      final visibleBottom = p.itemTrailingEdge.clamp(0.0, 1.0);
+      final visiblePortion = visibleBottom - visibleTop;
+      if (visiblePortion <= 0) return false;
+      return visiblePortion / extent >= 0.15;
+    }).toList();
+    return filtered.isEmpty ? positions : filtered;
   }
 
   void _onUpdateSelectedIndex(
@@ -1380,8 +1414,8 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
     final updatedGroups = _addNotesToOtherCommentatorsGroup(
       state.commentatorGroups,
     );
-    final shouldAutoSelect = state.activeCommentators.isEmpty &&
-        !_userTouchedCommentators;
+    final shouldAutoSelect =
+        state.activeCommentators.isEmpty && !_userTouchedCommentators;
     return state.copyWith(
       availableCommentators: updatedAvailable,
       commentatorGroups: updatedGroups,
