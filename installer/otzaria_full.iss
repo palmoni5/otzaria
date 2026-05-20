@@ -66,12 +66,6 @@ Name: "hebrew"; MessagesFile: "compiler:Languages\Hebrew.isl"
 [Code]
 
 const
-  // הגרסה הראשית המינימלית של Edge WebView2 הנדרשת. v143 ומטה ידועים כקורסים
-  // (native access violation ב-MSVCP140) על Windows 10 build < 19041 בשילוב
-  // עם flutter_inappwebview_windows. אם המשתמש על גרסה ישנה — נבקש עדכון
-  // דרך MicrosoftEdgeWebview2Setup.exe (bootstrapper שמוריד את הגרסה החדשה).
-  MIN_WEBVIEW2_MAJOR = 144;
-
   // קבועי פריסה לדף "תכונות עיקריות" - Inno Setup לא תומך ב-const מקומי בתוך פרוצדורה.
   FEATURES_GAP_X = 14;
   FEATURES_GAP_Y = 8;
@@ -203,52 +197,9 @@ begin
   Result := GetVCVersion = '';
 end;
 
-// מחלץ את המספר הראשי מתוך version string בפורמט "143.0.3650.139".
-// מחזיר 0 אם הפענוח נכשל (חוסר נתון = נתפס כצריך התקנה).
-// הערה: ב-Inno Setup Pascal Script אין `Val()` של Object Pascal —
-// משתמשים ב-`StrToIntDef` שמחזיר ברירת מחדל בכישלון פענוח.
-function ParseMajorVersion(const Version: String): Integer;
-var
-  DotPos: Integer;
-  MajorStr: String;
-begin
-  Result := 0;
-  if Version = '' then exit;
-  DotPos := Pos('.', Version);
-  if DotPos > 1 then
-    MajorStr := Copy(Version, 1, DotPos - 1)
-  else
-    MajorStr := Version;
-  Result := StrToIntDef(MajorStr, 0);
-end;
-
-// מצב WebView2 — מאפשר הבחנה בין "חסר", "ישן" ו"עדכני".
-//   0 = לא מותקן
-//   1 = מותקן אבל גרסה ישנה מ-MIN_WEBVIEW2_MAJOR (קורס בעבודה עם תוספים)
-//   2 = מותקן בגרסה תואמת
-function GetWebView2State: Integer;
-var
-  Version: String;
-  Major: Integer;
-begin
-  Version := GetWebView2Version;
-  if Version = '' then
-  begin
-    Result := 0;
-    exit;
-  end;
-  Major := ParseMajorVersion(Version);
-  if Major >= MIN_WEBVIEW2_MAJOR then
-    Result := 2
-  else
-    Result := 1;
-end;
-
 function WebView2NeedsInstall: Boolean;
 begin
-  // צריך התקנה גם כשחסר וגם כשגרסה ישנה — ה-bootstrapper של Microsoft
-  // יעדכן את הגרסה הקיימת ולא יתקין על גביה גרסה ישנה יותר.
-  Result := GetWebView2State <> 2;
+  Result := GetWebView2Version = '';
 end;
 
 function InitializeSetup(): Boolean;
@@ -359,9 +310,7 @@ begin
   WV2Check.Height  := ScaleY(20);
   WV2Check.Caption := 'Microsoft WebView2 Runtime';
 
-  // WebView2 אינו חובה — משמש רק למערכת הפלאגינים (לא לקריאה/חיפוש/סימניות).
-  // גרסה < MIN_WEBVIEW2_MAJOR ידועה כקורסת על Windows 10 ישן עם תוספים,
-  // ולכן מוצעת לעדכון בדיוק כמו מצב שאינה מותקנת.
+  // WebView2 אינו חובה — משמש רק למערכת הפלאגינים (לא לקריאה/חיפוש/סימניות)
   if WV2Version = '' then
   begin
     WV2Status := '⚠ חסר — מומלץ להתקין. ללא רכיב זה מערכת הפלאגינים לא תפעל,' +
@@ -370,21 +319,12 @@ begin
     WV2Check.Checked := True;
     WV2Check.Enabled := True;  // אופציונלי — ניתן לבטל
   end
-  else if ParseMajorVersion(WV2Version) < MIN_WEBVIEW2_MAJOR then
-  begin
-    WV2Status := '⚠ גרסה ישנה (' + WV2Version + ') — מומלץ לעדכן.' + #13#10 +
-                 'גרסה זו עלולה לקרוס בעת טעינת תוספים. העדכון יעלה לגרסה ' +
-                 IntToStr(MIN_WEBVIEW2_MAJOR) + ' ומעלה.';
-    WV2Color  := $007FFF;
-    WV2Check.Checked := True;
-    WV2Check.Enabled := True;
-  end
   else
   begin
     WV2Status := '✓ קיים (גרסה: ' + WV2Version + ') — לא נדרשת פעולה.';
     WV2Color  := $006400;
     WV2Check.Checked := False;
-    WV2Check.Enabled := False;  // עדכני — נעול כדי למנוע התקנה מיותרת
+    WV2Check.Enabled := False;  // קיים — נעול כדי למנוע התקנה מיותרת
   end;
 
   WV2Label := TLabel.Create(CompPage);
@@ -396,7 +336,7 @@ begin
   WV2Label.WordWrap := True;
   WV2Label.Caption  := WV2Status;
   WV2Label.Font.Color := WV2Color;
-  WV2Label.Height   := ScaleY(48);  // 3 שורות — תומך גם בהודעת "ישן" הארוכה
+  WV2Label.Height   := ScaleY(34);
 end;
 
 // ─── דף בחירת תיקיית הספרים ─────────────────────────────────────────────────
