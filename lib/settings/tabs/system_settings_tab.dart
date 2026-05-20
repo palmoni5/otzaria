@@ -17,6 +17,7 @@ import 'package:otzaria/settings/engine/settings_engine_exports.dart';
 import 'package:otzaria/settings/search/settings_anchor.dart';
 import 'package:otzaria/settings/search/settings_search_models.dart';
 import 'package:otzaria/settings/view/settings_screen.dart';
+import 'package:otzaria/settings/dialogs/books_list_dialog.dart';
 import 'package:otzaria/settings/services/safer_mode/password_verification_dialog.dart';
 import 'package:otzaria/settings/services/safer_mode/protected_settings_wrapper.dart';
 import 'package:otzaria/settings/services/backup_service.dart';
@@ -346,6 +347,20 @@ class _SystemSettingsTabState extends State<SystemSettingsTab> {
       _libraryVersion = libVersion;
       _bookCount = count;
     });
+  }
+
+  Future<void> _openBooksListDialog(BuildContext context) async {
+    try {
+      final library = await DataRepository.instance.library;
+      if (!context.mounted) return;
+      await showBooksListDialog(
+        context: context,
+        books: library.getAllBooks(),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      UiSnack.showError('שגיאה בטעינת רשימת הספרים: $e');
+    }
   }
 
   bool _shouldInclude(String key) =>
@@ -1199,12 +1214,20 @@ class _SystemSettingsTabState extends State<SystemSettingsTab> {
           // ),
         ),
         ListTile(
+          hoverColor: Colors.transparent,
           leading: const Icon(FluentIcons.book_24_regular),
           title: const Text('מספר ספרים', style: kSettingsTitleStyle),
           subtitle: Text(
             _bookCount != null ? '${_bookCount!} ספרים' : 'טוען...',
             style: kSettingsSubtitleStyle,
           ),
+          trailing: _bookCount == null
+              ? null
+              : TextButton.icon(
+                  icon: const Icon(FluentIcons.list_24_regular, size: 16),
+                  label: const Text('הצג רשימה'),
+                  onPressed: () => _openBooksListDialog(context),
+                ),
         ),
       ],
     );
