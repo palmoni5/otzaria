@@ -50,11 +50,14 @@ class PdfCommentaryPanel extends StatefulWidget {
   final ValueChanged<int>? onTabChanged;
   final ValueListenable<int>? openFilterRequest;
   final ValueNotifier<int>? openFilterNotifier;
+
   /// כשאמת — מציג כמסך מלא (כמו CommentatorsTabScreen) ללא כרטיסיות פאנל
   final bool isFullScreen;
+
   /// override לטווח השורות בטקסט (לכרטסייה עצמאית)
   final int? lineStartOverride;
   final int? lineEndOverride;
+
   /// חיפוש חיצוני — כשמסופק, מסתיר שורת חיפוש פנימית
   final TextEditingController? externalSearchController;
   final ValueNotifier<int>? externalTotalResultsNotifier;
@@ -422,12 +425,14 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
             IconButton(
               iconSize: 18,
               padding: EdgeInsets.zero,
-              constraints:
-                  const BoxConstraints(minWidth: 36, minHeight: 40),
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 40),
               tooltip: 'פתח כרטסיית מפרשים',
               icon: const Icon(FluentIcons.arrow_expand_24_regular),
               onPressed: () => context.read<TabsBloc>().add(
-                    AddTab(PdfCommentatorsTab(sourceTab: widget.tab)),
+                    AddTab(
+                      PdfCommentatorsTab(sourceTab: widget.tab),
+                      insertAdjacent: true,
+                    ),
                   ),
             ),
           ],
@@ -1200,7 +1205,8 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
   }
 
   _PdfVisibleContentCache? _getVisibleContent() {
-    final currentLine = widget.lineStartOverride ?? widget.tab.currentTextLineNumber;
+    final currentLine =
+        widget.lineStartOverride ?? widget.tab.currentTextLineNumber;
     if (currentLine == null) {
       _visibleContentCache = null;
       return null;

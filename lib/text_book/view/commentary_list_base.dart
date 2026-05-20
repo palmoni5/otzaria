@@ -24,7 +24,11 @@ import 'package:otzaria/widgets/feedback/app_future_builder.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:otzaria/services/commentary_service.dart';
+import 'package:otzaria/text_book/utils/inline_notes_utils.dart'
+    as inline_notes;
 import 'package:otzaria/text_book/view/selection/selection_sync_controller.dart';
+import 'package:otzaria/widgets/smart_text/render_settings.dart';
+import 'package:otzaria/widgets/smart_text/smart_text_widget.dart';
 
 // Type alias לתאימות לאחור - משתמש ב-LinkGroup מה-Service
 typedef CommentaryGroup = LinkGroup;
@@ -139,6 +143,9 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
   bool _userInteractedWithFilter =
       false; // האם המשתמש בחר בעצמו בתוך פאנל הסינון
   final FocusNode _focusNode = FocusNode();
+  final FocusNode _searchFocusNode = FocusNode();
+  int _lastSeenFilterRequest = 0;
+  bool _snippetsRebuildScheduled = false;
 
   String _getLinkKey(Link link) =>
       '${link.index1}_${link.path2}_${link.index2}';
@@ -146,7 +153,7 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
   // רשימה של כל ה-links לפי סדר הופעתם (נבנית מחדש בכל build)
   List<Link> _orderedLinks = [];
 
-  List<String> _selectedCommentators(TextBookLoaded state) {
+  List<String> _allSelectedCommentators(TextBookLoaded state) {
     if (widget.selectedCommentatorsOverride != null) {
       return widget.selectedCommentatorsOverride!;
     }
@@ -154,6 +161,11 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
       return state.availableCommentators;
     }
     return state.activeCommentators;
+  }
+
+  List<String> _selectedCommentators(TextBookLoaded state) {
+    final selected = _allSelectedCommentators(state);
+    return selected.where((title) => title != kNotesCommentatorTitle).toList();
   }
 
   String _buildGroupingSignature(List<Link> links) {
@@ -264,8 +276,9 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
     // האזנה לשינויים במיקום הגלילה כדי לשמור את המיקום האחרון
     _itemPositionsListener.itemPositions.addListener(_updateLastScrollIndex);
     widget.selectionSyncController?.addListener(_handleExternalSelectionChange);
+    widget.openFilterRequest?.addListener(_handleOpenFilterRequest);
+    _lastSeenFilterRequest = widget.openFilterRequest?.value ?? 0;
     widget.openFilterNotifier?.addListener(_onOpenFilterRequest);
-    widget.openFilterRequest?.addListener(_onOpenFilterRequest);
     widget.closeFilterNotifier?.addListener(_onCloseFilterRequest);
     // חיפוש חיצוני
     widget.externalSearchController?.addListener(_onExternalSearchChanged);
@@ -291,6 +304,19 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
           ?.removeListener(_handleExternalSelectionChange);
       widget.selectionSyncController
           ?.addListener(_handleExternalSelectionChange);
+    }
+    if (oldWidget.openFilterRequest != widget.openFilterRequest) {
+      oldWidget.openFilterRequest?.removeListener(_handleOpenFilterRequest);
+      widget.openFilterRequest?.addListener(_handleOpenFilterRequest);
+      _lastSeenFilterRequest = widget.openFilterRequest?.value ?? 0;
+    }
+    if (oldWidget.openFilterNotifier != widget.openFilterNotifier) {
+      oldWidget.openFilterNotifier?.removeListener(_onOpenFilterRequest);
+      widget.openFilterNotifier?.addListener(_onOpenFilterRequest);
+    }
+    if (oldWidget.closeFilterNotifier != widget.closeFilterNotifier) {
+      oldWidget.closeFilterNotifier?.removeListener(_onCloseFilterRequest);
+      widget.closeFilterNotifier?.addListener(_onCloseFilterRequest);
     }
     // סגירה אוטומטית של מסך הסינון כאשר המפרשים עוברים מריק לא-ריק
     // (קורה כאשר המשתמש בוחר "כל המפרשים" מהתפריט הימני)
@@ -331,6 +357,14 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
     });
   }
 
+  void _handleOpenFilterRequest() {
+    if (!mounted) return;
+    final newValue = widget.openFilterRequest?.value ?? 0;
+    if (newValue <= _lastSeenFilterRequest) return;
+    _lastSeenFilterRequest = newValue;
+    _openCommentatorsFilter();
+  }
+
   void _closeCommentatorsFilter() {
     setState(() {
       _showCommentatorsFilter = false;
@@ -358,8 +392,8 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
     _itemPositionsListener.itemPositions.removeListener(_updateLastScrollIndex);
     widget.selectionSyncController
         ?.removeListener(_handleExternalSelectionChange);
+    widget.openFilterRequest?.removeListener(_handleOpenFilterRequest);
     widget.openFilterNotifier?.removeListener(_onOpenFilterRequest);
-    widget.openFilterRequest?.removeListener(_onOpenFilterRequest);
     widget.closeFilterNotifier?.removeListener(_onCloseFilterRequest);
     widget.externalSearchController?.removeListener(_onExternalSearchChanged);
     _searchController.dispose();
@@ -369,6 +403,7 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
     _currentSearchIndexNotifier.dispose();
     _totalSearchResultsNotifier.dispose();
     _focusNode.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -551,7 +586,7 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
       }
 
       // עדכון נוטיפייר קטעי החיפוש (snippets)
-      _rebuildSnippetsNotifier();
+      _scheduleSnippetsNotifierRebuild();
 
       // תיקון אינדקס אם חרגנו מהגבולות
       if (_currentSearchIndexNotifier.value >=
@@ -566,7 +601,7 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
     if (!mounted) return;
     final key = _getLinkKey(link);
     _searchSnippetsPerLink[key] = snippets;
-    _rebuildSnippetsNotifier();
+    _scheduleSnippetsNotifierRebuild();
   }
 
   void _rebuildSnippetsNotifier() {
@@ -587,6 +622,20 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
       globalIndex += count;
     }
     widget.externalSearchSnippetsNotifier!.value = result;
+  }
+
+  void _scheduleSnippetsNotifierRebuild() {
+    if (widget.externalSearchSnippetsNotifier == null ||
+        _snippetsRebuildScheduled ||
+        !mounted) {
+      return;
+    }
+    _snippetsRebuildScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _snippetsRebuildScheduled = false;
+      if (!mounted) return;
+      _rebuildSnippetsNotifier();
+    });
   }
 
   void _updateGlobalExpansionState() {
@@ -691,9 +740,12 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
         loadingWidget: const Center(),
         builder: (context, state) {
           final selectedCommentators = _selectedCommentators(state);
+          final notesIsActive =
+              _allSelectedCommentators(state).contains(kNotesCommentatorTitle);
           final shouldAutoOpenOverrideFilter = widget.showSearch &&
               widget.onSelectedCommentatorsOverrideChanged != null &&
               selectedCommentators.isEmpty &&
+              !notesIsActive &&
               !_showCommentatorsFilter;
 
           if (shouldAutoOpenOverrideFilter) {
@@ -739,6 +791,36 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
                                 : 0)
                       ];
 
+                Widget? notesWidget;
+                if (notesIsActive) {
+                  final relevantNotes =
+                      inline_notes.notesForLines(state.content, currentIndexes);
+                  if (relevantNotes.isNotEmpty) {
+                    notesWidget = _NotesCommentaryWidget(
+                      notes: relevantNotes,
+                      fontSize: widget.fontSize,
+                      removeNikud: state.removeNikud,
+                      openBookCallback: widget.openBookCallback,
+                    );
+                  } else if (selectedCommentators.isEmpty) {
+                    notesWidget = Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          'אין הערות לקטע זה',
+                          style: TextStyle(
+                            fontSize: widget.fontSize * 0.7,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                          textAlign: TextAlign.center,
+                          textDirection: TextDirection.rtl,
+                        ),
+                      ),
+                    );
+                  }
+                }
+
                 // בדיקה אם יש בכלל קישורים לאינדקסים הנוכחיים (ללא סינון מפרשים)
                 final hasAnyCommentaryLinks = currentIndexes.any((idx) {
                   final lineLinks = state.linksByLine[idx + 1];
@@ -759,6 +841,24 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
 
                 // אם אין קישורים רלוונטיים
                 if (!hasRelevantLinks) {
+                  if (state.linksLoading) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          'טוען מפרשים...',
+                          style: TextStyle(
+                            fontSize: widget.fontSize * 0.7,
+                            color: Colors.grey,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    );
+                  }
+                  if (notesWidget != null) {
+                    return notesWidget;
+                  }
                   // אם יש מפרשים זמינים אבל לא נבחרו בכלל - פתח אוטומטית את מסך הבחירה
                   // (לא במצב useAvailableCommentators — שם מוצג הכל אוטומטית)
                   if (widget.showSearch &&
@@ -991,6 +1091,7 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
                                   valueListenable: _currentSearchIndexNotifier,
                                   builder: (context, currentIndex, ___) {
                                     return RtlTextField(
+                                      focusNode: _searchFocusNode,
                                       controller: _searchController,
                                       decoration: InputDecoration(
                                         hintText: 'חפש בתוך המפרשים המוצגים...',
@@ -1065,6 +1166,8 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
                                                       _searchResultsPerLink
                                                           .clear();
                                                       _pendingCounts.clear();
+                                                      _searchFocusNode
+                                                          .requestFocus();
                                                     },
                                                   ),
                                                 ],
@@ -1548,4 +1651,74 @@ class _CollapsibleCommentaryGroupState
 
 class _CopyCommentaryIntent extends Intent {
   const _CopyCommentaryIntent();
+}
+
+/// תצוגת המפרש הוירטואלי 'הערות' — מציגה את גוף ההערות ה-inline
+/// (<i class="footnote">) של השורות הנבחרות כאילו היו רשימת מפרשים.
+class _NotesCommentaryWidget extends StatelessWidget {
+  final List<String> notes;
+  final double fontSize;
+  final bool removeNikud;
+  final Function(TextBookTab) openBookCallback;
+
+  const _NotesCommentaryWidget({
+    required this.notes,
+    required this.fontSize,
+    required this.removeNikud,
+    required this.openBookCallback,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<SettingsBloc, SettingsState>(
+      builder: (context, settingsState) {
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 12.0),
+                child: Text(
+                  kNotesCommentatorTitle,
+                  style: TextStyle(
+                    fontSize: fontSize * 0.85,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: settingsState.commentatorsFontFamily,
+                  ),
+                  textDirection: TextDirection.rtl,
+                ),
+              ),
+              ...notes.map((note) {
+                return Padding(
+                  padding: const EdgeInsets.only(
+                      right: 32.0, left: 16.0, bottom: 12.0),
+                  child: SmartTextWidget(
+                    text: note,
+                    settings: RenderSettings(
+                      removeNikud: removeNikud,
+                      removePunctuation: false,
+                      removeTeamim: false,
+                      replaceHolyNames: settingsState.replaceHolyNames,
+                      searchText: '',
+                      currentSearchIndex: -1,
+                      fontSize: fontSize * 0.85,
+                      fontFamily: settingsState.commentatorsFontFamily,
+                      lineHeight: settingsState.lineHeight,
+                    ),
+                    onOpenBook: (tab) {
+                      if (tab is TextBookTab) {
+                        openBookCallback(tab);
+                      }
+                    },
+                  ),
+                );
+              }),
+              const Divider(height: 1),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }

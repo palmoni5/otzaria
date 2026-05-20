@@ -367,6 +367,15 @@ class UpdateLinks extends TextBookEvent {
       [links, replaceExisting, targetBookTitlesSignature];
 }
 
+class SetLinksLoading extends TextBookEvent {
+  final bool isLoading;
+
+  const SetLinksLoading(this.isLoading);
+
+  @override
+  List<Object?> get props => [isLoading];
+}
+
 /// Event to update available commentators after background loading
 class UpdateAvailableCommentators extends TextBookEvent {
   final List<String> availableCommentators;

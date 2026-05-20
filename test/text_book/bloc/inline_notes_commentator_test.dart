@@ -83,15 +83,15 @@ void main() {
     expect: () => [
       isA<TextBookLoaded>()
           .having(
-            (state) => state.availableCommentators,
-            'availableCommentators',
-            contains(kNotesCommentatorTitle),
-          )
+        (state) => state.availableCommentators,
+        'availableCommentators',
+        contains(kNotesCommentatorTitle),
+      )
           .having(
-            (state) => state.activeCommentators,
-            'activeCommentators (auto-selected)',
-            const [kNotesCommentatorTitle],
-          ),
+        (state) => state.activeCommentators,
+        'activeCommentators (auto-selected)',
+        const [kNotesCommentatorTitle],
+      ),
     ],
   );
 
@@ -119,15 +119,15 @@ void main() {
     expect: () => [
       isA<TextBookLoaded>()
           .having(
-            (state) => state.availableCommentators,
-            'availableCommentators',
-            contains(kNotesCommentatorTitle),
-          )
+        (state) => state.availableCommentators,
+        'availableCommentators',
+        contains(kNotesCommentatorTitle),
+      )
           .having(
-            (state) => state.activeCommentators,
-            'activeCommentators (auto-selected)',
-            const [kNotesCommentatorTitle],
-          ),
+        (state) => state.activeCommentators,
+        'activeCommentators (auto-selected)',
+        const [kNotesCommentatorTitle],
+      ),
     ],
   );
 
@@ -169,15 +169,15 @@ void main() {
     expect: () => [
       isA<TextBookLoaded>()
           .having(
-            (state) => state.availableCommentators,
-            'availableCommentators כולל הערות',
-            containsAll(<String>['רש"י', kNotesCommentatorTitle]),
-          )
+        (state) => state.availableCommentators,
+        'availableCommentators כולל הערות',
+        containsAll(<String>['רש"י', kNotesCommentatorTitle]),
+      )
           .having(
-            (state) => state.activeCommentators,
-            'activeCommentators ללא שינוי',
-            const ['רש"י'],
-          ),
+        (state) => state.activeCommentators,
+        'activeCommentators ללא שינוי',
+        const ['רש"י'],
+      ),
     ],
   );
 
@@ -202,10 +202,9 @@ void main() {
     )),
     expect: () => [
       isA<TextBookLoaded>().having(
-        (state) =>
-            state.availableCommentators
-                .where((c) => c == kNotesCommentatorTitle)
-                .length,
+        (state) => state.availableCommentators
+            .where((c) => c == kNotesCommentatorTitle)
+            .length,
         'count of הערות in availableCommentators',
         1,
       ),
@@ -238,20 +237,19 @@ void main() {
         ],
       ));
     },
-    skip: 1, // מדלגים על ה-emit של UpdateCommentators (ריקון)
-    expect: () => [
-      isA<TextBookLoaded>()
-          .having(
-            (state) => state.availableCommentators,
-            'הערות נוסף ל-available',
-            contains(kNotesCommentatorTitle),
-          )
-          .having(
-            (state) => state.activeCommentators,
-            'active נשאר ריק (לא דורסים בחירת משתמש)',
-            isEmpty,
-          ),
-    ],
+    verify: (bloc) {
+      final state = bloc.state as TextBookLoaded;
+      expect(
+        state.availableCommentators,
+        contains(kNotesCommentatorTitle),
+        reason: 'הערות צריך להתווסף ל-available גם אחרי clear מפורש',
+      );
+      expect(
+        state.activeCommentators,
+        isEmpty,
+        reason: 'בחירת המשתמש הריקה צריכה להישמר ולא להידרס',
+      );
+    },
   );
 
   // P2 efficiency: scanOnly נמדד עקיף — שורה עם הערה ב-state.content

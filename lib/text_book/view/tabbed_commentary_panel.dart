@@ -141,14 +141,16 @@ class _TabbedCommentaryPanelState extends State<TabbedCommentaryPanel>
                       constraints:
                           const BoxConstraints(minWidth: 36, minHeight: 40),
                       tooltip: 'פתח כרטסיית מפרשים',
-                      icon: const Icon(
-                          FluentIcons.arrow_expand_24_regular),
+                      icon: const Icon(FluentIcons.arrow_expand_24_regular),
                       onPressed: widget.tab == null
                           ? null
                           : () => context.read<TabsBloc>().add(
-                                AddTab(CommentatorsTab(
-                                  sourceTab: widget.tab!,
-                                )),
+                                AddTab(
+                                  CommentatorsTab(
+                                    sourceTab: widget.tab!,
+                                  ),
+                                  insertAdjacent: true,
+                                ),
                               ),
                     ),
                   ],

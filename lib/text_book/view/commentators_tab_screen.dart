@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -14,9 +14,9 @@ import 'package:otzaria/settings/engine/settings_bloc.dart';
 import 'package:otzaria/settings/engine/settings_state.dart';
 import 'package:otzaria/widgets/layout/adaptive_side_pane.dart';
 import 'package:otzaria/widgets/navigation/responsive_action_bar.dart';
+import 'package:otzaria/widgets/text/rtl_text_field.dart';
 import 'package:otzaria/utils/text/text_manipulation.dart' as utils;
 import 'package:otzaria/search/utils/snippet_builder.dart';
-
 
 const _kAllChapter = -1;
 
@@ -54,6 +54,8 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
   final _externalSearchResultsByPath = ValueNotifier<Map<String, int>>({});
   final _externalSearchSnippets =
       ValueNotifier<List<CommentarySearchSnippet>>([]);
+  bool _initialChapterResolved = false;
+  final Map<String, List<InlineSpan>> _snippetSpansCache = {};
 
   late final TabController _navTabController;
 
@@ -129,25 +131,46 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
     return (chapter: bestChapter, verseIdx: bestVerseIdx);
   }
 
-  /// ממיר lineIndex ל-verseIdx עבור dropdown:
-  /// - ספר עם פסוקי TOC → אינדקס הפסוק
-  /// - ספר ללא פסוקי TOC → offset מתחילת הפרק
-  int _lineToVerseIdx(TocEntry chapter, List<TocEntry> chapters, int lineIndex) {
-    if (chapter.children.isNotEmpty) {
-      for (int i = 0; i < chapter.children.length; i++) {
-        if (chapter.children[i].index == lineIndex ||
-            (i + 1 < chapter.children.length &&
-                lineIndex < chapter.children[i + 1].index &&
-                lineIndex >= chapter.children[i].index)) {
-          return i;
-        }
-      }
-      return _kAllChapter;
-    } else {
-      // ספר ללא TOC פסוק — offset מתחילת הפרק
-      final offset = lineIndex - chapter.index;
-      return offset >= 0 ? offset : _kAllChapter;
+  List<InlineSpan> _buildSnippetHighlightSpans(
+    BuildContext context,
+    SettingsState settingsState, {
+    required CommentarySearchSnippet snippet,
+    required String query,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final cacheKey =
+        '${settingsState.commentatorsFontFamily}|${colorScheme.onSurface.toARGB32()}|$query|${snippet.globalIndex}|${snippet.snippet}';
+    final cached = _snippetSpansCache[cacheKey];
+    if (cached != null) {
+      return cached;
     }
+
+    final spans = SnippetBuilder.buildHighlightSpans(
+      plainText: snippet.snippet,
+      query: query,
+      defaultStyle: TextStyle(
+        fontSize: 14,
+        fontFamily: settingsState.commentatorsFontFamily,
+        color: colorScheme.onSurface,
+        height: 1.5,
+      ),
+      highlightStyle: TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: 16,
+        color: colorScheme.error,
+      ),
+      searchOptions: const {},
+      alternativeWords: const {},
+      searchDistance: 0,
+      spacingValues: const {},
+      fallbackToIndividualWords: true,
+    );
+
+    if (_snippetSpansCache.length > 500) {
+      _snippetSpansCache.clear();
+    }
+    _snippetSpansCache[cacheKey] = spans;
+    return spans;
   }
 
   List<int>? _computeIndexes(
@@ -231,6 +254,26 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
     _triggerLinkLoad(List.generate(count, (j) => ch.index + j));
   }
 
+  void _resolveInitialChapter(TextBookLoaded state) {
+    if (_initialChapterResolved) return;
+
+    final chapters = _getChapters(state.tableOfContents);
+    final lineIndex = state.selectedIndex ??
+        (state.visibleIndices.isNotEmpty ? state.visibleIndices.first : 0);
+
+    if (chapters.isEmpty) {
+      _initialChapterResolved = true;
+      _triggerLinkLoad([lineIndex]);
+      return;
+    }
+
+    final pos = _findPos(chapters, lineIndex);
+    if (pos.chapter == null) return;
+
+    _initialChapterResolved = true;
+    _onChapterSelected(pos.chapter!, chapters);
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider<TextBookBloc>.value(
@@ -245,7 +288,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
           },
           listener: (context, state) {
             if (state is! TextBookLoaded) return;
-            if (_navTabController.index != 1) return;
+            _resolveInitialChapter(state);
             final idx = state.selectedIndex;
             if (idx == null) return;
             final chapters = _getChapters(state.tableOfContents);
@@ -409,50 +452,6 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
 
             final chapters = _getChapters(state.tableOfContents);
 
-            // טעינת links ראשונית (בפעם הראשונה)
-            if (_selectedChapter == null && chapters.isNotEmpty) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
-                final lineIndex = state.selectedIndex ??
-                    (state.visibleIndices.isNotEmpty
-                        ? state.visibleIndices.first
-                        : 0);
-                final pos = _findPos(chapters, lineIndex);
-                if (pos.chapter != null) {
-                  final hasSelectedLine =
-                      widget.tab.initialSelectedLine != null;
-                  if (hasSelectedLine) {
-                    // הייתה שורה שנבחרה — פותח עליה בלבד
-                    _triggerLinkLoad([lineIndex]);
-                    setState(() {
-                      _selectedChapter = pos.chapter;
-                      _selectedVerseIdx = _lineToVerseIdx(
-                          pos.chapter!, chapters, lineIndex);
-                    });
-                  } else {
-                    // אין בחירה — פותח על כל הפרק
-                    final chIdx = chapters.indexOf(pos.chapter!);
-                    final int endIdx;
-                    if (chIdx + 1 < chapters.length) {
-                      endIdx = chapters[chIdx + 1].index - 1;
-                    } else if (pos.chapter!.children.isNotEmpty) {
-                      endIdx = pos.chapter!.children.last.index;
-                    } else {
-                      endIdx = pos.chapter!.index + 100;
-                    }
-                    final count =
-                        (endIdx - pos.chapter!.index + 1).clamp(1, 3000);
-                    _triggerLinkLoad(List.generate(
-                        count, (j) => pos.chapter!.index + j));
-                    setState(() {
-                      _selectedChapter = pos.chapter;
-                      _selectedVerseIdx = _kAllChapter;
-                    });
-                  }
-                }
-              });
-            }
-
             final effectiveIndexes =
                 _computeIndexes(chapters, _selectedChapter, _selectedVerseIdx);
 
@@ -503,8 +502,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                         selectedCommentatorsOverride:
                             _selectedCommentatorsOverride,
                         onSelectedCommentatorsOverrideChanged: (list) {
-                          setState(
-                              () => _selectedCommentatorsOverride = list);
+                          setState(() => _selectedCommentatorsOverride = list);
                         },
                         openFilterNotifier: _openFilterNotifier,
                         externalSearchController: _commentarySearchController,
@@ -572,7 +570,8 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
 
   void _navigateToPrevVerse(List<TocEntry> chapters) {
     final hasVerses = _selectedChapter?.children.isNotEmpty ?? false;
-    final listIdx = _selectedVerseIdx == _kAllChapter ? 0 : _selectedVerseIdx + 1;
+    final listIdx =
+        _selectedVerseIdx == _kAllChapter ? 0 : _selectedVerseIdx + 1;
     if (listIdx <= 0) return;
     final newIdx = listIdx - 1 == 0 ? _kAllChapter : listIdx - 2;
     if (hasVerses) {
@@ -587,7 +586,8 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
     final verseCount = hasVerses
         ? _selectedChapter!.children.length
         : _chapterLineCount(chapters, _selectedChapter!);
-    final listIdx = _selectedVerseIdx == _kAllChapter ? 0 : _selectedVerseIdx + 1;
+    final listIdx =
+        _selectedVerseIdx == _kAllChapter ? 0 : _selectedVerseIdx + 1;
     if (listIdx >= verseCount) return;
     final newIdx = listIdx;
     if (hasVerses) {
@@ -657,8 +657,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                   icon: Icon(state.removePunctuation
                       ? FluentIcons.text_quote_24_regular
                       : FluentIcons.text_clear_formatting_24_regular),
-                  tooltip:
-                      state.removePunctuation ? 'הצג פיסוק' : 'הסתר פיסוק',
+                  tooltip: state.removePunctuation ? 'הצג פיסוק' : 'הסתר פיסוק',
                   onPressed: () => context
                       .read<TextBookBloc>()
                       .add(TogglePunctuation(!state.removePunctuation)),
@@ -666,8 +665,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                 icon: state.removePunctuation
                     ? FluentIcons.text_quote_24_regular
                     : FluentIcons.text_clear_formatting_24_regular,
-                tooltip:
-                    state.removePunctuation ? 'הצג פיסוק' : 'הסתר פיסוק',
+                tooltip: state.removePunctuation ? 'הצג פיסוק' : 'הסתר פיסוק',
                 onPressed: () => context
                     .read<TextBookBloc>()
                     .add(TogglePunctuation(!state.removePunctuation)),
@@ -888,7 +886,8 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
           child: TabBarView(
             controller: _navTabController,
             children: [
-              _buildTocList(context, chapters: chapters, content: state.content),
+              _buildTocList(context,
+                  chapters: chapters, content: state.content),
               _buildCommentarySearchPanel(context),
             ],
           ),
@@ -910,10 +909,9 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
               valueListenable: _externalTotalResults,
               builder: (_, total, __) => ValueListenableBuilder<int>(
                 valueListenable: _externalCurrentIndex,
-                builder: (_, current, __) => TextField(
+                builder: (_, current, __) => RtlTextField(
                   controller: _commentarySearchController,
                   focusNode: _searchFocusNode,
-                  textDirection: TextDirection.rtl,
                   decoration: InputDecoration(
                     hintText: 'חפש בתוך המפרשים המוצגים...',
                     prefixIcon: const Icon(FluentIcons.search_24_regular),
@@ -953,8 +951,8 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                                 ),
                               ],
                               IconButton(
-                                icon: const Icon(
-                                    FluentIcons.dismiss_24_regular),
+                                icon:
+                                    const Icon(FluentIcons.dismiss_24_regular),
                                 iconSize: 20,
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(
@@ -968,8 +966,8 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                     isDense: true,
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8)),
-                    contentPadding: const EdgeInsets.symmetric(
-                        vertical: 8, horizontal: 12),
+                    contentPadding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                   ),
                 ),
               ),
@@ -1055,28 +1053,11 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                           return BlocBuilder<SettingsBloc, SettingsState>(
                             builder: (context, settingsState) {
                               final highlightedSpans =
-                                  SnippetBuilder.buildHighlightSpans(
-                                plainText: snippet.snippet,
+                                  _buildSnippetHighlightSpans(
+                                context,
+                                settingsState,
+                                snippet: snippet,
                                 query: val.text,
-                                defaultStyle: TextStyle(
-                                  fontSize: 14,
-                                  fontFamily:
-                                      settingsState.commentatorsFontFamily,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface,
-                                  height: 1.5,
-                                ),
-                                highlightStyle: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: Color(0xFFD32F2F),
-                                ),
-                                searchOptions: const {},
-                                alternativeWords: const {},
-                                searchDistance: 0,
-                                spacingValues: const {},
-                                fallbackToIndividualWords: true,
                               );
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 6),
@@ -1089,9 +1070,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                                       : null,
                                   border: Border.all(
                                     color: isSelected
-                                        ? Theme.of(context)
-                                            .colorScheme
-                                            .primary
+                                        ? Theme.of(context).colorScheme.primary
                                         : Theme.of(context)
                                             .colorScheme
                                             .outline
@@ -1147,9 +1126,8 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
           padding: const EdgeInsets.all(8.0),
           child: ValueListenableBuilder<TextEditingValue>(
             valueListenable: _tocSearchController,
-            builder: (_, val, __) => TextField(
+            builder: (_, val, __) => RtlTextField(
               controller: _tocSearchController,
-              textDirection: TextDirection.rtl,
               decoration: InputDecoration(
                 hintText: 'איתור כותרת...',
                 prefixIcon: const Icon(FluentIcons.search_24_regular),
@@ -1176,84 +1154,93 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
               final filteredChapters = query.isEmpty
                   ? chapters
                   : chapters.where((ch) => ch.text.contains(query)).toList();
+              final items =
+                  _buildVisibleTocItems(filteredChapters, chapters, content);
               return ListView.builder(
-                itemCount: filteredChapters.length,
-            itemBuilder: (context, index) {
-              final ch = filteredChapters[index];
-              final isSelected = ch == _selectedChapter;
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  if (item.isChapter) {
+                    final ch = item.chapter!;
+                    final isSelected = ch == _selectedChapter;
 
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  InkWell(
-                    onTap: () {
-                      if (isSelected) {
-                        // לחיצה חוזרת — סגירת תת-הרשימה
-                        setState(() => _selectedChapter = null);
-                      } else {
-                        setState(() {
-                          _selectedChapter = ch;
-                          _selectedVerseIdx = _kAllChapter;
-                        });
-                        _onChapterSelected(ch, chapters);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? colorScheme.primaryContainer
-                                .withValues(alpha: 0.3)
-                            : null,
-                        border: Border(
-                          bottom: BorderSide(
-                            color: Theme.of(context).dividerColor,
-                            width: 0.5,
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            FluentIcons.text_bullet_list_24_regular,
-                            color: isSelected
-                                ? colorScheme.primary
-                                : colorScheme.secondary,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              ch.text,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: isSelected
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                                color: isSelected ? colorScheme.primary : null,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                    return InkWell(
+                      onTap: () {
+                        if (isSelected) {
+                          setState(() => _selectedChapter = null);
+                        } else {
+                          setState(() {
+                            _selectedChapter = ch;
+                            _selectedVerseIdx = _kAllChapter;
+                          });
+                          _onChapterSelected(ch, chapters);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? colorScheme.primaryContainer
+                                  .withValues(alpha: 0.3)
+                              : null,
+                          border: Border(
+                            bottom: BorderSide(
+                              color: Theme.of(context).dividerColor,
+                              width: 0.5,
                             ),
                           ),
-                          if (isSelected)
-                            Icon(Icons.expand_less,
-                                size: 16, color: colorScheme.primary)
-                          else
-                            Icon(Icons.expand_more,
-                                size: 16,
-                                color: colorScheme.onSurface
-                                    .withValues(alpha: 0.4)),
-                        ],
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              FluentIcons.text_bullet_list_24_regular,
+                              color: isSelected
+                                  ? colorScheme.primary
+                                  : colorScheme.secondary,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                ch.text,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                  color:
+                                      isSelected ? colorScheme.primary : null,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                textDirection: TextDirection.rtl,
+                              ),
+                            ),
+                            Icon(
+                              isSelected
+                                  ? FluentIcons.chevron_up_16_regular
+                                  : FluentIcons.chevron_down_16_regular,
+                              size: 16,
+                              color: isSelected
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurface
+                                      .withValues(alpha: 0.4),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-                  if (isSelected)
-                    _buildParagraphSubList(context,
-                        chapter: ch, chapters: chapters, content: content),
-                ],
-              );
-            },
+                    );
+                  }
+
+                  return _buildSubItem(
+                    context,
+                    text: item.text!,
+                    isSelected: item.isSelected,
+                    onTap: item.onTap!,
+                    colorScheme: colorScheme,
+                    isAllChapter: item.isAllChapter,
+                  );
+                },
               );
             },
           ),
@@ -1264,10 +1251,8 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
 
   /// מחזיר תצוגה מקדימה של ~4 מילים ראשונות של הפסקה
   String _getParaPreview(String rawText) {
-    final plain = utils
-        .stripHtmlIfNeeded(rawText)
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
+    final plain =
+        utils.stripHtmlIfNeeded(rawText).replaceAll(RegExp(r'\s+'), ' ').trim();
     if (plain.isEmpty) return '';
     const maxChars = 40;
     if (plain.length <= maxChars) return plain;
@@ -1276,70 +1261,65 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
     return '${plain.substring(0, cut)}...';
   }
 
-  /// בונה תת-רשימה של פסקאות עבור פרק נבחר
-  Widget _buildParagraphSubList(
-    BuildContext context, {
-    required TocEntry chapter,
-    required List<TocEntry> chapters,
-    required List<String> content,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final hasVerseChildren = chapter.children.isNotEmpty;
+  List<_TocListItem> _buildVisibleTocItems(
+    List<TocEntry> visibleChapters,
+    List<TocEntry> allChapters,
+    List<String> content,
+  ) {
+    final items = <_TocListItem>[];
+    for (final chapter in visibleChapters) {
+      items.add(_TocListItem.chapter(chapter));
+      if (chapter != _selectedChapter) {
+        continue;
+      }
 
-    // פריט "כל הפרק"
-    Widget allChapterTile = _buildSubItem(
-      context,
-      text: 'כל הפרק',
-      isSelected: _selectedVerseIdx == _kAllChapter,
-      onTap: () {
-        setState(() => _selectedVerseIdx = _kAllChapter);
-        _onChapterSelected(chapter, chapters);
-      },
-      colorScheme: colorScheme,
-      isAllChapter: true,
-    );
+      items.add(
+        _TocListItem.subItem(
+          text: 'כל הפרק',
+          isSelected: _selectedVerseIdx == _kAllChapter,
+          isAllChapter: true,
+          onTap: () {
+            setState(() => _selectedVerseIdx = _kAllChapter);
+            _onChapterSelected(chapter, allChapters);
+          },
+        ),
+      );
 
-    if (hasVerseChildren) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          allChapterTile,
-          ...chapter.children.asMap().entries.map((entry) {
-            final i = entry.key;
-            final child = entry.value;
-            final preview = child.index < content.length
-                ? _getParaPreview(content[child.index])
-                : child.text;
-            if (preview.isEmpty) return const SizedBox.shrink();
-            return _buildSubItem(
-              context,
+      if (chapter.children.isNotEmpty) {
+        for (final entry in chapter.children.asMap().entries) {
+          final i = entry.key;
+          final child = entry.value;
+          final preview = child.index < content.length
+              ? _getParaPreview(content[child.index])
+              : child.text;
+          if (preview.isEmpty) continue;
+          items.add(
+            _TocListItem.subItem(
               text: preview,
               isSelected: _selectedVerseIdx == i,
-              onTap: () => _selectVerseAndLoad(i, chapters),
-              colorScheme: colorScheme,
-            );
-          }),
-        ],
-      );
-    } else {
-      // ספר לא-פסוקי: שורות הפרק
-      final lineCount = _chapterLineCount(chapters, chapter);
-      final subItems = <Widget>[allChapterTile];
+              onTap: () => _selectVerseAndLoad(i, allChapters),
+            ),
+          );
+        }
+        continue;
+      }
+
+      final lineCount = _chapterLineCount(allChapters, chapter);
       for (int i = 0; i < lineCount; i++) {
         final lineIndex = chapter.index + i;
         if (lineIndex >= content.length) break;
         final preview = _getParaPreview(content[lineIndex]);
         if (preview.isEmpty) continue;
-        subItems.add(_buildSubItem(
-          context,
-          text: preview,
-          isSelected: _selectedVerseIdx == i,
-          onTap: () => _selectParaAndLoad(i, chapters),
-          colorScheme: colorScheme,
-        ));
+        items.add(
+          _TocListItem.subItem(
+            text: preview,
+            isSelected: _selectedVerseIdx == i,
+            onTap: () => _selectParaAndLoad(i, allChapters),
+          ),
+        );
       }
-      return Column(mainAxisSize: MainAxisSize.min, children: subItems);
     }
+    return items;
   }
 
   Widget _buildSubItem(
@@ -1353,8 +1333,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding:
-            const EdgeInsets.only(right: 36, left: 12, top: 6, bottom: 6),
+        padding: const EdgeInsets.only(right: 36, left: 12, top: 6, bottom: 6),
         decoration: BoxDecoration(
           color: isSelected
               ? colorScheme.primaryContainer.withValues(alpha: 0.5)
@@ -1370,8 +1349,8 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
           children: [
             Icon(
               isAllChapter
-                  ? Icons.menu_book_outlined
-                  : Icons.short_text,
+                  ? FluentIcons.book_24_regular
+                  : FluentIcons.text_align_right_24_regular,
               color: isSelected ? colorScheme.primary : colorScheme.outline,
               size: 14,
             ),
@@ -1384,8 +1363,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                   color: isSelected
                       ? colorScheme.primary
                       : colorScheme.onSurface.withValues(alpha: 0.7),
-                  fontWeight:
-                      isSelected ? FontWeight.w600 : FontWeight.normal,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 ),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
@@ -1408,4 +1386,27 @@ class _SearchResultItem {
   const _SearchResultItem.result(this.snippet) : header = null;
 
   bool get isHeader => header != null;
+}
+
+class _TocListItem {
+  final TocEntry? chapter;
+  final String? text;
+  final bool isSelected;
+  final bool isAllChapter;
+  final VoidCallback? onTap;
+
+  const _TocListItem.chapter(this.chapter)
+      : text = null,
+        isSelected = false,
+        isAllChapter = false,
+        onTap = null;
+
+  const _TocListItem.subItem({
+    required this.text,
+    required this.isSelected,
+    required this.onTap,
+    this.isAllChapter = false,
+  }) : chapter = null;
+
+  bool get isChapter => chapter != null;
 }

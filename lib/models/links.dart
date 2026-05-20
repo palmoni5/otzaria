@@ -1,5 +1,7 @@
 /* represents links between two books in the library*/
 
+import 'dart:collection';
+
 import 'package:otzaria/data/data_providers/library_provider_manager.dart';
 import 'package:otzaria/models/books.dart';
 import 'package:otzaria/utils/text/ref_helper.dart';
@@ -7,6 +9,7 @@ import 'package:otzaria/utils/text/text_manipulation.dart' as utils;
 
 /// Represents a link between two books in the library.
 class Link {
+  static const int _maxContentCacheEntries = 400;
   static final Map<String, Future<String>> _displayReferenceCache = {};
 
   /// The Hebrew reference of the link.
@@ -49,17 +52,30 @@ class Link {
     this.end,
   });
 
-  static final Map<String, Future<String>> _contentCache = {};
+  static final LinkedHashMap<String, Future<String>> _contentCache =
+      LinkedHashMap<String, Future<String>>();
 
   /// Returns the content of the link as a [Future] of [String].
   /// The result is cached per (path2, index2) so repeated calls are instant.
   Future<String> get content {
     if (path2.isEmpty || index2 <= 0) {
-      return Future.value('שגיאה: קישור לא תקין');
+      return Future<String>.error(
+        StateError('Invalid link reference for commentary content'),
+      );
     }
     final key = '$path2:$index2';
-    return _contentCache.putIfAbsent(
-        key, () => LibraryProviderManager.instance.getLinkContent(this));
+    final cached = _contentCache.remove(key);
+    if (cached != null) {
+      _contentCache[key] = cached;
+      return cached;
+    }
+
+    final future = LibraryProviderManager.instance.getLinkContent(this);
+    _contentCache[key] = future;
+    if (_contentCache.length > _maxContentCacheEntries) {
+      _contentCache.remove(_contentCache.keys.first);
+    }
+    return future;
   }
 
   /// מחזירה כתובת תצוגה בטוחה גם כאשר לא ניתן לחשב TOC מלא.

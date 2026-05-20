@@ -124,7 +124,7 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
     final start = headings[headingIdx].value;
     final end = headingIdx + 1 < headings.length
         ? headings[headingIdx + 1].value - 1
-        : start + 100;
+        : lines.length - 1;
     final result = <({int lineIdx, String text})>[];
     for (int i = start; i <= end && i < lines.length; i++) {
       final clean = lines[i]
@@ -158,9 +158,10 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
       );
     }
     final start = headings[headingIdx].value;
+    final lastLineIndex = (_textLines?.length ?? 0) - 1;
     final end = headingIdx + 1 < headings.length
         ? headings[headingIdx + 1].value - 1
-        : start + 100;
+        : (lastLineIndex >= start ? lastLineIndex : start);
     return (start: start, end: end);
   }
 
@@ -189,25 +190,28 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
             paneContent: _showSearchPanel
                 ? _buildSearchPanel()
                 : _buildNavPanel(paragraphs, safeParaIdx),
-            mainContent: PdfCommentaryPanel(
-              key: _panelKey,
-              tab: widget.tab.sourceTab,
-              linksCount: widget.tab.sourceTab.links.length,
-              linksLoading: widget.tab.sourceTab.linksLoadingNotifier.value,
-              isFullScreen: true,
-              lineStartOverride: range.start,
-              lineEndOverride: range.end,
-              openBookCallback: (tab) {
-                if (tab is TextBookTab) {
-                  openBook(context, tab.book, tab.index, '',
-                      ignoreHistory: false);
-                }
-              },
-              fontSize: 16.0,
-              openFilterNotifier: _openFilterNotifier,
-              externalSearchController: _searchController,
-              externalTotalResultsNotifier: _totalResultsNotifier,
-              externalCurrentIndexNotifier: _currentIdxNotifier,
+            mainContent: ValueListenableBuilder<bool>(
+              valueListenable: widget.tab.sourceTab.linksLoadingNotifier,
+              builder: (context, linksLoading, _) => PdfCommentaryPanel(
+                key: _panelKey,
+                tab: widget.tab.sourceTab,
+                linksCount: widget.tab.sourceTab.links.length,
+                linksLoading: linksLoading,
+                isFullScreen: true,
+                lineStartOverride: range.start,
+                lineEndOverride: range.end,
+                openBookCallback: (tab) {
+                  if (tab is TextBookTab) {
+                    openBook(context, tab.book, tab.index, '',
+                        ignoreHistory: false);
+                  }
+                },
+                fontSize: 16.0,
+                openFilterNotifier: _openFilterNotifier,
+                externalSearchController: _searchController,
+                externalTotalResultsNotifier: _totalResultsNotifier,
+                externalCurrentIndexNotifier: _currentIdxNotifier,
+              ),
             ),
           ),
         ),
@@ -216,6 +220,12 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
   }
 
   Widget _buildActionBar(BuildContext context) {
+    final currentHeading = _sortedHeadings != null &&
+            _sortedHeadings!.isNotEmpty &&
+            _selectedHeadingIdx >= 0 &&
+            _selectedHeadingIdx < _sortedHeadings!.length
+        ? _sortedHeadings![_selectedHeadingIdx].key
+        : widget.tab.sourceTab.currentTitle.value;
     return Material(
       color: Theme.of(context).colorScheme.surfaceContainer,
       elevation: 1,
@@ -237,11 +247,24 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
               }),
             ),
             Expanded(
-              child: Text(
-                widget.tab.sourceTab.book.title,
-                style: Theme.of(context).textTheme.titleSmall,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.tab.sourceTab.book.title,
+                    style: Theme.of(context).textTheme.titleSmall,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                  if (currentHeading.isNotEmpty)
+                    Text(
+                      currentHeading,
+                      style: Theme.of(context).textTheme.bodySmall,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                ],
               ),
             ),
             ResponsiveActionBar(

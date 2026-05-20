@@ -168,6 +168,7 @@ class TextBookLoaded extends TextBookState {
   final bool showSubtitles;
   final Map<int, List<String>> subtitleHeadingsByLine;
   final List<ReadingSegment> readingSegments;
+  final bool linksLoading;
 
   /// אינדקס הסעיף שבו מבוצעת הדגשה ממוקדת (deep link). null = אין.
   final int? pinpointHighlightIndex;
@@ -231,6 +232,7 @@ class TextBookLoaded extends TextBookState {
     this.showSubtitles = true,
     this.subtitleHeadingsByLine = const {},
     this.readingSegments = const [],
+    this.linksLoading = false,
     this.pinpointHighlightIndex,
     this.pinpointHighlightText,
     this.isEditorOpen = false,
@@ -278,6 +280,7 @@ class TextBookLoaded extends TextBookState {
       showSubtitles: true,
       subtitleHeadingsByLine: const {},
       readingSegments: const [],
+      linksLoading: false,
       isEditorOpen: false,
       editorIndex: null,
       editorSectionId: null,
@@ -329,6 +332,7 @@ class TextBookLoaded extends TextBookState {
     bool? showSubtitles,
     Map<int, List<String>>? subtitleHeadingsByLine,
     List<ReadingSegment>? readingSegments,
+    bool? linksLoading,
     int? pinpointHighlightIndex,
     String? pinpointHighlightText,
     bool clearPinpointHighlight = false,
@@ -386,6 +390,7 @@ class TextBookLoaded extends TextBookState {
       subtitleHeadingsByLine:
           subtitleHeadingsByLine ?? this.subtitleHeadingsByLine,
       readingSegments: readingSegments ?? this.readingSegments,
+      linksLoading: linksLoading ?? this.linksLoading,
       pinpointHighlightIndex: clearPinpointHighlight
           ? null
           : (pinpointHighlightIndex ?? this.pinpointHighlightIndex),
@@ -438,6 +443,7 @@ class TextBookLoaded extends TextBookState {
         showSubtitles,
         _subtitleHeadingsSignature(subtitleHeadingsByLine),
         readingSegments.length,
+        linksLoading,
         pinpointHighlightIndex,
         pinpointHighlightText,
         isEditorOpen,

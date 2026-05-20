@@ -139,6 +139,7 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
     on<CreateNoteFromToolbar>(_onCreateNoteFromToolbar);
     on<UpdateSelectedTextForNote>(_onUpdateSelectedTextForNote);
     on<UpdateLinks>(_onUpdateLinks);
+    on<SetLinksLoading>(_onSetLinksLoading);
     on<UpdateAvailableCommentators>(_onUpdateAvailableCommentators);
     on<RefreshLinksForCurrentWindow>(_onRefreshLinksForCurrentWindow);
     on<LoadAllLinksForIndices>(_onLoadAllLinksForIndices);
@@ -537,6 +538,7 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
         showSubtitles: showSubtitles,
         subtitleHeadingsByLine: subtitleHeadingsByLine,
         readingSegments: readingSegments,
+        linksLoading: false,
         visibleIndices: visibleIndices,
         pinLeftPane: preservedPinLeftPane ??
             (Settings.getValue<bool>('key-pin-sidebar') ?? false),
@@ -1733,6 +1735,7 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
 
     _isLoadingLinks = true;
     _pendingLinksReload = false;
+    add(const SetLinksLoading(true));
 
     try {
       final links = await repository.getBookLinksInRange(
@@ -1802,6 +1805,7 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
       }
     } catch (e) {
       _isLoadingLinks = false;
+      add(const SetLinksLoading(false));
       if (kDebugMode) {
         debugPrint(
           '⚠️ TextBookBloc::loadLinks failed for ${book.title} '
@@ -1833,9 +1837,20 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
       links: processedLinks.links,
       linksByLine: processedLinks.linksByLine,
       visibleLinks: processedLinks.visibleLinks,
+      linksLoading: false,
     ));
     _activeLinksTargetBookTitlesSignature =
         event.targetBookTitlesSignature ?? _allTargetBookTitlesSignature;
+  }
+
+  void _onSetLinksLoading(
+    SetLinksLoading event,
+    Emitter<TextBookState> emit,
+  ) {
+    if (state is! TextBookLoaded) return;
+    final currentState = state as TextBookLoaded;
+    if (currentState.linksLoading == event.isLoading) return;
+    emit(currentState.copyWith(linksLoading: event.isLoading));
   }
 
   void _onUpdateAvailableCommentators(

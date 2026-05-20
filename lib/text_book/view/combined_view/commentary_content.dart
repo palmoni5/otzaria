@@ -52,7 +52,9 @@ class _CommentaryContentState extends State<CommentaryContent> {
   void _loadContent() {
     // Validate link before loading content
     if (widget.link.path2.isEmpty || widget.link.index2 <= 0) {
-      content = Future.value('שגיאה: קישור לא תקין');
+      content = Future<String>.error(
+        StateError('Invalid link reference for commentary content'),
+      );
     } else {
       content = widget.link.content;
     }
@@ -88,7 +90,8 @@ class _CommentaryContentState extends State<CommentaryContent> {
     _removeNikudCacheKey = cacheKey;
     _removeNikudFuture = resolveRemoveNikudForBook(
       title: title,
-      defaultRemoveNikud: settingsState.defaultRemoveNikud || widget.removeNikud,
+      defaultRemoveNikud:
+          settingsState.defaultRemoveNikud || widget.removeNikud,
       removeNikudFromTanach: settingsState.removeNikudFromTanach,
     );
     return _removeNikudFuture!;
@@ -135,7 +138,8 @@ class _CommentaryContentState extends State<CommentaryContent> {
                         widget.onSearchResultsCountChanged?.call(searchCount);
                         if (widget.onSearchSnippetsChanged != null &&
                             searchCount > 0) {
-                          final plainText = utils.stripHtmlIfNeeded(textForCount);
+                          final plainText =
+                              utils.stripHtmlIfNeeded(textForCount);
                           final excerpt = SnippetBuilder.buildExcerptText(
                             fullText: plainText,
                             query: widget.searchQuery,
