@@ -159,7 +159,6 @@ class _CalendarTimesPanelState extends State<CalendarTimesPanel> {
     'shabbosExitComposite',
   };
 
-
   List<CalendarTimeEntry> _buildCalendarTimeEntries(CalendarState state) {
     final dailyTimes = state.dailyTimes;
     final entries = <CalendarTimeEntry>[];
@@ -894,8 +893,13 @@ class _ZmanCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTokens.radiusMD),
       ),
-      child: SizedBox(
-        height: 118,
+      // minHeight במקום height קבוע: כרטיסי composite עם שתי אפשרויות התראה
+      // צריכים ~133px (Row של שני _buildCompositeSegment עם כפתור התראה),
+      // ולכן height: 118 גרם ל-overflow של 11-15px בתחתית. הגבלה מינימלית
+      // שומרת על אחידות חזותית עבור הכרטיסים הרגילים ומאפשרת לכרטיסים
+      // עם תוכן עשיר לגדול כדי הצורך.
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 118),
         child: Padding(
           padding: const EdgeInsets.all(10),
           child: Column(
@@ -1020,7 +1024,8 @@ class _ZmanCard extends StatelessWidget {
                       hasAlert: hasAlert,
                       existingAlert: existingAlert,
                       tooltip: hasAlert
-                          ? _tooltipForAlert(existingAlert, 'הפעל התראה לזמן זה')
+                          ? _tooltipForAlert(
+                              existingAlert, 'הפעל התראה לזמן זה')
                           : timeData.alertOptions.isEmpty
                               ? 'הפעל התראה לזמן זה'
                               : 'בחר זמן להתראה',

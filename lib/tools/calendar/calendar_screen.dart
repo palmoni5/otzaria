@@ -208,8 +208,7 @@ class CalendarWidgetState extends State<CalendarWidget> {
     final hasAlt = parts.contains('alt');
     final hasMeta = parts.contains('meta');
 
-    final mainKeyName =
-        parts.where((p) => !_modifiers.contains(p)).firstOrNull;
+    final mainKeyName = parts.where((p) => !_modifiers.contains(p)).firstOrNull;
     if (mainKeyName == null) return null;
 
     LogicalKeyboardKey? logicalKey;
@@ -431,7 +430,8 @@ class CalendarWidgetState extends State<CalendarWidget> {
                       constraints.maxWidth < LayoutBreakpoints.compact;
                   final hasRoomForSideBySide =
                       constraints.maxWidth >= kSideBySideMinWidth;
-                  _syncSidebarVisibilityForWidth(hasRoomForSideBySide);
+                  _syncSidebarVisibilityForWidth(hasRoomForSideBySide,
+                      isMobile: isMobile);
                   return Scaffold(
                     backgroundColor: Colors.transparent,
                     // ── גוף: Topbar + תוכן ──────────────────────────────
@@ -570,15 +570,95 @@ class CalendarWidgetState extends State<CalendarWidget> {
   }
 
   Widget _buildMobileLayout(BuildContext context, CalendarState state) {
-    return _buildDesktopLayout(context, state);
+    // במסך צר אין מקום לפריסה זה-לצד-זה (kSideBySideMinWidth=840), אז במקום
+    // להחביא את חלונית הצד מאחורי טוגל מוצגים אותה מתחת ללוח. חלוקה 3:2 —
+    // הלוח (חלוקת התצוגה הראשית) מקבל את רוב המקום והזמנים/אירועים מתחת.
+    // המשתמש עדיין יכול לכווץ את החלק התחתון דרך כפתור ה-toggle בסרגל העליון.
+    return Stack(
+      children: [
+        Column(
+          children: [
+            Expanded(
+              flex: 3,
+              child: CalendarMainPanel(
+                state: state,
+                onCreateEvent: ({existingEvent, specificDate}) =>
+                    _showCreateEventDialog(context, state,
+                        existingEvent: existingEvent,
+                        specificDate: specificDate),
+              ),
+            ),
+            if (_isSidebarVisible) ...[
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+              Expanded(
+                flex: 2,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: _buildSidePanel(context, state),
+                ),
+              ),
+            ],
+          ],
+        ),
+        ContextOverlayPanel(
+          isOpen: _isSettingsPanelOpen,
+          onClose: _toggleSettingsPanel,
+          width: 400,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Text(
+                      'הגדרות',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+              const Expanded(
+                child: CalendarSettingsPanel(),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
-  void _syncSidebarVisibilityForWidth(bool hasRoomForSideBySide) {
+  void _syncSidebarVisibilityForWidth(bool hasRoomForSideBySide,
+      {required bool isMobile}) {
     final previousHasRoomForSideBySide = _lastHasRoomForSideBySide;
     _lastHasRoomForSideBySide = hasRoomForSideBySide;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+
+      // במסך מוביילי הפריסה מוערמת — לוח למעלה וזמנים למטה — כך ששתי
+      // החלוניות נראות יחד ואין צורך לחבא את חלונית הצד. דילוג על מנגנון
+      // ה-auto-hide המיועד לטווח ה-medium (600-840) שבו חלונית הצד הופכת
+      // ל-overlay.
+      if (isMobile) {
+        if (!_isSidebarVisible &&
+            !_isSidebarExplicitlyClosed &&
+            (_isSidebarAutoHiddenForNarrow ||
+                previousHasRoomForSideBySide == null)) {
+          setState(() {
+            _isSidebarVisible = true;
+            _isSidebarAutoHiddenForNarrow = false;
+          });
+        }
+        return;
+      }
 
       if (previousHasRoomForSideBySide == null) {
         if (hasRoomForSideBySide &&
@@ -739,9 +819,9 @@ class CalendarWidgetState extends State<CalendarWidget> {
       context: context,
       title: 'אודות חישובי הלוח',
       content:
-        'חישובי הלוח בתוכנה זו מיוסדים על דרכו של הרב ישראל דוד הרפנס, כפי שנתבארה בספרו ישראל והזמנים ובשאר ספריו העוסקים בענייני זמני הלכה. מטרת הדברים איננה להציג חישוב עצמאי חדש, אלא ליישם בצורה מסודרת, מדויקת ובהירה את כללי חשבון הלוח העברי על פי הביאור והסידור שנתפרשו בספריו.\n\n'
-        'הרב הרפנס, מו"ץ בהתאחדות הרבנים ורב קהילת ישראל והזמנים, נודע במיוחד בבירור סוגיות הזמן בהלכה, וספרו ישראל והזמנים הוא ספר היסוד שעל פיו נבנתה תשתית החישוב שבתוכנה. לצד ספר זה, חיבר הרב גם ספרים נוספים בענייני הלכה שונים.\n\n'
-        'אין בהבאת זמנים אלו משום נקיטת צד באופן החישוב, והם הובאו רק משום הקלות לשלבם בתוכנה.',
+          'חישובי הלוח בתוכנה זו מיוסדים על דרכו של הרב ישראל דוד הרפנס, כפי שנתבארה בספרו ישראל והזמנים ובשאר ספריו העוסקים בענייני זמני הלכה. מטרת הדברים איננה להציג חישוב עצמאי חדש, אלא ליישם בצורה מסודרת, מדויקת ובהירה את כללי חשבון הלוח העברי על פי הביאור והסידור שנתפרשו בספריו.\n\n'
+          'הרב הרפנס, מו"ץ בהתאחדות הרבנים ורב קהילת ישראל והזמנים, נודע במיוחד בבירור סוגיות הזמן בהלכה, וספרו ישראל והזמנים הוא ספר היסוד שעל פיו נבנתה תשתית החישוב שבתוכנה. לצד ספר זה, חיבר הרב גם ספרים נוספים בענייני הלכה שונים.\n\n'
+          'אין בהבאת זמנים אלו משום נקיטת צד באופן החישוב, והם הובאו רק משום הקלות לשלבם בתוכנה.',
       confirmText: 'הבנתי',
     );
   }
