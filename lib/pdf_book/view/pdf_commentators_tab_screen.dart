@@ -131,19 +131,6 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
     return (start: start, end: end);
   }
 
-  /// טקסט preview — אם פסקה ≤3 מילים מוסיף גם תחילת הבאה
-  String _getPreviewText(
-      List<({int lineIdx, String text})> paragraphs, int paraIdx) {
-    if (paragraphs.isEmpty || paraIdx >= paragraphs.length) return '';
-    final text = paragraphs[paraIdx].text;
-    final words =
-        text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
-    if (words.length <= 3 && paraIdx + 1 < paragraphs.length) {
-      return '$text ${paragraphs[paraIdx + 1].text}';
-    }
-    return text;
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_sortedHeadings == null) _initHeadings();

@@ -48,6 +48,7 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
   }) _quickPreviewLoader;
   final ItemScrollController scrollController;
   final ItemPositionsListener positionsListener;
+  final ScrollOffsetController? scrollOffsetController;
 
   Timer? _debounceTimer;
   Timer? _highlightTimer;
@@ -67,6 +68,21 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
   // אינדקסים ממתינים לכרטסיית מפרשים — ייטענו ברגע ש-availableCommentators יהיו מוכנים
   List<int>? _pendingCommentatorsTabIndices;
 
+  bool _userTouchedCommentators = false;
+  bool _inlineNotesFullScanDone = false;
+
+  @visibleForTesting
+  void resetInlineNotesStateForNewBook() {
+    _userTouchedCommentators = false;
+    _inlineNotesFullScanDone = false;
+  }
+
+  @visibleForTesting
+  bool get userTouchedCommentatorsForTesting => _userTouchedCommentators;
+
+  @visibleForTesting
+  bool get inlineNotesFullScanDoneForTesting => _inlineNotesFullScanDone;
+
   TextBookBloc({
     required this.repository,
     Future<String?> Function(
@@ -78,6 +94,7 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
     required TextBookInitial initialState,
     required this.scrollController,
     required this.positionsListener,
+    this.scrollOffsetController,
   })  : _quickPreviewLoader = quickPreviewLoader ??
             SqliteDataProvider.instance.getBookQuickPreview,
         super(initialState) {
@@ -1375,5 +1392,27 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
 
   void _enrichHeCategoriesInBackground(TextBook book) async {
     await enrichHeCategories(book);
+  }
+
+  @visibleForTesting
+  static List<ItemPosition> filterBarelyVisiblePositionsForTesting(
+    List<ItemPosition> positions,
+  ) =>
+      _filterBarelyVisiblePositions(positions);
+
+  static List<ItemPosition> _filterBarelyVisiblePositions(
+    List<ItemPosition> positions,
+  ) {
+    if (positions.length <= 1) return positions;
+    final filtered = positions.where((p) {
+      final extent = p.itemTrailingEdge - p.itemLeadingEdge;
+      if (extent <= 0) return false;
+      final visibleTop = p.itemLeadingEdge.clamp(0.0, 1.0);
+      final visibleBottom = p.itemTrailingEdge.clamp(0.0, 1.0);
+      final visiblePortion = visibleBottom - visibleTop;
+      if (visiblePortion <= 0) return false;
+      return visiblePortion / extent >= 0.15;
+    }).toList();
+    return filtered.isEmpty ? positions : filtered;
   }
 }

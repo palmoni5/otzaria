@@ -24,6 +24,7 @@ import 'package:otzaria/widgets/feedback/app_future_builder.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:otzaria/services/commentary_service.dart';
+import 'package:otzaria/text_book/view/selection/selection_sync_controller.dart';
 
 // Type alias לתאימות לאחור - משתמש ב-LinkGroup מה-Service
 typedef CommentaryGroup = LinkGroup;
@@ -53,6 +54,8 @@ class CommentaryListBase extends StatefulWidget {
   final List<CommentatorGroup>? commentatorGroupsOverride;
   final String? bookTitleOverride;
   final ValueChanged<List<String>>? onSelectedCommentatorsOverrideChanged;
+  final SelectionSyncController? selectionSyncController;
+  final ValueListenable<int>? openFilterRequest;
   final ValueNotifier<int>? openFilterNotifier;
   final ValueNotifier<int>? closeFilterNotifier;
   // כאשר מסופק, CommentaryListBase ישתמש בו לחיפוש ולא יציג שורת חיפוש פנימית
@@ -79,6 +82,8 @@ class CommentaryListBase extends StatefulWidget {
     this.commentatorGroupsOverride,
     this.bookTitleOverride,
     this.onSelectedCommentatorsOverrideChanged,
+    this.selectionSyncController,
+    this.openFilterRequest,
     this.openFilterNotifier,
     this.closeFilterNotifier,
     this.externalSearchController,
@@ -242,6 +247,7 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
     // האזנה לשינויים במיקום הגלילה כדי לשמור את המיקום האחרון
     _itemPositionsListener.itemPositions.addListener(_updateLastScrollIndex);
     widget.openFilterNotifier?.addListener(_onOpenFilterRequest);
+    widget.openFilterRequest?.addListener(_onOpenFilterRequest);
     widget.closeFilterNotifier?.addListener(_onCloseFilterRequest);
     // חיפוש חיצוני
     widget.externalSearchController?.addListener(_onExternalSearchChanged);
@@ -325,6 +331,7 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
     _searchUpdateDebounce?.cancel();
     _itemPositionsListener.itemPositions.removeListener(_updateLastScrollIndex);
     widget.openFilterNotifier?.removeListener(_onOpenFilterRequest);
+    widget.openFilterRequest?.removeListener(_onOpenFilterRequest);
     widget.closeFilterNotifier?.removeListener(_onCloseFilterRequest);
     widget.externalSearchController?.removeListener(_onExternalSearchChanged);
     _searchController.dispose();
