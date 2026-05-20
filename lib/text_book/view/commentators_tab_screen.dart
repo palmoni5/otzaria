@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:otzaria/bookmarks/bloc/bookmark_bloc.dart';
+import 'package:otzaria/bookmarks/view/bookmark_screen.dart';
+import 'package:otzaria/core/ui_snack.dart';
 import 'package:otzaria/models/books.dart';
 import 'package:otzaria/tabs/models/commentators_tab.dart';
 import 'package:otzaria/tabs/models/tab.dart';
@@ -9,6 +12,7 @@ import 'package:otzaria/text_book/bloc/text_book_bloc.dart';
 import 'package:otzaria/text_book/bloc/text_book_event.dart';
 import 'package:otzaria/text_book/bloc/text_book_state.dart';
 import 'package:otzaria/text_book/view/commentary_list_base.dart';
+import 'package:otzaria/utils/text/ref_helper.dart';
 import 'package:otzaria/widgets/misc/commentators_filter_button.dart';
 import 'package:otzaria/settings/engine/settings_bloc.dart';
 import 'package:otzaria/settings/engine/settings_state.dart';
@@ -341,107 +345,50 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                       maxVisibleButtons: 999,
                       originalOrder: const [],
                       actions: [
-                        ActionButtonData(
-                          widget: const IconButton(
-                            icon: Icon(FluentIcons.text_font_24_regular),
+                        for (final action in const [
+                          (
+                            icon: FluentIcons.text_font_24_regular,
                             tooltip: 'ניקוד',
-                            onPressed: null,
                           ),
-                          icon: FluentIcons.text_font_24_regular,
-                          tooltip: 'ניקוד',
-                          onPressed: null,
-                        ),
-                        ActionButtonData(
-                          widget: const IconButton(
-                            icon: Icon(
-                                FluentIcons.text_clear_formatting_24_regular),
-                            tooltip: 'פיסוק',
-                            onPressed: null,
-                          ),
-                          icon: FluentIcons.text_clear_formatting_24_regular,
-                          tooltip: 'פיסוק',
-                          onPressed: null,
-                        ),
-                        ActionButtonData(
-                          widget: const IconButton(
-                            icon: Icon(FluentIcons.search_24_regular),
+                          (
+                            icon: FluentIcons.search_24_regular,
                             tooltip: 'חיפוש',
-                            onPressed: null,
                           ),
-                          icon: FluentIcons.search_24_regular,
-                          tooltip: 'חיפוש',
-                          onPressed: null,
-                        ),
-                        ActionButtonData(
-                          widget: const IconButton(
-                            icon: Icon(FluentIcons.filter_24_regular),
+                          (
+                            icon: FluentIcons.apps_list_24_regular,
                             tooltip: 'בחירת מפרשים',
-                            onPressed: null,
                           ),
-                          icon: FluentIcons.filter_24_regular,
-                          tooltip: 'בחירת מפרשים',
-                          onPressed: null,
-                        ),
-                        ActionButtonData(
-                          widget: const IconButton(
-                            icon: Icon(FluentIcons.zoom_in_24_regular),
+                          (
+                            icon: FluentIcons.bookmark_add_24_regular,
+                            tooltip: 'הוסף סימניה',
+                          ),
+                          (
+                            icon: FluentIcons.zoom_in_24_regular,
                             tooltip: 'הגדל את גודל הטקסט',
-                            onPressed: null,
                           ),
-                          icon: FluentIcons.zoom_in_24_regular,
-                          tooltip: 'הגדל את גודל הטקסט',
-                          onPressed: null,
-                        ),
-                        ActionButtonData(
-                          widget: const IconButton(
-                            icon: Icon(FluentIcons.zoom_out_24_regular),
+                          (
+                            icon: FluentIcons.zoom_out_24_regular,
                             tooltip: 'הקטן את גודל הטקסט',
-                            onPressed: null,
                           ),
-                          icon: FluentIcons.zoom_out_24_regular,
-                          tooltip: 'הקטן את גודל הטקסט',
-                          onPressed: null,
-                        ),
-                        ActionButtonData(
-                          widget: const IconButton(
-                            icon: Icon(FluentIcons.arrow_previous_24_filled),
-                            tooltip: 'הפרק הקודם',
-                            onPressed: null,
-                          ),
-                          icon: FluentIcons.arrow_previous_24_filled,
-                          tooltip: 'הפרק הקודם',
-                          onPressed: null,
-                        ),
-                        ActionButtonData(
-                          widget: const IconButton(
-                            icon: Icon(FluentIcons.chevron_left_24_regular),
+                          (
+                            icon: FluentIcons.chevron_left_24_regular,
                             tooltip: 'הקטע הקודם',
-                            onPressed: null,
                           ),
-                          icon: FluentIcons.chevron_left_24_regular,
-                          tooltip: 'הקטע הקודם',
-                          onPressed: null,
-                        ),
-                        ActionButtonData(
-                          widget: const IconButton(
-                            icon: Icon(FluentIcons.chevron_right_24_regular),
+                          (
+                            icon: FluentIcons.chevron_right_24_regular,
                             tooltip: 'הקטע הבא',
+                          ),
+                        ])
+                          ActionButtonData(
+                            widget: IconButton(
+                              icon: Icon(action.icon),
+                              tooltip: action.tooltip,
+                              onPressed: null,
+                            ),
+                            icon: action.icon,
+                            tooltip: action.tooltip,
                             onPressed: null,
                           ),
-                          icon: FluentIcons.chevron_right_24_regular,
-                          tooltip: 'הקטע הבא',
-                          onPressed: null,
-                        ),
-                        ActionButtonData(
-                          widget: const IconButton(
-                            icon: Icon(FluentIcons.arrow_next_24_filled),
-                            tooltip: 'הפרק הבא',
-                            onPressed: null,
-                          ),
-                          icon: FluentIcons.arrow_next_24_filled,
-                          tooltip: 'הפרק הבא',
-                          onPressed: null,
-                        ),
                       ],
                     ),
                   ],
@@ -597,6 +544,48 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
     }
   }
 
+  void _openSearchPane() {
+    setState(() => _navPaneOpen = true);
+    _navTabController.animateTo(1);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+  }
+
+  Future<void> _addBookmark(
+    BuildContext context,
+    TextBookLoaded state,
+    List<int>? effectiveIndexes,
+  ) async {
+    final fallbackIndex = state.selectedIndex ??
+        (state.visibleIndices.isNotEmpty ? state.visibleIndices.first : 0);
+    final index = effectiveIndexes?.isNotEmpty == true
+        ? effectiveIndexes!.first
+        : fallbackIndex;
+    final ref = addBookTitleToRef(
+      await refFromIndex(index, state.book.tableOfContents),
+      state.book.title,
+    );
+    if (!mounted || !context.mounted) return;
+
+    final commentatorsToShow =
+        _selectedCommentatorsOverride ?? state.activeCommentators;
+    final added = context.read<BookmarkBloc>().addBookmark(
+          ref: ref,
+          book: state.book,
+          index: index,
+          commentatorsToShow: commentatorsToShow,
+        );
+    UiSnack.showQuick(added ? 'הסימניה נוספה בהצלחה' : 'הסימניה כבר קיימת');
+  }
+
+  void _showBookmarksForCurrentBook(BuildContext context, Book book) {
+    showDialog(
+      context: context,
+      builder: (_) => BookmarksDialog(bookFilter: book),
+    );
+  }
+
   // ── AppBar ─────────────────────────────────────────────────────────────────
 
   PreferredSizeWidget _buildAppBar(
@@ -675,11 +664,11 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
               widget: IconButton(
                 icon: const Icon(FluentIcons.search_24_regular),
                 tooltip: 'חיפוש',
-                onPressed: () => setState(() => _navPaneOpen = false),
+                onPressed: _openSearchPane,
               ),
               icon: FluentIcons.search_24_regular,
               tooltip: 'חיפוש',
-              onPressed: () => setState(() => _navPaneOpen = false),
+              onPressed: _openSearchPane,
             ),
             // בחירת מפרשים
             ActionButtonData(
@@ -690,6 +679,27 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
               icon: FluentIcons.apps_list_24_regular,
               tooltip: 'בחירת מפרשים',
               onPressed: () => _openFilterNotifier.value++,
+            ),
+            ActionButtonData(
+              widget: IconButton(
+                icon: const Icon(FluentIcons.bookmark_add_24_regular),
+                tooltip: 'הוסף סימניה',
+                onPressed: () => _addBookmark(
+                    context,
+                    state,
+                    _computeIndexes(
+                      chapters,
+                      _selectedChapter,
+                      _selectedVerseIdx,
+                    )),
+              ),
+              icon: FluentIcons.bookmark_add_24_regular,
+              tooltip: 'הוסף סימניה',
+              onPressed: () => _addBookmark(
+                context,
+                state,
+                _computeIndexes(chapters, _selectedChapter, _selectedVerseIdx),
+              ),
             ),
             // הגדל טקסט
             ActionButtonData(
@@ -721,17 +731,6 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                   .read<TextBookBloc>()
                   .add(UpdateFontSize((state.fontSize - 3).clamp(15, 50))),
             ),
-            // פרק קודם
-            ActionButtonData(
-              widget: IconButton(
-                icon: const Icon(FluentIcons.arrow_previous_24_filled),
-                tooltip: 'הפרק הקודם',
-                onPressed: () => _navigateToPrevChapter(chapters),
-              ),
-              icon: FluentIcons.arrow_previous_24_filled,
-              tooltip: 'הפרק הקודם',
-              onPressed: () => _navigateToPrevChapter(chapters),
-            ),
             // קטע קודם
             ActionButtonData(
               widget: IconButton(
@@ -754,7 +753,30 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
               tooltip: 'הקטע הבא',
               onPressed: () => _navigateToNextVerse(chapters),
             ),
-            // פרק הבא
+          ],
+          alwaysInMenu: [
+            ActionButtonData(
+              widget: IconButton(
+                icon: const Icon(FluentIcons.bookmark_multiple_24_regular),
+                tooltip: 'סימניות בספר זה',
+                onPressed: () =>
+                    _showBookmarksForCurrentBook(context, state.book),
+              ),
+              icon: FluentIcons.bookmark_multiple_24_regular,
+              tooltip: 'סימניות בספר זה',
+              onPressed: () =>
+                  _showBookmarksForCurrentBook(context, state.book),
+            ),
+            ActionButtonData(
+              widget: IconButton(
+                icon: const Icon(FluentIcons.arrow_previous_24_filled),
+                tooltip: 'הפרק הקודם',
+                onPressed: () => _navigateToPrevChapter(chapters),
+              ),
+              icon: FluentIcons.arrow_previous_24_filled,
+              tooltip: 'הפרק הקודם',
+              onPressed: () => _navigateToPrevChapter(chapters),
+            ),
             ActionButtonData(
               widget: IconButton(
                 icon: const Icon(FluentIcons.arrow_next_24_filled),
@@ -764,48 +786,6 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
               icon: FluentIcons.arrow_next_24_filled,
               tooltip: 'הפרק הבא',
               onPressed: () => _navigateToNextChapter(chapters),
-            ),
-          ],
-          alwaysInMenu: [
-            ActionButtonData(
-              widget: IconButton(
-                icon: const Icon(FluentIcons.bookmark_add_24_regular),
-                tooltip: 'הוסף סימניה',
-                onPressed: () {},
-              ),
-              icon: FluentIcons.bookmark_add_24_regular,
-              tooltip: 'הוסף סימניה',
-              onPressed: () {},
-            ),
-            ActionButtonData(
-              widget: IconButton(
-                icon: const Icon(FluentIcons.note_24_regular),
-                tooltip: 'הצג הערות אישיות',
-                onPressed: () {},
-              ),
-              icon: FluentIcons.note_24_regular,
-              tooltip: 'הצג הערות אישיות',
-              onPressed: () {},
-            ),
-            ActionButtonData(
-              widget: IconButton(
-                icon: const Icon(FluentIcons.print_24_regular),
-                tooltip: 'הדפסה',
-                onPressed: () {},
-              ),
-              icon: FluentIcons.print_24_regular,
-              tooltip: 'הדפסה',
-              onPressed: () {},
-            ),
-            ActionButtonData(
-              widget: IconButton(
-                icon: const Icon(FluentIcons.info_24_regular),
-                tooltip: 'אודות הספר',
-                onPressed: () {},
-              ),
-              icon: FluentIcons.info_24_regular,
-              tooltip: 'אודות הספר',
-              onPressed: () {},
             ),
           ],
         ),
@@ -1261,6 +1241,22 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
     return '${plain.substring(0, cut)}...';
   }
 
+  bool _isDuplicateChapterChild(
+    TocEntry chapter,
+    TocEntry child,
+    String preview,
+  ) {
+    if (child.index != chapter.index) {
+      return false;
+    }
+    final normalizedChapter = chapter.text.trim();
+    final normalizedChild = child.text.trim();
+    final normalizedPreview = preview.trim();
+    return normalizedChild == normalizedChapter ||
+        normalizedPreview == normalizedChapter ||
+        normalizedPreview.startsWith(normalizedChapter);
+  }
+
   List<_TocListItem> _buildVisibleTocItems(
     List<TocEntry> visibleChapters,
     List<TocEntry> allChapters,
@@ -1294,6 +1290,9 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
           final preview = textFromContent.trim().isNotEmpty
               ? _getParaPreview(textFromContent)
               : child.text;
+          if (_isDuplicateChapterChild(chapter, child, preview)) {
+            continue;
+          }
           if (preview.isEmpty) continue;
           items.add(
             _TocListItem.subItem(

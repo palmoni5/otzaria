@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:otzaria/bookmarks/bloc/bookmark_bloc.dart';
+import 'package:otzaria/bookmarks/view/bookmark_screen.dart';
+import 'package:otzaria/core/ui_snack.dart';
 import 'package:otzaria/tabs/models/pdf_commentators_tab.dart';
 import 'package:otzaria/tabs/models/text_tab.dart';
 import 'package:otzaria/pdf_book/view/pdf_commentary_panel.dart';
@@ -7,6 +11,7 @@ import 'package:otzaria/models/books.dart';
 import 'package:otzaria/data/repository/data_repository.dart';
 import 'package:otzaria/widgets/misc/commentators_filter_button.dart';
 import 'package:otzaria/widgets/text/rtl_text_field.dart';
+import 'package:otzaria/utils/text/text_manipulation.dart' as utils;
 import 'package:otzaria/utils/navigation/open_book.dart';
 import 'package:otzaria/widgets/layout/adaptive_side_pane.dart';
 import 'package:otzaria/widgets/navigation/responsive_action_bar.dart';
@@ -36,6 +41,9 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
   bool _showNavPanel = false;
   bool _showSearchPanel = false;
   final Set<int> _expandedHeadings = {};
+
+  bool get _isNavigationReady =>
+      _sortedHeadings != null && _sortedHeadings!.isNotEmpty;
 
   @override
   void initState() {
@@ -86,6 +94,13 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
     });
   }
 
+  void _openSearchPanel() {
+    setState(() {
+      _showSearchPanel = !_showSearchPanel;
+      _showNavPanel = false;
+    });
+  }
+
   Future<void> _loadTextContent() async {
     final tab = widget.tab.sourceTab;
     try {
@@ -127,10 +142,7 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
         : lines.length - 1;
     final result = <({int lineIdx, String text})>[];
     for (int i = start; i <= end && i < lines.length; i++) {
-      final clean = lines[i]
-          .replaceAll(RegExp(r'<[^>]*>'), '')
-          .replaceAll('&nbsp;', ' ')
-          .trim();
+      final clean = utils.stripHtmlIfNeeded(lines[i]).trim();
       if (clean.isNotEmpty) result.add((lineIdx: i, text: clean));
     }
     return result;
@@ -177,7 +189,9 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
 
     return Column(
       children: [
-        _buildActionBar(context),
+        (_isNavigationReady || _textLines != null)
+            ? _buildActionBar(context)
+            : _buildLoadingActionBar(context),
         Expanded(
           child: AdaptiveSidePane(
             isOpen: _showNavPanel || _showSearchPanel,
@@ -217,6 +231,68 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
         ),
       ],
     );
+  }
+
+  void _navigateToPrevParagraph() {
+    if (!_isNavigationReady) return;
+    final paragraphs = _getParagraphs(_selectedHeadingIdx);
+    if (_selectedParagraphIdx > 0 && paragraphs.isNotEmpty) {
+      setState(() => _selectedParagraphIdx--);
+      return;
+    }
+    if (_selectedHeadingIdx <= 0) return;
+    final prevHeadingIdx = _selectedHeadingIdx - 1;
+    final prevParagraphs = _getParagraphs(prevHeadingIdx);
+    setState(() {
+      _selectedHeadingIdx = prevHeadingIdx;
+      _selectedParagraphIdx =
+          prevParagraphs.isNotEmpty ? prevParagraphs.length - 1 : 0;
+      _expandedHeadings.add(prevHeadingIdx);
+    });
+  }
+
+  void _navigateToNextParagraph() {
+    if (!_isNavigationReady) return;
+    final paragraphs = _getParagraphs(_selectedHeadingIdx);
+    if (_selectedParagraphIdx + 1 < paragraphs.length) {
+      setState(() => _selectedParagraphIdx++);
+      return;
+    }
+    if (_sortedHeadings == null ||
+        _selectedHeadingIdx + 1 >= _sortedHeadings!.length) {
+      return;
+    }
+    final nextHeadingIdx = _selectedHeadingIdx + 1;
+    setState(() {
+      _selectedHeadingIdx = nextHeadingIdx;
+      _selectedParagraphIdx = 0;
+      _expandedHeadings.add(nextHeadingIdx);
+    });
+  }
+
+  void _showBookmarksForCurrentBook(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => BookmarksDialog(bookFilter: widget.tab.sourceTab.book),
+    );
+  }
+
+  void _addBookmark(BuildContext context) {
+    final page = widget.tab.sourceTab.pdfViewerController.isReady
+        ? (widget.tab.sourceTab.pdfViewerController.pageNumber ??
+            widget.tab.sourceTab.pageNumber)
+        : widget.tab.sourceTab.pageNumber;
+    final heading = widget.tab.sourceTab.currentTitle.value.trim();
+    final ref = heading.isNotEmpty
+        ? '${widget.tab.sourceTab.book.title} $heading'
+        : '${widget.tab.sourceTab.book.title} עמוד $page';
+
+    final added = context.read<BookmarkBloc>().addBookmark(
+          ref: ref,
+          book: widget.tab.sourceTab.book,
+          index: page,
+        );
+    UiSnack.show(added ? 'הסימניה נוספה בהצלחה' : 'הסימניה כבר קיימת');
   }
 
   Widget _buildActionBar(BuildContext context) {
@@ -268,18 +344,32 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
               ),
             ),
             ResponsiveActionBar(
-              alwaysInMenu: const [],
+              alwaysInMenu: [
+                ActionButtonData(
+                  widget: IconButton(
+                    icon: const Icon(FluentIcons.bookmark_multiple_24_regular),
+                    tooltip: 'סימניות בספר זה',
+                    onPressed: () => _showBookmarksForCurrentBook(context),
+                  ),
+                  icon: FluentIcons.bookmark_multiple_24_regular,
+                  tooltip: 'סימניות בספר זה',
+                  onPressed: () => _showBookmarksForCurrentBook(context),
+                ),
+              ],
               maxVisibleButtons: 999,
               actions: [
+                ActionButtonData.simple(
+                  icon: FluentIcons.bookmark_add_24_regular,
+                  tooltip: 'הוסף סימניה',
+                  compact: true,
+                  onPressed: () => _addBookmark(context),
+                ),
                 ActionButtonData.simple(
                   icon: FluentIcons.search_24_regular,
                   tooltip: 'חיפוש',
                   compact: true,
                   selected: _showSearchPanel,
-                  onPressed: () => setState(() {
-                    _showSearchPanel = !_showSearchPanel;
-                    _showNavPanel = false;
-                  }),
+                  onPressed: _openSearchPanel,
                 ),
                 ActionButtonData(
                   widget: CommentatorsFilterButton(
@@ -289,6 +379,102 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
                   icon: FluentIcons.apps_list_24_regular,
                   tooltip: 'בחירת מפרשים',
                   onPressed: () => _openFilterNotifier.value++,
+                ),
+                ActionButtonData.simple(
+                  icon: FluentIcons.chevron_left_24_regular,
+                  tooltip: 'הקטע הקודם',
+                  compact: true,
+                  onPressed: _navigateToPrevParagraph,
+                ),
+                ActionButtonData.simple(
+                  icon: FluentIcons.chevron_right_24_regular,
+                  tooltip: 'הקטע הבא',
+                  compact: true,
+                  onPressed: _navigateToNextParagraph,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingActionBar(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      color: colorScheme.surfaceContainer,
+      elevation: 1,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Row(
+          children: [
+            const IconButton(
+              icon: Icon(FluentIcons.navigation_24_regular),
+              tooltip: 'ניווט',
+              onPressed: null,
+            ),
+            Expanded(
+              child: Text(
+                widget.tab.sourceTab.book.title,
+                style: Theme.of(context).textTheme.titleSmall,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+            ResponsiveActionBar(
+              alwaysInMenu: const [],
+              maxVisibleButtons: 999,
+              actions: const [
+                ActionButtonData(
+                  widget: IconButton(
+                    icon: Icon(FluentIcons.bookmark_add_24_regular),
+                    tooltip: 'הוסף סימניה',
+                    onPressed: null,
+                  ),
+                  icon: FluentIcons.bookmark_add_24_regular,
+                  tooltip: 'הוסף סימניה',
+                  onPressed: null,
+                ),
+                ActionButtonData(
+                  widget: IconButton(
+                    icon: Icon(FluentIcons.search_24_regular),
+                    tooltip: 'חיפוש',
+                    onPressed: null,
+                  ),
+                  icon: FluentIcons.search_24_regular,
+                  tooltip: 'חיפוש',
+                  onPressed: null,
+                ),
+                ActionButtonData(
+                  widget: IconButton(
+                    icon: Icon(FluentIcons.apps_list_24_regular),
+                    tooltip: 'בחירת מפרשים',
+                    onPressed: null,
+                  ),
+                  icon: FluentIcons.apps_list_24_regular,
+                  tooltip: 'בחירת מפרשים',
+                  onPressed: null,
+                ),
+                ActionButtonData(
+                  widget: IconButton(
+                    icon: Icon(FluentIcons.chevron_left_24_regular),
+                    tooltip: 'הקטע הקודם',
+                    onPressed: null,
+                  ),
+                  icon: FluentIcons.chevron_left_24_regular,
+                  tooltip: 'הקטע הקודם',
+                  onPressed: null,
+                ),
+                ActionButtonData(
+                  widget: IconButton(
+                    icon: Icon(FluentIcons.chevron_right_24_regular),
+                    tooltip: 'הקטע הבא',
+                    onPressed: null,
+                  ),
+                  icon: FluentIcons.chevron_right_24_regular,
+                  tooltip: 'הקטע הבא',
+                  onPressed: null,
                 ),
               ],
             ),
