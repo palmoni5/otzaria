@@ -1,5 +1,8 @@
 import 'package:equatable/equatable.dart';
 
+/// כותרת המפרש הוירטואלי המכיל את הערות השוליים ה-inline של הספר.
+const String kNotesCommentatorTitle = 'הערות';
+
 class CommentatorGroup extends Equatable {
   final String title;
   final List<String> commentators;

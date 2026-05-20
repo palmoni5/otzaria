@@ -23,6 +23,7 @@ import 'package:otzaria/data/data_providers/database_library_provider.dart';
 import 'package:otzaria/text_book/utils/link_processing.dart';
 import 'package:otzaria/text_book/utils/he_categories_enricher.dart';
 import 'package:otzaria/text_book/utils/commentator_group_builder.dart';
+import 'package:otzaria/text_book/utils/inline_notes_utils.dart' as notes;
 import 'package:otzaria/text_book/utils/reading_segments.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
@@ -74,6 +75,30 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
   List<int>? _pendingForceLoadIndices;
   bool _pendingForceLoadAll = false;
   bool _awaitingInitialPageShapeVisibleSync = false;
+
+  /// סימון אם המשתמש שינה ידנית את בחירת המפרשים. בשונה מ-`activeCommentators.isEmpty`,
+  /// הדגל הזה מבחין בין "עוד לא נבחר כלום" (false) לבין "המשתמש ריקן את הבחירה
+  /// במכוון" (true) — וכך מונע אוטו-בחירה חוזרת של 'הערות' אחרי שהמשתמש כיבה אותן.
+  bool _userTouchedCommentators = false;
+
+  /// true אחרי שסרקנו את כל ה-content (ApplyFullBookContent) — מאפשר לדלג
+  /// על סריקות עתידיות גם אם 'הערות' לא נוסף ל-availableCommentators.
+  bool _inlineNotesFullScanDone = false;
+
+  /// מאפס את הדגלים הספציפיים-לספר. נקרא מ-_onLoadContent כשבלוק עובר
+  /// לטעון ספר חדש (כיום בייצור bloc נוצר חדש לכל תא, אבל הקריאה כאן
+  /// מגינה מפני דליפת state בין ספרים אם זה ישתנה בעתיד).
+  @visibleForTesting
+  void resetInlineNotesStateForNewBook() {
+    _userTouchedCommentators = false;
+    _inlineNotesFullScanDone = false;
+  }
+
+  @visibleForTesting
+  bool get userTouchedCommentatorsForTesting => _userTouchedCommentators;
+
+  @visibleForTesting
+  bool get inlineNotesFullScanDoneForTesting => _inlineNotesFullScanDone;
 
   TextBookBloc({
     required this.repository,
@@ -278,6 +303,11 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
       pinpointHighlightIndex = currentState.pinpointHighlightIndex;
       pinpointHighlightText = currentState.pinpointHighlightText;
     } else if (state is TextBookInitial) {
+      // איפוס דגלי ה-inline-notes כשמתחילים טעינה של ספר חדש דרך ה-BLoC.
+      // הדגלים האלה תלויים בספר ספציפי ולא צריכים לדלוף בין ספרים, גם
+      // אם בעתיד מישהו ישתמש שוב באותו instance של BLoC לספר אחר.
+      resetInlineNotesStateForNewBook();
+
       final initial = state as TextBookInitial;
       book = initial.book;
       searchText = initial.searchText;
@@ -696,6 +726,7 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
   ) async {
     if (state is TextBookLoaded) {
       final currentState = state as TextBookLoaded;
+      _userTouchedCommentators = true;
 
       final updatedState = currentState.copyWith(
         activeCommentators: event.commentators,
@@ -1010,7 +1041,7 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
   List<String> _normalizeCommentaryTargets(Iterable<String> titles) {
     return titles
         .map((title) => title.trim())
-        .where((title) => title.isNotEmpty)
+        .where((title) => title.isNotEmpty && title != kNotesCommentatorTitle)
         .toSet()
         .toList()
       ..sort();
@@ -1249,13 +1280,18 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
       return;
     }
 
-    emit(currentState.copyWith(
+    final updatedState = _withInlineNotesCommentator(currentState.copyWith(
       content: event.content,
       readingSegments: buildReadingSegments(
         event.content,
         continuous: currentState.continuousReadingMode,
       ),
     ));
+    // אחרי שסרקנו את התוכן המלא, אין יותר טעם בסריקה נוספת על הרחבות
+    // טווח עתידיות — או שכבר הוסף 'הערות' ל-availableCommentators (ואז
+    // early-return שומר עלינו), או שאין הערות בכלל בספר.
+    _inlineNotesFullScanDone = true;
+    emit(updatedState);
     _markLoadedContentRange(
       currentState.book,
       0,
@@ -1298,13 +1334,85 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
       event.startLine + event.lines.length - 1,
       totalLines: event.totalLines,
     );
-    emit(currentState.copyWith(
-      content: nextContent,
-      readingSegments: buildReadingSegments(
-        nextContent,
-        continuous: currentState.continuousReadingMode,
+    emit(_withInlineNotesCommentator(
+      currentState.copyWith(
+        content: nextContent,
+        readingSegments: buildReadingSegments(
+          nextContent,
+          continuous: currentState.continuousReadingMode,
+        ),
       ),
+      // אופטימיזציה: לסרוק רק את השורות החדשות במקום את כל ה-content
+      // המצטבר (מונע עבודה ריבועית במהלך warming הדרגתי של ספר ארוך).
+      scanOnly: event.lines,
     ));
+  }
+
+  /// בודק אם בתוכן העדכני יש הערות inline. אם כן ועדיין לא הוסף המפרש
+  /// הוירטואלי 'הערות' ל-availableCommentators - מוסיף אותו ובוחר אותו
+  /// אוטומטית רק אם המשתמש עדיין לא נגע ידנית בבחירת המפרשים.
+  ///
+  /// נדרש כי בעת `_loadCommentatorsInBackground` ה-content עלול להיות
+  /// חלון חלקי בלבד, וההערות יכולות להיות מחוץ לחלון. ההרחבה הבאה של
+  /// התוכן (ApplyBookContentRange / ApplyFullBookContent) חייבת לרענן.
+  ///
+  /// [scanOnly] - אם ניתן, סורקים רק את השורות האלו (אופטימיזציה: על
+  /// הרחבת טווח אנחנו מקבלים רק את השורות החדשות, אין סיבה לסרוק שוב
+  /// את כל ה-content).
+  TextBookLoaded _withInlineNotesCommentator(
+    TextBookLoaded state, {
+    List<String>? scanOnly,
+  }) {
+    if (state.availableCommentators.contains(kNotesCommentatorTitle)) {
+      return state;
+    }
+    if (_inlineNotesFullScanDone) {
+      return state;
+    }
+    final linesToScan = scanOnly ?? state.content;
+    if (!notes.hasInlineNotes(linesToScan)) {
+      return state;
+    }
+    final updatedAvailable = [
+      ...state.availableCommentators,
+      kNotesCommentatorTitle,
+    ];
+    final updatedGroups = _addNotesToOtherCommentatorsGroup(
+      state.commentatorGroups,
+    );
+    final shouldAutoSelect = state.activeCommentators.isEmpty &&
+        !_userTouchedCommentators;
+    return state.copyWith(
+      availableCommentators: updatedAvailable,
+      commentatorGroups: updatedGroups,
+      activeCommentators: shouldAutoSelect
+          ? const [kNotesCommentatorTitle]
+          : state.activeCommentators,
+    );
+  }
+
+  List<CommentatorGroup> _addNotesToOtherCommentatorsGroup(
+    List<CommentatorGroup> groups,
+  ) {
+    const otherGroupTitle = 'שאר מפרשים';
+    var inserted = false;
+    final next = groups.map((group) {
+      if (group.title == otherGroupTitle &&
+          !group.commentators.contains(kNotesCommentatorTitle)) {
+        inserted = true;
+        return group.copyWith(
+          commentators: [...group.commentators, kNotesCommentatorTitle],
+        );
+      }
+      return group;
+    }).toList();
+    if (!inserted) {
+      next.add(const CommentatorGroup(
+        title: otherGroupTitle,
+        commentators: [kNotesCommentatorTitle],
+      ));
+    }
+    return next;
   }
 
   void _onCreateNoteFromToolbar(
@@ -1703,10 +1811,10 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
     if (state is TextBookLoaded) {
       final currentState = state as TextBookLoaded;
 
-      final updatedState = currentState.copyWith(
+      final updatedState = _withInlineNotesCommentator(currentState.copyWith(
         availableCommentators: event.availableCommentators,
         commentatorGroups: event.commentatorGroups.cast<CommentatorGroup>(),
-      );
+      ));
       emit(updatedState);
 
       if (updatedState.showPageShapeView) {
@@ -1757,11 +1865,13 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
         return;
       }
 
-      final currentState = state as TextBookLoaded;
-      if (currentState.book.title != book.title) {
+      final loaded = state as TextBookLoaded;
+      if (loaded.book.title != book.title) {
         return;
       }
 
+      // הזיהוי של 'הערות' כמפרש וירטואלי נעשה בנפרד דרך
+      // _withInlineNotesCommentator שמופעל בכל עדכון של ה-content.
       add(UpdateAvailableCommentators(availableCommentators, groups));
     } catch (e) {
       debugPrint('⚠️ Failed to load commentators in background: $e');

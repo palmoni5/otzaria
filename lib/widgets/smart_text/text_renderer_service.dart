@@ -1,3 +1,4 @@
+import 'package:otzaria/text_book/utils/inline_notes_utils.dart' as notes;
 import 'package:otzaria/utils/text/text_manipulation.dart' as utils;
 import 'package:otzaria/widgets/smart_text/render_settings.dart';
 
@@ -17,8 +18,9 @@ class TextRendererService {
 
     // 0. תיקון סדר סימוני הערות (<sup>) ב-RTL
     processed = _fixFootnoteMarkers(processed);
-    // 0b. עיצוב טקסט ההערות המודפסות בתוך השורה (גופן קטן ונטוי)
-    processed = _styleInlineFootnotes(processed);
+
+    // 0b. הסרת גוף הערות inline (<i class="footnote">...</i>) - מוצגות כמפרש בצד.
+    processed = notes.stripInlineNotes(processed);
 
     // 1. הסרת טעמים (אם נדרש)
     if (settings.removeTeamim) {
@@ -89,30 +91,16 @@ class TextRendererService {
 
       final isSimple = RegExp(r'^[0-9\u0590-\u05FF]+$').hasMatch(innerText);
 
+      final wrappedInner = _wrapWithBidiIsolate(innerHtml);
       if (!isFootnoteMarker && !isSimple) {
-        final wrappedInner = _wrapWithBidiIsolate(innerHtml);
         if (identical(wrappedInner, innerHtml)) {
           return match[0]!;
         }
         return '<sup$attrs>$wrappedInner</sup>';
       }
 
-      return '';
+      return '<sup>$wrappedInner</sup>';
     });
-  }
-
-  static String _styleInlineFootnotes(String text) {
-    return text.replaceAllMapped(
-      RegExp(
-        r'<i\b([^>]*)\bclass="[^"]*\bfootnote\b[^"]*"([^>]*)>(.*?)</i>',
-        caseSensitive: false,
-        dotAll: true,
-      ),
-      (match) {
-        final content = match[3] ?? '';
-        return '<span style="font-size: 0.8em; font-style: italic;">$content</span>';
-      },
-    );
   }
 
   static String _wrapWithBidiIsolate(String innerHtml) {

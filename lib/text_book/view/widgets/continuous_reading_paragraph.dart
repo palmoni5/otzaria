@@ -314,7 +314,6 @@ TextStyle _styleForElement(dom.Element element, TextStyle parentStyle) {
   }
   if (localName == 'i' ||
       localName == 'em' ||
-      element.classes.contains('footnote') ||
       _hasFontStyle(element, 'italic')) {
     style = style.copyWith(fontStyle: FontStyle.italic);
   }

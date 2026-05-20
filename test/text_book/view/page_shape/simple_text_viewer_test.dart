@@ -741,7 +741,7 @@ void main() {
     scrollController.dispose();
     focusNode.dispose();
   });
-  test('מצב טקסט רציף מעבד הערות אינלייניות במקום להציג HTML גולמי', () {
+  test('מצב טקסט רציף מסיר הערות inline מהטקסט הראשי (יוצגו כמפרש בצד)', () {
     const rawText = 'פסוק <i class="footnote">*(בספרי תימן בסמ״ך גדולה)</i>';
     final processed = TextRendererService.processText(
       rawText,
@@ -752,18 +752,16 @@ void main() {
       const TextStyle(fontSize: 20),
     );
     final flattened = _flattenText(spans);
-    final styledNote = _flattenTextSpans(spans).firstWhere(
-      (span) => span.text?.contains('בספרי תימן') ?? false,
-    );
 
-    expect(flattened, contains('בספרי תימן'));
+    expect(flattened, contains('פסוק'));
+    expect(flattened, isNot(contains('בספרי תימן')));
     expect(flattened, isNot(contains('<i')));
-    expect(styledNote.style?.fontStyle, FontStyle.italic);
-    expect(styledNote.style?.fontSize, lessThan(20));
+    expect(flattened, isNot(contains('class="footnote"')));
   });
 
-  test('מצב טקסט רציף משמר big בתוך הערה אינליינית', () {
-    const rawText = 'text <i class="footnote">*(small <big>large</big>)</i>';
+  test('מצב טקסט רציף משאיר סימן <sup> במקומו גם כשגוף ההערה מוסר', () {
+    const rawText =
+        'טקסט<sup class="footnote-marker">א</sup><i class="footnote">תוכן ההערה</i> המשך';
     final processed = TextRendererService.processText(
       rawText,
       const RenderSettings(fontSize: 20),
@@ -772,18 +770,12 @@ void main() {
       processed,
       const TextStyle(fontSize: 20),
     );
-    final textSpans = _flattenTextSpans(spans);
-    final regularNote = textSpans.firstWhere(
-      (span) => span.text?.contains('small') ?? false,
-    );
-    final enlargedNote = textSpans.firstWhere(
-      (span) => span.text?.contains('large') ?? false,
-    );
-    final regularFontSize = regularNote.style!.fontSize!;
-    final enlargedFontSize = enlargedNote.style!.fontSize!;
+    final flattened = _flattenText(spans);
 
-    expect(enlargedFontSize, greaterThan(regularFontSize));
-    expect(enlargedNote.style?.fontStyle, FontStyle.italic);
+    expect(flattened, contains('טקסט'));
+    expect(flattened, contains('א'));
+    expect(flattened, contains('המשך'));
+    expect(flattened, isNot(contains('תוכן ההערה')));
   });
 
   testWidgets('מצב טקסט רציף לא מיישר מקטע קצר לשני הצדדים', (tester) async {
