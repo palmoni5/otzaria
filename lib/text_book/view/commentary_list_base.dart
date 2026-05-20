@@ -62,10 +62,14 @@ class CommentaryListBase extends StatefulWidget {
   final TextEditingController? externalSearchController;
   final ValueNotifier<int>? externalCurrentIndexNotifier;
   final ValueNotifier<int>? externalTotalResultsNotifier;
+
   /// מפה חיצונית: path של מפרש → מספר תוצאות חיפוש בו (ריק אם אין חיפוש)
   final ValueNotifier<Map<String, int>>? externalSearchResultsByPathNotifier;
+
   /// רשימת קטעי חיפוש חיצונית עם מידע לניווט (ריקה אם אין חיפוש)
-  final ValueNotifier<List<CommentarySearchSnippet>>? externalSearchSnippetsNotifier;
+  final ValueNotifier<List<CommentarySearchSnippet>>?
+      externalSearchSnippetsNotifier;
+
   /// כשהדגל מופעל, ישתמש ב-availableCommentators (כל מפרשי הספר) ולא ב-activeCommentators
   final bool useAvailableCommentators;
 
@@ -212,14 +216,17 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
   }
 
   void navigateSearchNext() {
-    if (_currentSearchIndexNotifier.value < _totalSearchResultsNotifier.value - 1) {
+    if (_currentSearchIndexNotifier.value <
+        _totalSearchResultsNotifier.value - 1) {
       _currentSearchIndexNotifier.value++;
       _scrollToSearchResult();
     }
   }
 
-  ValueNotifier<int> get totalSearchResultsNotifier => _totalSearchResultsNotifier;
-  ValueNotifier<int> get currentSearchIndexNotifier => _currentSearchIndexNotifier;
+  ValueNotifier<int> get totalSearchResultsNotifier =>
+      _totalSearchResultsNotifier;
+  ValueNotifier<int> get currentSearchIndexNotifier =>
+      _currentSearchIndexNotifier;
 
   /// ניווט לתוצאת חיפוש לפי אינדקס גלובלי (לשימוש חיצוני)
   void navigateToGlobalIndex(int index) {
@@ -232,6 +239,14 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
     final text = widget.externalSearchController!.text;
     if (_searchQueryNotifier.value != text) {
       _searchQueryNotifier.value = text;
+      if (text.isNotEmpty) {
+        setState(() {
+          _allExpanded = true;
+          for (final key in _expansionStates.keys) {
+            _expansionStates[key] = true;
+          }
+        });
+      }
       _currentSearchIndexNotifier.value = 0;
       _totalSearchResultsNotifier.value = 0;
       _searchResultsPerLink.clear();
@@ -256,12 +271,14 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
     widget.externalSearchController?.addListener(_onExternalSearchChanged);
     if (widget.externalTotalResultsNotifier != null) {
       _totalSearchResultsNotifier.addListener(() {
-        widget.externalTotalResultsNotifier!.value = _totalSearchResultsNotifier.value;
+        widget.externalTotalResultsNotifier!.value =
+            _totalSearchResultsNotifier.value;
       });
     }
     if (widget.externalCurrentIndexNotifier != null) {
       _currentSearchIndexNotifier.addListener(() {
-        widget.externalCurrentIndexNotifier!.value = _currentSearchIndexNotifier.value;
+        widget.externalCurrentIndexNotifier!.value =
+            _currentSearchIndexNotifier.value;
       });
     }
   }
@@ -1509,8 +1526,8 @@ class _CollapsibleCommentaryGroupState
                                   : null,
                               onSearchSnippetsChanged: widget.showSearch &&
                                       widget.updateSearchSnippets != null
-                                  ? (snippets) =>
-                                      widget.updateSearchSnippets!(link, snippets)
+                                  ? (snippets) => widget.updateSearchSnippets!(
+                                      link, snippets)
                                   : null,
                             ),
                           );
@@ -1523,40 +1540,6 @@ class _CollapsibleCommentaryGroupState
               ),
             );
           }),
-        // בנייה סמויה לחיפוש גם כאשר הקבוצה מכווצת
-        if (!_isExpanded && widget.showSearch)
-          ValueListenableBuilder<String>(
-            valueListenable: widget.searchQueryListenable,
-            builder: (context, searchQuery, _) {
-              if (searchQuery.isEmpty) return const SizedBox.shrink();
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: widget.group.links.map((link) {
-                  return Offstage(
-                    offstage: true,
-                    child: CommentaryContent(
-                      key: ValueKey(
-                          'hidden_${link.index1}_${link.path2}_${link.index2}'),
-                      link: link,
-                      fontSize: widget.fontSize,
-                      openBookCallback: widget.openBookCallback,
-                      removeNikud: widget.removeNikud,
-                      removePunctuation: widget.removePunctuation,
-                      searchQuery: searchQuery,
-                      currentSearchIndex: 0,
-                      onSearchResultsCountChanged: (count) =>
-                          widget.updateSearchResultsCount(link, count),
-                      onSearchSnippetsChanged:
-                          widget.updateSearchSnippets != null
-                              ? (snippets) =>
-                                  widget.updateSearchSnippets!(link, snippets)
-                              : null,
-                    ),
-                  );
-                }).toList(),
-              );
-            },
-          ),
         const Divider(height: 1),
       ],
     );

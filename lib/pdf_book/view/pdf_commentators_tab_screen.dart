@@ -41,7 +41,18 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
   void initState() {
     super.initState();
     _initHeadings();
+    widget.tab.sourceTab.currentTitle.addListener(_syncWithSourceTab);
     _loadTextContent();
+  }
+
+  @override
+  void didUpdateWidget(covariant PdfCommentatorsTabScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tab.sourceTab != widget.tab.sourceTab) {
+      oldWidget.tab.sourceTab.currentTitle.removeListener(_syncWithSourceTab);
+      widget.tab.sourceTab.currentTitle.addListener(_syncWithSourceTab);
+      _syncWithSourceTab();
+    }
   }
 
   void _initHeadings() {
@@ -54,14 +65,35 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
     _selectedParagraphIdx = 0;
   }
 
+  void _syncWithSourceTab() {
+    if (!mounted) return;
+
+    final headings = widget.tab.sourceTab.pdfHeadings?.getSortedHeadings();
+    final currentTitle = widget.tab.sourceTab.currentTitle.value;
+    var nextSelectedHeadingIdx = _selectedHeadingIdx;
+
+    if (headings != null && headings.isNotEmpty) {
+      _sortedHeadings = headings;
+      final matchedIndex = headings.indexWhere((e) => e.key == currentTitle);
+      if (matchedIndex >= 0) {
+        nextSelectedHeadingIdx = matchedIndex;
+      }
+    }
+
+    setState(() {
+      _selectedHeadingIdx = nextSelectedHeadingIdx;
+      _selectedParagraphIdx = 0;
+    });
+  }
+
   Future<void> _loadTextContent() async {
     final tab = widget.tab.sourceTab;
     try {
       final library = await DataRepository.instance.library;
       TextBook? textBook =
           library.findBookByTitle(tab.book.title, TextBook) as TextBook?;
-      textBook ??=
-          library.findBookByTitleFlexible(tab.book.title, TextBook) as TextBook?;
+      textBook ??= library.findBookByTitleFlexible(tab.book.title, TextBook)
+          as TextBook?;
       if (textBook == null || !mounted) return;
       final text = await textBook.text;
       if (!mounted) return;
@@ -75,6 +107,7 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
 
   @override
   void dispose() {
+    widget.tab.sourceTab.currentTitle.removeListener(_syncWithSourceTab);
     _searchController.dispose();
     _totalResultsNotifier.dispose();
     _currentIdxNotifier.dispose();
@@ -138,7 +171,8 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
     final safeParaIdx = paragraphs.isEmpty
         ? 0
         : _selectedParagraphIdx.clamp(0, paragraphs.length - 1);
-    final range = _getLineRangeForPara(_selectedHeadingIdx, paragraphs, safeParaIdx);
+    final range =
+        _getLineRangeForPara(_selectedHeadingIdx, paragraphs, safeParaIdx);
 
     return Column(
       children: [
@@ -159,13 +193,14 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
               key: _panelKey,
               tab: widget.tab.sourceTab,
               linksCount: widget.tab.sourceTab.links.length,
-              linksLoading: false,
+              linksLoading: widget.tab.sourceTab.linksLoadingNotifier.value,
               isFullScreen: true,
               lineStartOverride: range.start,
               lineEndOverride: range.end,
               openBookCallback: (tab) {
                 if (tab is TextBookTab) {
-                  openBook(context, tab.book, tab.index, '', ignoreHistory: false);
+                  openBook(context, tab.book, tab.index, '',
+                      ignoreHistory: false);
                 }
               },
               fontSize: 16.0,
@@ -250,8 +285,7 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Text('ניווט',
-              style: Theme.of(context).textTheme.titleSmall),
+          child: Text('ניווט', style: Theme.of(context).textTheme.titleSmall),
         ),
         const Divider(height: 1),
         Expanded(
@@ -308,11 +342,10 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
                                 .join(' ');
                             return ListTile(
                               dense: true,
-                              selected: isSelected &&
-                                  _selectedParagraphIdx == pi,
-                              contentPadding:
-                                  const EdgeInsetsDirectional.only(
-                                      start: 32, end: 16),
+                              selected:
+                                  isSelected && _selectedParagraphIdx == pi,
+                              contentPadding: const EdgeInsetsDirectional.only(
+                                  start: 32, end: 16),
                               title: Text(
                                 words,
                                 overflow: TextOverflow.ellipsis,
@@ -341,8 +374,7 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Text('חיפוש',
-              style: Theme.of(context).textTheme.titleSmall),
+          child: Text('חיפוש', style: Theme.of(context).textTheme.titleSmall),
         ),
         const Divider(height: 1),
         Padding(
@@ -359,8 +391,8 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
                       hintText: 'חיפוש...',
-                      prefixIcon: const Icon(
-                          FluentIcons.search_24_regular, size: 18),
+                      prefixIcon:
+                          const Icon(FluentIcons.search_24_regular, size: 18),
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 8),
                       isDense: true,
@@ -368,8 +400,7 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
                           borderRadius: BorderRadius.circular(8)),
                       suffixIcon: _searchController.text.isNotEmpty
                           ? IconButton(
-                              icon: const Icon(
-                                  FluentIcons.dismiss_24_regular,
+                              icon: const Icon(FluentIcons.dismiss_24_regular,
                                   size: 16),
                               onPressed: () =>
                                   setState(() => _searchController.clear()),
@@ -377,32 +408,29 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
                           : null,
                     ),
                   ),
-                  if (_searchController.text.isNotEmpty && total > 0) ...
-                    [
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          IconButton(
-                            icon: const Icon(
-                                FluentIcons.chevron_up_24_regular),
-                            onPressed: currentIdx > 0
-                                ? () => _panelKey.currentState
-                                    ?.navigateSearchPrev()
-                                : null,
-                          ),
-                          Text('${currentIdx + 1}/$total'),
-                          IconButton(
-                            icon: const Icon(
-                                FluentIcons.chevron_down_24_regular),
-                            onPressed: currentIdx < total - 1
-                                ? () => _panelKey.currentState
-                                    ?.navigateSearchNext()
-                                : null,
-                          ),
-                        ],
-                      ),
-                    ],
+                  if (_searchController.text.isNotEmpty && total > 0) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(FluentIcons.chevron_up_24_regular),
+                          onPressed: currentIdx > 0
+                              ? () =>
+                                  _panelKey.currentState?.navigateSearchPrev()
+                              : null,
+                        ),
+                        Text('${currentIdx + 1}/$total'),
+                        IconButton(
+                          icon: const Icon(FluentIcons.chevron_down_24_regular),
+                          onPressed: currentIdx < total - 1
+                              ? () =>
+                                  _panelKey.currentState?.navigateSearchNext()
+                              : null,
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
