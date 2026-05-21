@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:otzaria/theme/app_surfaces.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/bookmarks/bloc/bookmark_bloc.dart';
 import 'package:otzaria/bookmarks/models/bookmark.dart';
@@ -16,6 +17,8 @@ import 'package:otzaria/utils/text/text_manipulation.dart' as utils;
 import 'package:otzaria/utils/navigation/open_book.dart';
 import 'package:otzaria/widgets/layout/adaptive_side_pane.dart';
 import 'package:otzaria/widgets/navigation/responsive_action_bar.dart';
+import 'package:otzaria/widgets/navigation/search_pane_base.dart';
+import 'package:otzaria/widgets/text/otzaria_search_field.dart';
 
 /// מסך כרטסיית המפרשים של PDF — עצמאי לחלוטין, כמו CommentatorsTabScreen.
 class PdfCommentatorsTabScreen extends StatefulWidget {
@@ -35,6 +38,8 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
   List<String>? _textLines;
 
   final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
+  final _navSearchController = TextEditingController();
   final _totalResultsNotifier = ValueNotifier<int>(0);
   final _currentIdxNotifier = ValueNotifier<int>(0);
   final _openFilterNotifier = ValueNotifier<int>(0);
@@ -100,6 +105,11 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
       _showSearchPanel = !_showSearchPanel;
       _showNavPanel = false;
     });
+    if (_showSearchPanel) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _searchFocusNode.requestFocus();
+      });
+    }
   }
 
   Future<void> _loadTextContent() async {
@@ -125,6 +135,8 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
   void dispose() {
     widget.tab.sourceTab.currentTitle.removeListener(_syncWithSourceTab);
     _searchController.dispose();
+    _searchFocusNode.dispose();
+    _navSearchController.dispose();
     _totalResultsNotifier.dispose();
     _currentIdxNotifier.dispose();
     _openFilterNotifier.dispose();
@@ -208,7 +220,7 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
             }),
             paneContent: _showSearchPanel
                 ? _buildSearchPanel()
-                : _buildNavPanel(paragraphs, safeParaIdx),
+                : _buildNavPanel(),
             mainContent: ValueListenableBuilder<bool>(
               valueListenable: widget.tab.sourceTab.linksLoadingNotifier,
               builder: (context, linksLoading, _) => PdfCommentaryPanel(
@@ -491,168 +503,271 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
     );
   }
 
-  Widget _buildNavPanel(
-    List<({int lineIdx, String text})> paragraphs,
-    int safeParaIdx,
-  ) {
+  Widget _buildNavPanel() {
     final headings = _sortedHeadings;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Text('ניווט', style: Theme.of(context).textTheme.titleSmall),
-        ),
-        const Divider(height: 1),
-        Expanded(
-          child: headings == null || headings.isEmpty
-              ? const Center(child: Text('אין ניווט'))
-              : ListView.builder(
-                  itemCount: headings.length,
-                  itemBuilder: (context, idx) {
-                    final isSelected = idx == _selectedHeadingIdx;
-                    final isExpanded = _expandedHeadings.contains(idx);
-                    final paras = _getParagraphs(idx);
-                    return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ListTile(
-                          dense: true,
-                          selected: isSelected && paras.isEmpty,
-                          title: Text(
-                            headings[idx].key,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          trailing: paras.isNotEmpty
-                              ? Icon(
-                                  isExpanded
-                                      ? FluentIcons.chevron_up_24_regular
-                                      : FluentIcons.chevron_down_24_regular,
-                                  size: 16,
-                                )
-                              : null,
+    if (headings == null || headings.isEmpty) {
+      return const Center(child: Text('אין ניווט'));
+    }
+
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _navSearchController,
+      builder: (context, val, _) {
+        final query = val.text.trim();
+        final filteredIdx = query.isEmpty
+            ? List<int>.generate(headings.length, (i) => i)
+            : List<int>.generate(headings.length, (i) => i)
+                .where((i) => headings[i].key.contains(query))
+                .toList();
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: RtlTextField(
+                controller: _navSearchController,
+                decoration: InputDecoration(
+                  hintText: 'איתור כותרת...',
+                  prefixIcon: const Icon(FluentIcons.search_24_regular),
+                  suffixIcon: query.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(FluentIcons.dismiss_24_regular),
+                          onPressed: () => _navSearchController.clear(),
+                        )
+                      : null,
+                  isDense: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: filteredIdx.length,
+                itemBuilder: (context, listIdx) {
+                  final idx = filteredIdx[listIdx];
+                  final isSelected = idx == _selectedHeadingIdx;
+                  final isExpanded = _expandedHeadings.contains(idx);
+                  final paras = _getParagraphs(idx);
+
+                  final headingRow = _buildHeadingRow(
+                    context: context,
+                    headingText: headings[idx].key,
+                    isSelected: isSelected,
+                    isExpanded: isExpanded,
+                    hasChildren: paras.isNotEmpty,
+                    onTap: () {
+                      if (paras.isNotEmpty) {
+                        setState(() {
+                          if (isExpanded) {
+                            _expandedHeadings.remove(idx);
+                          } else {
+                            _expandedHeadings.add(idx);
+                          }
+                        });
+                      }
+                      setState(() {
+                        _selectedHeadingIdx = idx;
+                        _selectedParagraphIdx = 0;
+                        _searchController.clear();
+                      });
+                    },
+                  );
+
+                  if (paras.isEmpty || !isExpanded) {
+                    return headingRow;
+                  }
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      headingRow,
+                      ...List.generate(paras.length, (pi) {
+                        final words = paras[pi]
+                            .text
+                            .split(RegExp(r'\s+'))
+                            .where((w) => w.isNotEmpty)
+                            .take(4)
+                            .join(' ');
+                        final isParaSelected =
+                            isSelected && _selectedParagraphIdx == pi;
+                        return _buildParagraphRow(
+                          context: context,
+                          text: words,
+                          isSelected: isParaSelected,
                           onTap: () {
-                            if (paras.isNotEmpty) {
-                              setState(() {
-                                if (isExpanded) {
-                                  _expandedHeadings.remove(idx);
-                                } else {
-                                  _expandedHeadings.add(idx);
-                                }
-                              });
-                            }
                             setState(() {
                               _selectedHeadingIdx = idx;
-                              _selectedParagraphIdx = 0;
+                              _selectedParagraphIdx = pi;
                               _searchController.clear();
                             });
                           },
-                        ),
-                        if (paras.isNotEmpty && isExpanded)
-                          ...List.generate(paras.length, (pi) {
-                            final words = paras[pi]
-                                .text
-                                .split(RegExp(r'\s+'))
-                                .where((w) => w.isNotEmpty)
-                                .take(4)
-                                .join(' ');
-                            return ListTile(
-                              dense: true,
-                              selected:
-                                  isSelected && _selectedParagraphIdx == pi,
-                              contentPadding: const EdgeInsetsDirectional.only(
-                                  start: 32, end: 16),
-                              title: Text(
-                                words,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              onTap: () {
-                                setState(() {
-                                  _selectedHeadingIdx = idx;
-                                  _selectedParagraphIdx = pi;
-                                  _searchController.clear();
-                                });
-                              },
-                            );
-                          }),
-                      ],
-                    );
-                  },
-                ),
+                        );
+                      }),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildHeadingRow({
+    required BuildContext context,
+    required String headingText,
+    required bool isSelected,
+    required bool isExpanded,
+    required bool hasChildren,
+    required VoidCallback onTap,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppSurfaces.selectedItem(colorScheme)
+              : null,
+          border: Border(
+            bottom: BorderSide(
+              color: Theme.of(context).dividerColor,
+              width: 0.5,
+            ),
+          ),
         ),
-      ],
+        padding: const EdgeInsets.only(right: 16, left: 8, top: 12, bottom: 12),
+        child: Row(
+          children: [
+            Icon(
+              FluentIcons.book_24_regular,
+              color: colorScheme.primary,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                headingText,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  color: colorScheme.primary,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+                textDirection: TextDirection.rtl,
+              ),
+            ),
+            if (hasChildren)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Icon(
+                  isExpanded
+                      ? FluentIcons.chevron_up_24_regular
+                      : FluentIcons.chevron_down_24_regular,
+                  color: colorScheme.onSurfaceVariant,
+                  size: 20,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildParagraphRow({
+    required BuildContext context,
+    required String text,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.only(
+            right: 16.0 + 24.0, left: 16, top: 10, bottom: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppSurfaces.selectedItem(colorScheme)
+              : null,
+          border: Border(
+            bottom: BorderSide(
+              color: Theme.of(context).dividerColor,
+              width: 0.5,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              FluentIcons.text_bullet_list_24_regular,
+              color: colorScheme.secondary,
+              size: 18,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+                textDirection: TextDirection.rtl,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildSearchPanel() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Text('חיפוש', style: Theme.of(context).textTheme.titleSmall),
-        ),
-        const Divider(height: 1),
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: ValueListenableBuilder<int>(
-            valueListenable: _totalResultsNotifier,
-            builder: (context, total, _) => ValueListenableBuilder<int>(
-              valueListenable: _currentIdxNotifier,
-              builder: (context, currentIdx, _) => Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  RtlTextField(
-                    controller: _searchController,
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      hintText: 'חיפוש...',
-                      prefixIcon:
-                          const Icon(FluentIcons.search_24_regular, size: 18),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 8),
-                      isDense: true,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(FluentIcons.dismiss_24_regular,
-                                  size: 16),
-                              onPressed: () =>
-                                  setState(() => _searchController.clear()),
-                            )
-                          : null,
-                    ),
-                  ),
-                  if (_searchController.text.isNotEmpty && total > 0) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _searchController,
+      builder: (context, val, __) {
+        final hasQuery = val.text.isNotEmpty;
+        return ValueListenableBuilder<int>(
+          valueListenable: _totalResultsNotifier,
+          builder: (context, total, _) => ValueListenableBuilder<int>(
+            valueListenable: _currentIdxNotifier,
+            builder: (context, currentIdx, _) => SearchPaneBase(
+              searchController: _searchController,
+              focusNode: _searchFocusNode,
+              hintText: 'חיפוש במפרשים...',
+              isNoResults: hasQuery && total == 0,
+              resetSearchCallback: _searchController.clear,
+              resultCountString: hasQuery && total > 0
+                  ? 'תוצאה ${currentIdx + 1} מתוך $total'
+                  : null,
+              resultToolbar: hasQuery && total > 0
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(
-                          icon: const Icon(FluentIcons.chevron_up_24_regular),
+                        OtzariaSearchAction.prevResult(
                           onPressed: currentIdx > 0
                               ? () =>
                                   _panelKey.currentState?.navigateSearchPrev()
                               : null,
                         ),
-                        Text('${currentIdx + 1}/$total'),
-                        IconButton(
-                          icon: const Icon(FluentIcons.chevron_down_24_regular),
+                        OtzariaSearchAction.nextResult(
                           onPressed: currentIdx < total - 1
                               ? () =>
                                   _panelKey.currentState?.navigateSearchNext()
                               : null,
                         ),
                       ],
-                    ),
-                  ],
-                ],
-              ),
+                    )
+                  : null,
+              resultsWidget: const SizedBox.shrink(),
             ),
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }

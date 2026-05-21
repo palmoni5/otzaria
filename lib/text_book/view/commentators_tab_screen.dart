@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:otzaria/text_book/utils/toc_unit_label.dart';
+import 'package:otzaria/theme/app_surfaces.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/bookmarks/bloc/bookmark_bloc.dart';
@@ -19,6 +21,8 @@ import 'package:otzaria/settings/engine/settings_bloc.dart';
 import 'package:otzaria/settings/engine/settings_state.dart';
 import 'package:otzaria/widgets/layout/adaptive_side_pane.dart';
 import 'package:otzaria/widgets/navigation/responsive_action_bar.dart';
+import 'package:otzaria/widgets/navigation/search_pane_base.dart';
+import 'package:otzaria/widgets/text/otzaria_search_field.dart';
 import 'package:otzaria/widgets/text/rtl_text_field.dart';
 import 'package:otzaria/utils/text/text_manipulation.dart' as utils;
 import 'package:otzaria/search/utils/snippet_builder.dart';
@@ -930,212 +934,168 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
   // ── פאנל חיפוש ────────────────────────────────────────────────────────────
 
   Widget _buildCommentarySearchPanel(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: ValueListenableBuilder<TextEditingValue>(
-            valueListenable: _commentarySearchController,
-            builder: (_, val, __) => ValueListenableBuilder<int>(
-              valueListenable: _externalTotalResults,
-              builder: (_, total, __) => ValueListenableBuilder<int>(
-                valueListenable: _externalCurrentIndex,
-                builder: (_, current, __) => RtlTextField(
-                  controller: _commentarySearchController,
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _commentarySearchController,
+      builder: (_, val, __) {
+        final hasQuery = val.text.isNotEmpty;
+        return ValueListenableBuilder<int>(
+          valueListenable: _externalTotalResults,
+          builder: (_, total, __) => ValueListenableBuilder<int>(
+            valueListenable: _externalCurrentIndex,
+            builder: (_, current, __) =>
+                ValueListenableBuilder<List<CommentarySearchSnippet>>(
+              valueListenable: _externalSearchSnippets,
+              builder: (context, snippets, __) {
+                return SearchPaneBase(
+                  searchController: _commentarySearchController,
                   focusNode: _searchFocusNode,
-                  decoration: InputDecoration(
-                    hintText: 'חפש בתוך המפרשים המוצגים...',
-                    prefixIcon: const Icon(FluentIcons.search_24_regular),
-                    suffixIcon: val.text.isNotEmpty
-                        ? Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (total > 0) ...[
-                                Text(
-                                  '${current + 1}/$total',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                                const SizedBox(width: 4),
-                                IconButton(
-                                  icon: const Icon(
-                                      FluentIcons.chevron_up_24_regular),
-                                  iconSize: 20,
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(
-                                      minWidth: 24, minHeight: 24),
-                                  onPressed: current > 0
-                                      ? () => _commentaryKey.currentState
-                                          ?.navigateSearchPrev()
-                                      : null,
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                      FluentIcons.chevron_down_24_regular),
-                                  iconSize: 20,
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(
-                                      minWidth: 24, minHeight: 24),
-                                  onPressed: current < total - 1
-                                      ? () => _commentaryKey.currentState
-                                          ?.navigateSearchNext()
-                                      : null,
-                                ),
-                              ],
-                              IconButton(
-                                icon:
-                                    const Icon(FluentIcons.dismiss_24_regular),
-                                iconSize: 20,
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(
-                                    minWidth: 24, minHeight: 24),
-                                onPressed: () =>
-                                    _commentarySearchController.clear(),
-                              ),
-                            ],
-                          )
-                        : null,
-                    isDense: true,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                    contentPadding:
-                        const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  hintText: 'חפש בתוך המפרשים המוצגים...',
+                  isNoResults: hasQuery && total == 0,
+                  resetSearchCallback: _commentarySearchController.clear,
+                  resultCountString: hasQuery && total > 0
+                      ? 'תוצאה ${current + 1} מתוך $total'
+                      : null,
+                  resultToolbar: hasQuery && total > 0
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            OtzariaSearchAction.prevResult(
+                              onPressed: current > 0
+                                  ? () => _commentaryKey.currentState
+                                      ?.navigateSearchPrev()
+                                  : null,
+                            ),
+                            OtzariaSearchAction.nextResult(
+                              onPressed: current < total - 1
+                                  ? () => _commentaryKey.currentState
+                                      ?.navigateSearchNext()
+                                  : null,
+                            ),
+                          ],
+                        )
+                      : null,
+                  resultsWidget: _buildSearchResultsList(
+                    context,
+                    query: val.text,
+                    snippets: snippets,
+                    total: total,
+                    currentIdx: current,
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchResultsList(
+    BuildContext context, {
+    required String query,
+    required List<CommentarySearchSnippet> snippets,
+    required int total,
+    required int currentIdx,
+  }) {
+    if (query.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    if (snippets.isEmpty) {
+      // total>0 בלבד מגיע לכאן (אם total==0 מוצג 'אין תוצאות' ע"י SearchPaneBase)
+      return Center(
+        child: Text(
+          'טוען תוצאות...',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      );
+    }
+
+    // בניית רשימה מקובצת עם כותרות מפרשים
+    final List<_SearchResultItem> items = [];
+    String? lastPath;
+    for (final snippet in snippets) {
+      if (snippet.path != lastPath) {
+        items.add(
+            _SearchResultItem.header(utils.getTitleFromPath(snippet.path)));
+        lastPath = snippet.path;
+      }
+      items.add(_SearchResultItem.result(snippet));
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        if (item.isHeader) {
+          return Padding(
+            padding:
+                const EdgeInsets.only(top: 8, bottom: 4, right: 4, left: 4),
+            child: Row(
+              children: [
+                Icon(
+                  FluentIcons.text_align_right_24_regular,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    item.header!,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final snippet = item.snippet!;
+        final isSelected = snippet.globalIndex == currentIdx;
+        return BlocBuilder<SettingsBloc, SettingsState>(
+          builder: (context, settingsState) {
+            final highlightedSpans = _buildSnippetHighlightSpans(
+              context,
+              settingsState,
+              snippet: snippet,
+              query: query,
+            );
+            return Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppSurfaces.selectedItem(
+                        Theme.of(context).colorScheme)
+                    : null,
+                border: Border.all(
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.outlineVariant,
+                  width: 1,
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: InkWell(
+                onTap: () => _commentaryKey.currentState
+                    ?.navigateToGlobalIndex(snippet.globalIndex),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Text.rich(
+                    TextSpan(children: highlightedSpans),
+                    textDirection: TextDirection.rtl,
                   ),
                 ),
               ),
-            ),
-          ),
-        ),
-        // רשימת תוצאות עם קטעי טקסט, מקובצת לפי מפרש
-        Expanded(
-          child: ValueListenableBuilder<TextEditingValue>(
-            valueListenable: _commentarySearchController,
-            builder: (_, val, __) {
-              if (val.text.isEmpty) {
-                return const SizedBox.shrink();
-              }
-              return ValueListenableBuilder<List<CommentarySearchSnippet>>(
-                valueListenable: _externalSearchSnippets,
-                builder: (_, snippets, __) {
-                  if (snippets.isEmpty) {
-                    return ValueListenableBuilder<int>(
-                      valueListenable: _externalTotalResults,
-                      builder: (_, total, __) => Center(
-                        child: Text(
-                          total == 0 ? 'אין תוצאות' : 'טוען תוצאות...',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                    );
-                  }
-
-                  // בניית רשימה מקובצת עם כותרות מפרשים
-                  final List<_SearchResultItem> items = [];
-                  String? lastPath;
-                  for (final snippet in snippets) {
-                    if (snippet.path != lastPath) {
-                      items.add(_SearchResultItem.header(
-                          utils.getTitleFromPath(snippet.path)));
-                      lastPath = snippet.path;
-                    }
-                    items.add(_SearchResultItem.result(snippet));
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(8),
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      final item = items[index];
-                      if (item.isHeader) {
-                        return Padding(
-                          padding: const EdgeInsets.only(
-                              top: 8, bottom: 4, right: 4, left: 4),
-                          child: Row(
-                            children: [
-                              Icon(
-                                FluentIcons.text_align_right_24_regular,
-                                size: 16,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  item.header!,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
-                                  ),
-                                  textAlign: TextAlign.right,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      final snippet = item.snippet!;
-                      return ValueListenableBuilder<int>(
-                        valueListenable: _externalCurrentIndex,
-                        builder: (_, currentIdx, __) {
-                          final isSelected =
-                              snippet.globalIndex == currentIdx &&
-                                  val.text.isNotEmpty;
-                          return BlocBuilder<SettingsBloc, SettingsState>(
-                            builder: (context, settingsState) {
-                              final highlightedSpans =
-                                  _buildSnippetHighlightSpans(
-                                context,
-                                settingsState,
-                                snippet: snippet,
-                                query: val.text,
-                              );
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 6),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? Theme.of(context)
-                                          .colorScheme
-                                          .primaryContainer
-                                          .withValues(alpha: 0.35)
-                                      : null,
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? Theme.of(context).colorScheme.primary
-                                        : Theme.of(context)
-                                            .colorScheme
-                                            .outline
-                                            .withValues(alpha: 0.3),
-                                    width: 1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: InkWell(
-                                  onTap: () => _commentaryKey.currentState
-                                      ?.navigateToGlobalIndex(
-                                          snippet.globalIndex),
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(10),
-                                    child: Text.rich(
-                                      TextSpan(children: highlightedSpans),
-                                      textDirection: TextDirection.rtl,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1208,12 +1168,9 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                         }
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? colorScheme.primaryContainer
-                                  .withValues(alpha: 0.3)
+                              ? AppSurfaces.selectedItem(colorScheme)
                               : null,
                           border: Border(
                             bottom: BorderSide(
@@ -1222,40 +1179,40 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                             ),
                           ),
                         ),
+                        padding: const EdgeInsets.only(
+                            right: 16, left: 8, top: 12, bottom: 12),
                         child: Row(
                           children: [
                             Icon(
-                              FluentIcons.text_bullet_list_24_regular,
-                              color: isSelected
-                                  ? colorScheme.primary
-                                  : colorScheme.secondary,
-                              size: 18,
+                              FluentIcons.book_24_regular,
+                              color: colorScheme.primary,
+                              size: 20,
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
                                 ch.text,
                                 style: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 15,
                                   fontWeight: isSelected
                                       ? FontWeight.w600
                                       : FontWeight.normal,
-                                  color:
-                                      isSelected ? colorScheme.primary : null,
+                                  color: colorScheme.primary,
                                 ),
                                 overflow: TextOverflow.ellipsis,
+                                maxLines: 2,
                                 textDirection: TextDirection.rtl,
                               ),
                             ),
-                            Icon(
-                              isSelected
-                                  ? FluentIcons.chevron_up_16_regular
-                                  : FluentIcons.chevron_down_16_regular,
-                              size: 16,
-                              color: isSelected
-                                  ? colorScheme.primary
-                                  : colorScheme.onSurface
-                                      .withValues(alpha: 0.4),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: Icon(
+                                isSelected
+                                    ? FluentIcons.chevron_up_24_regular
+                                    : FluentIcons.chevron_down_24_regular,
+                                color: colorScheme.onSurfaceVariant,
+                                size: 20,
+                              ),
                             ),
                           ],
                         ),
@@ -1380,7 +1337,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
 
       items.add(
         _TocListItem.subItem(
-          text: 'כל הפרק',
+          text: allUnitLabel(chapter.text),
           isSelected: _selectedVerseIdx == _kAllChapter,
           isAllChapter: true,
           onTap: () {
@@ -1441,15 +1398,16 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.only(right: 36, left: 12, top: 6, bottom: 6),
+        padding: const EdgeInsets.only(
+            right: 16.0 + 24.0, left: 16, top: 10, bottom: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? colorScheme.primaryContainer.withValues(alpha: 0.5)
-              : colorScheme.surfaceContainerLow.withValues(alpha: 0.4),
+              ? AppSurfaces.selectedItem(colorScheme)
+              : null,
           border: Border(
             bottom: BorderSide(
               color: Theme.of(context).dividerColor,
-              width: 0.3,
+              width: 0.5,
             ),
           ),
         ),
@@ -1458,23 +1416,20 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
             Icon(
               isAllChapter
                   ? FluentIcons.book_24_regular
-                  : FluentIcons.text_align_right_24_regular,
-              color: isSelected ? colorScheme.primary : colorScheme.outline,
-              size: 14,
+                  : FluentIcons.text_bullet_list_24_regular,
+              color: colorScheme.secondary,
+              size: 18,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 text,
                 style: TextStyle(
-                  fontSize: 12,
-                  color: isSelected
-                      ? colorScheme.primary
-                      : colorScheme.onSurface.withValues(alpha: 0.7),
+                  fontSize: 14,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 ),
                 overflow: TextOverflow.ellipsis,
-                maxLines: 1,
+                maxLines: 2,
                 textDirection: TextDirection.rtl,
               ),
             ),

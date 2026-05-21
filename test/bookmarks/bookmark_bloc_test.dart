@@ -181,6 +181,69 @@ void main() {
         bloc.addBookmark(ref: 'שמות א', book: _book(title: 'ספר ב'), index: 5);
         expect(bloc.state.bookmarks.length, 2);
       });
+
+      test('אותו ספר + אותו index אבל targetKind שונה — מותר (לא כפולה)',
+          () async {
+        // סימנייה רגילה וסימנייה של מפרשים על אותו מיקום הן שתי רשומות נפרדות.
+        final bloc = await _makeBloc(initial: [
+          Bookmark(
+            ref: 'בראשית א',
+            book: _book(),
+            index: 0,
+            targetKind: BookmarkTargetKind.book,
+          ),
+        ]);
+
+        final result = bloc.addBookmark(
+          ref: 'מפרשים | בראשית א',
+          book: _book(),
+          index: 0,
+          targetKind: BookmarkTargetKind.commentators,
+        );
+
+        expect(result, isTrue);
+        expect(bloc.state.bookmarks.length, 2);
+        expect(
+          bloc.state.bookmarks.map((b) => b.targetKind).toList(),
+          [BookmarkTargetKind.book, BookmarkTargetKind.commentators],
+        );
+      });
+
+      test('אותו ספר + אותו index + אותו targetKind commentators — נדחה',
+          () async {
+        final bloc = await _makeBloc(initial: [
+          Bookmark(
+            ref: 'מפרשים | בראשית א',
+            book: _book(),
+            index: 0,
+            targetKind: BookmarkTargetKind.commentators,
+          ),
+        ]);
+
+        final result = bloc.addBookmark(
+          ref: 'מפרשים | בראשית א (נוסח שונה)',
+          book: _book(),
+          index: 0,
+          targetKind: BookmarkTargetKind.commentators,
+        );
+
+        expect(result, isFalse);
+        expect(bloc.state.bookmarks.length, 1);
+      });
+
+      test('שומר targetKind בסימנייה', () async {
+        final bloc = await _makeBloc();
+        bloc.addBookmark(
+          ref: 'מפרשים | בראשית א',
+          book: _book(),
+          index: 0,
+          targetKind: BookmarkTargetKind.commentators,
+        );
+        expect(
+          bloc.state.bookmarks.first.targetKind,
+          BookmarkTargetKind.commentators,
+        );
+      });
     });
 
     group('removeBookmark', () {
@@ -312,6 +375,44 @@ void main() {
       expect(restored.book.title, original.book.title);
       expect(restored.index, original.index);
       expect(restored.commentatorsToShow, original.commentatorsToShow);
+    });
+
+    test('toJson/fromJson שומרים targetKind.book', () {
+      final original = Bookmark(
+        ref: 'בראשית א',
+        book: _book(),
+        index: 0,
+        targetKind: BookmarkTargetKind.book,
+      );
+      final restored = Bookmark.fromJson(original.toJson());
+      expect(restored.targetKind, BookmarkTargetKind.book);
+    });
+
+    test('toJson/fromJson שומרים targetKind.commentators', () {
+      final original = Bookmark(
+        ref: 'מפרשים | בראשית א',
+        book: _book(),
+        index: 0,
+        commentatorsToShow: ['רש"י'],
+        targetKind: BookmarkTargetKind.commentators,
+      );
+      final json = original.toJson();
+      final restored = Bookmark.fromJson(json);
+
+      expect(restored.targetKind, BookmarkTargetKind.commentators);
+      expect(restored.ref, original.ref);
+      expect(restored.commentatorsToShow, original.commentatorsToShow);
+    });
+
+    test('toJson כולל מפתח targetKind', () {
+      final bm = Bookmark(
+        ref: 'א',
+        book: _book(),
+        index: 0,
+        targetKind: BookmarkTargetKind.commentators,
+      );
+      final json = bm.toJson();
+      expect(json['targetKind'], 'commentators');
     });
 
     test('historyKey כולל targetKind לסימנייה רגילה', () {

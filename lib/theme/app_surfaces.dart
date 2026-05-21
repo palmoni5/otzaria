@@ -45,4 +45,11 @@ class AppSurfaces {
   /// זהה ל-[panelBackground] — נשמר לתאימות עם קוד קיים.
   static Color solidPanelBackground(BuildContext context) =>
       panelBackground(context);
+
+  /// רקע פריט נבחר ברשימת ניווט (TOC, מפרשים וכד').
+  ///
+  /// 30% primaryContainer — מספק הדגשה עדינה שמסמנת בחירה
+  /// מבלי לכבות את הנוסח על גביה.
+  static Color selectedItem(ColorScheme cs) =>
+      cs.primaryContainer.withValues(alpha: 0.3);
 }

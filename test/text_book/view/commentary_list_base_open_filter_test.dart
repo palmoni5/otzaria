@@ -15,6 +15,7 @@ import 'package:otzaria/settings/engine/settings_state.dart';
 import 'package:otzaria/text_book/bloc/text_book_bloc.dart';
 import 'package:otzaria/text_book/bloc/text_book_event.dart';
 import 'package:otzaria/text_book/bloc/text_book_state.dart';
+import 'package:otzaria/text_book/models/commentator_group.dart';
 import 'package:otzaria/text_book/view/commentary_list_base.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../../test_helpers/memory_cache_provider.dart';
@@ -142,6 +143,63 @@ void main() {
       // אין notifier — אין מה לטריגר. הטסט עובר כל עוד לא נזרקה חריגה.
     });
   });
+
+  group('CommentaryListBase - notesIsActive prevents auto-open filter', () {
+    // כאשר activeCommentators מכיל רק 'הערות', selectedCommentators הוא ריק
+    // (הערות מסוננות החוצה), אך notesIsActive=true, ולכן לא צריכה להיפתח
+    // חלונית בחירת המפרשים אוטומטית.
+
+    testWidgets(
+        'activeCommentators=[הערות] + onSelectedCommentatorsOverrideChanged: לא נפתח אוטומטית',
+        (tester) async {
+      final notesOnlyBloc =
+          _TestTextBookBloc(_loadedStateWithCommentators([kNotesCommentatorTitle]));
+      addTearDown(() async => notesOnlyBloc.close());
+
+      await _pumpWithOverride(
+        tester,
+        textBookBloc: notesOnlyBloc,
+        settingsBloc: settingsBloc,
+      );
+
+      // selectedCommentators ריק (הערות מסוננות), אך notesIsActive=true
+      // → אין פתיחה אוטומטית של חלונית הסינון
+      expect(find.text('בחירת מפרשים'), findsNothing);
+    });
+
+    testWidgets(
+        'activeCommentators=[] (ריק לחלוטין) + onSelectedCommentatorsOverrideChanged: נפתח אוטומטית',
+        (tester) async {
+      // ביקורת: כאשר אין גם מפרשים וגם הערות, חלונית הסינון נפתחת.
+      final emptyBloc = _TestTextBookBloc(_loadedStateWithCommentators([]));
+      addTearDown(() async => emptyBloc.close());
+
+      await _pumpWithOverride(
+        tester,
+        textBookBloc: emptyBloc,
+        settingsBloc: settingsBloc,
+      );
+
+      expect(find.text('בחירת מפרשים'), findsOneWidget);
+    });
+
+    testWidgets(
+        'activeCommentators=[הערות, מפרש] — selectedCommentators לא ריק, לא נפתח',
+        (tester) async {
+      final mixedBloc = _TestTextBookBloc(
+          _loadedStateWithCommentators([kNotesCommentatorTitle, 'מפרש בדיקה']));
+      addTearDown(() async => mixedBloc.close());
+
+      await _pumpWithOverride(
+        tester,
+        textBookBloc: mixedBloc,
+        settingsBloc: settingsBloc,
+      );
+
+      // selectedCommentators=['מפרש בדיקה'] (לא ריק) → אין פתיחה אוטומטית
+      expect(find.text('בחירת מפרשים'), findsNothing);
+    });
+  });
 }
 
 Future<void> _pump(
@@ -212,6 +270,65 @@ TextBookLoaded _loadedState() {
     scrollController: ItemScrollController(),
     positionsListener: ItemPositionsListener.create(),
   );
+}
+
+TextBookLoaded _loadedStateWithCommentators(List<String> active) {
+  return TextBookLoaded(
+    book: TextBook(title: 'ספר בדיקה'),
+    showLeftPane: false,
+    content: const ['שורה א'],
+    fontSize: 18,
+    showSplitView: false,
+    activeCommentators: active,
+    commentatorGroups: const [],
+    availableCommentators: const ['מפרש בדיקה', kNotesCommentatorTitle],
+    links: const [],
+    visibleLinks: const [],
+    linksByLine: const {},
+    tableOfContents: const [],
+    removeNikud: false,
+    visibleIndices: const [0],
+    selectedIndex: 0,
+    pinLeftPane: false,
+    searchText: '',
+    scrollController: ItemScrollController(),
+    positionsListener: ItemPositionsListener.create(),
+  );
+}
+
+Future<void> _pumpWithOverride(
+  WidgetTester tester, {
+  required TextBookBloc textBookBloc,
+  required SettingsBloc settingsBloc,
+}) async {
+  addTearDown(() async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 20));
+  });
+
+  await tester.pumpWidget(
+    MaterialApp(
+      home: MultiBlocProvider(
+        providers: [
+          BlocProvider<TextBookBloc>.value(value: textBookBloc),
+          BlocProvider<SettingsBloc>.value(value: settingsBloc),
+        ],
+        child: Scaffold(
+          body: CommentaryListBase(
+            openBookCallback: (_) {},
+            fontSize: 18,
+            showSearch: true,
+            shrinkWrap: false,
+            // מדמה מצב override (כרטיסיית מפרשים) שבו הפאנל נפתח אוטומטית
+            // כשאין מפרשים נבחרים — אלא אם notesIsActive מונע זאת.
+            onSelectedCommentatorsOverrideChanged: (_) {},
+          ),
+        ),
+      ),
+    ),
+  );
+
+  await tester.pumpAndSettle();
 }
 
 class _TestTextBookBloc extends Bloc<TextBookEvent, TextBookState>
