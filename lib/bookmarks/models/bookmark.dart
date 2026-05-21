@@ -29,6 +29,11 @@ String bookIdentity(Book book) {
   return 'title:${book.title}';
 }
 
+enum BookmarkTargetKind {
+  book,
+  commentators,
+}
+
 /// Represents a bookmark in the application.
 class Bookmark {
   final String ref;
@@ -42,9 +47,10 @@ class Bookmark {
   final String? workspaceName;
   final List<String>? searchScopeFacets;
   final SearchMode? searchMode;
+  final BookmarkTargetKind targetKind;
 
   /// A stable key for history management, unique per book title.
-  String get historyKey => isSearch ? ref : book.title;
+  String get historyKey => isSearch ? ref : '${targetKind.name}:${book.title}';
 
   Bookmark({
     required this.ref,
@@ -58,6 +64,7 @@ class Bookmark {
     this.workspaceName,
     this.searchScopeFacets,
     this.searchMode,
+    this.targetKind = BookmarkTargetKind.book,
   });
 
   factory Bookmark.fromJson(Map<String, dynamic> json) {
@@ -96,6 +103,12 @@ class Bookmark {
       searchMode: json['searchMode'] != null
           ? _trySearchModeFromName(json['searchMode'] as String)
           : null,
+      targetKind: json['targetKind'] != null
+          ? BookmarkTargetKind.values.firstWhere(
+              (kind) => kind.name == json['targetKind'],
+              orElse: () => BookmarkTargetKind.book,
+            )
+          : BookmarkTargetKind.book,
     );
   }
 
@@ -123,6 +136,7 @@ class Bookmark {
       'workspaceName': workspaceName,
       'searchScopeFacets': searchScopeFacets,
       'searchMode': searchMode?.name,
+      'targetKind': targetKind.name,
     };
   }
 }
