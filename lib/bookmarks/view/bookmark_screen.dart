@@ -10,7 +10,11 @@ import 'package:otzaria/navigation/bloc/navigation_event.dart';
 import 'package:otzaria/navigation/bloc/navigation_state.dart';
 import 'package:otzaria/tabs/bloc/tabs_bloc.dart';
 import 'package:otzaria/tabs/bloc/tabs_event.dart';
+import 'package:otzaria/tabs/models/commentators_tab.dart';
+import 'package:otzaria/tabs/models/pdf_commentators_tab.dart';
+import 'package:otzaria/tabs/models/pdf_tab.dart';
 import 'package:otzaria/tabs/models/tab.dart';
+import 'package:otzaria/tabs/models/text_tab.dart';
 import 'package:otzaria/models/books.dart';
 import 'package:otzaria/core/ui_snack.dart';
 import 'package:otzaria/utils/ui/reading_left_pane_policy.dart';
@@ -38,19 +42,42 @@ class BookmarkView extends StatelessWidget {
 
   const BookmarkView({super.key, this.bookFilter});
 
-  void _openBook(
-    BuildContext context,
-    Book book,
-    int index,
-    List<String>? commentators, {
-    String? targetTitle,
-  }) {
-    final tab = OpenedTab.fromBook(
-      book,
-      index,
-      commentators: commentators,
+  OpenedTab _buildTabForBookmark(
+    Bookmark bookmark,
+  ) {
+    if (bookmark.targetKind == BookmarkTargetKind.commentators) {
+      if (bookmark.book is PdfBook) {
+        final sourceTab = PdfBookTab(
+          book: bookmark.book as PdfBook,
+          pageNumber: bookmark.index,
+          openLeftPane: shouldAutoOpenReadingLeftPane(),
+        )..activeCommentators = bookmark.commentatorsToShow.toSet();
+        return PdfCommentatorsTab(sourceTab: sourceTab);
+      }
+
+      final sourceTab = OpenedTab.fromBook(
+        bookmark.book,
+        bookmark.index,
+        commentators: bookmark.commentatorsToShow,
+        openLeftPane: shouldAutoOpenReadingLeftPane(),
+      ) as TextBookTab;
+      return CommentatorsTab(sourceTab: sourceTab);
+    }
+
+    return OpenedTab.fromBook(
+      bookmark.book,
+      bookmark.index,
+      commentators: bookmark.commentatorsToShow,
       openLeftPane: shouldAutoOpenReadingLeftPane(),
     );
+  }
+
+  void _openBook(
+    BuildContext context,
+    Bookmark bookmark, {
+    String? targetTitle,
+  }) {
+    final tab = _buildTabForBookmark(bookmark);
 
     context.read<TabsBloc>().add(
           OpenOrFocusTab(
@@ -70,9 +97,13 @@ class BookmarkView extends StatelessWidget {
 
   String _locationSubtitle(Bookmark bookmark) {
     if (bookmark.book is PdfBook) {
-      return 'עמוד ${bookmark.index}';
+      return bookmark.targetKind == BookmarkTargetKind.commentators
+          ? 'כרטיסיית מפרשים · עמוד ${bookmark.index}'
+          : 'עמוד ${bookmark.index}';
     }
-    return 'פסקה ${bookmark.index}';
+    return bookmark.targetKind == BookmarkTargetKind.commentators
+        ? 'כרטיסיית מפרשים · פסקה ${bookmark.index}'
+        : 'פסקה ${bookmark.index}';
   }
 
   @override
@@ -88,9 +119,7 @@ class BookmarkView extends StatelessWidget {
               : (item) => bookIdentity(item.book) == filterIdentity,
           onItemTap: (ctx, item, originalIndex) => _openBook(
             ctx,
-            item.book,
-            item.index,
-            item.commentatorsToShow,
+            item,
             targetTitle: item.ref,
           ),
           onDelete: (ctx, originalIndex) {

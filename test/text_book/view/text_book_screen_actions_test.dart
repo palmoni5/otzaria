@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:otzaria/bookmarks/bloc/bookmark_bloc.dart';
 import 'package:otzaria/bookmarks/bloc/bookmark_state.dart';
+import 'package:otzaria/bookmarks/models/bookmark.dart';
 import 'package:otzaria/core/focus_repository.dart';
 import 'package:otzaria/data/repository/data_repository.dart';
 import 'package:otzaria/library/models/library.dart';
@@ -337,6 +338,7 @@ class _TestBookmarkBloc extends Cubit<BookmarkState> implements BookmarkBloc {
     required Book book,
     required int index,
     List<String>? commentatorsToShow,
+    BookmarkTargetKind targetKind = BookmarkTargetKind.book,
   }) {
     return true;
   }

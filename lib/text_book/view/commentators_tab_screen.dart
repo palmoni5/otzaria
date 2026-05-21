@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/bookmarks/bloc/bookmark_bloc.dart';
+import 'package:otzaria/bookmarks/models/bookmark.dart';
 import 'package:otzaria/bookmarks/view/bookmark_screen.dart';
 import 'package:otzaria/core/ui_snack.dart';
 import 'package:otzaria/models/books.dart';
@@ -115,6 +116,10 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
 
   ({TocEntry? chapter, int verseIdx}) _findPos(
       List<TocEntry> chapters, int lineIndex) {
+    final currentState = widget.tab.bloc.state;
+    final content = currentState is TextBookLoaded
+        ? currentState.content
+        : const <String>[];
     TocEntry? bestChapter;
     int bestVerseIdx = _kAllChapter;
     for (final ch in chapters) {
@@ -122,11 +127,23 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
         bestChapter = ch;
         bestVerseIdx = _kAllChapter;
         for (int i = 0; i < ch.children.length; i++) {
+          if (_isDuplicateChapterChild(
+            ch,
+            ch.children[i],
+            _previewForChild(ch, ch.children[i], content),
+          )) {
+            continue;
+          }
           if (ch.children[i].index <= lineIndex) {
             bestVerseIdx = i;
           } else {
             break;
           }
+        }
+        if (bestVerseIdx == _kAllChapter &&
+            _isHeadingOnlyParagraphOffset(ch, 0, chapters, content) &&
+            lineIndex == ch.index) {
+          bestVerseIdx = _kAllChapter;
         }
       } else {
         break;
@@ -516,31 +533,64 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
   }
 
   void _navigateToPrevVerse(List<TocEntry> chapters) {
+    final currentState = widget.tab.bloc.state;
+    final content = currentState is TextBookLoaded
+        ? currentState.content
+        : const <String>[];
     final hasVerses = _selectedChapter?.children.isNotEmpty ?? false;
-    final listIdx =
-        _selectedVerseIdx == _kAllChapter ? 0 : _selectedVerseIdx + 1;
-    if (listIdx <= 0) return;
-    final newIdx = listIdx - 1 == 0 ? _kAllChapter : listIdx - 2;
     if (hasVerses) {
-      _selectVerseAndLoad(newIdx, chapters);
+      final selectable = _selectableVerseIndices(_selectedChapter!, content);
+      final currentPos = _selectedVerseIdx == _kAllChapter
+          ? -1
+          : selectable.indexOf(_selectedVerseIdx);
+      if (currentPos <= -1) return;
+      if (currentPos == 0) {
+        _selectVerseAndLoad(_kAllChapter, chapters);
+        return;
+      }
+      _selectVerseAndLoad(selectable[currentPos - 1], chapters);
     } else {
-      _selectParaAndLoad(newIdx, chapters);
+      final selectable =
+          _selectableParagraphOffsets(chapters, _selectedChapter!, content);
+      final currentPos = _selectedVerseIdx == _kAllChapter
+          ? -1
+          : selectable.indexOf(_selectedVerseIdx);
+      if (currentPos <= -1) return;
+      if (currentPos == 0) {
+        _selectParaAndLoad(_kAllChapter, chapters);
+        return;
+      }
+      _selectParaAndLoad(selectable[currentPos - 1], chapters);
     }
   }
 
   void _navigateToNextVerse(List<TocEntry> chapters) {
+    final currentState = widget.tab.bloc.state;
+    final content = currentState is TextBookLoaded
+        ? currentState.content
+        : const <String>[];
     final hasVerses = _selectedChapter?.children.isNotEmpty ?? false;
-    final verseCount = hasVerses
-        ? _selectedChapter!.children.length
-        : _chapterLineCount(chapters, _selectedChapter!);
-    final listIdx =
-        _selectedVerseIdx == _kAllChapter ? 0 : _selectedVerseIdx + 1;
-    if (listIdx >= verseCount) return;
-    final newIdx = listIdx;
     if (hasVerses) {
-      _selectVerseAndLoad(newIdx, chapters);
+      final selectable = _selectableVerseIndices(_selectedChapter!, content);
+      if (selectable.isEmpty) return;
+      if (_selectedVerseIdx == _kAllChapter) {
+        _selectVerseAndLoad(selectable.first, chapters);
+        return;
+      }
+      final currentPos = selectable.indexOf(_selectedVerseIdx);
+      if (currentPos < 0 || currentPos + 1 >= selectable.length) return;
+      _selectVerseAndLoad(selectable[currentPos + 1], chapters);
     } else {
-      _selectParaAndLoad(newIdx, chapters);
+      final selectable =
+          _selectableParagraphOffsets(chapters, _selectedChapter!, content);
+      if (selectable.isEmpty) return;
+      if (_selectedVerseIdx == _kAllChapter) {
+        _selectParaAndLoad(selectable.first, chapters);
+        return;
+      }
+      final currentPos = selectable.indexOf(_selectedVerseIdx);
+      if (currentPos < 0 || currentPos + 1 >= selectable.length) return;
+      _selectParaAndLoad(selectable[currentPos + 1], chapters);
     }
   }
 
@@ -571,10 +621,11 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
     final commentatorsToShow =
         _selectedCommentatorsOverride ?? state.activeCommentators;
     final added = context.read<BookmarkBloc>().addBookmark(
-          ref: ref,
+          ref: 'מפרשים | $ref',
           book: state.book,
           index: index,
           commentatorsToShow: commentatorsToShow,
+          targetKind: BookmarkTargetKind.commentators,
         );
     UiSnack.showQuick(added ? 'הסימניה נוספה בהצלחה' : 'הסימניה כבר קיימת');
   }
@@ -1257,6 +1308,64 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
         normalizedPreview.startsWith(normalizedChapter);
   }
 
+  String _previewForChild(
+    TocEntry chapter,
+    TocEntry child,
+    List<String> content,
+  ) {
+    final textFromContent =
+        child.index < content.length ? content[child.index] : '';
+    return textFromContent.trim().isNotEmpty
+        ? _getParaPreview(textFromContent)
+        : child.text;
+  }
+
+  bool _isHeadingOnlyParagraphOffset(
+    TocEntry chapter,
+    int offset,
+    List<TocEntry> chapters,
+    List<String> content,
+  ) {
+    if (offset != 0) return false;
+    final lineIndex = chapter.index + offset;
+    final textFromContent =
+        lineIndex < content.length ? content[lineIndex] : '';
+    if (textFromContent.trim().isEmpty) return false;
+    final preview = _getParaPreview(textFromContent);
+    return preview.trim() == chapter.text.trim();
+  }
+
+  List<int> _selectableVerseIndices(TocEntry chapter, List<String> content) {
+    return chapter.children
+        .asMap()
+        .entries
+        .where((entry) => !_isDuplicateChapterChild(
+              chapter,
+              entry.value,
+              _previewForChild(chapter, entry.value, content),
+            ))
+        .map((entry) => entry.key)
+        .toList();
+  }
+
+  List<int> _selectableParagraphOffsets(
+    List<TocEntry> chapters,
+    TocEntry chapter,
+    List<String> content,
+  ) {
+    final lineCount = _chapterLineCount(chapters, chapter);
+    return List<int>.generate(lineCount, (i) => i)
+        .where(
+          (offset) => !_isHeadingOnlyParagraphOffset(
+            chapter,
+            offset,
+            chapters,
+            content,
+          ),
+        )
+        .toList();
+  }
+
   List<_TocListItem> _buildVisibleTocItems(
     List<TocEntry> visibleChapters,
     List<TocEntry> allChapters,
@@ -1282,17 +1391,9 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
       );
 
       if (chapter.children.isNotEmpty) {
-        for (final entry in chapter.children.asMap().entries) {
-          final i = entry.key;
-          final child = entry.value;
-          final textFromContent =
-              child.index < content.length ? content[child.index] : '';
-          final preview = textFromContent.trim().isNotEmpty
-              ? _getParaPreview(textFromContent)
-              : child.text;
-          if (_isDuplicateChapterChild(chapter, child, preview)) {
-            continue;
-          }
+        for (final i in _selectableVerseIndices(chapter, content)) {
+          final child = chapter.children[i];
+          final preview = _previewForChild(chapter, child, content);
           if (preview.isEmpty) continue;
           items.add(
             _TocListItem.subItem(
@@ -1305,8 +1406,11 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
         continue;
       }
 
-      final lineCount = _chapterLineCount(allChapters, chapter);
-      for (int i = 0; i < lineCount; i++) {
+      for (final i in _selectableParagraphOffsets(
+        allChapters,
+        chapter,
+        content,
+      )) {
         final lineIndex = chapter.index + i;
         final textFromContent =
             lineIndex < content.length ? content[lineIndex] : '';

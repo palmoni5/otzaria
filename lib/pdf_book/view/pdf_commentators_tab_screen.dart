@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/bookmarks/bloc/bookmark_bloc.dart';
+import 'package:otzaria/bookmarks/models/bookmark.dart';
 import 'package:otzaria/bookmarks/view/bookmark_screen.dart';
 import 'package:otzaria/core/ui_snack.dart';
 import 'package:otzaria/tabs/models/pdf_commentators_tab.dart';
@@ -137,12 +138,16 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
     final headings = _sortedHeadings;
     if (headings == null || headingIdx >= headings.length) return const [];
     final start = headings[headingIdx].value;
+    final headingText = headings[headingIdx].key.trim();
     final end = headingIdx + 1 < headings.length
         ? headings[headingIdx + 1].value - 1
         : lines.length - 1;
     final result = <({int lineIdx, String text})>[];
     for (int i = start; i <= end && i < lines.length; i++) {
       final clean = utils.stripHtmlIfNeeded(lines[i]).trim();
+      if (i == start && clean == headingText) {
+        continue;
+      }
       if (clean.isNotEmpty) result.add((lineIdx: i, text: clean));
     }
     return result;
@@ -288,9 +293,11 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen> {
         : '${widget.tab.sourceTab.book.title} עמוד $page';
 
     final added = context.read<BookmarkBloc>().addBookmark(
-          ref: ref,
+          ref: 'מפרשים | $ref',
           book: widget.tab.sourceTab.book,
           index: page,
+          commentatorsToShow: widget.tab.sourceTab.activeCommentators.toList(),
+          targetKind: BookmarkTargetKind.commentators,
         );
     UiSnack.show(added ? 'הסימניה נוספה בהצלחה' : 'הסימניה כבר קיימת');
   }

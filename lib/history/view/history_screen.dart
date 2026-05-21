@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:otzaria/bookmarks/models/bookmark.dart';
 import 'package:otzaria/widgets/dialogs/reusable_items_dialog.dart';
 import 'package:otzaria/history/bloc/history_bloc.dart';
 import 'package:otzaria/history/bloc/history_event.dart';
@@ -13,8 +14,12 @@ import 'package:otzaria/navigation/bloc/navigation_state.dart';
 import 'package:otzaria/tabs/bloc/tabs_bloc.dart';
 import 'package:otzaria/search/bloc/search_event.dart';
 import 'package:otzaria/tabs/bloc/tabs_event.dart';
+import 'package:otzaria/tabs/models/commentators_tab.dart';
+import 'package:otzaria/tabs/models/pdf_commentators_tab.dart';
+import 'package:otzaria/tabs/models/pdf_tab.dart';
 import 'package:otzaria/tabs/models/tab.dart';
 import 'package:otzaria/tabs/models/searching_tab.dart';
+import 'package:otzaria/tabs/models/text_tab.dart';
 import 'package:otzaria/search/models/search_configuration.dart';
 import 'package:otzaria/utils/ui/reading_left_pane_policy.dart';
 import 'package:otzaria/widgets/lists/items_list_view.dart';
@@ -70,19 +75,40 @@ class _HistoryViewState extends State<HistoryView> {
     return null;
   }
 
-  void _openBook(
-    BuildContext context,
-    Book book,
-    int index,
-    List<String>? commentators, {
-    String? targetTitle,
-  }) {
-    final tab = OpenedTab.fromBook(
-      book,
-      index,
-      commentators: commentators,
+  OpenedTab _buildTabForHistoryItem(Bookmark bookmark) {
+    if (bookmark.targetKind == BookmarkTargetKind.commentators) {
+      if (bookmark.book is PdfBook) {
+        final sourceTab = PdfBookTab(
+          book: bookmark.book as PdfBook,
+          pageNumber: bookmark.index,
+          openLeftPane: shouldAutoOpenReadingLeftPane(),
+        )..activeCommentators = bookmark.commentatorsToShow.toSet();
+        return PdfCommentatorsTab(sourceTab: sourceTab);
+      }
+
+      final sourceTab = OpenedTab.fromBook(
+        bookmark.book,
+        bookmark.index,
+        commentators: bookmark.commentatorsToShow,
+        openLeftPane: shouldAutoOpenReadingLeftPane(),
+      ) as TextBookTab;
+      return CommentatorsTab(sourceTab: sourceTab);
+    }
+
+    return OpenedTab.fromBook(
+      bookmark.book,
+      bookmark.index,
+      commentators: bookmark.commentatorsToShow,
       openLeftPane: shouldAutoOpenReadingLeftPane(),
     );
+  }
+
+  void _openBook(
+    BuildContext context,
+    Bookmark bookmark, {
+    String? targetTitle,
+  }) {
+    final tab = _buildTabForHistoryItem(bookmark);
 
     context.read<TabsBloc>().add(
           OpenOrFocusTab(tab, targetTitle: targetTitle),
@@ -226,9 +252,7 @@ class _HistoryViewState extends State<HistoryView> {
                   }
                   _openBook(
                     ctx,
-                    item.book,
-                    item.index,
-                    item.commentatorsToShow,
+                    item,
                     targetTitle: item.ref,
                   );
                 },
