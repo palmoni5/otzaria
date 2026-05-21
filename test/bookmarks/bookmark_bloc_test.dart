@@ -314,9 +314,19 @@ void main() {
       expect(restored.commentatorsToShow, original.commentatorsToShow);
     });
 
-    test('historyKey הוא כותרת הספר לסימנייה רגילה', () {
+    test('historyKey כולל targetKind לסימנייה רגילה', () {
       final bm = _bookmark(bookTitle: 'בראשית');
-      expect(bm.historyKey, 'בראשית');
+      expect(bm.historyKey, 'book:בראשית');
+    });
+
+    test('historyKey כולל targetKind לסימניית מפרשים', () {
+      final bm = Bookmark(
+        ref: 'מפרשים | בראשית א',
+        book: _book(title: 'בראשית'),
+        index: 42,
+        targetKind: BookmarkTargetKind.commentators,
+      );
+      expect(bm.historyKey, 'commentators:בראשית');
     });
 
     test('historyKey הוא ref לסימנייה חיפוש', () {
@@ -347,6 +357,16 @@ void main() {
       };
       final bm = Bookmark.fromJson(json);
       expect(bm.isSearch, isFalse);
+    });
+
+    test('fromJson מטפל ב-targetKind חסר (ברירת מחדל book)', () {
+      final json = {
+        'ref': 'א',
+        'index': 0,
+        'book': _book().toJson(),
+      };
+      final bm = Bookmark.fromJson(json);
+      expect(bm.targetKind, BookmarkTargetKind.book);
     });
   });
 }
