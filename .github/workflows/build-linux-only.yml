@@ -1,0 +1,204 @@
+name: "Build Linux Only"
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build_linux:
+    runs-on: ubuntu-22.04
+    env:
+      RUSTUP_HOME: ${{ github.workspace }}/.rustup
+      CARGO_HOME:  ${{ github.workspace }}/.cargo
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.0
+          cache: true
+
+      - name: Create Google Calendar Credentials
+        shell: bash
+        run: |
+          CLIENT_ID='${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}'
+          CLIENT_SECRET='${{ secrets.GOOGLE_CALENDAR_CLIENT_SECRET }}'
+          if [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_SECRET" ]; then
+            echo "::error::Google Calendar secrets are missing. Please set GOOGLE_CALENDAR_CLIENT_ID and GOOGLE_CALENDAR_CLIENT_SECRET."
+            exit 1
+          fi
+          cat > lib/tools/calendar/services/google_calendar_credentials.dart << EOF
+          class GoogleCalendarCredentials {
+            static const String clientId = '$CLIENT_ID';
+            static const String clientSecret = '$CLIENT_SECRET';
+          }
+          EOF
+          echo "Google Calendar credentials file created"
+
+      - name: Install Rust (stable) with rustup
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add cargo to PATH and verify toolchain
+        run: |
+          echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
+          rustc -Vv
+          cargo -V
+          rustup show
+
+      - name: Cache cargo registry and git
+        uses: actions/cache@v4.2.3
+        with:
+          path: |
+            ${{ env.CARGO_HOME }}/registry
+            ${{ env.CARGO_HOME }}/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            build-essential ninja-build libgtk-3-dev libblkid1 liblzma5 \
+            clang-15 lld-15 cmake git pkg-config liblzma-dev rpm patchelf curl xz-utils zstd \
+            libcurl4-openssl-dev \
+            libwpewebkit-1.0-dev \
+            libwpebackend-fdo-1.0-dev \
+            libwebkit2gtk-4.1-dev
+          # שדרוג clang ל-15 כדי שיכיר את הדגל -Wno-deprecated-literal-operator
+          # שמשתמשים בו ב-sentry-native (תלות של sentry_flutter).
+          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-15 100
+          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-15 100
+          # Fallback אם מסיבה כלשהי cargo לא קיים (למשל כשל זמני ב-rustup)
+          if ! command -v cargo >/dev/null 2>&1; then
+            sudo apt-get install -y rustc cargo
+          fi
+
+      - name: Install flutter_distributor
+        run: dart pub global activate flutter_distributor
+
+      - name: Prepare Flutter dependencies for Linux release
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter pub get
+          # Generate settings search index (.g.dart) — gitignored, regenerated per build.
+          dart run tool/generate_search_index.dart
+
+      - name: Build Flutter Linux app (with retry)
+        env:
+          CC: clang-15
+          CXX: clang++-15
+        run: |
+          set -e
+          tries=0
+          until [ $tries -ge 3 ]
+          do
+            if flutter build linux; then
+              break
+            fi
+            tries=$((tries+1))
+            echo "flutter build linux failed. retry $tries/3 after short sleep..."
+            sleep 15
+          done
+          if [ $tries -ge 3 ]; then
+            echo "::error::flutter build linux failed after 3 attempts"
+            exit 1
+          fi
+
+      - name: Build and Patch Linux DEB package
+        shell: bash
+        env:
+          CC: clang-15
+          CXX: clang++-15
+        run: |
+          set -e
+
+          echo "Attempting to build with flutter_distributor, it might fail..."
+          flutter_distributor release --name=production --jobs=release-linux-deb || true
+
+          CONTROL_FILE=$(find dist -type f -name "control" | head -n 1)
+          if [ -z "$CONTROL_FILE" ]; then
+            echo "::error::Fatal: Could not find the DEBIAN/control file. The distributor failed before creating it."
+            exit 1
+          fi
+
+          echo "Found control file to patch at: $CONTROL_FILE"
+          sed -i 's/\r$//' "$CONTROL_FILE"
+          sed -i '/^Depends:\s*$/d' "$CONTROL_FILE"
+          if [ -n "$(tail -c1 "$CONTROL_FILE")" ]; then
+            echo >> "$CONTROL_FILE"
+          fi
+
+          DEB_DIR=$(dirname "$CONTROL_FILE" | xargs dirname)
+          DEB_OUTPUT_FILE="dist/$(basename "$DEB_DIR" | sed 's/-linux_deb$//')-linux.deb"
+
+          echo "Re-packaging from directory: $DEB_DIR into $DEB_OUTPUT_FILE"
+          dpkg-deb --build --root-owner-group "$DEB_DIR" "$DEB_OUTPUT_FILE"
+
+      - name: Build and Patch Linux RPM package
+        shell: bash
+        env:
+          CC: clang-15
+          CXX: clang++-15
+        run: |
+          set -e
+
+          echo "Attempting to build with flutter_distributor, expecting it to fail..."
+          flutter_distributor release --name=production --jobs=release-linux-rpm || true
+
+          SPEC_FILE=$(find dist -type f -name "*.spec" | head -n 1)
+          if [ -z "$SPEC_FILE" ]; then
+            echo "::error::Fatal: Could not find the .spec file to patch."
+            exit 1
+          fi
+
+          echo "Found spec file to patch at: $SPEC_FILE"
+          sed -i '/^Requires:\s*$/d' "$SPEC_FILE"
+
+          RPM_TOP_DIR_REL=$(dirname "$SPEC_FILE" | xargs dirname)
+          RPM_TOP_DIR_ABS="$(pwd)/$RPM_TOP_DIR_REL"
+
+          echo "Re-packaging using absolute top directory: $RPM_TOP_DIR_ABS"
+          rpmbuild --define "_topdir $RPM_TOP_DIR_ABS" -bb "$SPEC_FILE"
+
+      - name: Find and prepare Linux packages
+        id: find_packages
+        run: |
+          DEB_FILE=$(find dist -maxdepth 1 -name "*-linux.deb" | head -n 1)
+          if [ -n "$DEB_FILE" ]; then
+            echo "deb_file=$DEB_FILE" >> $GITHUB_OUTPUT
+            echo "deb_name=$(basename $DEB_FILE)" >> $GITHUB_OUTPUT
+          fi
+          RPM_FILE=$(find dist -type f -name "*.rpm" | head -n 1)
+          if [ -n "$RPM_FILE" ]; then
+            echo "rpm_file=$RPM_FILE" >> $GITHUB_OUTPUT
+            echo "rpm_name=$(basename $RPM_FILE)" >> $GITHUB_OUTPUT
+          fi
+          mkdir -p linux-build
+          cp -r build/linux/x64/release/bundle/* linux-build/
+
+      - name: Upload Linux DEB package
+        if: steps.find_packages.outputs.deb_file != ''
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: otzaria-linux-deb
+          path: ${{ steps.find_packages.outputs.deb_file }}
+
+      - name: Upload Linux RPM package
+        if: steps.find_packages.outputs.rpm_file != ''
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: otzaria-linux-rpm
+          path: ${{ steps.find_packages.outputs.rpm_file }}
+
+      - name: Upload linux build (raw)
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: otzaria-linux-raw
+          path: linux-build/*
