@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:logging/logging.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 
 import 'shamor_zachor_config.dart';
 import 'providers/shamor_zachor_data_provider.dart';
@@ -169,9 +170,9 @@ class _ShamorZachorWidgetState extends State<ShamorZachorWidget>
       default:
         _logger.warning('Unknown route: ${settings.name}');
         return MaterialPageRoute(
-          builder: (context) => const Scaffold(
+          builder: (context) => Scaffold(
             body: Center(
-              child: Text('דף לא נמצא'),
+              child: Text('shamor_zachor.page_not_found'.tr()),
             ),
           ),
           settings: settings,

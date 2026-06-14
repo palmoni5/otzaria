@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:logging/logging.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import '../providers/shamor_zachor_data_provider.dart';
 import '../providers/shamor_zachor_progress_provider.dart';
 import '../widgets/error_boundary.dart';
@@ -363,9 +364,9 @@ class _ShamorZachorMainScreenState extends State<ShamorZachorMainScreen>
                     child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                      const Text('שגיאה בטעינת הנתונים'),
+                      Text('shamor_zachor.load_error'.tr()),
                       RecommendedActionButton(
-                        text: 'נסה שוב',
+                        text: 'shamor_zachor.try_again'.tr(),
                         onPressed: () async {
                           if (dataProvider.error != null) {
                             await dataProvider.loadAllData();
@@ -426,20 +427,20 @@ class _ShamorZachorMainScreenState extends State<ShamorZachorMainScreen>
                       final filterControl = ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 420),
                         child: AppSegmentedControl<String>(
-                          options: const [
+                          options: [
                             SegmentOption<String>(
                               value: 'all',
-                              label: 'הכל',
+                              label: 'shamor_zachor.filter_all'.tr(),
                               icon: FluentIcons.library_24_regular,
                             ),
                             SegmentOption<String>(
                               value: 'in_progress',
-                              label: 'בתהליך',
+                              label: 'shamor_zachor.filter_in_progress'.tr(),
                               icon: FluentIcons.hourglass_24_regular,
                             ),
                             SegmentOption<String>(
                               value: 'completed',
-                              label: 'הושלם',
+                              label: 'shamor_zachor.filter_completed'.tr(),
                               icon: FluentIcons.checkmark_circle_24_regular,
                             ),
                           ],
@@ -453,20 +454,20 @@ class _ShamorZachorMainScreenState extends State<ShamorZachorMainScreen>
                       );
                       final narrowFilterControl = AppSegmentedControl<String>(
                         expandToFillWidth: true,
-                        options: const [
+                        options: [
                           SegmentOption<String>(
                             value: 'all',
-                            label: 'הכל',
+                            label: 'shamor_zachor.filter_all'.tr(),
                             icon: FluentIcons.library_24_regular,
                           ),
                           SegmentOption<String>(
                             value: 'in_progress',
-                            label: 'בתהליך',
+                            label: 'shamor_zachor.filter_in_progress'.tr(),
                             icon: FluentIcons.hourglass_24_regular,
                           ),
                           SegmentOption<String>(
                             value: 'completed',
-                            label: 'הושלם',
+                            label: 'shamor_zachor.filter_completed'.tr(),
                             icon: FluentIcons.checkmark_circle_24_regular,
                           ),
                         ],
@@ -485,8 +486,8 @@ class _ShamorZachorMainScreenState extends State<ShamorZachorMainScreen>
                               AppTopBarItem(
                                 widget: IconButton(
                                   tooltip: _isSidebarVisible
-                                      ? 'הסתר ניווט'
-                                      : 'הצג ניווט',
+                                      ? 'shamor_zachor.toggle_nav_hide'.tr()
+                                      : 'shamor_zachor.toggle_nav_show'.tr(),
                                   onPressed: () {
                                     setState(() {
                                       _isSidebarVisible = !_isSidebarVisible;
@@ -531,7 +532,7 @@ class _ShamorZachorMainScreenState extends State<ShamorZachorMainScreen>
                                   child: OtzariaSearchField(
                                     controller: _searchController,
                                     focusNode: _searchFocusNode,
-                                    hintText: 'חפש...',
+                                    hintText: 'shamor_zachor.search_hint'.tr(),
                                     onChanged: _onSearchChanged,
                                     onSubmitted: (_) => _focusWindow(),
                                     onClear: () => _onSearchChanged(''),
@@ -638,7 +639,7 @@ class _ShamorZachorMainScreenState extends State<ShamorZachorMainScreen>
     final results = dataProvider.searchBooks(_searchQuery);
 
     return CategoryBooksGrid(
-      categoryName: 'תוצאות חיפוש',
+      categoryName: 'shamor_zachor.search_results_title'.tr(),
       searchResults: results,
       topLevelName: 'search_results',
       onBookSelected: _navigateToBook,

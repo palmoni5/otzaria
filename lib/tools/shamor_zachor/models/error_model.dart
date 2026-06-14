@@ -1,3 +1,5 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
+
 /// Enumeration of possible error types in Shamor Zachor
 enum ShamorZachorErrorType {
   /// Asset file not found
@@ -61,19 +63,19 @@ class ShamorZachorError {
   String get userFriendlyMessage {
     switch (type) {
       case ShamorZachorErrorType.missingAsset:
-        return 'קובץ נתונים חסר. אנא ודא שהאפליקציה מותקנת כראוי.';
+        return 'shamor_zachor.error.missing_asset'.tr();
       case ShamorZachorErrorType.parseError:
-        return 'שגיאה בקריאת נתוני הספרים. ייתכן שהקבצים פגומים.';
+        return 'shamor_zachor.error.parse_error'.tr();
       case ShamorZachorErrorType.storageUnavailable:
-        return 'לא ניתן לשמור את ההתקדמות. בדוק את הרשאות האפליקציה.';
+        return 'shamor_zachor.error.storage_unavailable'.tr();
       case ShamorZachorErrorType.networkError:
-        return 'בעיית חיבור לאינטרנט. בדוק את החיבור שלך.';
+        return 'shamor_zachor.error.network_error'.tr();
       case ShamorZachorErrorType.invalidData:
-        return 'נתונים לא תקינים. אנא נסה שוב.';
+        return 'shamor_zachor.error.invalid_data'.tr();
       case ShamorZachorErrorType.permissionDenied:
-        return 'אין הרשאה לבצע פעולה זו.';
+        return 'shamor_zachor.error.permission_denied'.tr();
       case ShamorZachorErrorType.unknown:
-        return 'אירעה שגיאה לא צפויה. אנא נסה שוב.';
+        return 'shamor_zachor.error.unknown'.tr();
     }
   }
 
@@ -96,18 +98,18 @@ class ShamorZachorError {
   String? get suggestedAction {
     switch (type) {
       case ShamorZachorErrorType.networkError:
-        return 'בדוק את חיבור האינטרנט ונסה שוב';
+        return 'shamor_zachor.error.action_network'.tr();
       case ShamorZachorErrorType.storageUnavailable:
-        return 'בדוק את הרשאות האפליקציה בהגדרות המכשיר';
+        return 'shamor_zachor.error.action_storage'.tr();
       case ShamorZachorErrorType.missingAsset:
-        return 'התקן מחדש את האפליקציה';
+        return 'shamor_zachor.error.action_missing_asset'.tr();
       case ShamorZachorErrorType.parseError:
       case ShamorZachorErrorType.invalidData:
-        return 'נסה לרענן את הנתונים או התקן מחדש';
+        return 'shamor_zachor.error.action_parse_invalid'.tr();
       case ShamorZachorErrorType.permissionDenied:
-        return 'בדוק את הרשאות האפליקציה';
+        return 'shamor_zachor.error.action_permission'.tr();
       case ShamorZachorErrorType.unknown:
-        return 'נסה שוב או פנה לתמיכה';
+        return 'shamor_zachor.error.action_unknown'.tr();
     }
   }
 

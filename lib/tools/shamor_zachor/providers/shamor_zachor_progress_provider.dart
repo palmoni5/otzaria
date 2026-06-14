@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 
 import '../models/progress_model.dart';
 import '../models/book_model.dart';
@@ -167,14 +168,14 @@ class ShamorZachorProgressProvider with ChangeNotifier {
         final currentProgress = getProgressForItemById(bookId, absoluteIndex);
 
         if (columnName == 'review1' && !currentProgress.learn) {
-          UiSnack.show('יש לסמן תחילה את הלימוד הראשוני');
+          UiSnack.show('shamor_zachor.mark_learn_first'.tr());
           return;
         } else if (columnName == 'review2' &&
             (!currentProgress.learn || !currentProgress.review1)) {
           if (!currentProgress.learn) {
-            UiSnack.show('יש לסמן תחילה את הלימוד הראשוני');
+            UiSnack.show('shamor_zachor.mark_learn_first'.tr());
           } else {
-            UiSnack.show('יש לסמן תחילה את החזרה הראשונה');
+            UiSnack.show('shamor_zachor.mark_review1_first'.tr());
           }
           return;
         } else if (columnName == 'review3' &&
@@ -182,11 +183,11 @@ class ShamorZachorProgressProvider with ChangeNotifier {
                 !currentProgress.review1 ||
                 !currentProgress.review2)) {
           if (!currentProgress.learn) {
-            UiSnack.show('יש לסמן תחילה את הלימוד הראשוני');
+            UiSnack.show('shamor_zachor.mark_learn_first'.tr());
           } else if (!currentProgress.review1) {
-            UiSnack.show('יש לסמן תחילה את החזרה הראשונה');
+            UiSnack.show('shamor_zachor.mark_review1_first'.tr());
           } else {
-            UiSnack.show('יש לסמן תחילה את החזרה השנייה');
+            UiSnack.show('shamor_zachor.mark_review2_first'.tr());
           }
           return;
         }

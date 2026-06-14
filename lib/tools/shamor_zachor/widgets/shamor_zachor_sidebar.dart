@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:otzaria/widgets/misc/thin_divider.dart';
 import 'package:otzaria/widgets/lists/navigation_tree_tile.dart';
 import '../providers/shamor_zachor_data_provider.dart';
@@ -46,7 +47,7 @@ class _ShamorZachorSidebarState extends State<ShamorZachorSidebar> {
               if (dataProvider.error != null) {
                 return Center(
                   child: Text(
-                    'שגיאה בטעינת נתונים',
+                    'shamor_zachor.data_load_error'.tr(),
                     style:
                         TextStyle(color: Theme.of(context).colorScheme.error),
                   ),

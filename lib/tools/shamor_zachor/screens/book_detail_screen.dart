@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:logging/logging.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 
 import '../models/book_model.dart';
 import '../models/progress_model.dart';
@@ -69,10 +70,10 @@ class _BookDetailScreenState extends State<BookDetailScreen>
   StreamSubscription<CompletionEvent>? _completionSubscription;
 
   final List<Map<String, String>> _columnData = [
-    {'id': 'learn', 'label': 'לימוד'},
-    {'id': 'review1', 'label': 'חזרה 1'},
-    {'id': 'review2', 'label': 'חזרה 2'},
-    {'id': 'review3', 'label': 'חזרה 3'},
+    {'id': 'learn', 'label': 'shamor_zachor.col_learn'.tr()},
+    {'id': 'review1', 'label': 'shamor_zachor.col_review1'.tr()},
+    {'id': 'review2', 'label': 'shamor_zachor.col_review2'.tr()},
+    {'id': 'review3', 'label': 'shamor_zachor.col_review3'.tr()},
   ];
 
   @override
@@ -84,10 +85,10 @@ class _BookDetailScreenState extends State<BookDetailScreen>
       if (!mounted) return;
       if (event.type == CompletionEventType.bookCompleted) {
         CompletionAnimationOverlay.show(
-            context, "אשריך! תזכה ללמוד ספרים אחרים ולסיימם!");
+            context, 'shamor_zachor.book_completed_message'.tr());
       } else if (event.type == CompletionEventType.reviewCycleCompleted) {
         CompletionAnimationOverlay.show(
-            context, "מזל טוב! הלומד וחוזר כזורע וקוצר!");
+            context, 'shamor_zachor.review_cycle_completed_message'.tr());
       }
     });
   }
@@ -102,10 +103,10 @@ class _BookDetailScreenState extends State<BookDetailScreen>
   Future<bool> _showWarningDialog() async {
     final result = await showWarningDialog(
       context: context,
-      title: 'אזהרה',
-      content: 'פעולה זו תשנה את כל הסימונים בעמודה זו. האם להמשיך?',
-      cancelText: 'לא',
-      confirmText: 'כן',
+      title: 'shamor_zachor.warning'.tr(),
+      content: 'shamor_zachor.column_warning_content'.tr(),
+      cancelText: 'shamor_zachor.no'.tr(),
+      confirmText: 'shamor_zachor.yes'.tr(),
     );
     return result ?? false;
   }
@@ -147,7 +148,7 @@ class _BookDetailScreenState extends State<BookDetailScreen>
       // במקרה כזה, אנחנו לא יכולים לשמור התקדמות
       _logger.severe(
           'CRITICAL: bookId is null for book ${widget.bookName}! This should not happen for DB books.');
-      UiSnack.showError('שגיאה: לא ניתן לשמור התקדמות לספר זה (חסר מזהה)');
+      UiSnack.showError('shamor_zachor.save_progress_error'.tr());
       return;
     }
   }
@@ -161,13 +162,13 @@ class _BookDetailScreenState extends State<BookDetailScreen>
           final cs = Theme.of(context).colorScheme;
 
           if (dataProvider.isLoading || progressProvider.isLoading) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('טוען פרטי ספר...'),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text('shamor_zachor.loading_book_details'.tr()),
                 ],
               ),
             );
@@ -200,7 +201,7 @@ class _BookDetailScreenState extends State<BookDetailScreen>
                   const SizedBox(height: 16),
                   if (dataProvider.error!.isRecoverable)
                     RecommendedActionButton(
-                      text: 'נסה שוב',
+                      text: 'shamor_zachor.try_again'.tr(),
                       onPressed: () => dataProvider.retry(),
                     ),
                 ],
@@ -228,12 +229,14 @@ class _BookDetailScreenState extends State<BookDetailScreen>
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'פרטי הספר "${widget.bookName}" לא נמצאו',
+                    'shamor_zachor.book_details_not_found'
+                        .tr(namedArgs: {'name': widget.bookName}),
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'קטגוריה: ${widget.topLevelCategoryKey}',
+                    'shamor_zachor.category_label'.tr(
+                        namedArgs: {'category': widget.topLevelCategoryKey}),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -255,9 +258,9 @@ class _BookDetailScreenState extends State<BookDetailScreen>
     final learnableItems = bookDetails.learnableItems;
 
     if (learnableItems.isEmpty) {
-      return const ToolEmptyState(
+      return ToolEmptyState(
         icon: FluentIcons.book_24_regular,
-        message: 'אין פריטים ללימוד בספר זה',
+        message: 'shamor_zachor.no_items_to_study'.tr(),
       );
     }
 
@@ -284,7 +287,7 @@ class _BookDetailScreenState extends State<BookDetailScreen>
                 IconButton(
                   icon: const Icon(FluentIcons.arrow_left_24_regular),
                   onPressed: widget.onBack,
-                  tooltip: 'חזרה',
+                  tooltip: 'shamor_zachor.back'.tr(),
                 ),
               Expanded(
                 child: Padding(

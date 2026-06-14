@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'dart:convert';
 import 'package:otzaria/data/data_providers/book_database_resolver.dart';
 import 'package:otzaria/data/data_providers/sqlite_data_provider.dart';
@@ -537,7 +538,7 @@ class ShamorZachorDataProvider with ChangeNotifier {
   }) async {
     if (_sqliteDataProvider?.repository == null) {
       _logger.warning("Repository not initialized");
-      throw Exception('מסד הנתונים לא מאותחל');
+      throw Exception('shamor_zachor.db_not_initialized'.tr());
     }
 
     try {
@@ -551,7 +552,7 @@ class ShamorZachorDataProvider with ChangeNotifier {
       if (existing == null) {
         _logger.warning("Book '$bookName' not found in database");
         throw Exception(
-            'הספר "$bookName" לא נמצא במסד הנתונים. יש להוסיף אותו תחילה לספרייה.');
+            'shamor_zachor.book_not_in_db'.tr(namedArgs: {'name': bookName}));
       }
 
       // 2. Add book ID to tracked books list
@@ -604,7 +605,7 @@ class ShamorZachorDataProvider with ChangeNotifier {
       if (existing.isBaseBook) {
         _logger
             .warning("Cannot remove base book '$bookName' from Shamor Zachor");
-        throw Exception('לא ניתן להסיר ספר בסיס מ"שמור וזכור"');
+        throw Exception('shamor_zachor.cannot_remove_base_book'.tr());
       }
 
       // Remove book ID from tracked books list

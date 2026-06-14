@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:logging/logging.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:otzaria/core/ui_snack.dart';
 import 'package:otzaria/widgets/dialogs/dialogs_exports.dart';
 import '../providers/shamor_zachor_data_provider.dart';
@@ -57,7 +58,7 @@ class _CategoryBooksGridState extends State<CategoryBooksGrid> {
         widget.categoryName != 'custom_books_virtual') {
       return ToolEmptyState(
         icon: FluentIcons.library_24_regular,
-        message: 'בחר קטגוריה כדי לצפות בספרים',
+        message: 'shamor_zachor.select_category_to_view'.tr(),
       );
     }
 
@@ -132,7 +133,10 @@ class _CategoryBooksGridState extends State<CategoryBooksGrid> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildSectionHeader(
-                                  'ספרים ב${widget.category!.name}'),
+                                  'shamor_zachor.books_in_category'.tr(
+                                      namedArgs: {
+                                    'category': widget.category!.name
+                                  })),
                               _buildBooksGrid(filtered, progressProvider,
                                   shrinkWrap: true),
                               const SizedBox(height: 24),
@@ -189,9 +193,9 @@ class _CategoryBooksGridState extends State<CategoryBooksGrid> {
   }
 
   Widget _buildEmptyState() {
-    return const ToolEmptyState(
+    return ToolEmptyState(
       icon: FluentIcons.book_24_regular,
-      message: 'אין ספרים להצגה',
+      message: 'shamor_zachor.no_books_to_show'.tr(),
     );
   }
 
@@ -296,11 +300,12 @@ class _CategoryBooksGridState extends State<CategoryBooksGrid> {
     final dataProvider = context.read<ShamorZachorDataProvider>();
     final confirmed = await showWarningDialog(
       context: context,
-      title: 'הסרת ספר משמור וזכור',
-      content: 'האם להסיר את "$bookName" משמור וזכור?',
-      subtitle: 'ההתקדמות השמורה תימחק ולא ניתן לשחזר אותה',
-      cancelText: 'ביטול',
-      confirmText: 'הסר',
+      title: 'shamor_zachor.remove_book_title'.tr(),
+      content:
+          'shamor_zachor.remove_book_content'.tr(namedArgs: {'name': bookName}),
+      subtitle: 'shamor_zachor.remove_book_subtitle'.tr(),
+      cancelText: 'shamor_zachor.cancel'.tr(),
+      confirmText: 'shamor_zachor.remove'.tr(),
     );
 
     if (confirmed != true || !context.mounted) return;
@@ -327,7 +332,8 @@ class _CategoryBooksGridState extends State<CategoryBooksGrid> {
         bookId: details.id,
       );
       if (context.mounted) {
-        UiSnack.show('הספר "$bookName" הוסר משמור וזכור');
+        UiSnack.show(
+            'shamor_zachor.book_removed'.tr(namedArgs: {'name': bookName}));
       }
     } catch (e) {
       final topLevelCategory =
@@ -339,7 +345,8 @@ class _CategoryBooksGridState extends State<CategoryBooksGrid> {
         });
       }
       if (context.mounted) {
-        UiSnack.showError('שגיאה בהסרת הספר: $e');
+        UiSnack.showError(
+            'shamor_zachor.remove_book_error'.tr(namedArgs: {'error': '$e'}));
       }
     }
   }
