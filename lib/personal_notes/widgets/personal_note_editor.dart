@@ -420,7 +420,7 @@ class _PersonalNoteToolbar extends StatelessWidget {
           onPressed: () => _toggleAttribute(quill.Attribute.underline),
         ),
         IconButton(
-          tooltip: 'קו חוצה',
+          tooltip: 'personal_notes.editor_strikethrough'.tr(),
           icon: const Icon(FluentIcons.text_strikethrough_24_regular, size: 18),
           onPressed: () => _toggleAttribute(quill.Attribute.strikeThrough),
         ),

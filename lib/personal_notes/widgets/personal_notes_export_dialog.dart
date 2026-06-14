@@ -24,16 +24,16 @@ class PersonalNotesExportDialog extends StatefulWidget {
   final List<PersonalNote> allNotes;
 
   /// כותרת הדיאלוג — מאפשר להבחין בין מסלול הגיבוי לייצוא הטקסט.
-  final String title;
+  final String? title;
 
   /// טקסט כפתור האישור.
-  final String confirmText;
+  final String? confirmText;
 
   const PersonalNotesExportDialog({
     super.key,
     required this.allNotes,
-    this.title = 'ייצוא הערות',
-    this.confirmText = 'ייצא',
+    this.title,
+    this.confirmText,
   });
 
   @override
@@ -66,7 +66,8 @@ class _PersonalNotesExportDialogState extends State<PersonalNotesExportDialog> {
 
     if (_mode == NotesExportMode.byBook && _selectedBookId != null) {
       result = notes.where((note) => note.bookId == _selectedBookId).toList();
-      description = 'personal_notes.export_by_book'.tr(namedArgs: {'book': _selectedBookId!});
+      description = 'personal_notes.export_by_book'
+          .tr(namedArgs: {'book': _selectedBookId!});
     } else if (_mode == NotesExportMode.byDateRange && _dateRange != null) {
       final start = DateUtils.dateOnly(_dateRange!.start);
       final endExclusive = DateUtils.dateOnly(
@@ -84,7 +85,8 @@ class _PersonalNotesExportDialogState extends State<PersonalNotesExportDialog> {
     } else if (_mode == NotesExportMode.manual) {
       result =
           notes.where((note) => _manualSelection[note.id] == true).toList();
-      description = 'personal_notes.export_manual'.tr(namedArgs: {'count': '${result.length}'});
+      description = 'personal_notes.export_manual'
+          .tr(namedArgs: {'count': '${result.length}'});
     }
 
     return NotesExportSelection(notes: result, description: description);
@@ -104,7 +106,7 @@ class _PersonalNotesExportDialogState extends State<PersonalNotesExportDialog> {
     }).toList();
 
     return AlertDialog(
-      title: Text(widget.title),
+      title: Text(widget.title ?? 'personal_notes.export_dialog_title'.tr()),
       content: SizedBox(
         width: 540,
         child: Column(
@@ -203,7 +205,7 @@ class _PersonalNotesExportDialogState extends State<PersonalNotesExportDialog> {
         ),
         RecommendedActionButton(
           onPressed: _submit,
-          text: widget.confirmText,
+          text: widget.confirmText ?? 'personal_notes.export_action'.tr(),
         ),
       ],
     );

@@ -1554,6 +1554,7 @@
     "editor_bold": "מודגש",
     "editor_italic": "נטוי",
     "editor_underline": "קו תחתי",
+    "editor_strikethrough": "קו חוצה",
     "editor_highlight": "הדגשה",
     "editor_heading": "כותרת",
     "editor_list": "רשימה",
@@ -1604,7 +1605,13 @@
     "delete_tooltip": "מחיקה",
     "delete_button": "מחק",
     "edit_button": "עריכה",
-    "open_book_tooltip": "פתח ספר בשורה"
+    "open_book_tooltip": "פתח ספר בשורה",
+    "export_text_header": "הערות אישיות מאוצריא",
+    "export_text_date": "תאריך ייצוא: {date}",
+    "export_text_count": "מספר הערות: {count}",
+    "export_text_book": "ספר: {book}",
+    "export_text_line": "שורה: {line}",
+    "export_text_updated": "עודכן: {date}"
   },
   "tools": {
     "screen_title": "כלים",

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:otzaria/personal_notes/models/personal_note.dart';
 import 'package:otzaria/personal_notes/storage/personal_notes_database.dart';
 
@@ -65,23 +66,31 @@ class PersonalNotesImportExportService {
     const separator =
         '------------------------------------------------------------';
     final buffer = StringBuffer()
-      ..writeln('הערות אישיות מאוצריא')
+      ..writeln('personal_notes.export_text_header'.tr())
       ..writeln('============================================================');
     if (description != null && description.trim().isNotEmpty) {
       buffer.writeln(description.trim());
     }
     buffer
-      ..writeln('תאריך ייצוא: ${_formatDate(DateTime.now())}')
-      ..writeln('מספר הערות: ${notes.length}');
+      ..writeln('personal_notes.export_text_date'
+          .tr(namedArgs: {'date': _formatDate(DateTime.now())}))
+      ..writeln('personal_notes.export_text_count'
+          .tr(namedArgs: {'count': notes.length.toString()}));
 
     for (var i = 0; i < notes.length; i++) {
       final note = notes[i];
       final title = (note.displayTitle?.trim().isNotEmpty ?? false)
           ? note.displayTitle!.trim()
           : note.bookId;
-      final meta = <String>['ספר: ${note.bookId}'];
-      if (note.lineNumber != null) meta.add('שורה: ${note.lineNumber}');
-      meta.add('עודכן: ${_formatDate(note.updatedAt)}');
+      final meta = <String>[
+        'personal_notes.export_text_book'.tr(namedArgs: {'book': note.bookId})
+      ];
+      if (note.lineNumber != null) {
+        meta.add('personal_notes.export_text_line'
+            .tr(namedArgs: {'line': note.lineNumber.toString()}));
+      }
+      meta.add('personal_notes.export_text_updated'
+          .tr(namedArgs: {'date': _formatDate(note.updatedAt)}));
 
       buffer
         ..writeln()

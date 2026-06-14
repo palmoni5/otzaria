@@ -10,7 +10,7 @@ import 'package:otzaria/settings/services/safer_mode/protected_settings_wrapper.
 class PersonalNoteEditorDialog extends StatefulWidget {
   final String initialContent;
   final PersonalNoteContentFormat initialContentFormat;
-  final String title;
+  final String? title;
   final String? referenceText;
   final IconData? icon;
   final String? bookId;
@@ -22,7 +22,7 @@ class PersonalNoteEditorDialog extends StatefulWidget {
     super.key,
     this.initialContent = '',
     this.initialContentFormat = PersonalNoteContentFormat.plain,
-    this.title = 'הערה חדשה',
+    this.title,
     this.referenceText,
     this.icon,
     this.bookId,
@@ -239,7 +239,7 @@ class _PersonalNoteEditorDialogState extends State<PersonalNoteEditorDialog> {
                 const SizedBox(width: 8),
               ],
               Text(
-                widget.title,
+                widget.title ?? 'personal_notes.new_note_dialog_title'.tr(),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ],

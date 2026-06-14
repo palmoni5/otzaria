@@ -1554,6 +1554,7 @@
     "editor_bold": "Bold",
     "editor_italic": "Italic",
     "editor_underline": "Underline",
+    "editor_strikethrough": "Strikethrough",
     "editor_highlight": "Highlight",
     "editor_heading": "Heading",
     "editor_list": "List",
@@ -1604,7 +1605,13 @@
     "delete_tooltip": "Delete",
     "delete_button": "Delete",
     "edit_button": "Edit",
-    "open_book_tooltip": "Open book at line"
+    "open_book_tooltip": "Open book at line",
+    "export_text_header": "Personal notes from Otzaria",
+    "export_text_date": "Export date: {date}",
+    "export_text_count": "Number of notes: {count}",
+    "export_text_book": "Book: {book}",
+    "export_text_line": "Line: {line}",
+    "export_text_updated": "Updated: {date}"
   },
   "tools": {
     "screen_title": "Tools",
