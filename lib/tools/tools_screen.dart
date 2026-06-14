@@ -516,7 +516,7 @@ class ToolsScreenState extends State<ToolsScreen>
     final isOfflineMode = context.read<SettingsBloc>().state.isOfflineMode;
     if (isOfflineMode && plugin.requiresNetwork) {
       UiSnack.showError(
-          'התוסף "${plugin.name}" דורש חיבור אינטרנט ולא ניתן לפתוח אותו במצב מנותק');
+          'tools.plugin_requires_network'.tr(namedArgs: {'name': plugin.name}));
       return;
     }
     if (plugin.pinned) {
@@ -715,8 +715,8 @@ class ToolsScreenState extends State<ToolsScreen>
     if (hiddenBuiltIn != null &&
         settingsState.hiddenBuiltInToolIds.contains(toolId)) {
       _clearPendingTool();
-      UiSnack.showError(
-          'הכלי "${hiddenBuiltIn.label}" מוסתר. ניתן להציג אותו דרך הגדרות → ניהול כלים');
+      UiSnack.showError('tools.tool_hidden'
+          .tr(namedArgs: {'name': hiddenBuiltIn.label}));
       return;
     }
 
@@ -734,14 +734,14 @@ class ToolsScreenState extends State<ToolsScreen>
       if (matchedPlugin != null) {
         if (matchedPlugin.hiddenFromTools) {
           _clearPendingTool();
-          UiSnack.showError(
-              'התוסף "${matchedPlugin.name}" מוסתר. ניתן להציג אותו דרך הגדרות → ניהול כלים');
+          UiSnack.showError('tools.plugin_hidden'
+              .tr(namedArgs: {'name': matchedPlugin.name}));
           return;
         }
         if (isOfflineMode && matchedPlugin.requiresNetwork) {
           _clearPendingTool();
-          UiSnack.showError(
-              'התוסף "${matchedPlugin.name}" דורש חיבור אינטרנט ולא ניתן לפתוח אותו במצב מנותק');
+          UiSnack.showError('tools.plugin_requires_network_offline'
+              .tr(namedArgs: {'name': matchedPlugin.name}));
           return;
         }
       }

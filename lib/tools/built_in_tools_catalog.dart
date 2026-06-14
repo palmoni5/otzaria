@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/widgets.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
@@ -7,8 +8,11 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 /// תווית, סדר, ואייקון לתצוגה.
 class BuiltInToolMeta {
   final String toolId;
-  final String label;
+  final String labelKey;
   final int order;
+
+  /// התווית המתורגמת להצגה.
+  String get label => labelKey.tr();
 
   /// אייקון Fluent (אם זה כלי שמשתמש באייקון מתוך החבילה).
   final IconData? icon;
@@ -18,7 +22,7 @@ class BuiltInToolMeta {
 
   const BuiltInToolMeta({
     required this.toolId,
-    required this.label,
+    required this.labelKey,
     required this.order,
     this.icon,
     this.imageIcon,
@@ -32,43 +36,43 @@ class BuiltInToolMeta {
 const List<BuiltInToolMeta> kBuiltInToolsCatalog = [
   BuiltInToolMeta(
     toolId: 'builtin.calendar',
-    label: 'לוח שנה',
+    labelKey: 'tools.tab_calendar',
     order: 10,
     icon: FluentIcons.calendar_24_regular,
   ),
   BuiltInToolMeta(
     toolId: 'builtin.shamor_zachor',
-    label: 'שמור וזכור',
+    labelKey: 'tools.tab_shamor_zachor',
     order: 20,
     imageIcon: 'assets/icon/שמור וזכור שחור ריק.png',
   ),
   BuiltInToolMeta(
     toolId: 'builtin.measurements',
-    label: 'מדות ושיעורים',
+    labelKey: 'tools.tab_measurements',
     order: 30,
     icon: FluentIcons.ruler_24_regular,
   ),
   BuiltInToolMeta(
     toolId: 'builtin.notes',
-    label: 'הערות אישיות',
+    labelKey: 'tools.tab_notes',
     order: 40,
     icon: FluentIcons.note_24_regular,
   ),
   BuiltInToolMeta(
     toolId: 'builtin.gematria',
-    label: 'גימטריה',
+    labelKey: 'tools.tab_gematria',
     order: 50,
     icon: FluentIcons.calculator_24_regular,
   ),
   BuiltInToolMeta(
     toolId: 'builtin.aramaic_dictionary',
-    label: 'מילון ארמי-עברי',
+    labelKey: 'tools.tab_aramaic_dict',
     order: 60,
     icon: FluentIcons.translate_24_regular,
   ),
   BuiltInToolMeta(
     toolId: 'builtin.acronyms_dictionary',
-    label: 'ראשי תיבות',
+    labelKey: 'tools.tab_acronyms',
     order: 70,
     icon: FluentIcons.text_quote_24_regular,
   ),
