@@ -365,10 +365,12 @@ class _LibrarySettingsTabState extends State<LibrarySettingsTab> {
                             const CustomFoldersTile(),
                             SwitchSettingsTile.text(
                               icon: FluentIcons.person_24_regular,
-                              title: 'מיזוג ספרים אישיים לעץ הספרייה',
+                              title: 'settings.library.merge_user_books_title'
+                                  .tr(),
                               subtitle: state.mergeUserBooksIntoLibrary
-                                  ? 'תת-התיקיות של התיקייה הנבחרת ימוזגו לקטגוריות הראשיות לפי שם'
-                                  : 'תיקיות אישיות יוצגו תחת קטגוריית "ספרים אישיים"',
+                                  ? 'settings.library.merge_user_books_on'.tr()
+                                  : 'settings.library.merge_user_books_off'
+                                      .tr(),
                               value: state.mergeUserBooksIntoLibrary,
                               onChanged: (value) {
                                 // ה-RefreshLibrary מופעל ב-listener למעלה,
@@ -465,7 +467,7 @@ class _LibrarySettingsTabState extends State<LibrarySettingsTab> {
                           context: context,
                           title: 'settings.library.index_stop_title'.tr(),
                           content: 'settings.library.index_stop_content'.tr(),
-                          confirmText: 'עצור',
+                          confirmText: 'settings.library.index_stop_confirm'.tr(),
                         );
                         if (!context.mounted) return;
                         if (result == true) {
@@ -514,7 +516,9 @@ class _LibrarySettingsTabState extends State<LibrarySettingsTab> {
                                       content:
                                           'settings.library.index_reset_content'
                                               .tr(),
-                                      confirmText: 'אפס',
+                                      confirmText:
+                                          'settings.library.index_reset_confirm'
+                                              .tr(),
                                     );
                                     if (!context.mounted) return;
                                     if (result == true) {

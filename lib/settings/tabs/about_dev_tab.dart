@@ -303,13 +303,13 @@ class AboutDevTab extends StatelessWidget {
 
             // ── משוב ותמיכה ──
             SettingsCard(
-              title: 'משוב ותמיכה',
+              title: 'settings.about.feedback_section'.tr(),
               children: [
                 _ActionTile(
                   icon: FluentIcons.chat_24_regular,
-                  title: 'נתקלת בבאג? יש לך שאלה או משוב?',
-                  subtitle: 'מוזמנים לבקר בפורום התמיכה והמשוב של אוצריא',
-                  buttonLabel: 'כניסה לפורום',
+                  title: 'settings.about.feedback_title'.tr(),
+                  subtitle: 'settings.about.feedback_subtitle'.tr(),
+                  buttonLabel: 'settings.about.feedback_button'.tr(),
                   onTap: () => _openUrl('https://otzaria.org/forum'),
                 ),
               ],
@@ -381,7 +381,7 @@ class AboutDevTab extends StatelessWidget {
 
             // ── מקור הספרים ──
             SettingsCard(
-              title: 'מקור הספרים',
+              title: 'settings.about.book_source_section'.tr(),
               children: [
                 Padding(
                   padding: const EdgeInsets.all(16),
@@ -605,8 +605,8 @@ class _MemorialCardsGrid extends StatelessWidget {
           children: [
             Expanded(
               child: _MemorialCard(
-                name: "לע\"נ ר' משה בן יהודה ראה ז\"ל",
-                description: 'סכום משמעותי לפיתוח התוכנה',
+                name: 'settings.about.memorial_main_name'.tr(),
+                description: 'settings.about.memorial_main_description'.tr(),
               ),
             ),
             const SizedBox(width: 12),
@@ -790,7 +790,7 @@ class _BookSourcesSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'מקור חלק גדול מהספרים בספריית אוצריא נלקח מהפרויקט המדהים של ספריא ושל עמותת דיקטה, שבאמצעותו נוספו חלק ניכר מהספרים.',
+          'settings.about.book_source_main_intro'.tr(),
           style: kSettingsSubtitleStyle,
         ),
         const SizedBox(height: 10),
@@ -807,7 +807,7 @@ class _BookSourcesSection extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          'כמו כן נוספו ספרים חשובים רבים מהפרויקטים הבאים:',
+          'settings.about.book_source_additional_intro'.tr(),
           style: kSettingsSubtitleStyle,
         ),
         const SizedBox(height: 10),
@@ -840,7 +840,7 @@ class _BookSourcesSection extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'הספרים הותאמו במיוחד עבור אוצריא, וכן נוספו ספרים רבים נוספים בזכות עבודתם המסורה של מהדירי הספרים.',
+                    'settings.about.book_source_note'.tr(),
                     style: kSettingsSubtitleStyle,
                   ),
                 ),
@@ -912,7 +912,7 @@ class _ClosingQuote extends StatelessWidget {
                   size: 32, color: colorScheme.primary),
               const SizedBox(height: 12),
               Text(
-                'וְצִדְקָתוֹ עֹמֶדֶת לָעַד',
+                'settings.about.closing_quote_1'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 20,
@@ -923,7 +923,7 @@ class _ClosingQuote extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '(תהילים קיב, ג)',
+                'settings.about.closing_quote_1_source'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     fontSize: 12, color: colorScheme.onSurfaceVariant),
@@ -950,7 +950,7 @@ class _ClosingQuote extends StatelessWidget {
                 ),
               ),
               Text(
-                'זֶה הַכּוֹתֵב סְפָרִים וּמַשְׁאִילָן לַאֲחֵרִים',
+                'settings.about.closing_quote_2'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 18,
@@ -961,7 +961,7 @@ class _ClosingQuote extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '(כתובות נ.)',
+                'settings.about.closing_quote_2_source'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     fontSize: 12, color: colorScheme.onSurfaceVariant),

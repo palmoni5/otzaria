@@ -687,7 +687,15 @@
       "custom_dialog_title": "הגדרת קיצור מקשים מותאם אישית",
       "custom_dialog_instructions": "לחץ על \"התחל הקלטה\" ואז לחץ על צירוף המקשים הרצוי",
       "custom_dialog_stop_recording": "עצור הקלטה",
-      "custom_dialog_start_recording": "התחל הקלטה"
+      "custom_dialog_start_recording": "התחל הקלטה",
+      "calendar_section": "לוח שנה ושמור וזכור",
+      "available_section": "פעולות זמינות לקיצור",
+      "available_subtitle": "פעולות הקיימות באפליקציה ועדיין לא הוגדר להן קיצור מקלדת",
+      "available_add_title": "הוסף קיצור לפעולה זמינה",
+      "available_count": "{count} פעולות זמינות",
+      "available_add_button": "הוסף קיצור",
+      "conflict_in_use": "קיצור זה כבר בשימוש עבור: {names}",
+      "pick_action_title": "בחר פעולה להוספת קיצור"
     },
     "text": {
       "font_section": "הגדרות גופן ועיצוב",
@@ -966,7 +974,19 @@
       "editors_note": "באם שמכם אינו מופיע ברשימה או שאתם מעוניינים בשינוי, אנא פנו למייל המערכת.",
       "memorial_main_name": "לע\"נ ר' משה בן יהודה ראה ז\"ל",
       "memorial_main_description": "סכום משמעותי לפיתוח התוכנה",
-      "memorial_placeholder": "מקום זה יכול להיות מונצח לע\"נ יקירך"
+      "memorial_placeholder": "מקום זה יכול להיות מונצח לע\"נ יקירך",
+      "feedback_section": "משוב ותמיכה",
+      "feedback_title": "נתקלת בבאג? יש לך שאלה או משוב?",
+      "feedback_subtitle": "מוזמנים לבקר בפורום התמיכה והמשוב של אוצריא",
+      "feedback_button": "כניסה לפורום",
+      "book_source_section": "מקור הספרים",
+      "book_source_main_intro": "מקור חלק גדול מהספרים בספריית אוצריא נלקח מהפרויקט המדהים של ספריא ושל עמותת דיקטה, שבאמצעותו נוספו חלק ניכר מהספרים.",
+      "book_source_additional_intro": "כמו כן נוספו ספרים חשובים רבים מהפרויקטים הבאים:",
+      "book_source_note": "הספרים הותאמו במיוחד עבור אוצריא, וכן נוספו ספרים רבים נוספים בזכות עבודתם המסורה של מהדירי הספרים.",
+      "closing_quote_1": "וְצִדְקָתוֹ עֹמֶדֶת לָעַד",
+      "closing_quote_1_source": "(תהילים קיב, ג)",
+      "closing_quote_2": "זֶה הַכּוֹתֵב סְפָרִים וּמַשְׁאִילָן לַאֲחֵרִים",
+      "closing_quote_2_source": "(כתובות נ.)"
     },
     "calendar": {
       "section": "לוח שנה",
@@ -1120,7 +1140,12 @@
       "index_reset": "איפוס",
       "index_reset_title": "איפוס אינדקס",
       "index_reset_content": "האם למחוק את אינדקס החיפוש? תצטרך לבנות אותו מחדש כדי להשתמש בחיפוש.",
-      "index_update": "עדכן"
+      "index_update": "עדכן",
+      "merge_user_books_title": "מיזוג ספרים אישיים לעץ הספרייה",
+      "merge_user_books_on": "תת-התיקיות של התיקייה הנבחרת ימוזגו לקטגוריות הראשיות לפי שם",
+      "merge_user_books_off": "תיקיות אישיות יוצגו תחת קטגוריית \"ספרים אישיים\"",
+      "index_stop_confirm": "עצור",
+      "index_reset_confirm": "אפס"
     },
     "design": {
       "display_section": "תצוגה",

@@ -334,15 +334,15 @@ class ShortcutsSettingsTab extends StatelessWidget {
         SettingsAnchor(
           cardId: 'shortcuts.main',
           child: SettingsCard(
-            title: 'כללי',
+            title: 'settings.shortcuts.general_section'.tr(),
             children: [
               SettingsActionTile.text(
                 icon: FluentIcons.arrow_reset_24_regular,
-                title: 'איפוס קיצורי מקשים',
-                subtitle: 'החזר את כל קיצורי המקשים לברירת המחדל',
+                title: 'settings.shortcuts.reset_title'.tr(),
+                subtitle: 'settings.shortcuts.reset_subtitle'.tr(),
                 actions: [
                   NeutralActionButton(
-                    text: 'איפוס',
+                    text: 'settings.shortcuts.reset_button'.tr(),
                     onPressed: () => _resetShortcuts(context),
                   ),
                 ],
@@ -355,59 +355,59 @@ class ShortcutsSettingsTab extends StatelessWidget {
 
         // ── ניווט כללי ────────────────────────────────────────────────
         SettingsCard(
-          title: 'ניווט כללי',
+          title: 'settings.shortcuts.general_navigation'.tr(),
           children: _onlyConfigured([
             _ShortcutTile(
               settingKey: 'key-shortcut-open-library-browser',
-              label: 'ספרייה',
+              label: 'settings.shortcuts.library'.tr(),
               icon: FluentIcons.library_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-open-find-ref',
-              label: 'איתור',
+              label: 'settings.shortcuts.find_ref'.tr(),
               icon: FluentIcons.book_search_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-open-reading-screen',
-              label: 'עיון',
+              label: 'settings.shortcuts.reading_screen'.tr(),
               icon: FluentIcons.book_open_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-open-new-search',
-              label: 'חיפוש חדש בכל הספרים',
+              label: 'settings.shortcuts.new_search'.tr(),
               icon: FluentIcons.search_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-open-settings',
-              label: 'הגדרות',
+              label: 'settings.shortcuts.settings'.tr(),
               icon: FluentIcons.settings_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-open-more',
-              label: 'כלים',
+              label: 'settings.shortcuts.tools'.tr(),
               icon: FluentIcons.apps_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-open-bookmarks',
-              label: 'סימניות',
+              label: 'settings.shortcuts.bookmarks'.tr(),
               icon: FluentIcons.bookmark_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-open-history',
-              label: 'היסטוריה',
+              label: 'settings.shortcuts.history'.tr(),
               icon: FluentIcons.history_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-switch-workspace',
-              label: 'החלף שולחן עבודה',
+              label: 'settings.shortcuts.switch_workspace'.tr(),
               icon: FluentIcons.grid_24_regular,
               allShortcuts: _shortcutsList,
             ),
@@ -418,72 +418,72 @@ class ShortcutsSettingsTab extends StatelessWidget {
 
         // ── תצוגת ספר ─────────────────────────────────────────────────
         SettingsCard(
-          title: 'תצוגת ספר',
+          title: 'settings.shortcuts.book_view'.tr(),
           children: _onlyConfigured([
             _ShortcutTile(
               settingKey: ShortcutValidator.currentWindowSearchKey,
-              label: 'חיפוש בספר הפתוח',
-              subtitle: 'משמש לחיפוש מהיר במסכי ספרים פתוחים',
+              label: 'settings.shortcuts.current_window_search'.tr(),
+              subtitle: 'settings.shortcuts.current_window_search_subtitle'.tr(),
               icon: FluentIcons.search_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-print',
-              label: 'הדפסה',
+              label: 'settings.shortcuts.print'.tr(),
               icon: FluentIcons.print_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-add-bookmark',
-              label: 'הוסף סימניה',
+              label: 'settings.shortcuts.add_bookmark'.tr(),
               icon: FluentIcons.bookmark_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-add-note',
-              label: 'הוספת הערה',
+              label: 'settings.shortcuts.add_note'.tr(),
               icon: FluentIcons.note_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-close-tab',
-              label: 'סגור ספר נוכחי',
+              label: 'settings.shortcuts.close_tab'.tr(),
               icon: FluentIcons.dismiss_circle_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-close-all-tabs',
-              label: 'סגור כל הספרים',
+              label: 'settings.shortcuts.close_all_tabs'.tr(),
               icon: FluentIcons.dismiss_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-restore-closed-tab',
-              label: 'פתח כרטיסייה אחרונה שנסגרה',
+              label: 'settings.shortcuts.restore_closed_tab'.tr(),
               icon: FluentIcons.arrow_undo_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-toggle-nav-pane',
-              label: 'פתח/סגור חלונית ניווט',
+              label: 'settings.shortcuts.toggle_nav_pane'.tr(),
               icon: FluentIcons.panel_left_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-toggle-commentators-pane',
-              label: 'פתח/סגור חלונית מפרשים',
+              label: 'settings.shortcuts.toggle_commentators_pane'.tr(),
               icon: FluentIcons.book_open_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-toggle-pdf-view',
-              label: 'החלף מצב תצוגה (PDF/טקסט)',
+              label: 'settings.shortcuts.toggle_pdf_view'.tr(),
               icon: FluentIcons.document_pdf_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-open-commentators-tab',
-              label: 'פתח כרטיסיית מפרשים',
+              label: 'settings.shortcuts.open_commentators_tab'.tr(),
               icon: FluentIcons.open_24_regular,
               allShortcuts: _shortcutsList,
             ),
@@ -494,41 +494,41 @@ class ShortcutsSettingsTab extends StatelessWidget {
 
         // ── לוח שנה ושמור וזכור ───────────────────────────────────────
         SettingsCard(
-          title: 'לוח שנה ושמור וזכור',
+          title: 'settings.shortcuts.calendar_section'.tr(),
           children: _onlyConfigured([
             _ShortcutTile(
               settingKey: 'key-shortcut-calendar-toggle-times',
-              label: 'לוח שנה: פתיחה/סגירה זמני היום',
+              label: 'settings.shortcuts.calendar_toggle_times'.tr(),
               icon: FluentIcons.clock_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-calendar-toggle-events',
-              label: 'לוח שנה: פתיחה/סגירה אירועים',
+              label: 'settings.shortcuts.calendar_toggle_events'.tr(),
               icon: FluentIcons.calendar_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-calendar-today',
-              label: 'לוח שנה: מעבר להיום',
+              label: 'settings.shortcuts.calendar_today'.tr(),
               icon: FluentIcons.calendar_today_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-calendar-create-event',
-              label: 'לוח שנה: יצירת אירוע',
+              label: 'settings.shortcuts.calendar_create_event'.tr(),
               icon: FluentIcons.calendar_add_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-calendar-toggle-view',
-              label: 'לוח שנה: מעבר בין תצוגות',
+              label: 'settings.shortcuts.calendar_toggle_view'.tr(),
               icon: FluentIcons.calendar_multiple_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-shamor-zachor-cycle-filter',
-              label: 'שמור וזכור: מעבר בין הסינונים',
+              label: 'settings.shortcuts.shamor_zachor_cycle_filter'.tr(),
               icon: FluentIcons.filter_24_regular,
               allShortcuts: _shortcutsList,
             ),
@@ -539,17 +539,17 @@ class ShortcutsSettingsTab extends StatelessWidget {
         if (unconfiguredKeys.isNotEmpty) ...[
           kSettingsCardSpacing,
           SettingsCard(
-            title: 'פעולות זמינות לקיצור',
-            subtitle:
-                'פעולות הקיימות באפליקציה ועדיין לא הוגדר להן קיצור מקלדת',
+            title: 'settings.shortcuts.available_section'.tr(),
+            subtitle: 'settings.shortcuts.available_subtitle'.tr(),
             children: [
               SettingsActionTile.text(
                 icon: FluentIcons.add_24_regular,
-                title: 'הוסף קיצור לפעולה זמינה',
-                subtitle: '${unconfiguredKeys.length} פעולות זמינות',
+                title: 'settings.shortcuts.available_add_title'.tr(),
+                subtitle: 'settings.shortcuts.available_count'.tr(
+                    namedArgs: {'count': unconfiguredKeys.length.toString()}),
                 actions: [
                   RecommendedActionButton(
-                    text: 'הוסף קיצור',
+                    text: 'settings.shortcuts.available_add_button'.tr(),
                     onPressed: () => _addShortcut(context, unconfiguredKeys),
                   ),
                 ],
@@ -604,7 +604,8 @@ class ShortcutsSettingsTab extends StatelessWidget {
 
     if (conflictingNames.isNotEmpty) {
       UiSnack.showError(
-        'קיצור זה כבר בשימוש עבור: ${conflictingNames.join(', ')}',
+        'settings.shortcuts.conflict_in_use'
+            .tr(namedArgs: {'names': conflictingNames.join(', ')}),
       );
       return;
     }
@@ -678,8 +679,8 @@ class _PickActionDialog extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return AlertDialog(
       backgroundColor: cs.surfaceContainerHigh,
-      title: const Text(
-        'בחר פעולה להוספת קיצור',
+      title: Text(
+        'settings.shortcuts.pick_action_title'.tr(),
       ),
       content: SizedBox(
         width: 420,
@@ -705,7 +706,7 @@ class _PickActionDialog extends StatelessWidget {
             backgroundColor: cs.secondaryContainer,
             foregroundColor: cs.onSecondaryContainer,
           ),
-          child: const Text('ביטול'),
+          child: Text('common.cancel'.tr()),
         ),
       ],
     );

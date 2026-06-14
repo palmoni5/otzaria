@@ -234,7 +234,7 @@ class TextSettingsTab extends StatelessWidget {
                   children: [
                     _FontSizeSlider(
                       icon: FluentIcons.text_font_size_24_regular,
-                      label: 'גודל גופן הספר',
+                      label: 'settings.text.book_font_size'.tr(),
                       value: state.fontSize.clamp(15, 60),
                       min: 15,
                       max: 60,
@@ -245,7 +245,7 @@ class TextSettingsTab extends StatelessWidget {
                     const SizedBox(height: 16),
                     _FontDropdown(
                       icon: FluentIcons.text_font_24_regular,
-                      label: 'גופן טקסט',
+                      label: 'settings.text.text_font'.tr(),
                       value: state.fontFamily,
                       onChanged: (value) {
                         if (value != null) {

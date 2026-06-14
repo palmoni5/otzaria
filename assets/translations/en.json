@@ -687,7 +687,15 @@
       "custom_dialog_title": "Set a custom keyboard shortcut",
       "custom_dialog_instructions": "Tap \"Start recording\" and then press the desired key combination",
       "custom_dialog_stop_recording": "Stop recording",
-      "custom_dialog_start_recording": "Start recording"
+      "custom_dialog_start_recording": "Start recording",
+      "calendar_section": "Calendar & Shamor Vezachor",
+      "available_section": "Actions available for shortcuts",
+      "available_subtitle": "Actions in the app that do not yet have a keyboard shortcut",
+      "available_add_title": "Add a shortcut for an available action",
+      "available_count": "{count} available actions",
+      "available_add_button": "Add shortcut",
+      "conflict_in_use": "This shortcut is already used for: {names}",
+      "pick_action_title": "Choose an action to add a shortcut"
     },
     "text": {
       "font_section": "Font and design settings",
@@ -966,7 +974,19 @@
       "editors_note": "If your name does not appear in the list, or if you would like a change, please contact us by email.",
       "memorial_main_name": "In memory of R' Moshe ben Yehuda Re'eh z\"l",
       "memorial_main_description": "A significant donation toward developing the app",
-      "memorial_placeholder": "This place can be dedicated in memory of your loved one"
+      "memorial_placeholder": "This place can be dedicated in memory of your loved one",
+      "feedback_section": "Feedback & Support",
+      "feedback_title": "Found a bug? Have a question or feedback?",
+      "feedback_subtitle": "You are welcome to visit the Otzaria support and feedback forum",
+      "feedback_button": "Enter the forum",
+      "book_source_section": "Book sources",
+      "book_source_main_intro": "A large portion of the books in the Otzaria library were taken from the wonderful Sefaria and Dicta projects, through which a significant part of the books were added.",
+      "book_source_additional_intro": "Many additional important books were added from the following projects:",
+      "book_source_note": "The books were specially adapted for Otzaria, and many more books were added thanks to the dedicated work of the book editors.",
+      "closing_quote_1": "וְצִדְקָתוֹ עֹמֶדֶת לָעַד",
+      "closing_quote_1_source": "(תהילים קיב, ג)",
+      "closing_quote_2": "זֶה הַכּוֹתֵב סְפָרִים וּמַשְׁאִילָן לַאֲחֵרִים",
+      "closing_quote_2_source": "(כתובות נ.)"
     },
     "calendar": {
       "section": "Calendar",
@@ -1120,7 +1140,12 @@
       "index_reset": "Reset",
       "index_reset_title": "Reset index",
       "index_reset_content": "Delete the search index? You will need to rebuild it to use search again.",
-      "index_update": "Update"
+      "index_update": "Update",
+      "merge_user_books_title": "Merge personal books into the library tree",
+      "merge_user_books_on": "The subfolders of the selected folder will be merged into the main categories by name",
+      "merge_user_books_off": "Personal folders will be shown under the \"Personal books\" category",
+      "index_stop_confirm": "Stop",
+      "index_reset_confirm": "Reset"
     },
     "design": {
       "display_section": "Display",
