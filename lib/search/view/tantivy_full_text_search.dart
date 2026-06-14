@@ -191,7 +191,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
             ),
             const SizedBox(height: 16),
             Text(
-              'לא בוצע חיפוש',
+              'search.no_search_done'.tr(),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -200,7 +200,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
             ),
             const SizedBox(height: 8),
             Text(
-              'הקלד מילות חיפוש ולחץ על כפתור "חפש" כדי להתחיל.',
+              'search.no_search_done_hint'.tr(),
               style: TextStyle(
                 fontSize: 14,
                 color: colorScheme.onSurfaceVariant,
@@ -228,7 +228,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
             ),
             const SizedBox(height: 16),
             Text(
-              'אין תוצאות',
+              'search.no_results'.tr(),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -237,7 +237,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
             ),
             const SizedBox(height: 8),
             Text(
-              'נסה להרחיב קטגוריות, לשנות מצב חיפוש או לעדכן את מילות החיפוש.',
+              'search.no_results_hint'.tr(),
               style: TextStyle(
                 fontSize: 14,
                 color: colorScheme.onSurfaceVariant,
@@ -669,7 +669,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
     final tooltipMessage = 'search.search_in_categories'
         .tr(namedArgs: {'names': facetNames.join(', ')});
     final bannerTitle = isTemporaryFacetFilter
-        ? 'התוצאות מסוננות כעת לקטגוריות שנבחרו בעץ'
+        ? 'search.temp_filter_banner'.tr()
         : 'search.limited_to_categories'.tr();
 
     return Container(
@@ -735,7 +735,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
               color: cs.primary,
             ),
             tooltip: isTemporaryFacetFilter
-                ? 'בטל את הסינון הזמני'
+                ? 'search.cancel_temp_filter'.tr()
                 : 'search.search_all_categories'.tr(),
             onPressed: isTemporaryFacetFilter
                 ? _resetFacetFiltering
@@ -819,7 +819,10 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
             ),
             // מספר תוצאות
             Text(
-              '${state.results.length}/${state.totalResults} תוצאות',
+              'search.results_count_shown'.tr(namedArgs: {
+                'shown': state.results.length.toString(),
+                'total': state.totalResults.toString(),
+              }),
               style: TextStyle(
                 fontSize: 13,
                 color: Theme.of(context)

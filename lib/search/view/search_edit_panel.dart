@@ -133,7 +133,7 @@ class _SearchEditPanelState extends State<SearchEditPanel> {
         SizedBox(
           width: 260,
           child: Text(
-            'מרווח כללי בין מילים: מספר המילים המרבי שמותר בין מילות החיפוש.',
+            'search.general_spacing_help'.tr(),
             style: TextStyle(
               fontSize: 14,
               color: onSurface.withValues(alpha: 0.7),
@@ -145,11 +145,12 @@ class _SearchEditPanelState extends State<SearchEditPanel> {
           width: 80,
           child: RtlTextField(
             controller: _distanceController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: '0-30',
-              helperText: '0 = צמוד, ערך גבוה יותר מרחיב את ההתאמה',
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              helperText: 'search.spacing_helper'.tr(),
+              border: const OutlineInputBorder(),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               isDense: true,
             ),
             keyboardType: TextInputType.number,

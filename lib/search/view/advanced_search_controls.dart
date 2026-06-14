@@ -300,8 +300,8 @@ class _AdvancedSearchControlsState extends State<AdvancedSearchControls> {
 
     return Tooltip(
       message: useGlobal
-          ? 'ההגדרות חלות על כל המילים בשאילתה ולא משתנות בעת שינוי המילים'
-          : 'ההגדרות נשמרות לכל מילה בנפרד',
+          ? 'search.scope_global_tooltip'.tr()
+          : 'search.scope_per_word_tooltip'.tr(),
       child: Container(
         decoration: BoxDecoration(
           color: useGlobal
@@ -314,7 +314,7 @@ class _AdvancedSearchControlsState extends State<AdvancedSearchControls> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'זהה לכל המילים',
+              'search.scope_same_for_all'.tr(),
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,

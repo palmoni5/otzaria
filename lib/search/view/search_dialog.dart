@@ -309,7 +309,7 @@ class _SearchDialogState extends State<SearchDialog> {
     if (isSearchBlockedByMissingIndex(
       providerInitialized: TantivyDataProvider.instance.isInitialized.value,
     )) {
-      UiSnack.showError('אינדקס לא קיים, לא ניתן לבצע חיפוש זה ללא אינדקס.');
+      UiSnack.showError('search.index_missing_error'.tr());
       return;
     }
 

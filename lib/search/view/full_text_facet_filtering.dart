@@ -155,7 +155,7 @@ class _SearchFacetFilteringState extends State<SearchFacetFiltering>
             children: [
               const Spacer(),
               NeutralActionButton(
-                text: 'הצג הכל',
+                text: 'search.show_all'.tr(),
                 onPressed: () => _setFacet(context, '/'),
               ),
             ],

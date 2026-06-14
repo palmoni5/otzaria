@@ -139,8 +139,7 @@ class _FuzzyDistanceState extends State<FuzzyDistance> {
         return SizedBox(
           width: 140,
           child: Tooltip(
-            message:
-                'קובע כמה מילים יכולות להופיע בין מילות החיפוש. כאשר מוגדרים מרווחים ידניים בין מילים, השדה הזה מושבת.',
+            message: 'search.spacing_tooltip'.tr(),
             child: Focus(
               focusNode: _focusNode,
               child: SpinBox(
@@ -149,7 +148,7 @@ class _FuzzyDistanceState extends State<FuzzyDistance> {
                   labelText: hasCustomSpacing
                       ? 'search.spacing_disabled'.tr()
                       : 'search.word_spacing'.tr(),
-                  helperText: '0 = צמוד, ערך גבוה יותר מרחיב את ההתאמה',
+                  helperText: 'search.spacing_helper'.tr(),
                   labelStyle: TextStyle(
                     color: hasCustomSpacing
                         ? Theme.of(context).colorScheme.onSurfaceVariant
@@ -544,7 +543,7 @@ class OrderOfResults extends StatelessWidget {
       builder: (context, state) {
         if (compact) {
           return AppPopupMenuButton<ResultsOrder>(
-            tooltip: 'סדר תוצאות',
+            tooltip: 'search.sort_results_tooltip'.tr(),
             initialValue: state.sortBy,
             entries: _entries,
             onSelected: (value) {
@@ -563,7 +562,7 @@ class OrderOfResults extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'לפי',
+                    'search.sort_by_prefix'.tr(),
                     style: TextStyle(
                       fontSize: 14,
                       color: Theme.of(context).colorScheme.onSurface,

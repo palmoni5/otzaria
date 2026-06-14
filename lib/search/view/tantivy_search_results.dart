@@ -228,8 +228,8 @@ class _TantivySearchResultsState extends State<TantivySearchResults> {
     if (state.searchQuery.isEmpty) {
       return _buildInformativeEmptyState(
         icon: FluentIcons.search_24_regular,
-        title: 'לא בוצע חיפוש',
-        message: 'הקלד מילות חיפוש ולחץ על כפתור "חפש" כדי להתחיל.',
+        title: 'search.no_search_done'.tr(),
+        message: 'search.no_search_done_hint'.tr(),
       );
     }
     if (state.results.isEmpty && !state.isLoading) {
@@ -249,9 +249,8 @@ class _TantivySearchResultsState extends State<TantivySearchResults> {
       }
       return _buildInformativeEmptyState(
         icon: FluentIcons.document_search_24_regular,
-        title: 'אין תוצאות',
-        message:
-            'נסה להרחיב קטגוריות, לשנות מצב חיפוש או לעדכן את מילות החיפוש.',
+        title: 'search.no_results'.tr(),
+        message: 'search.no_results_hint'.tr(),
       );
     }
 
@@ -301,8 +300,7 @@ class _TantivySearchResultsState extends State<TantivySearchResults> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 260),
                 child: NeutralActionButton(
-                  text:
-                      state.isLoading ? 'search.loading'.tr() : remainingText,
+                  text: state.isLoading ? 'search.loading'.tr() : remainingText,
                   onPressed: () {
                     context.read<SearchBloc>().add(
                           LoadMoreResults(
@@ -540,7 +538,7 @@ class _TantivySearchResultsState extends State<TantivySearchResults> {
                                         .colorScheme
                                         .onSurfaceVariant,
                                   ),
-                                  tooltip: 'העתק טקסט',
+                                  tooltip: 'search.copy_text'.tr(),
                                   visualDensity: VisualDensity.compact,
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(

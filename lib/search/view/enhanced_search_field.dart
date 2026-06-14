@@ -468,8 +468,7 @@ class _EnhancedSearchFieldState extends State<EnhancedSearchField> {
                       }
                     },
                     child: Tooltip(
-                      message:
-                          'הקלד מילות חיפוש ולחץ Enter או על סמל החיפוש כדי לבצע חיפוש.',
+                      message: 'search.enter_search_tooltip'.tr(),
                       child: RtlTextField(
                         focusNode: widget.tab.searchFieldFocusNode,
                         controller: widget.tab.queryController,
