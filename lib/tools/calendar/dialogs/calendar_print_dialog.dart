@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:otzaria/tools/calendar/utils/calendar_cubit.dart';
 import 'package:otzaria/widgets/controls/action_buttons.dart';
@@ -27,21 +28,34 @@ class _CalendarPrintDialogState extends State<CalendarPrintDialog>
     final cs = Theme.of(context).colorScheme;
     final (String periodName, String periodNamePlural, int maxCount) =
         switch (widget.calendarView) {
-      CalendarView.month => ('חודש', 'חודשים', 12),
-      CalendarView.week => ('שבוע', 'שבועות', 52),
-      CalendarView.day => ('יום', 'ימים', 30),
+      CalendarView.month => (
+          'calendar.print_period_month'.tr(),
+          'calendar.print_period_month_plural'.tr(),
+          12
+        ),
+      CalendarView.week => (
+          'calendar.print_period_week'.tr(),
+          'calendar.print_period_week_plural'.tr(),
+          52
+        ),
+      CalendarView.day => (
+          'calendar.print_period_day'.tr(),
+          'calendar.print_period_day_plural'.tr(),
+          30
+        ),
     };
 
     final dialog = AlertDialog(
       backgroundColor: cs.surfaceContainerHigh,
-      title: const Text('הגדרות הדפסה'),
+      title: Text('calendar.print_settings'.tr()),
       content: SizedBox(
         width: 400,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('בחר כמה $periodNamePlural להדפיס:'),
+            Text('calendar.print_count_question'
+                .tr(namedArgs: {'periodPlural': periodNamePlural})),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -70,7 +84,9 @@ class _CalendarPrintDialogState extends State<CalendarPrintDialog>
             ),
             const SizedBox(height: 8),
             Text(
-              'טווח: ${_count == 1 ? periodName : '$_count $periodNamePlural'} החל מהתאריך הנוכחי',
+              'calendar.print_range'.tr(namedArgs: {
+                'range': _count == 1 ? periodName : '$_count $periodNamePlural'
+              }),
               style: TextStyle(
                 fontSize: 12,
                 color: cs.onSurfaceVariant,
@@ -81,11 +97,11 @@ class _CalendarPrintDialogState extends State<CalendarPrintDialog>
       ),
       actions: [
         NeutralActionButton(
-          text: 'ביטול',
+          text: 'calendar.cancel'.tr(),
           onPressed: () => Navigator.of(context).pop(),
         ),
         RecommendedActionButton(
-          text: 'הדפס',
+          text: 'calendar.print_action'.tr(),
           onPressed: () => Navigator.of(context).pop(_count),
         ),
       ],

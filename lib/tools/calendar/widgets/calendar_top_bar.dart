@@ -15,6 +15,7 @@
 
 import 'dart:math' as math;
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -289,12 +290,12 @@ class _CalendarTopBarState extends State<CalendarTopBar>
     final result =
         input.isEmpty ? _pendingJumpDate : widget.parseInputDate(input);
     if (result == null) {
-      UiSnack.showError('לא הצלחנו לפרש את התאריך.');
+      UiSnack.showError('calendar.parse_date_failed'.tr());
       _refocusSearchWithSelection();
       return;
     }
     if (!isJumpToDateInRange(result)) {
-      UiSnack.showError('התאריך מחוץ לטווח הנתמך.');
+      UiSnack.showError('calendar.date_out_of_range'.tr());
       _refocusSearchWithSelection();
       return;
     }
@@ -416,7 +417,7 @@ class _CalendarTopBarState extends State<CalendarTopBar>
                       Padding(
                         padding: const EdgeInsets.only(bottom: 4),
                         child: Text(
-                          'מעבר לתאריך',
+                          'calendar.jump_to_date'.tr(),
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                       ),
@@ -517,10 +518,10 @@ class _CalendarTopBarState extends State<CalendarTopBar>
     final tooltip = hasError
         ? state.googleCalendarSyncError!
         : isSyncing
-            ? 'סנכרון Google פעיל'
+            ? 'calendar.google_sync_active'.tr()
             : state.googleCalendarConnected
-                ? 'Google Calendar מחובר'
-                : 'Google Calendar מופעל אך לא מחובר';
+                ? 'calendar.google_connected'.tr()
+                : 'calendar.google_enabled_not_connected'.tr();
 
     return Padding(
       padding: const EdgeInsetsDirectional.only(end: 4),
@@ -559,7 +560,9 @@ class _CalendarTopBarState extends State<CalendarTopBar>
                 ),
               const SizedBox(width: 6),
               Text(
-                isSyncing ? 'מסנכרן' : (hasError ? 'שגיאת סנכרון' : 'Google'),
+                isSyncing
+                    ? 'calendar.syncing'.tr()
+                    : (hasError ? 'calendar.sync_error'.tr() : 'Google'),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: foregroundColor,
                       fontWeight: FontWeight.w700,
@@ -586,26 +589,26 @@ class _CalendarTopBarState extends State<CalendarTopBar>
           // ── כפתורים משותפים ───────────────────────────────────────────────
           final prevBtn = ToolbarActionButton(
             compact: isCompact,
-            tooltip: 'קודם',
+            tooltip: 'calendar.previous'.tr(),
             icon: FluentIcons.chevron_left_24_regular,
             onPressed: _withClose(widget.onPreviousPeriod),
           );
           final nextBtn = ToolbarActionButton(
             compact: isCompact,
-            tooltip: 'הבא',
+            tooltip: 'calendar.next'.tr(),
             icon: FluentIcons.chevron_right_24_regular,
             onPressed: _withClose(widget.onNextPeriod),
           );
           final todayBtn = RecommendedActionButton(
-            text: 'היום',
+            text: 'calendar.today'.tr(),
             onPressed: _withClose(widget.onJumpToToday),
           );
           // כשהחיפוש פתוח — כפתור ה-jump הופך לכפתור סגירה עם אייקון X
           final jumpBtn = ToolbarActionButton(
             compact: isCompact,
             tooltip: widget.isJumpToDateSearchOpen
-                ? 'סגור מעבר לתאריך'
-                : 'מעבר לתאריך',
+                ? 'calendar.close_jump_to_date'.tr()
+                : 'calendar.jump_to_date'.tr(),
             icon: widget.isJumpToDateSearchOpen
                 ? FluentIcons.dismiss_24_regular
                 : FluentIcons.calendar_search_20_regular,
@@ -624,7 +627,7 @@ class _CalendarTopBarState extends State<CalendarTopBar>
           );
           final settingsBtn = ToolbarActionButton(
             compact: isCompact,
-            tooltip: 'הגדרות לוח שנה',
+            tooltip: 'calendar.calendar_settings'.tr(),
             icon: widget.isSettingsPanelOpen
                 ? FluentIcons.settings_24_filled
                 : FluentIcons.settings_24_regular,
@@ -633,7 +636,7 @@ class _CalendarTopBarState extends State<CalendarTopBar>
           );
           final eventsBtn = ToolbarActionButton(
             compact: isCompact,
-            tooltip: 'אירועים',
+            tooltip: 'calendar.events'.tr(),
             icon: widget.isSidePanelVisible &&
                     widget.activeSidePanelView == CalendarSidePanelView.events
                 ? FluentIcons.task_list_square_rtl_24_filled
@@ -644,7 +647,7 @@ class _CalendarTopBarState extends State<CalendarTopBar>
           );
           final timesBtn = ToolbarActionButton(
             compact: isCompact,
-            tooltip: 'זמנים',
+            tooltip: 'calendar.times'.tr(),
             icon: widget.isSidePanelVisible &&
                     widget.activeSidePanelView == CalendarSidePanelView.times
                 ? FluentIcons.clock_24_filled
@@ -655,7 +658,7 @@ class _CalendarTopBarState extends State<CalendarTopBar>
           );
           final printBtn = ToolbarActionButton(
             compact: isCompact,
-            tooltip: 'הדפסה',
+            tooltip: 'calendar.print'.tr(),
             icon: FluentIcons.print_24_regular,
             onPressed: _withClose(widget.onPrint),
           );
@@ -789,14 +792,14 @@ class _CalendarTopBarState extends State<CalendarTopBar>
       mainAxisSize: MainAxisSize.min,
       children: [
         _ViewBtn(
-          label: 'שבוע',
+          label: 'calendar.week'.tr(),
           regularIcon: FluentIcons.calendar_week_numbers_24_regular,
           filledIcon: FluentIcons.calendar_week_numbers_24_filled,
           selected: state.calendarView == CalendarView.week,
           onPressed: _withClose(() => widget.onViewChanged(CalendarView.week)),
         ),
         _ViewBtn(
-          label: 'חודש',
+          label: 'calendar.month'.tr(),
           regularIcon: FluentIcons.calendar_month_24_regular,
           filledIcon: FluentIcons.calendar_month_24_filled,
           selected: state.calendarView == CalendarView.month,

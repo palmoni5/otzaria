@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -322,8 +323,8 @@ class NotificationService {
 
     final androidDetails = AndroidNotificationDetails(
       'calendar_channel',
-      'התראות לוח שנה',
-      channelDescription: 'התראות על אירועים בלוח השנה',
+      'calendar.notification_channel_name'.tr(),
+      channelDescription: 'calendar.notification_channel_description'.tr(),
       importance: Importance.max,
       priority: Priority.high,
       playSound: soundEnabled,

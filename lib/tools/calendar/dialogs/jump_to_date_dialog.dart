@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:otzaria/widgets/controls/action_buttons.dart';
@@ -82,9 +83,9 @@ class _JumpToDatePanelState extends State<JumpToDatePanel> {
       mainAxisSize: MainAxisSize.min,
       children: [
         const Divider(),
-        const Text(
-          'בחר תאריך בלוח השנה:',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        Text(
+          'calendar.choose_date_in_calendar'.tr(),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
         SizedBox(
@@ -105,12 +106,12 @@ class _JumpToDatePanelState extends State<JumpToDatePanel> {
         Row(
           children: [
             NeutralActionButton(
-              text: 'ביטול',
+              text: 'calendar.cancel'.tr(),
               onPressed: widget.onCancel,
             ),
             const SizedBox(width: 8),
             RecommendedActionButton(
-              text: 'פתח',
+              text: 'calendar.open'.tr(),
               onPressed: widget.onConfirm,
             ),
           ],

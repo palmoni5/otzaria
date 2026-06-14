@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
@@ -560,15 +561,11 @@ class CalendarCubit extends Cubit<CalendarState> {
       String message;
 
       if (Platform.isMacOS) {
-        message = 'לא ניתן להפעיל התראות - נדרשות הרשאות.\n'
-            'עבור להגדרות המערכת > פרטיות ואבטחה > התראות > אוצריא\n'
-            'או הפעל מחדש את האפליקציה ואשר את בקשת ההרשאות';
+        message = 'calendar.notifications_permission_macos'.tr();
       } else if (Platform.isIOS) {
-        message = 'לא ניתן להפעיל התראות - נדרשות הרשאות.\n'
-            'עבור להגדרות > התראות > אוצריא';
+        message = 'calendar.notifications_permission_ios'.tr();
       } else {
-        message = 'לא ניתן להפעיל התראות - נדרשות הרשאות.\n'
-            'עבור להגדרות המכשיר > אפליקציות > אוצריא > הרשאות';
+        message = 'calendar.notifications_permission_other'.tr();
       }
 
       UiSnack.showWarning(message, duration: const Duration(seconds: 10));
@@ -585,7 +582,8 @@ class CalendarCubit extends Cubit<CalendarState> {
         jsonEncode(updated.map((k, v) => MapEntry(k, v.toJson()))));
 
     await _rescheduleZmanAlerts();
-    UiSnack.show('התראה הופעלה עבור $displayName');
+    UiSnack.show(
+        'calendar.alert_enabled_for'.tr(namedArgs: {'name': displayName}));
   }
 
   Future<void> cancelZmanAlertPreference({
@@ -611,7 +609,8 @@ class CalendarCubit extends Cubit<CalendarState> {
       await notificationService.cancelNotification(id);
     }
 
-    UiSnack.show('ההתראה בוטלה עבור ${existing.displayName}');
+    UiSnack.show('calendar.alert_cancelled_for'
+        .tr(namedArgs: {'name': existing.displayName}));
   }
 
   Future<void> _rescheduleZmanAlerts() async {
@@ -631,8 +630,7 @@ class CalendarCubit extends Cubit<CalendarState> {
     if (cityData == null) {
       debugPrint(
           'CalendarCubit: city data not found for "${state.selectedCity}", defaulting to Asia/Jerusalem timezone.');
-      UiSnack.showError(
-          'לא נמצאו נתונים עבור העיר שנבחרה. נעשה שימוש באזור זמן ברירת המחדל.');
+      UiSnack.showError('calendar.city_data_not_found'.tr());
       timeZoneId = 'Asia/Jerusalem';
     } else {
       timeZoneId = cityData['timezone'] as String? ?? 'Asia/Jerusalem';
@@ -680,9 +678,15 @@ class CalendarCubit extends Cubit<CalendarState> {
 
         await notificationService.scheduleNotification(
           id: cancellationId,
-          title: 'תזכורת: ${pref.displayName}',
-          body:
-              'בעוד ${_formatMinutesBefore(pref.minutesBefore)} ${pref.displayName} (${timeStr.replaceAll(RegExp('[\u2066\u2069]'), '').replaceFirst(RegExp(r'[.:]$'), '')})',
+          title: 'calendar.alert_reminder_title'
+              .tr(namedArgs: {'name': pref.displayName}),
+          body: 'calendar.alert_reminder_body'.tr(namedArgs: {
+            'time': _formatMinutesBefore(pref.minutesBefore),
+            'name': pref.displayName,
+            'timeStr': timeStr
+                .replaceAll(RegExp('[\u2066\u2069]'), '')
+                .replaceFirst(RegExp(r'[.:]$'), ''),
+          }),
           eventDate: eventDt,
           reminderMinutes: pref.minutesBefore,
           soundEnabled: true,
@@ -1141,7 +1145,7 @@ class CalendarCubit extends Cubit<CalendarState> {
         emit(state.copyWith(
           googleCalendarSyncInProgress: false,
           googleCalendarConnected: false,
-          googleCalendarSyncError: 'לא הצלחנו להתחבר לחשבון Google.',
+          googleCalendarSyncError: 'calendar.google_connect_failed'.tr(),
         ));
         return false;
       }
@@ -1200,7 +1204,7 @@ class CalendarCubit extends Cubit<CalendarState> {
         emit(state.copyWith(
           googleCalendarSyncInProgress: false,
           googleCalendarConnected: false,
-          googleCalendarSyncError: 'לא הצלחנו להתחבר לחשבון Google.',
+          googleCalendarSyncError: 'calendar.google_connect_failed'.tr(),
         ));
         return;
       }
@@ -1252,7 +1256,8 @@ class CalendarCubit extends Cubit<CalendarState> {
       } catch (e) {
         emit(state.copyWith(
           googleCalendarSyncInProgress: false,
-          googleCalendarSyncError: 'שגיאה בסנכרון עם Google Calendar: $e',
+          googleCalendarSyncError:
+              'calendar.google_sync_error'.tr(namedArgs: {'error': '$e'}),
         ));
       } finally {
         apiClient.close();
@@ -1443,7 +1448,7 @@ class CalendarCubit extends Cubit<CalendarState> {
 
     return CustomEvent(
       id: otzariaId ?? gEvent.id ?? _generateUniqueId(),
-      title: gEvent.summary ?? 'אירוע ללא כותרת',
+      title: gEvent.summary ?? 'calendar.event_no_title'.tr(),
       description: gEvent.description ?? '',
       createdAt: gEvent.created ?? DateTime.now(),
       baseGregorianDate: DateTime(date.year, date.month, date.day),
@@ -1732,9 +1737,7 @@ class CalendarCubit extends Cubit<CalendarState> {
         await _settingsRepository.updateCalendarNotificationsEnabled(false);
 
         // הצג הודעת שגיאה למשתמש עם הוראות מפורטות
-        UiSnack.showWarning(
-            'לא ניתן להפעיל התראות - נדרשות הרשאות.\n'
-            'עבור להגדרות המכשיר > אפליקציות > אוצריא > הרשאות',
+        UiSnack.showWarning('calendar.notifications_permission_other'.tr(),
             duration: const Duration(seconds: 8));
         return;
       }

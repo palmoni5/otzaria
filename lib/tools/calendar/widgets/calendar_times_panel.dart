@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -278,16 +279,22 @@ class _CalendarTimesPanelState extends State<CalendarTimesPanel> {
     final extraDays = day % 7;
 
     if (weeks == 0) {
-      return 'היום $totalDaysText בעומר';
+      return 'calendar.omer_today_no_weeks'
+          .tr(namedArgs: {'days': totalDaysText});
     }
 
     final weeksText = _buildOmerWeekCountText(weeks);
     if (extraDays == 0) {
-      return 'היום $totalDaysText שהם $weeksText בעומר';
+      return 'calendar.omer_today_weeks_only'
+          .tr(namedArgs: {'days': totalDaysText, 'weeks': weeksText});
     }
 
     final extraDaysText = _buildOmerDayCountText(extraDays);
-    return 'היום $totalDaysText שהם $weeksText ו$extraDaysText בעומר';
+    return 'calendar.omer_today_weeks_and_days'.tr(namedArgs: {
+      'days': totalDaysText,
+      'weeks': weeksText,
+      'extraDays': extraDaysText,
+    });
   }
 
   String _buildOmerDayCountText(int day) {
@@ -396,7 +403,7 @@ class _CalendarTimesPanelState extends State<CalendarTimesPanel> {
               runSpacing: 8,
               children: [
                 ToolbarActionButton(
-                  tooltip: 'זמנים נוספים',
+                  tooltip: 'calendar.additional_times'.tr(),
                   icon: FluentIcons.list_24_regular,
                   compact: true,
                   onPressed: () => showZmanimSettingsDialog(context),
@@ -439,7 +446,7 @@ class _CalendarTimesPanelState extends State<CalendarTimesPanel> {
                     Expanded(
                       child: Center(
                         child: Text(
-                          'אין לסמוך על הזמנים כלל!',
+                          'calendar.dont_rely_on_times'.tr(),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
@@ -452,7 +459,7 @@ class _CalendarTimesPanelState extends State<CalendarTimesPanel> {
                       width: _infoButtonWidth,
                       child: Center(
                         child: IconButton(
-                          tooltip: 'מידע על חישוב הזמנים',
+                          tooltip: 'calendar.times_calc_info'.tr(),
                           onPressed: () =>
                               widget.onOpenCalendarCalculationPage(context),
                           padding: EdgeInsets.zero,
@@ -516,7 +523,7 @@ class _CalendarTimesPanelState extends State<CalendarTimesPanel> {
                     final hasAlert = existingAlert != null;
                     final cubit = context.read<CalendarCubit>();
                     if (timeLabel == '--:--') {
-                      UiSnack.showError('לא ניתן להפעיל התראה לזמן לא זמין');
+                      UiSnack.showError('calendar.alert_unavailable_time'.tr());
                       return;
                     }
                     final result = await showZmanAlertDialog(
@@ -550,9 +557,10 @@ class _CalendarTimesPanelState extends State<CalendarTimesPanel> {
   String _buildDafYomiButtonText(String tractate, String dafLabel) {
     final cleanLabel = dafLabel.trim().replaceAll('.', '');
     if (tractate == 'לא זמין' || cleanLabel.isEmpty) {
-      return 'דף היומי בבלי';
+      return 'calendar.daf_yomi_bavli'.tr();
     }
-    return 'דף היומי: $tractate $cleanLabel';
+    return 'calendar.daf_yomi_with_daf'
+        .tr(namedArgs: {'tractate': tractate, 'daf': cleanLabel});
   }
 
   String _buildDafNavigationTarget(String dafLabel) {
@@ -587,7 +595,7 @@ class _CalendarTimesPanelState extends State<CalendarTimesPanel> {
       text: _buildDafYomiButtonText(bavliTractate, dafLabel),
       icon: FluentIcons.book_24_regular,
       onPressed: bavliTractate == 'לא זמין'
-          ? () => UiSnack.showError('הדף היומי לא זמין לתאריך זה')
+          ? () => UiSnack.showError('calendar.daf_yomi_unavailable'.tr())
           : () => openDafYomiBook(
                 context,
                 bavliTractate,
@@ -617,12 +625,12 @@ class _CalendarTimesPanelState extends State<CalendarTimesPanel> {
       onPressed: () async {
         final timeLabel = _resolveOmerAlertTimeLabel();
         if (timeLabel == '--:--') {
-          UiSnack.showError('לא ניתן להפעיל התראה לספירת העומר ביום זה');
+          UiSnack.showError('calendar.omer_alert_unavailable'.tr());
           return;
         }
         final result = await showZmanAlertDialog(
           context,
-          zmanName: 'ספירת העומר',
+          zmanName: 'calendar.omer_counting'.tr(),
           timeLabel: timeLabel,
           initialMinutesBefore: existingAlert?.minutesBefore ?? 60,
           isEnabled: existingAlert != null,
@@ -636,7 +644,7 @@ class _CalendarTimesPanelState extends State<CalendarTimesPanel> {
         }
         _runZmanAlertOp(cubit.setZmanAlertPreference(
           timeId: 'omerCounting',
-          displayName: 'ספירת העומר',
+          displayName: 'calendar.omer_counting'.tr(),
           minutesBefore: result.minutesBefore,
         ));
       },
@@ -660,9 +668,9 @@ class _CityDropdown extends StatelessWidget {
       child: AppDropdownField<String>(
         value: cityName,
         enableSearch: true,
-        decoration: const InputDecoration(
-          labelText: 'עיר',
-          border: OutlineInputBorder(),
+        decoration: InputDecoration(
+          labelText: 'calendar.city'.tr(),
+          border: const OutlineInputBorder(),
           isDense: true,
         ),
         entries: cityNames
@@ -683,7 +691,7 @@ class _CityDropdown extends StatelessWidget {
 void _runZmanAlertOp(Future<void> future) {
   unawaited(future.catchError((Object error, StackTrace stackTrace) {
     debugPrint('ZmanAlert op failed: $error\n$stackTrace');
-    UiSnack.showError('שגיאה בעדכון ההתראה');
+    UiSnack.showError('calendar.alert_update_error'.tr());
   }));
 }
 
@@ -718,7 +726,8 @@ class _ZmanCard extends StatelessWidget {
 
   String _tooltipForAlert(ZmanAlertPreference? alert, String fallback) {
     if (alert == null) return fallback;
-    return 'התראה פעילה ל${_formatAlertMinutes(alert.minutesBefore)} לפני הזמן';
+    return 'calendar.alert_active'
+        .tr(namedArgs: {'duration': _formatAlertMinutes(alert.minutesBefore)});
   }
 
   Widget _buildCompositeSegment({
@@ -733,7 +742,7 @@ class _ZmanCard extends StatelessWidget {
     final control = _AlertControl(
       hasAlert: hasAlert,
       existingAlert: existingAlert,
-      tooltip: _tooltipForAlert(existingAlert, 'הפעל התראה'),
+      tooltip: _tooltipForAlert(existingAlert, 'calendar.enable_alert'.tr()),
       foregroundColor: textColor,
       onPressed: onPressed,
       menuEntries: const [],
@@ -954,11 +963,11 @@ class _ZmanCard extends StatelessWidget {
                         hasAlert: hasAlert,
                         existingAlert: existingAlert,
                         tooltip: hasAlert
-                            ? _tooltipForAlert(
-                                existingAlert, 'הפעל התראה לזמן זה')
+                            ? _tooltipForAlert(existingAlert,
+                                'calendar.enable_alert_for_time'.tr())
                             : timeData.alertOptions.isEmpty
-                                ? 'הפעל התראה לזמן זה'
-                                : 'בחר זמן להתראה',
+                                ? 'calendar.enable_alert_for_time'.tr()
+                                : 'calendar.choose_alert_time'.tr(),
                         foregroundColor: primaryTextColor,
                         onPressed: onAlertPressed,
                         menuEntries: timeData.alertOptions,
@@ -1225,11 +1234,11 @@ class _CompositeLabelValue extends StatelessWidget {
 String _moladReasonLabel(MoladDisplayReason reason) {
   switch (reason) {
     case MoladDisplayReason.shabbosMevorchim:
-      return 'שבת מברכים';
+      return 'calendar.shabbos_mevorchim'.tr();
     case MoladDisplayReason.roshChodesh:
-      return 'ראש חודש';
+      return 'calendar.rosh_chodesh'.tr();
     case MoladDisplayReason.moladDay:
-      return 'יום המולד';
+      return 'calendar.molad_day'.tr();
   }
 }
 
@@ -1252,7 +1261,10 @@ class _MoladCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: Text(
-              'מולד ${info.monthName} — ${_moladReasonLabel(info.reason)}',
+              'calendar.molad_title'.tr(namedArgs: {
+                'month': info.monthName,
+                'reason': _moladReasonLabel(info.reason),
+              }),
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
@@ -1263,7 +1275,7 @@ class _MoladCard extends StatelessWidget {
           const SizedBox(height: 10),
           // קטע 1: המולד הממוצע (הנוסח שמכריזים).
           Text(
-            'מולד כפי שנהוג להכריז',
+            'calendar.molad_announced'.tr(),
             style: theme.textTheme.bodySmall?.copyWith(
               color: scheme.onSurfaceVariant,
               fontWeight: FontWeight.w600,
@@ -1281,7 +1293,7 @@ class _MoladCard extends StatelessWidget {
           const SizedBox(height: 10),
           // קטע 2: המולד הנראה (אסטרונומי, זמן מקומי בעיר).
           Text(
-            'מולד הנראה — ${info.cityName}',
+            'calendar.molad_visible'.tr(namedArgs: {'city': info.cityName}),
             style: theme.textTheme.bodySmall?.copyWith(
               color: scheme.onSurfaceVariant,
               fontWeight: FontWeight.w600,

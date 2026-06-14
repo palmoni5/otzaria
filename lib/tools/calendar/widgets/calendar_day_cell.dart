@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -384,7 +385,7 @@ class _HoverableDayCellState extends State<HoverableDayCell> {
               child: IgnorePointer(
                 ignoring: !_showButton,
                 child: Tooltip(
-                  message: 'צור אירוע',
+                  message: 'calendar.create_event'.tr(),
                   verticalOffset: -40.0,
                   child: IconButton.filled(
                     icon: const Icon(FluentIcons.add_24_regular, size: 16),

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:kosher_dart/kosher_dart.dart';
@@ -88,7 +89,7 @@ class _CalendarEventDialogState extends State<CalendarEventDialog> {
 
   void _submit() {
     if (_titleController.text.trim().isEmpty) {
-      UiSnack.showError('יש למלא כותרת לאירוע.');
+      UiSnack.showError('calendar.title_required'.tr());
       return;
     }
 
@@ -96,7 +97,7 @@ class _CalendarEventDialogState extends State<CalendarEventDialog> {
     if (_isRecurring && !_recurForever) {
       recurringYears = int.tryParse(_yearsController.text.trim());
       if (recurringYears == null || recurringYears <= 0) {
-        UiSnack.showError('יש להזין מספר שנים חיובי עבור אירוע חוזר.');
+        UiSnack.showError('calendar.positive_years_required'.tr());
         return;
       }
     }
@@ -120,7 +121,9 @@ class _CalendarEventDialogState extends State<CalendarEventDialog> {
 
     return AlertDialog(
       backgroundColor: cs.surfaceContainerHigh,
-      title: Text(isEditMode ? 'ערוך אירוע' : 'צור אירוע חדש'),
+      title: Text(isEditMode
+          ? 'calendar.edit_event_title'.tr()
+          : 'calendar.create_new_event'.tr()),
       content: SizedBox(
         width: 450,
         child: SingleChildScrollView(
@@ -131,18 +134,18 @@ class _CalendarEventDialogState extends State<CalendarEventDialog> {
                 controller: _titleController,
                 autofocus: true,
                 textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: 'כותרת האירוע',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: 'calendar.event_title_label'.tr(),
+                  border: const OutlineInputBorder(),
                 ),
                 onSubmitted: (_) => _submit(),
               ),
               const SizedBox(height: 16),
               RtlTextField(
                 controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'תיאור (אופציונלי)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: 'calendar.description_optional'.tr(),
+                  border: const OutlineInputBorder(),
                 ),
                 maxLines: 3,
               ),
@@ -158,11 +161,17 @@ class _CalendarEventDialogState extends State<CalendarEventDialog> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'תאריך לועזי: ${_displayedGregorianDate.day}/${_displayedGregorianDate.month}/${_displayedGregorianDate.year}',
+                      'calendar.gregorian_date'.tr(namedArgs: {
+                        'date':
+                            '${_displayedGregorianDate.day}/${_displayedGregorianDate.month}/${_displayedGregorianDate.year}'
+                      }),
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      'תאריך עברי: ${formatHebrewDay(_displayedJewishDate.getJewishDayOfMonth())} ${getHebrewMonthNameFor(_displayedJewishDate)} ${formatHebrewYear(_displayedJewishDate.getJewishYear())}',
+                      'calendar.hebrew_date'.tr(namedArgs: {
+                        'date':
+                            '${formatHebrewDay(_displayedJewishDate.getJewishDayOfMonth())} ${getHebrewMonthNameFor(_displayedJewishDate)} ${formatHebrewYear(_displayedJewishDate.getJewishYear())}'
+                      }),
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ],
@@ -171,11 +180,14 @@ class _CalendarEventDialogState extends State<CalendarEventDialog> {
               const SizedBox(height: 16),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('שעת האירוע (אופציונלי)'),
+                title: Text('calendar.event_time_optional'.tr()),
                 subtitle: Text(
                   _selectedTime != null
-                      ? 'שעה: ${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}'
-                      : 'לא נבחרה שעה',
+                      ? 'calendar.time_value'.tr(namedArgs: {
+                          'time':
+                              '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}'
+                        })
+                      : 'calendar.no_time_selected'.tr(),
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -184,7 +196,7 @@ class _CalendarEventDialogState extends State<CalendarEventDialog> {
                       IconButton(
                         icon: const Icon(FluentIcons.dismiss_24_regular),
                         onPressed: () => setState(() => _selectedTime = null),
-                        tooltip: 'נקה שעה',
+                        tooltip: 'calendar.clear_time'.tr(),
                       ),
                     IconButton(
                       icon: const Icon(FluentIcons.clock_24_regular),
@@ -197,14 +209,14 @@ class _CalendarEventDialogState extends State<CalendarEventDialog> {
                           setState(() => _selectedTime = time);
                         }
                       },
-                      tooltip: 'בחר שעה',
+                      tooltip: 'calendar.choose_time'.tr(),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
               SwitchListTile(
-                title: const Text('אירוע חוזר'),
+                title: Text('calendar.recurring_event'.tr()),
                 value: _isRecurring,
                 onChanged: (value) => setState(() => _isRecurring = value),
               ),
@@ -216,34 +228,45 @@ class _CalendarEventDialogState extends State<CalendarEventDialog> {
                     children: [
                       AppDropdownField<RecurrenceType>(
                         value: _selectedRecurrenceType,
-                        decoration: const InputDecoration(
-                          labelText: 'חזור לפי',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: 'calendar.recur_by'.tr(),
+                          border: const OutlineInputBorder(),
                         ),
                         entries: [
-                          const AppMenuEntry(
+                          AppMenuEntry(
                             value: RecurrenceType.weekly,
-                            label: 'שבועי',
+                            label: 'calendar.recur_weekly'.tr(),
                           ),
                           AppMenuEntry(
                             value: RecurrenceType.monthlyHebrew,
-                            label:
-                                'חודשי עברי (יום ${formatHebrewDay(_displayedJewishDate.getJewishDayOfMonth())})',
+                            label: 'calendar.recur_monthly_hebrew'
+                                .tr(namedArgs: {
+                              'day': formatHebrewDay(
+                                  _displayedJewishDate.getJewishDayOfMonth())
+                            }),
                           ),
                           AppMenuEntry(
                             value: RecurrenceType.monthlyGregorian,
-                            label:
-                                'חודשי לועזי (יום ${_displayedGregorianDate.day})',
+                            label: 'calendar.recur_monthly_gregorian'.tr(
+                                namedArgs: {
+                                  'day': '${_displayedGregorianDate.day}'
+                                }),
                           ),
                           AppMenuEntry(
                             value: RecurrenceType.annualHebrew,
                             label:
-                                'שנתי עברי (${formatHebrewDay(_displayedJewishDate.getJewishDayOfMonth())} ${getHebrewMonthNameFor(_displayedJewishDate)})',
+                                'calendar.recur_annual_hebrew'.tr(namedArgs: {
+                              'date':
+                                  '${formatHebrewDay(_displayedJewishDate.getJewishDayOfMonth())} ${getHebrewMonthNameFor(_displayedJewishDate)}'
+                            }),
                           ),
                           AppMenuEntry(
                             value: RecurrenceType.annualGregorian,
-                            label:
-                                'שנתי לועזי (${_displayedGregorianDate.day}/${_displayedGregorianDate.month})',
+                            label: 'calendar.recur_annual_gregorian'.tr(
+                                namedArgs: {
+                                  'date':
+                                      '${_displayedGregorianDate.day}/${_displayedGregorianDate.month}'
+                                }),
                           ),
                         ],
                         onSelected: (value) => setState(() =>
@@ -252,7 +275,7 @@ class _CalendarEventDialogState extends State<CalendarEventDialog> {
                       ),
                       const SizedBox(height: 16),
                       CheckboxListTile(
-                        title: const Text('חזרה ללא הגבלה (תמיד)'),
+                        title: Text('calendar.recur_forever'.tr()),
                         value: _recurForever,
                         onChanged: (value) {
                           setState(() {
@@ -271,8 +294,8 @@ class _CalendarEventDialogState extends State<CalendarEventDialog> {
                         keyboardType: TextInputType.number,
                         enabled: !_recurForever,
                         decoration: InputDecoration(
-                          labelText: 'חזור למשך (שנים)',
-                          hintText: 'לדוגמה: 5',
+                          labelText: 'calendar.recur_years_label'.tr(),
+                          hintText: 'calendar.recur_years_hint'.tr(),
                           border: const OutlineInputBorder(),
                           filled: _recurForever,
                           fillColor: _recurForever
@@ -290,11 +313,13 @@ class _CalendarEventDialogState extends State<CalendarEventDialog> {
       ),
       actions: [
         NeutralActionButton(
-          text: 'ביטול',
+          text: 'calendar.cancel'.tr(),
           onPressed: () => Navigator.of(context).pop(),
         ),
         RecommendedActionButton(
-          text: isEditMode ? 'שמור שינויים' : 'צור',
+          text: isEditMode
+              ? 'calendar.save_changes'.tr()
+              : 'calendar.create'.tr(),
           onPressed: _submit,
         ),
       ],

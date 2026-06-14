@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_spinbox/flutter_spinbox.dart';
 import 'package:otzaria/widgets/controls/action_buttons.dart';
@@ -57,11 +58,13 @@ class _ZmanAlertDialogState extends State<ZmanAlertDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'כמה זמן לפני זמן ${widget.zmanName} ברצונך לקבל התראה?',
+            'calendar.alert_question'
+                .tr(namedArgs: {'zmanName': widget.zmanName}),
           ),
           const SizedBox(height: 8),
           Text(
-            'הזמן: ${widget.timeLabel}',
+            'calendar.alert_time_label'
+                .tr(namedArgs: {'time': widget.timeLabel}),
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 12),
@@ -74,7 +77,7 @@ class _ZmanAlertDialogState extends State<ZmanAlertDialog> {
                   value: hours.toDouble(),
                   decimals: 0,
                   step: 1,
-                  decoration: const InputDecoration(labelText: 'שעות'),
+                  decoration: InputDecoration(labelText: 'calendar.hours'.tr()),
                   onChanged: (v) => setState(() => hours = v.toInt()),
                 ),
               ),
@@ -86,7 +89,8 @@ class _ZmanAlertDialogState extends State<ZmanAlertDialog> {
                   value: minutes.toDouble(),
                   decimals: 0,
                   step: 1,
-                  decoration: const InputDecoration(labelText: 'דקות'),
+                  decoration:
+                      InputDecoration(labelText: 'calendar.minutes'.tr()),
                   onChanged: (v) => setState(() => minutes = v.toInt()),
                 ),
               ),
@@ -97,17 +101,19 @@ class _ZmanAlertDialogState extends State<ZmanAlertDialog> {
       actions: [
         if (widget.isEnabled)
           NeutralActionButton(
-            text: 'בטל התראה',
+            text: 'calendar.cancel_alert'.tr(),
             onPressed: () => Navigator.of(context).pop(
               const ZmanAlertDialogResult(minutesBefore: 0, cancelAlert: true),
             ),
           ),
         NeutralActionButton(
-          text: 'ביטול',
+          text: 'calendar.cancel'.tr(),
           onPressed: () => Navigator.of(context).pop(),
         ),
         RecommendedActionButton(
-          text: widget.isEnabled ? 'עדכן' : 'הפעל',
+          text: widget.isEnabled
+              ? 'calendar.update'.tr()
+              : 'calendar.enable'.tr(),
           onPressed: () => Navigator.of(context).pop(
             ZmanAlertDialogResult(
               minutesBefore: totalMinutes,
