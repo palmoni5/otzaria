@@ -4,6 +4,7 @@
 //  • שורה אחת: ראשי תיבות | חץ | פירוש(ים) | כפתור העתקה
 //  • SelectionArea → Ctrl+C / תפריט הקשר
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -98,7 +99,7 @@ class AcronymResultCard extends StatelessWidget {
           const SizedBox(width: AppTokens.spaceXS),
           SecondaryIconButton(
               icon: FluentIcons.copy_24_regular,
-              tooltip: 'העתק',
+              tooltip: 'dictionary.copy'.tr(),
               onPressed: () => _copy(context)),
         ],
       ),

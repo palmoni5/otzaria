@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -158,7 +159,7 @@ class GematriaSearchScreenState extends State<GematriaSearchScreen> {
       if (!validChars.hasMatch(searchText)) {
         if (mounted) {
           UiSnack.showError(
-            'קלט לא תקין. יש להזין אותיות עבריות או מספרים בלבד.',
+            'gematria.search.invalid_input'.tr(),
           );
         }
         return;
@@ -252,9 +253,15 @@ class GematriaSearchScreenState extends State<GematriaSearchScreen> {
           String displayPath = result.path.isNotEmpty ? result.path : fileName;
 
           if (result.verseNumber.isNotEmpty) {
-            displayPath = '$displayPath, פסוק ${result.verseNumber}';
+            displayPath = 'gematria.result.verse'.tr(namedArgs: {
+              'path': displayPath,
+              'verse': result.verseNumber,
+            });
           } else if (result.path.isEmpty) {
-            displayPath = '$displayPath, שורה ${result.line}';
+            displayPath = 'gematria.result.line'.tr(namedArgs: {
+              'path': displayPath,
+              'line': result.line.toString(),
+            });
           }
 
           return GematriaSearchResult(
@@ -285,7 +292,8 @@ class GematriaSearchScreenState extends State<GematriaSearchScreen> {
         _isSearching = false;
         _searchResults = [];
       });
-      UiSnack.showError('שגיאה בחיפוש: $e');
+      UiSnack.showError(
+          'gematria.search.search_error'.tr(namedArgs: {'error': e.toString()}));
     }
   }
 
@@ -313,7 +321,7 @@ class GematriaSearchScreenState extends State<GematriaSearchScreen> {
               center: OtzariaSearchField(
                 controller: _searchController,
                 focusNode: _searchFocusNode,
-                hintText: 'חפש גימטריה...',
+                hintText: 'gematria.search.hint'.tr(),
                 autofocus: true,
                 onSubmitted: (_) => _performSearch(),
                 onClear: _clearResults,
@@ -327,7 +335,7 @@ class GematriaSearchScreenState extends State<GematriaSearchScreen> {
                 AppTopBarItem(
                   widget: ToolbarActionButton(
                     compact: settingsState.compactMenuMode,
-                    tooltip: 'הגדרות גימטריה',
+                    tooltip: 'gematria.search.settings_tooltip'.tr(),
                     icon: FluentIcons.settings_24_regular,
                     selected: _showingSettings,
                     onPressed: _toggleSettings,
@@ -353,8 +361,10 @@ class GematriaSearchScreenState extends State<GematriaSearchScreen> {
 
   Widget _buildStatusBar() {
     final resultsText = _hasMoreResults
-        ? 'הוגבל ל-${_searchResults.length} תוצאות'
-        : 'נמצאו ${_searchResults.length} תוצאות';
+        ? 'gematria.result.limited_count'
+            .tr(namedArgs: {'count': _searchResults.length.toString()})
+        : 'gematria.result.found_count'
+            .tr(namedArgs: {'count': _searchResults.length.toString()});
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -376,7 +386,8 @@ class GematriaSearchScreenState extends State<GematriaSearchScreen> {
             ),
           ),
           Text(
-            'ערך גימטריה: $_lastGematriaValue',
+            'gematria.result.value'
+                .tr(namedArgs: {'value': '$_lastGematriaValue'}),
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -403,7 +414,7 @@ class GematriaSearchScreenState extends State<GematriaSearchScreen> {
       isOpen: _showingSettings,
       onClose: _toggleSettings,
       width: _settingsPanelWidth,
-      title: 'הגדרות',
+      title: 'gematria.search.settings_title'.tr(),
       child: const Expanded(
         child: SingleChildScrollView(
           child: GematriaSettingsTab(),
@@ -418,16 +429,16 @@ class GematriaSearchScreenState extends State<GematriaSearchScreen> {
     }
 
     if (_searchResults.isEmpty && _hasSearched) {
-      return const ToolEmptyState(
+      return ToolEmptyState(
         icon: FluentIcons.search_24_regular,
-        message: 'לא נמצאו תוצאות',
+        message: 'gematria.search.no_results'.tr(),
       );
     }
 
     if (_searchResults.isEmpty) {
-      return const ToolEmptyState(
+      return ToolEmptyState(
         icon: FluentIcons.calculator_24_regular,
-        message: 'הזן ערך לחיפוש גימטריה',
+        message: 'gematria.search.empty'.tr(),
       );
     }
 

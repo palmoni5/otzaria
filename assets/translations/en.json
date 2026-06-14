@@ -2194,5 +2194,46 @@
     "city_data_not_found": "No data found for the selected city. The default timezone will be used.",
     "notification_channel_name": "Calendar notifications",
     "notification_channel_description": "Notifications for calendar events"
+  },
+  "dictionary": {
+    "load_error": "Error loading dictionary: {error}",
+    "no_results": "No results found",
+    "copy": "Copy",
+    "close": "Close",
+    "aramaic": {
+      "hint_hebrew": "Search a word in Hebrew...",
+      "hint_aramaic": "Search a word in Aramaic...",
+      "toggle_direction": "Switch direction",
+      "hebrew": "Hebrew",
+      "aramaic": "Aramaic",
+      "empty": "Enter a word to search the dictionary"
+    },
+    "acronyms": {
+      "hint": "Search acronyms...",
+      "empty": "Enter an acronym to search the dictionary"
+    },
+    "lookup": {
+      "aramaic_menu": "Aramaic-Hebrew dictionary",
+      "acronyms_menu": "Expand acronym"
+    }
+  },
+  "gematria": {
+    "search": {
+      "hint": "Search gematria...",
+      "settings_tooltip": "Gematria settings",
+      "settings_title": "Settings",
+      "invalid_input": "Invalid input. Enter Hebrew letters or numbers only.",
+      "search_error": "Search error: {error}",
+      "empty": "Enter a value to search gematria",
+      "no_results": "No results found"
+    },
+    "result": {
+      "limited_count": "Limited to {count} results",
+      "found_count": "Found {count} results",
+      "value": "Gematria value: {value}",
+      "verse": "{path}, verse {verse}",
+      "line": "{path}, line {line}",
+      "copy": "Copy"
+    }
   }
 }

@@ -2194,5 +2194,46 @@
     "city_data_not_found": "לא נמצאו נתונים עבור העיר שנבחרה. נעשה שימוש באזור זמן ברירת המחדל.",
     "notification_channel_name": "התראות לוח שנה",
     "notification_channel_description": "התראות על אירועים בלוח השנה"
+  },
+  "dictionary": {
+    "load_error": "שגיאה בטעינת המילון: {error}",
+    "no_results": "לא נמצאו תוצאות",
+    "copy": "העתק",
+    "close": "סגור",
+    "aramaic": {
+      "hint_hebrew": "חפש מילה בעברית...",
+      "hint_aramaic": "חפש מילה בארמית...",
+      "toggle_direction": "החלף כיוון",
+      "hebrew": "עברית",
+      "aramaic": "ארמית",
+      "empty": "הזן מילה לחיפוש במילון"
+    },
+    "acronyms": {
+      "hint": "חפש ראשי תיבות...",
+      "empty": "הזן ראשי תיבות לחיפוש במילון"
+    },
+    "lookup": {
+      "aramaic_menu": "מילון ארמי-עברי",
+      "acronyms_menu": "פתיחת ראשי תיבות"
+    }
+  },
+  "gematria": {
+    "search": {
+      "hint": "חפש גימטריה...",
+      "settings_tooltip": "הגדרות גימטריה",
+      "settings_title": "הגדרות",
+      "invalid_input": "קלט לא תקין. יש להזין אותיות עבריות או מספרים בלבד.",
+      "search_error": "שגיאה בחיפוש: {error}",
+      "empty": "הזן ערך לחיפוש גימטריה",
+      "no_results": "לא נמצאו תוצאות"
+    },
+    "result": {
+      "limited_count": "הוגבל ל-{count} תוצאות",
+      "found_count": "נמצאו {count} תוצאות",
+      "value": "ערך גימטריה: {value}",
+      "verse": "{path}, פסוק {verse}",
+      "line": "{path}, שורה {line}",
+      "copy": "העתק"
+    }
   }
 }

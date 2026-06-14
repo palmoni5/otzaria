@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -74,7 +75,8 @@ class _AramaicDictionaryScreenState extends State<AramaicDictionaryScreen> {
       setState(() {
         _isLoading = false;
       });
-      UiSnack.showError('שגיאה בטעינת המילון: $e');
+      UiSnack.showError(
+          'dictionary.load_error'.tr(namedArgs: {'error': e.toString()}));
     }
   }
 
@@ -133,8 +135,8 @@ class _AramaicDictionaryScreenState extends State<AramaicDictionaryScreen> {
               controller: _searchController,
               focusNode: _searchFocusNode,
               hintText: _isHebrewToAramaic
-                  ? 'חפש מילה בעברית...'
-                  : 'חפש מילה בארמית...',
+                  ? 'dictionary.aramaic.hint_hebrew'.tr()
+                  : 'dictionary.aramaic.hint_aramaic'.tr(),
               autofocus: true,
               onChanged: _performSearch,
               onClear: () => setState(() => _filteredResults = []),
@@ -166,7 +168,7 @@ class _AramaicDictionaryScreenState extends State<AramaicDictionaryScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            'עברית',
+            'dictionary.aramaic.hebrew'.tr(),
             style: TextStyle(
               fontSize: AppTokens.fontLG,
               fontWeight:
@@ -182,7 +184,7 @@ class _AramaicDictionaryScreenState extends State<AramaicDictionaryScreen> {
                   : FluentIcons.arrow_left_24_regular,
             ),
             onPressed: _toggleDirection,
-            tooltip: 'החלף כיוון',
+            tooltip: 'dictionary.aramaic.toggle_direction'.tr(),
             style: IconButton.styleFrom(
               backgroundColor: cs.primaryContainer,
               foregroundColor: cs.onPrimaryContainer,
@@ -190,7 +192,7 @@ class _AramaicDictionaryScreenState extends State<AramaicDictionaryScreen> {
           ),
           const SizedBox(width: AppTokens.spaceMD - 4),
           Text(
-            'ארמית',
+            'dictionary.aramaic.aramaic'.tr(),
             style: TextStyle(
               fontSize: AppTokens.fontLG,
               fontWeight:
@@ -205,16 +207,16 @@ class _AramaicDictionaryScreenState extends State<AramaicDictionaryScreen> {
 
   Widget _buildResultsList() {
     if (_searchController.text.isEmpty) {
-      return const ToolEmptyState(
+      return ToolEmptyState(
         icon: FluentIcons.book_24_regular,
-        message: 'הזן מילה לחיפוש במילון',
+        message: 'dictionary.aramaic.empty'.tr(),
       );
     }
 
     if (_filteredResults.isEmpty) {
-      return const ToolEmptyState(
+      return ToolEmptyState(
         icon: FluentIcons.search_24_regular,
-        message: 'לא נמצאו תוצאות',
+        message: 'dictionary.no_results'.tr(),
       );
     }
 
