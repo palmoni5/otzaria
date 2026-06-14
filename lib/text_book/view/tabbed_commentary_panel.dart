@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -135,7 +136,9 @@ class _TabbedCommentaryPanelState extends State<TabbedCommentaryPanel>
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(
                                 minWidth: 36, minHeight: 40),
-                            tooltip: 'פתח כרטסיית מפרשים',
+                            tooltip:
+                                'text_book.commentary_panel.open_commentators_tab'
+                                    .tr(),
                             icon: const Icon(FluentIcons.open_24_regular),
                             onPressed: widget.tab == null
                                 ? null
@@ -159,16 +162,18 @@ class _TabbedCommentaryPanelState extends State<TabbedCommentaryPanel>
                           PanelTab(
                             icon: firstTabIconData,
                             label: widget.showSplitView
-                                ? 'מפרשים'
-                                : 'סינון מפרשים',
+                                ? 'text_book.commentary_panel.tab_commentaries'
+                                    .tr()
+                                : 'text_book.commentary_panel.filter_commentaries'
+                                    .tr(),
                           ),
-                          const PanelTab(
+                          PanelTab(
                             icon: FluentIcons.link_24_regular,
-                            label: 'קישורים',
+                            label: 'text_book.commentary_panel.tab_links'.tr(),
                           ),
-                          const PanelTab(
+                          PanelTab(
                             icon: FluentIcons.note_24_regular,
-                            label: 'הערות',
+                            label: 'text_book.commentary_panel.tab_notes'.tr(),
                           ),
                         ],
                 );

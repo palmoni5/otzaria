@@ -643,7 +643,7 @@ class _CombinedViewState extends State<CombinedView> {
         ),
       if (shouldShowSelectEntry)
         AppContextMenuEntry(
-          label: 'בחר מפרשים מרובים',
+          label: 'combined_book.select_multiple_commentators'.tr(),
           icon: FluentIcons.filter_24_regular,
           isHighlighted: true,
           onTap: () {
@@ -752,7 +752,7 @@ class _CombinedViewState extends State<CombinedView> {
                     label: "חפש '$preview' בספר זה",
                     labelWidget: buildSearchMenuLabel(
                       selectedText: cleanedText,
-                      suffix: 'בספר זה',
+                      suffix: 'combined_book.in_this_book'.tr(),
                     ),
                     icon: FluentIcons.search_24_regular,
                     onTap: () =>
@@ -762,7 +762,7 @@ class _CombinedViewState extends State<CombinedView> {
                     label: "חפש '$preview' בכל הספרים",
                     labelWidget: buildSearchMenuLabel(
                       selectedText: cleanedText,
-                      suffix: 'בכל הספרים',
+                      suffix: 'combined_book.in_all_books'.tr(),
                     ),
                     icon: FluentIcons.library_24_regular,
                     onTap: () => openGlobalSearch(
@@ -841,7 +841,7 @@ class _CombinedViewState extends State<CombinedView> {
       if (state.book.id != null) ...[
         const AppContextMenuEntry.divider(),
         AppContextMenuEntry(
-          label: 'העתק קישור ישיר',
+          label: 'simple_viewer.copy_direct_link'.tr(),
           icon: FluentIcons.link_24_regular,
           childrenBuilder: () => buildDirectLinkContextMenuEntries(
             bookId: state.book.id!,

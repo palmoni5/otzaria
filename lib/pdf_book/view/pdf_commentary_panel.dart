@@ -660,7 +660,9 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
                   ? FluentIcons.arrow_collapse_all_24_regular
                   : FluentIcons.arrow_expand_all_24_regular,
             ),
-            tooltip: _allExpanded ? 'כווץ את כל המפרשים' : 'הרחב את כל המפרשים',
+            tooltip: _allExpanded
+                ? 'pdf_book.commentary_panel.collapse_all'.tr()
+                : 'pdf_book.commentary_panel.expand_all'.tr(),
             onPressed: toggleAllExpanded,
           ),
         ],
@@ -668,7 +670,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
         // 3. פתיחה בכרטיסייה חדשה
         IconButton(
           icon: const Icon(FluentIcons.open_24_regular),
-          tooltip: 'פתח כרטסיית מפרשים',
+          tooltip: 'pdf_book.commentary_panel.open_commentators_tab'.tr(),
           onPressed: () => context.read<TabsBloc>().add(
                 AddTab(
                   PdfCommentatorsTab(sourceTab: widget.tab),
@@ -692,14 +694,14 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
   Future<void> printDisplayedCommentaries() async {
     final visibleContent = _getVisibleContent();
     if (visibleContent == null || visibleContent.commentaryLinks.isEmpty) {
-      UiSnack.show('אין מפרשים להדפסה');
+      UiSnack.show('commentary_list.no_commentaries_to_print'.tr());
       return;
     }
 
     final groups = await visibleContent.sortedGroupsFuture;
     final blocks = await buildCommentaryPrintBlocks(groups);
     if (blocks.isEmpty) {
-      UiSnack.show('אין מפרשים להדפסה');
+      UiSnack.show('commentary_list.no_commentaries_to_print'.tr());
       return;
     }
     if (!mounted) return;
@@ -767,7 +769,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
             ],
             IconButton(
               icon: const Icon(FluentIcons.dismiss_24_regular),
-              tooltip: 'סגור חיפוש',
+              tooltip: 'commentary_list.close_search'.tr(),
               onPressed: _clearSearchAndCloseField,
             ),
           ],

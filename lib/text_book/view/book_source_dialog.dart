@@ -120,7 +120,8 @@ Future<void> showBookSourceDialog(
                 // מקור הספר
                 Text(
                   'book_source_dialog.book_source'.tr(),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 // ספרי "תא שמע" מציגים נוסח זכויות יוצרים עם קישור.
@@ -206,18 +207,17 @@ class _TashmaCopyrightNoticeState extends State<_TashmaCopyrightNotice> {
       TextSpan(
         style: const TextStyle(fontSize: 14),
         children: [
-          const TextSpan(text: 'כל הזכויות שמורות ל'),
+          TextSpan(text: 'book_source_dialog.copyright_prefix'.tr()),
           TextSpan(
-            text: 'תא שמע',
+            text: 'book_source_dialog.copyright_tashma'.tr(),
             style: TextStyle(
               color: Theme.of(context).colorScheme.primary,
               decoration: TextDecoration.underline,
             ),
             recognizer: _recognizer,
           ),
-          const TextSpan(
-            text: '. השימוש מותר במסגרת תוכנת אוצריא בלבד. '
-                'אין לבצע שימוש אחר ללא אישור.',
+          TextSpan(
+            text: 'book_source_dialog.copyright_suffix'.tr(),
           ),
         ],
       ),

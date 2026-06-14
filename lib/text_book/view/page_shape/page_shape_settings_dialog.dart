@@ -506,10 +506,14 @@ class _PageShapeSettingsDialogState extends State<PageShapeSettingsDialog> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Text('page_shape_dialog.for_current_book'.tr()),
+                                        Text(
+                                            'page_shape_dialog.for_current_book'
+                                                .tr()),
                                         Text(
                                           'page_shape_dialog.commentators_for_book'
-                                              .tr(namedArgs: {'book': widget.bookTitle}),
+                                              .tr(namedArgs: {
+                                            'book': widget.bookTitle
+                                          }),
                                           style: const TextStyle(fontSize: 11),
                                         ),
                                       ],
@@ -543,11 +547,16 @@ class _PageShapeSettingsDialogState extends State<PageShapeSettingsDialog> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Text('page_shape_dialog.for_all_books_in_category'.tr()),
+                                          Text(
+                                              'page_shape_dialog.for_all_books_in_category'
+                                                  .tr()),
                                           if (_selectedCategory != null)
                                             Text(
                                               'page_shape_dialog.commentators_for_category'
-                                                  .tr(namedArgs: {'category': _selectedCategory ?? ''}),
+                                                  .tr(namedArgs: {
+                                                'category':
+                                                    _selectedCategory ?? ''
+                                              }),
                                               style:
                                                   const TextStyle(fontSize: 11),
                                             ),
@@ -787,8 +796,7 @@ class _PageShapeSettingsDialogState extends State<PageShapeSettingsDialog> {
               context: context,
               title: 'page_shape_dialog.reset_commentators_title'.tr(),
               content: 'page_shape_dialog.reset_commentators_content'.tr(),
-              subtitle: 'פעולה זו תמחק את ההגדרות השמורות ותטען את המפרשים '
-                  'המתאימים לפי סוג הספר.',
+              subtitle: 'page_shape_dialog.reset_commentators_subtitle'.tr(),
               confirmText: 'page_shape_dialog.reset'.tr(),
             );
 

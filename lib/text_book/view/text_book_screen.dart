@@ -1282,10 +1282,10 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
           ? _buildTitle(state)
           : ReaderNavCenter(
               title: _buildTitle(state, textAlign: TextAlign.center),
-              prevMajorTooltip: 'הדף/פרק הקודם',
-              prevMinorTooltip: 'הקטע הקודם',
-              nextMinorTooltip: 'הקטע הבא',
-              nextMajorTooltip: 'הדף/פרק הבא',
+              prevMajorTooltip: 'text_book.previous_page_chapter'.tr(),
+              prevMinorTooltip: 'text_book.previous_section'.tr(),
+              nextMinorTooltip: 'text_book.next_section'.tr(),
+              nextMajorTooltip: 'text_book.next_page_chapter'.tr(),
               onPrevMajor: () => _navigateToPreviousToc(state),
               onPrevMinor: () => _scrollToPreviousSegment(state),
               onNextMinor: () => _scrollToNextSegment(state),
@@ -1523,8 +1523,8 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
               ? FluentIcons.text_align_justify_24_filled
               : FluentIcons.text_align_justify_24_regular,
           tooltip: state.continuousReadingMode
-              ? 'הצג כשורות בודדות'
-              : 'הצג כטקסט רציף',
+              ? 'text_book.show_as_single_lines'.tr()
+              : 'text_book.show_as_continuous'.tr(),
           onPressed: () => _toggleAndSaveContinuousReading(context, state),
         ),
 
@@ -1590,13 +1590,13 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
       // 1.5) הצגת סימניות הספר הנוכחי
       ActionButtonData(
         widget: ToolbarActionButton(
-          tooltip: 'סימניות בספר זה',
+          tooltip: 'text_book.bookmarks_in_book'.tr(),
           icon: FluentIcons.bookmark_multiple_24_regular,
           compact: context.read<SettingsBloc>().state.compactMenuMode,
           onPressed: () => _showBookmarksForCurrentBook(context, state.book),
         ),
         icon: FluentIcons.bookmark_multiple_24_regular,
-        tooltip: 'סימניות בספר זה',
+        tooltip: 'text_book.bookmarks_in_book'.tr(),
         onPressed: () => _showBookmarksForCurrentBook(context, state.book),
       ),
 
@@ -1657,8 +1657,8 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
         widget: const SizedBox.shrink(),
         icon: FluentIcons.link_24_regular,
         tooltip: state.book.id != null
-            ? 'העתק קישור ישיר לספר זה'
-            : 'העתק קישור ישיר (לא זמין לספר זה)',
+            ? 'pdf_book.copy_link_to_book'.tr()
+            : 'pdf_book.copy_link_direct_unavailable'.tr(),
         onPressed: state.book.id != null
             ? () => copyLinkToClipboard(buildBookLink(state.book.id!))
             : null,
@@ -1735,22 +1735,22 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
     return buildBookViewNavigationActions(
       firstAction: buildBookViewFirstNavigationAction(
         widget: _buildPreviousTocButton(context, state),
-        tooltip: 'הדף/פרק הקודם',
+        tooltip: 'text_book.previous_page_chapter'.tr(),
         onPressed: () => _navigateToPreviousToc(state),
       ),
       previousAction: buildBookViewPreviousNavigationAction(
         widget: _buildPreviousPageButton(context, state),
-        tooltip: 'הקטע הקודם',
+        tooltip: 'text_book.previous_section'.tr(),
         onPressed: () => _scrollToPreviousSegment(state),
       ),
       nextAction: buildBookViewNextNavigationAction(
         widget: _buildNextPageButton(context, state),
-        tooltip: 'הקטע הבא',
+        tooltip: 'text_book.next_section'.tr(),
         onPressed: () => _scrollToNextSegment(state),
       ),
       lastAction: buildBookViewLastNavigationAction(
         widget: _buildNextTocButton(context, state),
-        tooltip: 'הדף/פרק הבא',
+        tooltip: 'text_book.next_page_chapter'.tr(),
         onPressed: () => _navigateToNextToc(state),
       ),
     );
@@ -1862,9 +1862,9 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
               ? FluentIcons.book_open_24_filled
               : FluentIcons.book_open_24_regular,
         ),
-        const AppMenuEntry(
+        AppMenuEntry(
           value: _actionOpenCommentatorsTab,
-          label: 'פתח כרטיסיית מפרשים',
+          label: 'text_book.open_commentators_tab'.tr(),
           icon: FluentIcons.open_24_regular,
         ),
       ],
@@ -1874,7 +1874,9 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
   Widget _buildNikudButton(BuildContext context, TextBookLoaded state) {
     final isCompact = context.read<SettingsBloc>().state.compactMenuMode;
     return ToolbarActionButton(
-      tooltip: state.removeNikud ? 'הצג ניקוד' : 'הסתר ניקוד',
+      tooltip: state.removeNikud
+          ? 'text_book.show_nikud'.tr()
+          : 'text_book.hide_nikud'.tr(),
       icon: state.removeNikud
           ? FluentIcons.text_font_24_regular
           : FluentIcons.text_font_info_24_regular,
@@ -1923,7 +1925,9 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
     final isCompact = context.read<SettingsBloc>().state.compactMenuMode;
     return ToolbarActionButton(
       tooltip:
-          state.continuousReadingMode ? 'הצג כשורות בודדות' : 'הצג כטקסט רציף',
+          state.continuousReadingMode
+              ? 'text_book.show_as_single_lines'.tr()
+              : 'text_book.show_as_continuous'.tr(),
       icon: state.continuousReadingMode
           ? FluentIcons.text_align_justify_24_filled
           : FluentIcons.text_align_justify_24_regular,
@@ -1937,7 +1941,8 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
         Settings.getValue<String>('key-shortcut-add-bookmark') ?? 'ctrl+b';
     final isCompact = context.read<SettingsBloc>().state.compactMenuMode;
     return ToolbarActionButton(
-      tooltip: 'הוסף סימניה (${shortcut.toUpperCase()})',
+      tooltip: 'text_book.add_bookmark_with_shortcut'
+          .tr(namedArgs: {'shortcut': shortcut.toUpperCase()}),
       icon: FluentIcons.bookmark_add_24_regular,
       compact: isCompact,
       onPressed: () async {
@@ -2216,8 +2221,8 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
     final iconSize = isCompact ? 16.0 : 20.0;
     return ToolbarActionButton(
       tooltip: isTracked
-          ? 'סמן קטע פתוח כנלמד בשמור וזכור'
-          : 'הוסף למעקב לימוד בשמור וזכור',
+          ? 'text_book.mark_as_studied_in_open_section'.tr()
+          : 'text_book.add_to_shamor_zachor_tracking'.tr(),
       icon: isTracked
           ? FluentIcons.checkmark_circle_24_regular
           : FluentIcons.add_circle_24_regular,

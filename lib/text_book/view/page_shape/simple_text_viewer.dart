@@ -1103,7 +1103,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
       final items = <AppContextMenuEntry>[];
       if (widget.onOpenSidebarTab != null) {
         items.add(AppContextMenuEntry(
-          label: 'פתח חלונית קישורים',
+          label: 'simple_viewer.open_links_pane'.tr(),
           icon: FluentIcons.panel_right_24_regular,
           onTap: () => widget.onOpenSidebarTab!(0),
         ));
@@ -1157,7 +1157,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
                   label: "חפש '$preview' בספר זה",
                   labelWidget: buildSearchMenuLabel(
                     selectedText: cleanedText,
-                    suffix: 'בספר זה',
+                    suffix: 'simple_viewer.in_this_book'.tr(),
                   ),
                   icon: FluentIcons.book_search_24_regular,
                   onTap: () {
@@ -1172,7 +1172,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
                   label: "חפש '$preview' בכל הספרים",
                   labelWidget: buildSearchMenuLabel(
                     selectedText: cleanedText,
-                    suffix: 'בכל הספרים',
+                    suffix: 'simple_viewer.in_all_books'.tr(),
                   ),
                   icon: FluentIcons.library_24_regular,
                   onTap: () => openGlobalSearch(
@@ -1248,7 +1248,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
       if (state.book.id != null) {
         entries.add(const AppContextMenuEntry.divider());
         entries.add(AppContextMenuEntry(
-          label: 'העתק קישור ישיר',
+          label: 'simple_viewer.copy_direct_link'.tr(),
           icon: FluentIcons.link_24_regular,
           childrenBuilder: () => buildDirectLinkContextMenuEntries(
             bookId: state.book.id!,
@@ -1291,7 +1291,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
       if (commentaryBookId != null) {
         entries.add(const AppContextMenuEntry.divider());
         entries.add(AppContextMenuEntry(
-          label: 'העתק קישור ישיר',
+          label: 'simple_viewer.copy_direct_link'.tr(),
           icon: FluentIcons.link_24_regular,
           childrenBuilder: () => buildDirectLinkContextMenuEntries(
             bookId: commentaryBookId,
@@ -1413,7 +1413,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
     final result = await showDialog<PersonalNoteEditorResult>(
       context: context,
       builder: (dialogContext) => PersonalNoteEditorDialog(
-        title: 'הערה חדשה - $bookTitle',
+        title: 'simple_viewer.new_note_title'.tr(namedArgs: {'book': bookTitle}),
         referenceText: referenceText,
         icon: FluentIcons.note_add_24_regular,
         bookId: bookTitle,
@@ -1438,9 +1438,12 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
         selectionColumn: selectionColumn,
         categoryId: categoryId,
       );
-      if (mounted) UiSnack.showSuccess('ההערה נשמרה בהצלחה');
+      if (mounted) UiSnack.showSuccess('simple_viewer.note_saved'.tr());
     } catch (e) {
-      if (mounted) UiSnack.showError('שגיאה בשמירת ההערה: $e');
+      if (mounted) {
+        UiSnack.showError(
+            'simple_viewer.note_save_error'.tr(namedArgs: {'error': '$e'}));
+      }
     }
   }
 

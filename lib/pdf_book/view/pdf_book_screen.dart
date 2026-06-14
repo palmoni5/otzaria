@@ -179,7 +179,7 @@ AppContextMenuEntry buildPdfLinksContextMenuEntry({
     return <AppContextMenuEntry>[
       if (showOpenLinksPaneEntry) ...[
         AppContextMenuEntry(
-          label: 'פתח קישורים בחלונית צד',
+          label: 'pdf_book.book_screen.open_links_pane'.tr(),
           onTap: onOpenLinksPane,
         ),
         const AppContextMenuEntry.divider(),
@@ -192,7 +192,7 @@ AppContextMenuEntry buildPdfLinksContextMenuEntry({
   }
 
   return AppContextMenuEntry(
-    label: 'קישורים',
+    label: 'pdf_book.book_screen.context_links'.tr(),
     icon: FluentIcons.link_24_regular,
     enabled: relevantLinks.isNotEmpty,
     childrenBuilder: buildLinkChildren,
@@ -235,7 +235,8 @@ List<AppContextMenuEntry> buildGroupedCommentatorEntries({
         // פריט "הצג את כל <תקופה>" שמסמן/מבטל את כל הקבוצה (כמו בספרי טקסט)
         final groupActive = activeCommentators.containsAll(groupItems);
         items.add(AppContextMenuEntry(
-          label: 'הצג את כל ${group.title}',
+          label: 'combined_book.show_all_group'
+              .tr(namedArgs: {'group': group.title}),
           isSelected: groupActive,
           onTap: () => onToggleAll(groupItems),
         ));
@@ -929,7 +930,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
         ),
       if (shouldShowSelectEntry)
         AppContextMenuEntry(
-          label: 'בחר מפרשים מרובים',
+          label: 'combined_book.select_multiple_commentators'.tr(),
           icon: FluentIcons.filter_24_regular,
           isHighlighted: true,
           onTap: () {
@@ -2985,7 +2986,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
                     key: widget.enableTourTargets
                         ? pdfBookNavigationTourTargetKey
                         : null,
-                    tooltip: 'חיפוש וניווט',
+                    tooltip: 'pdf_book.book_screen.navigation_tooltip'.tr(),
                     icon: FluentIcons.navigation_24_regular,
                     compact: context.read<SettingsBloc>().state.compactMenuMode,
                     onPressed: () {
@@ -3187,7 +3188,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
                                 ),
                                 const SizedBox(height: 16),
                                 RecommendedActionButton(
-                                  text: 'נסה שוב',
+                                  text: 'personal_notes.retry'.tr(),
                                   icon: FluentIcons.arrow_clockwise_24_regular,
                                   onPressed: () {
                                     setState(() {
@@ -3683,7 +3684,7 @@ class _PdfBookScreenState extends State<PdfBookScreen>
       ),
       ActionButtonData.simple(
         icon: FluentIcons.open_24_regular,
-        tooltip: 'פתח כרטיסיית מפרשים',
+        tooltip: 'text_book.open_commentators_tab'.tr(),
         onPressed: () => context.read<TabsBloc>().add(
               AddTab(
                 PdfCommentatorsTab(sourceTab: widget.tab),
@@ -3713,13 +3714,13 @@ class _PdfBookScreenState extends State<PdfBookScreen>
       ),
       ActionButtonData.simple(
         icon: FluentIcons.zoom_in_24_regular,
-        tooltip: 'הגדל את התצוגה',
+        tooltip: 'pdf_book.book_screen.zoom_in'.tr(),
         onPressed: _zoomIn,
         compact: isCompact,
       ),
       ActionButtonData.simple(
         icon: FluentIcons.zoom_out_24_regular,
-        tooltip: 'הקטן את התצוגה',
+        tooltip: 'pdf_book.book_screen.zoom_out'.tr(),
         onPressed: _zoomOut,
         compact: isCompact,
       ),
@@ -3772,13 +3773,13 @@ class _PdfBookScreenState extends State<PdfBookScreen>
       ),
       ActionButtonData(
         widget: ToolbarActionButton(
-          tooltip: 'סימניות בספר זה',
+          tooltip: 'text_book.bookmarks_in_book'.tr(),
           icon: FluentIcons.bookmark_multiple_24_regular,
           compact: isCompact,
           onPressed: () => _showBookmarksForCurrentBook(context),
         ),
         icon: FluentIcons.bookmark_multiple_24_regular,
-        tooltip: 'סימניות בספר זה',
+        tooltip: 'text_book.bookmarks_in_book'.tr(),
         onPressed: () => _showBookmarksForCurrentBook(context),
       ),
       if (!widget.isInCombinedView &&
@@ -3862,43 +3863,43 @@ class _PdfBookScreenState extends State<PdfBookScreen>
     return buildBookViewNavigationActions(
       firstAction: buildBookViewFirstNavigationAction(
         widget: ToolbarActionButton(
-          tooltip: 'תחילת הספר (CTRL + HOME)',
+          tooltip: 'pdf_book.book_screen.first_page'.tr(),
           icon: FluentIcons.arrow_previous_24_filled,
           compact: isCompact,
           onPressed: () => _goToPageWithSpreadLock(1),
         ),
-        tooltip: 'תחילת הספר (CTRL + HOME)',
+        tooltip: 'pdf_book.book_screen.first_page'.tr(),
         onPressed: () => _goToPageWithSpreadLock(1),
       ),
       previousAction: buildBookViewPreviousNavigationAction(
         widget: ToolbarActionButton(
-          tooltip: 'הקודם',
+          tooltip: 'pdf_book.book_screen.previous_page'.tr(),
           icon: FluentIcons.chevron_left_24_regular,
           compact: isCompact,
           onPressed: _goPreviousPage,
         ),
-        tooltip: 'הקודם',
+        tooltip: 'pdf_book.book_screen.previous_page'.tr(),
         onPressed: _goPreviousPage,
       ),
       nextAction: buildBookViewNextNavigationAction(
         widget: ToolbarActionButton(
-          tooltip: 'הבא',
+          tooltip: 'pdf_book.book_screen.next_page'.tr(),
           icon: FluentIcons.chevron_right_24_regular,
           compact: isCompact,
           onPressed: _goNextPage,
         ),
-        tooltip: 'הבא',
+        tooltip: 'pdf_book.book_screen.next_page'.tr(),
         onPressed: _goNextPage,
       ),
       lastAction: buildBookViewLastNavigationAction(
         widget: ToolbarActionButton(
-          tooltip: 'סוף הספר (CTRL + END)',
+          tooltip: 'pdf_book.book_screen.last_page'.tr(),
           icon: FluentIcons.arrow_next_24_filled,
           compact: isCompact,
           onPressed: () =>
               _goToPageWithSpreadLock(widget.tab.pdfViewerController.pageCount),
         ),
-        tooltip: 'סוף הספר (CTRL + END)',
+        tooltip: 'pdf_book.book_screen.last_page'.tr(),
         onPressed: () =>
             _goToPageWithSpreadLock(widget.tab.pdfViewerController.pageCount),
       ),
@@ -3934,10 +3935,10 @@ class _PdfBookScreenState extends State<PdfBookScreen>
 
     return ReaderNavCenter(
       title: title,
-      prevMajorTooltip: 'תחילת הספר (CTRL + HOME)',
-      prevMinorTooltip: 'הקודם',
-      nextMinorTooltip: 'הבא',
-      nextMajorTooltip: 'סוף הספר (CTRL + END)',
+      prevMajorTooltip: 'pdf_book.book_screen.first_page'.tr(),
+      prevMinorTooltip: 'pdf_book.book_screen.previous_page'.tr(),
+      nextMinorTooltip: 'pdf_book.book_screen.next_page'.tr(),
+      nextMajorTooltip: 'pdf_book.book_screen.last_page'.tr(),
       onPrevMajor: () => _goToPageWithSpreadLock(1),
       onPrevMinor: _goPreviousPage,
       onNextMinor: _goNextPage,
