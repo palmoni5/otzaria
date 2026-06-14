@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
@@ -78,21 +79,30 @@ class CustomFoldersBloc extends Bloc<CustomFoldersEvent, CustomFoldersState> {
         if (result.hasPartialFailure) {
           final failedMsg = result.failedDetails.isNotEmpty
               ? result.failedDetails.map((d) => '"${d.$1}": ${d.$2}').join('\n')
-              : 'כשל: ${result.failedBooks}';
+              : 'settings.custom_folders_bloc.scan_failed_count'
+                  .tr(namedArgs: {'count': result.failedBooks.toString()});
           emit(state.copyWith(
             isSyncing: false,
-            error:
-                '${result.addedBooks} ספרים נוספו, ${result.updatedBooks} עודכנו\n$failedMsg',
+            error: 'settings.custom_folders_bloc.scan_partial'.tr(namedArgs: {
+              'added': result.addedBooks.toString(),
+              'updated': result.updatedBooks.toString(),
+              'failed': failedMsg,
+            }),
           ));
         } else {
           emit(state.copyWith(isSyncing: false));
         }
       } else {
         emit(state.copyWith(
-            isSyncing: false, error: 'שגיאת סריקה: ${result.fatalError}'));
+            isSyncing: false,
+            error: 'settings.custom_folders_bloc.scan_fatal_error'
+                .tr(namedArgs: {'error': result.fatalError.toString()})));
       }
     } catch (e) {
-      emit(state.copyWith(isSyncing: false, error: 'שגיאה בסריקת התיקייה: $e'));
+      emit(state.copyWith(
+          isSyncing: false,
+          error: 'settings.custom_folders_bloc.scan_error'
+              .tr(namedArgs: {'error': e.toString()})));
     }
   }
 
@@ -110,18 +120,19 @@ class CustomFoldersBloc extends Bloc<CustomFoldersEvent, CustomFoldersState> {
         await _deleteFolderFromDb(event.folder);
         emit(state.copyWith(
           isSyncing: false,
-          message: 'התיקייה והספרים הוסרו מהתוכנה.',
+          message: 'settings.custom_folders_bloc.removed_with_books'.tr(),
         ));
       } catch (e) {
         emit(state.copyWith(
           isSyncing: false,
-          error: 'שגיאה בהסרת הספרים מהתוכנה: $e',
+          error: 'settings.custom_folders_bloc.db_delete_error'
+              .tr(namedArgs: {'error': e.toString()}),
         ));
         return;
       }
     } else {
       emit(state.copyWith(
-        message: 'התיקייה הוסרה. הספרים נשארו בתוכנה.',
+        message: 'settings.custom_folders_bloc.removed_kept_books'.tr(),
       ));
     }
     _libraryBloc.add(RefreshLibrary());
@@ -149,21 +160,27 @@ class CustomFoldersBloc extends Bloc<CustomFoldersEvent, CustomFoldersState> {
       if (!event.value) {
         emit(state.copyWith(
           isSyncing: false,
-          message:
-              'תוכן הספרים נסרק ועודכן.\nמעתה הספרים ייקראו ישירות מהקבצים.',
+          message: 'settings.custom_folders_bloc.db_unset_success'.tr(),
         ));
       } else {
         final hasChanges = result.addedBooks > 0 || result.updatedBooks > 0;
         emit(state.copyWith(
           isSyncing: false,
           message: hasChanges
-              ? 'הסריקה הושלמה: ${result.addedBooks} ספרים נוספו, ${result.updatedBooks} עודכנו'
+              ? 'settings.custom_folders_bloc.scan_completed_counts'
+                  .tr(namedArgs: {
+                  'added': result.addedBooks.toString(),
+                  'updated': result.updatedBooks.toString(),
+                })
               : null,
         ));
       }
       _libraryBloc.add(RefreshLibrary());
     } catch (e) {
-      emit(state.copyWith(isSyncing: false, error: 'שגיאה בסנכרון: $e'));
+      emit(state.copyWith(
+          isSyncing: false,
+          error: 'settings.custom_folders_bloc.sync_error'
+              .tr(namedArgs: {'error': e.toString()})));
     }
   }
 
@@ -180,15 +197,20 @@ class CustomFoldersBloc extends Bloc<CustomFoldersEvent, CustomFoldersState> {
       final result = await _syncCustomFolders(currentFolders);
       final hasChanges = result.addedBooks > 0 || result.updatedBooks > 0;
       final message = hasChanges
-          ? 'הסריקה הושלמה: ${result.addedBooks} ספרים נוספו, ${result.updatedBooks} עודכנו'
+          ? 'settings.custom_folders_bloc.scan_completed_counts'.tr(namedArgs: {
+              'added': result.addedBooks.toString(),
+              'updated': result.updatedBooks.toString(),
+            })
           : event.showNoChangesMessage
-              ? 'הסריקה הושלמה. לא נמצאו ספרים חדשים.'
+              ? 'settings.custom_folders_bloc.scan_completed_no_new'.tr()
               : null;
       emit(state.copyWith(isSyncing: false, message: message));
       _libraryBloc.add(RefreshLibrary());
     } catch (e) {
       emit(state.copyWith(
-          isSyncing: false, error: 'שגיאה בסריקת תיקיות אישיות: $e'));
+          isSyncing: false,
+          error: 'settings.custom_folders_bloc.rescan_error'
+              .tr(namedArgs: {'error': e.toString()})));
     }
   }
 
@@ -224,12 +246,14 @@ class CustomFoldersBloc extends Bloc<CustomFoldersEvent, CustomFoldersState> {
   Future<FileSyncResult> _runSync(List<CustomFolder> folders) async {
     final sqliteProvider = SqliteDataProvider.instance;
     if (!sqliteProvider.isInitialized) await sqliteProvider.initialize();
-    if (!sqliteProvider.isInitialized) throw Exception('מסד הנתונים לא זמין');
+    if (!sqliteProvider.isInitialized) {
+      throw Exception('settings.custom_folders_bloc.db_unavailable'.tr());
+    }
 
     final dbPath = sqliteProvider.dbPath;
     final libraryPath = Settings.getValue<String>('key-library-path');
     if (libraryPath == null || libraryPath.isEmpty) {
-      throw Exception('נתיב הספרייה לא מוגדר');
+      throw Exception('settings.custom_folders_bloc.library_path_unset'.tr());
     }
 
     final folderName =

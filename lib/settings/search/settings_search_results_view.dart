@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:otzaria/settings/search/settings_search_models.dart';
@@ -69,14 +70,14 @@ class SettingsSearchResultsView extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'לא נמצאו הגדרות תואמות',
+                    'settings.search_screen.no_results'.tr(),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'נסה לחפש מילים אחרות',
+                    'settings.search_screen.no_results_hint'.tr(),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -317,18 +318,18 @@ IconData _iconForTab(SettingsTab tab) {
 String _tabLabel(SettingsTab tab) {
   switch (tab) {
     case SettingsTab.design:
-      return 'מראה';
+      return 'settings.tabs.design'.tr();
     case SettingsTab.text:
-      return 'כתב';
+      return 'settings.tabs.text'.tr();
     case SettingsTab.library:
-      return 'ספריה';
+      return 'settings.tabs.library'.tr();
     case SettingsTab.tools:
-      return 'כלים';
+      return 'settings.tabs.tools'.tr();
     case SettingsTab.shortcuts:
-      return 'קיצורים';
+      return 'settings.tabs.shortcuts'.tr();
     case SettingsTab.system:
-      return 'מערכת';
+      return 'settings.tabs.system'.tr();
     case SettingsTab.about:
-      return 'אודות';
+      return 'settings.tabs.about'.tr();
   }
 }
