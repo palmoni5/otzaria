@@ -946,7 +946,9 @@
         "restore_completed_content": "הנתונים שוחזרו בהצלחה. האפליקציה תיטען מחדש כעת.",
         "restore_partial_content": "שחזור חלקי — חסרים בקובץ הגיבוי: {sections}.\nהאפליקציה תיטען מחדש כעת.",
         "restore_reload_button": "טען מחדש",
-        "restore_error": "שגיאה בשחזור הגיבוי: {error}"
+        "restore_error": "שגיאה בשחזור הגיבוי: {error}",
+        "file_not_found": "קובץ הגיבוי לא נמצא",
+        "unsupported_version": "גרסת גיבוי לא נתמכת"
       },
       "cypher": {
         "title": "מצב סייפר",

@@ -946,7 +946,9 @@
         "restore_completed_content": "Data restored successfully. The app will reload now.",
         "restore_partial_content": "Partial restore — missing in backup file: {sections}.\nThe app will reload now.",
         "restore_reload_button": "Reload",
-        "restore_error": "Error restoring backup: {error}"
+        "restore_error": "Error restoring backup: {error}",
+        "file_not_found": "Backup file not found",
+        "unsupported_version": "Unsupported backup version"
       },
       "cypher": {
         "title": "Cypher mode",
