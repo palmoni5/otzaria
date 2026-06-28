@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -224,25 +225,25 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
         Widget Function() pageBuilder
       })> _tabsData = [
     (
-      label: 'מראה',
+      label: 'settings.tabs.design'.tr(),
       icon: FluentIcons.paint_brush_24_regular,
       iconFilled: FluentIcons.paint_brush_24_filled,
       pageBuilder: () => const DesignSettingsTab(),
     ),
     (
-      label: 'כתב',
+      label: 'settings.tabs.text'.tr(),
       icon: FluentIcons.book_24_regular,
       iconFilled: FluentIcons.book_24_filled,
       pageBuilder: () => const TextSettingsTab(),
     ),
     (
-      label: 'ספריה',
+      label: 'settings.tabs.library'.tr(),
       icon: FluentIcons.library_24_regular,
       iconFilled: FluentIcons.library_24_filled,
       pageBuilder: () => const LibrarySettingsTab(),
     ),
     (
-      label: 'כלים',
+      label: 'settings.tabs.tools'.tr(),
       icon: FluentIcons.apps_24_regular,
       iconFilled: FluentIcons.apps_24_filled,
       pageBuilder: () => ToolsSettingsTab(
@@ -250,19 +251,19 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
           ),
     ),
     (
-      label: 'קיצורים',
+      label: 'settings.tabs.shortcuts'.tr(),
       icon: FluentIcons.keyboard_24_regular,
       iconFilled: FluentIcons.keyboard_24_filled,
       pageBuilder: () => const ShortcutsSettingsTab(),
     ),
     (
-      label: 'מערכת',
+      label: 'settings.tabs.system'.tr(),
       icon: FluentIcons.settings_24_regular,
       iconFilled: FluentIcons.settings_24_filled,
       pageBuilder: () => const SystemSettingsTab(),
     ),
     (
-      label: 'אודות',
+      label: 'settings.tabs.about'.tr(),
       icon: FluentIcons.people_team_24_regular,
       iconFilled: FluentIcons.people_team_24_filled,
       pageBuilder: () => const AboutDevTab(),
@@ -270,11 +271,11 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
   ];
 
   // ── קבוצות למובייל ────────────────────────────────────────────────────────
-  // כל קבוצה: (כותרת, רשימת אינדקסים מ-_tabsData)
+  // כל קבוצה: (מפתח כותרת, רשימת אינדקסים מ-_tabsData)
   static const _mobileGroups = [
-    (label: 'תצוגה ותוכן', indices: <int>[0, 1, 2]),
-    (label: 'כלים', indices: <int>[3, 4]),
-    (label: 'מערכת', indices: <int>[5, 6]),
+    (labelKey: 'settings.mobile_groups.display_and_content', indices: <int>[0, 1, 2]),
+    (labelKey: 'settings.mobile_groups.tools', indices: <int>[3, 4]),
+    (labelKey: 'settings.mobile_groups.system', indices: <int>[5, 6]),
   ];
 
   @override
@@ -305,10 +306,12 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
                   appBar: AppBar(
                     backgroundColor: bgColor,
                     elevation: 0,
-                    title: Text(showResults ? 'תוצאות חיפוש' : 'הגדרות'),
+                    title: Text(showResults
+                        ? 'settings.search_results'.tr()
+                        : 'settings.title'.tr()),
                     leading: showResults
                         ? Tooltip(
-                            message: 'חזור (Esc)',
+                            message: 'settings.back_esc'.tr(),
                             child: IconButton(
                               icon: const RtlIcon(
                                   FluentIcons.arrow_right_24_regular),
@@ -339,7 +342,7 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
                                 children: [
                                   for (final group in _mobileGroups) ...[
                                     SettingsCard(
-                                      title: group.label,
+                                      title: group.labelKey.tr(),
                                       children: [
                                         for (final idx in group.indices)
                                           ListTile(
@@ -348,9 +351,7 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
                                               _tabsData[idx].icon,
                                               color: colorScheme.primary,
                                             ),
-                                            title: Text(
-                                              _tabsData[idx].label,
-                                            ),
+                                            title: Text(_tabsData[idx].label),
                                             trailing: const RtlIcon(
                                               FluentIcons
                                                   .chevron_left_24_regular,
@@ -372,55 +373,55 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
                     ],
                   ),
                 ),
-              );
-            } else {
-              final showResults = _searchQuery.trim().isNotEmpty;
-              return KeyboardNavigator(
-                currentTabIndex: _selectedIndex,
-                totalTabs: _tabsData.length,
-                onTabChange: _changeTab,
-                onBack: _handleMobileBack,
-                child: Scaffold(
-                  backgroundColor: bgColor,
-                  appBar: AppBar(
+                );
+              } else {
+                final showResults = _searchQuery.trim().isNotEmpty;
+                return KeyboardNavigator(
+                  currentTabIndex: _selectedIndex,
+                  totalTabs: _tabsData.length,
+                  onTabChange: _changeTab,
+                  onBack: () => setState(() => _showMobileMenu = true),
+                  child: Scaffold(
                     backgroundColor: bgColor,
-                    elevation: 0,
-                    title: Text(isSearching
-                        ? 'תוצאות חיפוש'
-                        : _tabsData[_selectedIndex].label),
-                    leading: Tooltip(
-                      message: 'חזור (Esc)',
-                      child: IconButton(
-                        icon: const RtlIcon(FluentIcons.arrow_right_24_regular),
-                        onPressed: _handleMobileBack,
-                      ),
-                    ),
-                  ),
-                  body: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                        child: SettingsSearchField(
-                          controller: _searchController,
-                          focusNode: _searchFocusNode,
-                          onChanged: _onSearchChanged,
+                    appBar: AppBar(
+                      backgroundColor: bgColor,
+                      elevation: 0,
+                      title: Text(_tabsData[_selectedIndex].label),
+                      leading: Tooltip(
+                        message: 'settings.back_tooltip'.tr(),
+                        child: IconButton(
+                          icon:
+                              const RtlIcon(FluentIcons.arrow_right_24_regular),
+                          onPressed: () =>
+                              setState(() => _showMobileMenu = true),
                         ),
                       ),
-                      Expanded(
-                        child: showResults
-                            ? SettingsSearchResultsView(
-                                query: _searchQuery,
-                                results: _searchResults,
-                                onResultTap: _onSearchResultTap,
-                              )
-                            : _tabsData[_selectedIndex].pageBuilder(),
-                      ),
-                    ],
+                    ),
+                    body: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                          child: SettingsSearchField(
+                            controller: _searchController,
+                            focusNode: _searchFocusNode,
+                            onChanged: _onSearchChanged,
+                          ),
+                        ),
+                        Expanded(
+                          child: showResults
+                              ? SettingsSearchResultsView(
+                                  query: _searchQuery,
+                                  results: _searchResults,
+                                  onResultTap: _onSearchResultTap,
+                                )
+                              : _tabsData[_selectedIndex].pageBuilder(),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
+                );
+              }
             }
-          }
 
           // ── מצב דסקטופ: KeyboardNavigator + sidebar + תוכן ──────────
           return KeyboardNavigator(
@@ -461,7 +462,7 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
                               padding: const EdgeInsets.only(
                                   right: 12, left: 12, bottom: 20),
                               child: Text(
-                                'הגדרות',
+                                'settings.title'.tr(),
                                 style: Theme.of(context)
                                     .textTheme
                                     .headlineSmall
@@ -492,7 +493,7 @@ class _MySettingsScreenState extends State<MySettingsScreen> {
                       child: _SettingsContentPane(
                         key: ValueKey(_selectedIndex),
                         label: isSearching
-                            ? 'תוצאות חיפוש'
+                            ? 'settings.search_results'.tr()
                             : _tabsData[_selectedIndex].label,
                         bgColor: bgColor,
                         focusNode: _contentFocusNode,

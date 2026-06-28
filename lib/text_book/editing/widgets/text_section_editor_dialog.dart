@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:isolate';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/services.dart';
@@ -213,7 +214,7 @@ class _TextSectionEditorDialogState extends State<TextSectionEditorDialog>
     _hasShownNotification = true;
 
     UiSnack.show(
-        'שים לב: השינויים נשמרים מקומית בלבד, ובמקרה של עדכון הספרייה, השינויים ימחקו!',
+        'text_editor.local_save_warning'.tr(),
         duration: const Duration(seconds: 4));
   }
 
@@ -267,9 +268,9 @@ class _TextSectionEditorDialogState extends State<TextSectionEditorDialog>
     if (_hasUnsavedChanges) {
       final confirmed = await showConfirmationDialog(
         context: context,
-        title: 'בטל שינויים',
-        content: 'האם אתה בטוח שברצונך לבטל את השינויים?',
-        confirmText: 'בטל שינויים',
+        title: 'text_editor.discard_title'.tr(),
+        content: 'text_editor.discard_content'.tr(),
+        confirmText: 'text_editor.discard_confirm'.tr(),
         isDangerous: true,
       );
 
@@ -287,7 +288,7 @@ class _TextSectionEditorDialogState extends State<TextSectionEditorDialog>
 
     if (widget.hasLinksFile && text.contains('\n')) {
       // Prevent line breaks in books with links
-      UiSnack.show('בספר זה אסור לשנות מבנה שורות כדי לשמור על קישורי פרשנות');
+      UiSnack.show('text_editor.structure_locked'.tr());
       return;
     }
 
@@ -369,7 +370,7 @@ class _TextSectionEditorDialogState extends State<TextSectionEditorDialog>
           widget.hasLinksFile) {
         // Prevent Enter in books with links
         UiSnack.show(
-            'בספר זה אסור לשנות מבנה שורות כדי לשמור על קישורי פרשנות');
+            'text_editor.structure_locked'.tr());
         return true;
       } else if (event.logicalKey == LogicalKeyboardKey.f3) {
         // F3 - Find next
@@ -538,7 +539,7 @@ class _TextSectionEditorDialogState extends State<TextSectionEditorDialog>
       _editorFocusNode.requestFocus();
     } else {
       // Show not found message
-      UiSnack.show('הטקסט לא נמצא');
+      UiSnack.show('text_editor.text_not_found'.tr());
     }
   }
 
@@ -552,7 +553,7 @@ class _TextSectionEditorDialogState extends State<TextSectionEditorDialog>
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            '${_hasUnsavedChanges ? 'שינויים שלא נשמרו • ' : ''}עריכת טקסט - ${widget.bookId}',
+            '${_hasUnsavedChanges ? 'text_editor.unsaved_changes_prefix'.tr() : ''}${'text_editor.edit_text_title'.tr(namedArgs: {'book': widget.bookId})}',
             style: const TextStyle(fontSize: 16),
           ),
           leading: IconButton(
@@ -563,12 +564,12 @@ class _TextSectionEditorDialogState extends State<TextSectionEditorDialog>
             TextButton.icon(
               onPressed: _hasUnsavedChanges ? _save : null,
               icon: const Icon(FluentIcons.save_24_regular),
-              label: const Text('שמור'),
+              label: Text('text_editor.save'.tr()),
             ),
             TextButton.icon(
               onPressed: _saveAndClose,
               icon: const Icon(FluentIcons.save_arrow_right_24_regular),
-              label: const Text('שמור וצא'),
+              label: Text('text_editor.save_and_exit'.tr()),
             ),
           ],
         ),
@@ -588,9 +589,9 @@ class _TextSectionEditorDialogState extends State<TextSectionEditorDialog>
                         left: BorderSide(color: theme.dividerColor),
                       ),
                     ),
-                    child: const Text(
-                      'עריכה',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    child: Text(
+                      'text_editor.edit_tab'.tr(),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -604,9 +605,9 @@ class _TextSectionEditorDialogState extends State<TextSectionEditorDialog>
                         bottom: BorderSide(color: theme.dividerColor),
                       ),
                     ),
-                    child: const Text(
-                      'תצוגה מקדימה',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    child: Text(
+                      'text_editor.preview_tab'.tr(),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -658,9 +659,9 @@ class _TextSectionEditorDialogState extends State<TextSectionEditorDialog>
                           fontFamily: AppFonts.editorFont,
                           height: 1.5,
                         ),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           border: InputBorder.none,
-                          hintText: 'התחל לכתוב כאן...',
+                          hintText: 'text_editor.start_typing_here'.tr(),
                         ),
                       ),
                     ),
@@ -723,34 +724,34 @@ class _SearchDialogState extends State<_SearchDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('חיפוש בטקסט'),
+      title: Text('text_editor.search_in_text_title'.tr()),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           RtlTextField(
             controller: _searchController,
-            decoration: const InputDecoration(
-              labelText: 'הכנס טקסט לחיפוש',
-              hintText: 'מה לחפש...',
-              prefixIcon: Icon(FluentIcons.search_24_regular),
+            decoration: InputDecoration(
+              labelText: 'text_editor.enter_search_text'.tr(),
+              hintText: 'text_editor.search_hint'.tr(),
+              prefixIcon: const Icon(FluentIcons.search_24_regular),
             ),
             autofocus: true,
             onSubmitted: (_) => _performSearch(),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'החיפוש מתחיל מהסמן הנוכחי וממשיך מהתחלה אם לא נמצא',
-            style: TextStyle(fontSize: 12),
+          Text(
+            'text_editor.search_starts_from_cursor'.tr(),
+            style: const TextStyle(fontSize: 12),
           ),
         ],
       ),
       actions: [
         NeutralActionButton(
-          text: 'סגור',
+          text: 'text_editor.search_close'.tr(),
           onPressed: () => Navigator.of(context).pop(),
         ),
         RecommendedActionButton(
-          text: 'חפש',
+          text: 'text_editor.search_button'.tr(),
           onPressed: _performSearch,
         ),
       ],
@@ -792,23 +793,23 @@ class _LinkInsertDialogState extends State<_LinkInsertDialog> {
         ),
       },
       child: AlertDialog(
-        title: const Text('הוסף קישור'),
+        title: Text('text_editor.add_link_title'.tr()),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             RtlTextField(
               controller: _textController,
               autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'טקסט הקישור',
-                hintText: 'לחץ כאן',
+              decoration: InputDecoration(
+                labelText: 'text_editor.link_text_label'.tr(),
+                hintText: 'text_editor.link_text_hint'.tr(),
               ),
             ),
             const SizedBox(height: 16),
             RtlTextField(
               controller: _urlController,
-              decoration: const InputDecoration(
-                labelText: 'כתובת URL',
+              decoration: InputDecoration(
+                labelText: 'text_editor.link_url_label'.tr(),
                 hintText: 'https://example.com',
               ),
               onSubmitted: (_) {
@@ -820,11 +821,11 @@ class _LinkInsertDialogState extends State<_LinkInsertDialog> {
         ),
         actions: [
           NeutralActionButton(
-            text: 'ביטול',
+            text: 'text_editor.link_cancel'.tr(),
             onPressed: () => Navigator.of(context).pop(),
           ),
           RecommendedActionButton(
-            text: 'הוסף',
+            text: 'text_editor.link_add'.tr(),
             onPressed: () {
               widget.onInsert(_textController.text, _urlController.text);
               Navigator.of(context).pop();

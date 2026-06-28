@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -114,7 +115,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
             ),
             const SizedBox(height: 16),
             Text(
-              'לא נבחרו קטגוריות',
+              'search.no_categories_selected'.tr(),
               style: TextStyle(
                 fontSize: 18,
                 color: colorScheme.onSurface,
@@ -123,7 +124,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
             ),
             const SizedBox(height: 8),
             Text(
-              'בחר קטגוריה אחת לפחות כדי לבצע חיפוש.',
+              'search.select_at_least_one_category'.tr(),
               style: TextStyle(
                 fontSize: 14,
                 color: colorScheme.onSurfaceVariant,
@@ -190,7 +191,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
             ),
             const SizedBox(height: 16),
             Text(
-              'לא בוצע חיפוש',
+              'search.no_search_done'.tr(),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -199,7 +200,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
             ),
             const SizedBox(height: 8),
             Text(
-              'הקלד מילות חיפוש ולחץ על כפתור "חפש" כדי להתחיל.',
+              'search.no_search_done_hint'.tr(),
               style: TextStyle(
                 fontSize: 14,
                 color: colorScheme.onSurfaceVariant,
@@ -227,7 +228,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
             ),
             const SizedBox(height: 16),
             Text(
-              'אין תוצאות',
+              'search.no_results'.tr(),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -236,7 +237,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
             ),
             const SizedBox(height: 8),
             Text(
-              'נסה להרחיב קטגוריות, לשנות מצב חיפוש או לעדכן את מילות החיפוש.',
+              'search.no_results_hint'.tr(),
               style: TextStyle(
                 fontSize: 14,
                 color: colorScheme.onSurfaceVariant,
@@ -478,7 +479,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
                     leadingItems: [
                       AppTopBarItem(
                         widget: ToolbarActionButton(
-                          tooltip: 'הצג/הסתר עץ ספרים',
+                          tooltip: 'search.show_hide_tree'.tr(),
                           icon: FluentIcons.line_horizontal_3_20_regular,
                           compact: context
                               .read<SettingsBloc>()
@@ -498,7 +499,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
                             children: [
                               Flexible(
                                 child: Text(
-                                  'מוצגות תוצאות של חיפוש: ',
+                                  'search.showing_results_for'.tr(),
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Theme.of(context)
@@ -523,8 +524,8 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
                               const SizedBox(width: 8),
                               ToolbarActionButton(
                                 tooltip: _showEditPanel
-                                    ? 'סגור עריכה'
-                                    : 'ערוך חיפוש',
+                                    ? 'search.close_edit'.tr()
+                                    : 'search.edit_search'.tr(),
                                 icon: _showEditPanel
                                     ? FluentIcons.chevron_up_24_regular
                                     : FluentIcons.edit_24_regular,
@@ -546,7 +547,10 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
                         : [
                             AppTopBarItem(
                               widget: Text(
-                                '${state.results.length}/${state.totalResults} תוצאות',
+                                'search.results_count_shown'.tr(namedArgs: {
+                                  'shown': '${state.results.length}',
+                                  'total': '${state.totalResults}'
+                                }),
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Theme.of(context)
@@ -684,10 +688,11 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
       final parts = facet.split('/').where((p) => p.isNotEmpty).toList();
       return parts.isNotEmpty ? parts.last : facet;
     }).toList();
-    final tooltipMessage = 'חיפוש בקטגוריות: ${facetNames.join(', ')}';
+    final tooltipMessage = 'search.search_in_categories'
+        .tr(namedArgs: {'names': facetNames.join(', ')});
     final bannerTitle = isTemporaryFacetFilter
-        ? 'התוצאות מסוננות כעת לקטגוריות שנבחרו בעץ'
-        : 'החיפוש הוגבל לקטגוריות מסוימות';
+        ? 'search.temp_filter_banner'.tr()
+        : 'search.limited_to_categories'.tr();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
@@ -752,8 +757,8 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
               color: cs.primary,
             ),
             tooltip: isTemporaryFacetFilter
-                ? 'בטל את הסינון הזמני'
-                : 'חפש בכל הקטגוריות',
+                ? 'search.cancel_temp_filter'.tr()
+                : 'search.search_all_categories'.tr(),
             onPressed: isTemporaryFacetFilter
                 ? _resetFacetFiltering
                 : _resetSearchScope,
@@ -775,7 +780,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
         children: [
           // כפתור פתיחה/סגירה של עץ הספרים - שלושה פסים
           IconButton(
-            tooltip: "הצג/הסתר עץ ספרים",
+            tooltip: 'search.show_hide_tree'.tr(),
             icon: const Icon(FluentIcons.line_horizontal_3_20_regular),
             onPressed: () {
               widget.tab.isLeftPaneOpen.value =
@@ -789,7 +794,7 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'חיפוש: ',
+                    'search.search_prefix'.tr(),
                     style: TextStyle(
                       fontSize: 14,
                       color: Theme.of(context)
@@ -822,7 +827,9 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
                           : FluentIcons.edit_24_regular,
                       size: 20,
                     ),
-                    tooltip: _showEditPanel ? 'סגור עריכה' : 'ערוך חיפוש',
+                    tooltip: _showEditPanel
+                        ? 'search.close_edit'.tr()
+                        : 'search.edit_search'.tr(),
                     onPressed: () {
                       setState(() {
                         _showEditPanel = !_showEditPanel;
@@ -834,7 +841,10 @@ class _TantivyFullTextSearchState extends State<TantivyFullTextSearch>
             ),
             // מספר תוצאות
             Text(
-              '${state.results.length}/${state.totalResults} תוצאות',
+              'search.results_count_shown'.tr(namedArgs: {
+                'shown': state.results.length.toString(),
+                'total': state.totalResults.toString(),
+              }),
               style: TextStyle(
                 fontSize: 13,
                 color: Theme.of(context)

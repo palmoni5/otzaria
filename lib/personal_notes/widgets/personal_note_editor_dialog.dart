@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:otzaria/core/focus_repository.dart';
@@ -10,7 +11,7 @@ import 'package:otzaria/settings/services/safer_mode/protected_settings_wrapper.
 class PersonalNoteEditorDialog extends StatefulWidget {
   final String initialContent;
   final PersonalNoteContentFormat initialContentFormat;
-  final String title;
+  final String? title;
   final String? referenceText;
   final IconData? icon;
   final String? bookId;
@@ -22,7 +23,7 @@ class PersonalNoteEditorDialog extends StatefulWidget {
     super.key,
     this.initialContent = '',
     this.initialContentFormat = PersonalNoteContentFormat.plain,
-    this.title = 'הערה חדשה',
+    this.title,
     this.referenceText,
     this.icon,
     this.bookId,
@@ -90,21 +91,21 @@ class _PersonalNoteEditorDialogState extends State<PersonalNoteEditorDialog>
     final result = await showDialog<_DraftDecision>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('אזהרה'),
-        content: const Text('ההערה לא נשמרה. לשמור טיוטה?'),
+        title: Text('personal_notes.unsaved_dialog_title'.tr()),
+        content: Text('personal_notes.unsaved_dialog_content'.tr()),
         actions: [
           FilledButton.tonal(
             onPressed: () => Navigator.of(context).pop(_DraftDecision.cancel),
-            child: const Text('ביטול'),
+            child: Text('common.cancel'.tr()),
           ),
           FilledButton.tonal(
             onPressed: () => Navigator.of(context).pop(_DraftDecision.discard),
-            child: const Text('סגור בלי לשמור'),
+            child: Text('personal_notes.close_without_saving'.tr()),
           ),
           FilledButton(
             onPressed: () =>
                 Navigator.of(context).pop(_DraftDecision.saveDraft),
-            child: const Text('שמור טיוטה'),
+            child: Text('personal_notes.save_draft'.tr()),
           ),
         ],
       ),
@@ -241,7 +242,7 @@ class _PersonalNoteEditorDialogState extends State<PersonalNoteEditorDialog>
                 const SizedBox(width: 8),
               ],
               Text(
-                widget.title,
+                widget.title ?? 'personal_notes.new_note_dialog_title'.tr(),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ],
@@ -264,12 +265,12 @@ class _PersonalNoteEditorDialogState extends State<PersonalNoteEditorDialog>
           ),
           actions: [
             _buildButton(
-              text: 'ביטול',
+              text: 'common.cancel'.tr(),
               isFocused: _focusedButtonIndex == 0,
               onPressed: _handleCancel,
             ),
             _buildButton(
-              text: 'שמור',
+              text: 'common.save'.tr(),
               isFocused: _focusedButtonIndex == 1,
               isConfirm: true,
               onPressed: _submit,

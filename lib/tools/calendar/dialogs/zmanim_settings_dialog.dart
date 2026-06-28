@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -136,13 +137,13 @@ class _SourceCredit extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
           child: Text.rich(
             TextSpan(
-              text: 'חלק ניכר מהמידע על הזמנים באדיבות ',
+              text: 'calendar.zmanim_credit_prefix'.tr(),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
               children: [
                 TextSpan(
-                  text: 'לוח עתים לבינה',
+                  text: 'calendar.zmanim_credit_source'.tr(),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.bold,
@@ -175,12 +176,14 @@ class _TableHeader extends StatelessWidget {
         children: [
           SizedBox(
             width: 36,
-            child: Text('הצג', style: style, textAlign: TextAlign.center),
+            child: Text('calendar.col_show'.tr(),
+                style: style, textAlign: TextAlign.center),
           ),
-          Expanded(child: Text('זמן', style: style)),
+          Expanded(child: Text('calendar.col_time'.tr(), style: style)),
           SizedBox(
             width: 96,
-            child: Text('היום', style: style, textAlign: TextAlign.center),
+            child: Text('calendar.col_today'.tr(),
+                style: style, textAlign: TextAlign.center),
           ),
           const SizedBox(width: 32),
         ],
@@ -321,7 +324,7 @@ class _ZmanInfoButton extends StatelessWidget {
           context: context,
           title: name,
           content: explanation,
-          confirmText: 'הבנתי',
+          confirmText: 'calendar.understood'.tr(),
         ),
       ),
     );
@@ -336,17 +339,17 @@ Future<void> showZmanimSettingsDialog(BuildContext context) {
     context: context,
     builder: (_) => BlocProvider.value(
       value: cubit,
-      child: const SingleActionDialog(
+      child: SingleActionDialog(
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(FluentIcons.clock_24_regular),
-            SizedBox(width: 8),
-            Text('זמנים נוספים'),
+            const Icon(FluentIcons.clock_24_regular),
+            const SizedBox(width: 8),
+            Text('calendar.additional_times'.tr()),
           ],
         ),
-        customContent: ZmanimSettingsContent(),
-        confirmText: 'סגור',
+        customContent: const ZmanimSettingsContent(),
+        confirmText: 'calendar.close'.tr(),
       ),
     ),
   );

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -118,11 +119,13 @@ class _PluginInstallScreenState extends State<PluginInstallScreen> {
         child: Scaffold(
           appBar: AppBar(
             title: Text(
-              isUpdate ? 'אישור עדכון תוסף' : 'אישור התקנת תוסף',
+              isUpdate
+                  ? 'plugins.install_screen.title_update'.tr()
+                  : 'plugins.install_screen.title_install'.tr(),
             ),
             leading: IconButton(
               icon: const Icon(FluentIcons.dismiss_24_regular),
-              tooltip: 'ביטול',
+              tooltip: 'plugins.install_screen.cancel_tooltip'.tr(),
               onPressed: _onCancel,
             ),
           ),
@@ -139,8 +142,8 @@ class _PluginInstallScreenState extends State<PluginInstallScreen> {
                   if (widget.manifest.author.isNotEmpty)
                     ListTile(
                       leading: const Icon(FluentIcons.person_24_regular),
-                      title: const Text(
-                        'מחבר',
+                      title: Text(
+                        'plugins.install_screen.author_label'.tr(),
                       ),
                       subtitle: Text(
                         widget.manifest.author,
@@ -151,8 +154,8 @@ class _PluginInstallScreenState extends State<PluginInstallScreen> {
                     ListTile(
                       leading:
                           const Icon(FluentIcons.arrow_circle_up_24_regular),
-                      title: const Text(
-                        'עדכון גרסה',
+                      title: Text(
+                        'plugins.install_screen.version_update_label'.tr(),
                       ),
                       subtitle: Text(
                         '${widget.previousVersion}  ←  ${widget.manifest.version}',
@@ -162,8 +165,8 @@ class _PluginInstallScreenState extends State<PluginInstallScreen> {
                   else
                     ListTile(
                       leading: const Icon(FluentIcons.tag_24_regular),
-                      title: const Text(
-                        'גרסה',
+                      title: Text(
+                        'plugins.install_screen.version_label'.tr(),
                       ),
                       subtitle: Text(
                         widget.manifest.version,
@@ -218,18 +221,18 @@ class _PluginInstallScreenState extends State<PluginInstallScreen> {
               // ===== הרשאות =====
               if (!hasPermissions)
                 SettingsCard(
-                  title: 'הרשאות',
+                  title: 'plugins.install_screen.permissions_section'.tr(),
                   children: [
                     ListTile(
                       leading: Icon(
                         FluentIcons.shield_checkmark_24_regular,
                         color: colorScheme.primary,
                       ),
-                      title: const Text(
-                        'אין הרשאות מיוחדות נדרשות',
+                      title: Text(
+                        'plugins.install_screen.no_permissions_required'.tr(),
                       ),
-                      subtitle: const Text(
-                        'תוסף זה אינו מבקש גישה למשאבים רגישים',
+                      subtitle: Text(
+                        'plugins.install_screen.no_permissions_subtitle'.tr(),
                       ),
                       hoverColor: Colors.transparent,
                     ),
@@ -237,9 +240,11 @@ class _PluginInstallScreenState extends State<PluginInstallScreen> {
                 )
               else ...[
                 SettingsCard(
-                  title: 'הרשאות נדרשות',
+                  title: 'plugins.install_screen.permissions_required_section'
+                      .tr(),
                   subtitle:
-                      'בחר אילו הרשאות להעניק לתוסף זה (ברירת מחדל: הכל מופעל)',
+                      'plugins.install_screen.permissions_required_subtitle'
+                          .tr(),
                   children: widget.manifest.permissions.map((permission) {
                     final info = getPermissionInfo(permission);
                     final isGranted = _permissionToggles[permission] ?? true;
@@ -291,7 +296,8 @@ class _PluginInstallScreenState extends State<PluginInstallScreen> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'ניתן לשנות הרשאות בכל עת מהגדרות התוסף',
+                          'plugins.install_screen.permissions_changeable_note'
+                              .tr(),
                           style: TextStyle(
                             fontSize: 12,
                             color: colorScheme.onSurfaceVariant,
@@ -310,12 +316,14 @@ class _PluginInstallScreenState extends State<PluginInstallScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   NeutralActionButton(
-                    text: 'ביטול',
+                    text: 'plugins.install_screen.cancel_button'.tr(),
                     onPressed: _onCancel,
                   ),
                   const SizedBox(width: 12),
                   RecommendedActionButton(
-                    text: isUpdate ? 'עדכן' : 'התקן',
+                    text: isUpdate
+                        ? 'plugins.install_screen.update_button'.tr()
+                        : 'plugins.install_screen.install_button'.tr(),
                     onPressed: _onInstall,
                   ),
                 ],
@@ -365,7 +373,7 @@ class _RunOnStartupBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'התוסף מבקש לפעול ברקע עם עליית האפליקציה',
+                  'plugins.install_screen.startup_permission_title'.tr(),
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -374,11 +382,7 @@ class _RunOnStartupBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'אם תאשר את ההרשאה, התוסף ייטען וירוץ ברקע בכל פעם '
-                  'שאוצריא נטענת, גם בלי שתיכנס למסך "כלים". '
-                  'הדבר עלול להכביד על זמן העלייה ועל צריכת המשאבים של האפליקציה. '
-                  'ברירת המחדל היא שההרשאה כבויה — הענק אותה רק לתוספים '
-                  'שאתה סומך עליהם.',
+                  'plugins.install_screen.startup_permission_description'.tr(),
                   style: TextStyle(
                     fontSize: 13,
                     color: colorScheme.onTertiaryContainer,

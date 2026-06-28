@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -560,13 +561,15 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                   elevation: 0,
                   scrolledUnderElevation: 0,
                   centerTitle: false,
-                  leading: const IconButton(
-                    icon: Icon(FluentIcons.navigation_24_regular, size: 20),
-                    tooltip: 'ניווט',
+                  leading: IconButton(
+                    icon: const Icon(FluentIcons.navigation_24_regular,
+                        size: 20),
+                    tooltip: 'text_book.commentators.navigate'.tr(),
                     onPressed: null,
                   ),
                   title: Text(
-                    'מפרשים על ${widget.tab.sourceTab.book.title}',
+                    'text_book.commentators.title'.tr(
+                        namedArgs: {'name': widget.tab.sourceTab.book.title}),
                     style: const TextStyle(fontSize: 16),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -576,38 +579,40 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                       maxVisibleButtons: 999,
                       originalOrder: const [],
                       actions: [
-                        for (final action in const [
+                        for (final action in [
                           (
                             icon: FluentIcons.text_font_24_regular,
-                            tooltip: 'ניקוד',
+                            tooltip: 'text_book.commentators.nikud'.tr(),
                           ),
                           (
                             icon: FluentIcons.search_24_regular,
-                            tooltip: 'חיפוש',
+                            tooltip: 'text_book.search_tooltip'.tr(),
                           ),
                           (
                             icon: FluentIcons.apps_list_24_regular,
-                            tooltip: 'בחירת מפרשים',
+                            tooltip:
+                                'text_book.commentators.select_commentators'
+                                    .tr(),
                           ),
                           (
                             icon: FluentIcons.bookmark_add_24_regular,
-                            tooltip: 'הוסף סימניה',
+                            tooltip: 'text_book.add_bookmark_menu'.tr(),
                           ),
                           (
                             icon: FluentIcons.zoom_in_24_regular,
-                            tooltip: 'הגדל את גודל הטקסט',
+                            tooltip: 'text_book.increase_text_size'.tr(),
                           ),
                           (
                             icon: FluentIcons.zoom_out_24_regular,
-                            tooltip: 'הקטן את גודל הטקסט',
+                            tooltip: 'text_book.decrease_text_size'.tr(),
                           ),
                           (
                             icon: FluentIcons.chevron_left_24_regular,
-                            tooltip: 'הקטע הקודם',
+                            tooltip: 'text_book.previous_section'.tr(),
                           ),
                           (
                             icon: FluentIcons.chevron_right_24_regular,
-                            tooltip: 'הקטע הבא',
+                            tooltip: 'text_book.next_section'.tr(),
                           ),
                         ])
                           ActionButtonData(
@@ -902,13 +907,15 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
     final commentatorsToShow =
         _selectedCommentatorsOverride ?? state.activeCommentators;
     final added = context.read<BookmarkBloc>().addBookmark(
-          ref: 'מפרשים | $ref',
+          ref: 'text_book.commentators.ref_prefix'.tr(namedArgs: {'ref': ref}),
           book: state.book,
           index: index,
           commentatorsToShow: commentatorsToShow,
           targetKind: BookmarkTargetKind.commentators,
         );
-    UiSnack.showQuick(added ? 'הסימניה נוספה בהצלחה' : 'הסימניה כבר קיימת');
+    UiSnack.showQuick(added
+        ? 'text_book.bookmark_added'.tr()
+        : 'text_book.bookmark_already_exists'.tr());
   }
 
   void _showBookmarksForCurrentBook(BuildContext context, Book book) {
@@ -929,7 +936,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
       leadingItems: [
         AppTopBarItem(
           widget: ToolbarActionButton(
-            tooltip: 'ניווט',
+            tooltip: 'text_book.commentators.navigate'.tr(),
             icon: FluentIcons.navigation_24_regular,
             compact: context.read<SettingsBloc>().state.compactMenuMode,
             onPressed: () {
@@ -943,15 +950,15 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
       ],
       center: ReaderNavCenter(
         title: Text(
-          'מפרשים על ${state.book.title}',
+          'text_book.commentators.title'.tr(namedArgs: {'name': state.book.title}),
           style: AppTopBar.titleStyle(context),
           textAlign: TextAlign.center,
           overflow: TextOverflow.ellipsis,
         ),
-        prevMajorTooltip: 'הפרק הקודם',
-        prevMinorTooltip: 'הקטע הקודם',
-        nextMinorTooltip: 'הקטע הבא',
-        nextMajorTooltip: 'הפרק הבא',
+        prevMajorTooltip: 'text_book.commentators.previous_chapter'.tr(),
+        prevMinorTooltip: 'text_book.previous_section'.tr(),
+        nextMinorTooltip: 'text_book.next_section'.tr(),
+        nextMajorTooltip: 'text_book.commentators.next_chapter'.tr(),
         onPrevMajor: () => _navigateToPrevChapter(chapters),
         onPrevMinor: () => _navigateToPrevVerse(chapters),
         onNextMinor: () => _navigateToNextVerse(chapters),
@@ -966,7 +973,9 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
               // ניקוד
               ActionButtonData(
                 widget: ToolbarActionButton(
-                  tooltip: state.removeNikud ? 'הצג ניקוד' : 'הסתר ניקוד',
+                  tooltip: state.removeNikud
+                      ? 'text_book.show_nikud'.tr()
+                      : 'text_book.hide_nikud'.tr(),
                   icon: state.removeNikud
                       ? FluentIcons.text_font_24_regular
                       : FluentIcons.text_font_info_24_regular,
@@ -978,7 +987,9 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                 icon: state.removeNikud
                     ? FluentIcons.text_font_24_regular
                     : FluentIcons.text_font_info_24_regular,
-                tooltip: state.removeNikud ? 'הצג ניקוד' : 'הסתר ניקוד',
+                tooltip: state.removeNikud
+                    ? 'text_book.show_nikud'.tr()
+                    : 'text_book.hide_nikud'.tr(),
                 onPressed: () => context
                     .read<TextBookBloc>()
                     .add(ToggleNikud(!state.removeNikud)),
@@ -987,8 +998,9 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
               if (!state.isTanach)
                 ActionButtonData(
                   widget: ToolbarActionButton(
-                    tooltip:
-                        state.removePunctuation ? 'הצג פיסוק' : 'הסתר פיסוק',
+                    tooltip: state.removePunctuation
+                        ? 'text_book.show_punctuation'.tr()
+                        : 'text_book.hide_punctuation'.tr(),
                     icon: state.removePunctuation
                         ? FluentIcons.text_quote_24_regular
                         : FluentIcons.text_clear_formatting_24_regular,
@@ -1000,7 +1012,9 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                   icon: state.removePunctuation
                       ? FluentIcons.text_quote_24_regular
                       : FluentIcons.text_clear_formatting_24_regular,
-                  tooltip: state.removePunctuation ? 'הצג פיסוק' : 'הסתר פיסוק',
+                  tooltip: state.removePunctuation
+                      ? 'text_book.show_punctuation'.tr()
+                      : 'text_book.hide_punctuation'.tr(),
                   onPressed: () => context
                       .read<TextBookBloc>()
                       .add(TogglePunctuation(!state.removePunctuation)),
@@ -1009,26 +1023,26 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
               ActionButtonData(
                 widget: ToolbarActionButton(
                   icon: FluentIcons.print_24_regular,
-                  tooltip: 'הדפסה',
+                  tooltip: 'text_book.print_menu'.tr(),
                   compact: context.read<SettingsBloc>().state.compactMenuMode,
                   onPressed: () =>
                       _commentaryKey.currentState?.printDisplayedCommentaries(),
                 ),
                 icon: FluentIcons.print_24_regular,
-                tooltip: 'הדפסה',
+                tooltip: 'text_book.print_menu'.tr(),
                 onPressed: () =>
                     _commentaryKey.currentState?.printDisplayedCommentaries(),
               ),
               // חיפוש
               ActionButtonData(
                 widget: ToolbarActionButton(
-                  tooltip: 'חיפוש',
+                  tooltip: 'text_book.search_tooltip'.tr(),
                   icon: FluentIcons.search_24_regular,
                   compact: context.read<SettingsBloc>().state.compactMenuMode,
                   onPressed: _openSearchPane,
                 ),
                 icon: FluentIcons.search_24_regular,
-                tooltip: 'חיפוש',
+                tooltip: 'text_book.search_tooltip'.tr(),
                 onPressed: _openSearchPane,
               ),
               // כיווץ/הרחבת כל המפרשים — שולט במצב הגלובלי בתוך CommentaryListBase
@@ -1038,8 +1052,8 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                   builder: (context, allExpanded, _) {
                     return ToolbarActionButton(
                       tooltip: allExpanded
-                          ? 'כווץ את כל המפרשים'
-                          : 'הרחב את כל המפרשים',
+                          ? 'text_book.commentators.collapse_all'.tr()
+                          : 'text_book.commentators.expand_all'.tr(),
                       icon: allExpanded
                           ? FluentIcons.arrow_collapse_all_24_regular
                           : FluentIcons.arrow_expand_all_24_regular,
@@ -1054,14 +1068,14 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                     ? FluentIcons.arrow_collapse_all_24_regular
                     : FluentIcons.arrow_expand_all_24_regular,
                 tooltip: _allExpandedInChild.value
-                    ? 'כווץ את כל המפרשים'
-                    : 'הרחב את כל המפרשים',
+                    ? 'text_book.commentators.collapse_all'.tr()
+                    : 'text_book.commentators.expand_all'.tr(),
                 onPressed: () =>
                     _commentaryKey.currentState?.toggleAllExpanded(),
               ),
               ActionButtonData(
                 widget: ToolbarActionButton(
-                  tooltip: 'הוסף סימניה',
+                  tooltip: 'text_book.add_bookmark_menu'.tr(),
                   icon: FluentIcons.bookmark_add_24_regular,
                   compact: context.read<SettingsBloc>().state.compactMenuMode,
                   onPressed: () => _addBookmark(
@@ -1075,7 +1089,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                       )),
                 ),
                 icon: FluentIcons.bookmark_add_24_regular,
-                tooltip: 'הוסף סימניה',
+                tooltip: 'text_book.add_bookmark_menu'.tr(),
                 onPressed: () => _addBookmark(
                   context,
                   state,
@@ -1086,7 +1100,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
               // הגדל טקסט
               ActionButtonData(
                 widget: ToolbarActionButton(
-                  tooltip: 'הגדל את גודל הטקסט',
+                  tooltip: 'text_book.increase_text_size'.tr(),
                   icon: FluentIcons.zoom_in_24_regular,
                   compact: context.read<SettingsBloc>().state.compactMenuMode,
                   onPressed: () => context
@@ -1094,7 +1108,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                       .add(UpdateFontSize((state.fontSize + 3).clamp(15, 50))),
                 ),
                 icon: FluentIcons.zoom_in_24_regular,
-                tooltip: 'הגדל את גודל הטקסט',
+                tooltip: 'text_book.increase_text_size'.tr(),
                 onPressed: () => context
                     .read<TextBookBloc>()
                     .add(UpdateFontSize((state.fontSize + 3).clamp(15, 50))),
@@ -1102,7 +1116,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
               // הקטן טקסט
               ActionButtonData(
                 widget: ToolbarActionButton(
-                  tooltip: 'הקטן את גודל הטקסט',
+                  tooltip: 'text_book.decrease_text_size'.tr(),
                   icon: FluentIcons.zoom_out_24_regular,
                   compact: context.read<SettingsBloc>().state.compactMenuMode,
                   onPressed: () => context
@@ -1110,7 +1124,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                       .add(UpdateFontSize((state.fontSize - 3).clamp(15, 50))),
                 ),
                 icon: FluentIcons.zoom_out_24_regular,
-                tooltip: 'הקטן את גודל הטקסט',
+                tooltip: 'text_book.decrease_text_size'.tr(),
                 onPressed: () => context
                     .read<TextBookBloc>()
                     .add(UpdateFontSize((state.fontSize - 3).clamp(15, 50))),
@@ -1119,14 +1133,14 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
             alwaysInMenu: [
               ActionButtonData(
                 widget: ToolbarActionButton(
-                  tooltip: 'סימניות בספר זה',
+                  tooltip: 'text_book.commentators.bookmarks_in_book'.tr(),
                   icon: FluentIcons.bookmark_multiple_24_regular,
                   compact: context.read<SettingsBloc>().state.compactMenuMode,
                   onPressed: () =>
                       _showBookmarksForCurrentBook(context, state.book),
                 ),
                 icon: FluentIcons.bookmark_multiple_24_regular,
-                tooltip: 'סימניות בספר זה',
+                tooltip: 'text_book.commentators.bookmarks_in_book'.tr(),
                 onPressed: () =>
                     _showBookmarksForCurrentBook(context, state.book),
               ),
@@ -1165,32 +1179,35 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                 Expanded(
                   child: TabBar(
                     controller: _navTabController,
-                    tabs: const [
+                    tabs: [
                       Tab(
-                        icon: Icon(FluentIcons.navigation_24_regular, size: 16),
-                        iconMargin: EdgeInsets.only(bottom: 1),
+                        icon: const Icon(FluentIcons.navigation_24_regular,
+                            size: 16),
+                        iconMargin: const EdgeInsets.only(bottom: 1),
                         height: 44,
                         child: Text(
-                          'ניווט',
-                          style: TextStyle(fontSize: 11),
+                          'text_book.commentators.navigate'.tr(),
+                          style: const TextStyle(fontSize: 11),
                         ),
                       ),
                       Tab(
-                        icon: Icon(FluentIcons.apps_list_24_regular, size: 16),
-                        iconMargin: EdgeInsets.only(bottom: 1),
+                        icon: const Icon(FluentIcons.apps_list_24_regular,
+                            size: 16),
+                        iconMargin: const EdgeInsets.only(bottom: 1),
                         height: 44,
                         child: Text(
-                          'מפרשים',
-                          style: TextStyle(fontSize: 11),
+                          'text_book.commentary_panel.tab_commentaries'.tr(),
+                          style: const TextStyle(fontSize: 11),
                         ),
                       ),
                       Tab(
-                        icon: Icon(FluentIcons.search_24_regular, size: 16),
-                        iconMargin: EdgeInsets.only(bottom: 1),
+                        icon: const Icon(FluentIcons.search_24_regular,
+                            size: 16),
+                        iconMargin: const EdgeInsets.only(bottom: 1),
                         height: 44,
                         child: Text(
-                          'חיפוש',
-                          style: TextStyle(fontSize: 11),
+                          'text_book.search_tooltip'.tr(),
+                          style: const TextStyle(fontSize: 11),
                         ),
                       ),
                     ],
@@ -1213,7 +1230,9 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                     ),
                   ),
                   color: _pinLeftPane ? colorScheme.primary : null,
-                  tooltip: _pinLeftPane ? 'בטל נעיצה' : 'נעץ את הפאנל',
+                  tooltip: _pinLeftPane
+                      ? 'text_book.commentators.unpin_panel'.tr()
+                      : 'text_book.commentators.pin_panel'.tr(),
                 ),
               ],
             ),
@@ -1246,7 +1265,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
-            'טוען מפרשים...',
+            'text_book.commentators.loading'.tr(),
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ),
@@ -1280,11 +1299,14 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                 return SearchPaneBase(
                   searchController: _commentarySearchController,
                   focusNode: _searchFocusNode,
-                  hintText: 'חפש בתוך המפרשים המוצגים...',
+                  hintText: 'text_book.commentators.search_hint'.tr(),
                   isNoResults: hasQuery && total == 0,
                   resetSearchCallback: _commentarySearchController.clear,
                   resultCountString: hasQuery && total > 0
-                      ? 'תוצאה ${current + 1} מתוך $total'
+                      ? 'text_book.commentators.result_of'.tr(namedArgs: {
+                          'current': '${current + 1}',
+                          'total': '$total'
+                        })
                       : null,
                   resultToolbar: hasQuery && total > 0
                       ? Row(
@@ -1335,7 +1357,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
       // total>0 בלבד מגיע לכאן (אם total==0 מוצג 'אין תוצאות' ע"י SearchPaneBase)
       return Center(
         child: Text(
-          'טוען תוצאות...',
+          'text_book.commentators.loading_results'.tr(),
           style: Theme.of(context).textTheme.bodySmall,
         ),
       );
@@ -1436,8 +1458,8 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
     required List<String> content,
   }) {
     if (chapters.isEmpty) {
-      return const Center(
-        child: Text('אין תוכן עניינים'),
+      return Center(
+        child: Text('text_book.commentators.no_toc'.tr()),
       );
     }
     final colorScheme = Theme.of(context).colorScheme;
@@ -1451,7 +1473,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
             builder: (_, val, __) => RtlTextField(
               controller: _tocSearchController,
               decoration: InputDecoration(
-                hintText: 'איתור כותרת...',
+                hintText: 'text_book.commentators.find_heading_hint'.tr(),
                 prefixIcon: const Icon(FluentIcons.search_24_regular),
                 suffixIcon: val.text.isNotEmpty
                     ? IconButton(
@@ -1564,8 +1586,8 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
                               size: 20,
                             ),
                             tooltip: isExpandedInNav
-                                ? 'כווץ תתי-פריטים'
-                                : 'הצג תתי-פריטים',
+                                ? 'text_book.commentators.collapse_subitems'.tr()
+                                : 'text_book.commentators.expand_subitems'.tr(),
                           ),
                         ],
                       ),
@@ -1734,7 +1756,8 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
             lineIndex < content.length ? content[lineIndex] : '';
         final preview = textFromContent.trim().isNotEmpty
             ? _getParaPreview(textFromContent)
-            : 'פסקה ${i + 1}';
+            : 'text_book.commentators.paragraph'
+                .tr(namedArgs: {'number': '${i + 1}'});
         if (preview.isEmpty) continue;
         items.add(
           _TocListItem.subItem(

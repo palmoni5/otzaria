@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:logging/logging.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:otzaria/theme/theme_exports.dart';
 import 'package:otzaria/widgets/controls/action_buttons.dart';
 import 'package:otzaria/widgets/layout/app_card.dart';
@@ -250,7 +251,7 @@ class _BookCardWidgetState extends State<BookCardWidget> {
                               if (_isCompleted)
                                 _BookMetaChip(
                                   icon: FluentIcons.checkmark_circle_24_regular,
-                                  text: 'הושלם',
+                                  text: 'shamor_zachor.completed_chip'.tr(),
                                   backgroundColor:
                                       Theme.of(context).colorScheme.primary,
                                   foregroundColor:
@@ -264,7 +265,7 @@ class _BookCardWidgetState extends State<BookCardWidget> {
                     if (widget.onDelete != null) ...[
                       const SizedBox(width: 8),
                       ToolbarActionButton(
-                        tooltip: 'הסר ספר',
+                        tooltip: 'shamor_zachor.remove_book'.tr(),
                         icon: FluentIcons.delete_24_regular,
                         onPressed: widget.onDelete!,
                       ),
@@ -451,7 +452,11 @@ class _BookCardWidgetState extends State<BookCardWidget> {
         const SizedBox(height: 8),
         Row(children: [
           Flexible(
-            child: Text('$completedItems מתוך $totalItems',
+            child: Text(
+                'shamor_zachor.items_of'.tr(namedArgs: {
+                  'completed': '$completedItems',
+                  'total': '$totalItems'
+                }),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context)
                         .colorScheme
@@ -480,7 +485,7 @@ class _BookCardWidgetState extends State<BookCardWidget> {
       final pp = _progressProvider;
       final bookId = widget.bookDetails.id;
       if (pp == null || bookId == null) {
-        return 'לימוד פעיל';
+        return 'shamor_zachor.active_study'.tr();
       }
       final summary = pp.getBookProgressSummarySyncById(
         bookId,
@@ -491,7 +496,7 @@ class _BookCardWidgetState extends State<BookCardWidget> {
       return summary.statusText;
     } catch (e, st) {
       _logger.warning('getBookProgressSummarySyncById failed', e, st);
-      return 'לימוד פעיל';
+      return 'shamor_zachor.active_study'.tr();
     }
   }
 }

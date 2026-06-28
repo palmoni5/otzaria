@@ -1,5 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:easy_localization/src/localization.dart';
+import 'package:easy_localization/src/translations.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:http/http.dart' as http;
@@ -13,6 +17,15 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
+    // טוען את התרגומים האמיתיים כדי ש-.tr() יחזיר טקסט מתורגם בבדיקות.
+    final data = jsonDecode(
+      await File('assets/translations/he-IL.json').readAsString(),
+    ) as Map<String, dynamic>;
+    Localization.load(
+      const Locale('he', 'IL'),
+      translations: Translations(data),
+    );
+
     await Settings.init(cacheProvider: _MemoryCacheProvider());
     await Settings.setValue<bool>(SettingsRepository.keyOfflineMode, false);
     await Settings.setValue<bool>(

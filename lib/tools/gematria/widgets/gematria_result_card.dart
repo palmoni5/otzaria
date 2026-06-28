@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -152,7 +153,7 @@ class GematriaResultCard extends StatelessWidget {
                         children: [
                           SecondaryIconButton(
                               icon: FluentIcons.copy_24_regular,
-                              tooltip: 'העתק',
+                              tooltip: 'gematria.result.copy'.tr(),
                               onPressed: () => _copy(context)),
                           const SizedBox(width: 4),
                           PrimaryIconButton(

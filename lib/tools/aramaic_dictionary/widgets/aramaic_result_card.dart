@@ -4,6 +4,7 @@
 //  • שורה אחת: מקור | חץ | תרגום | כפתור העתקה
 //  • SelectionArea → Ctrl+C / תפריט הקשר
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -31,8 +32,12 @@ class AramaicResultCard extends StatelessWidget {
   });
 
   void _copy(BuildContext context) {
-    final srcLabel = isHebrewToAramaic ? 'עברית' : 'ארמית';
-    final tgtLabel = isHebrewToAramaic ? 'ארמית' : 'עברית';
+    final srcLabel = isHebrewToAramaic
+        ? 'dictionary.aramaic.hebrew'.tr()
+        : 'dictionary.aramaic.aramaic'.tr();
+    final tgtLabel = isHebrewToAramaic
+        ? 'dictionary.aramaic.aramaic'.tr()
+        : 'dictionary.aramaic.hebrew'.tr();
     final src = isHebrewToAramaic ? hebrew : aramaic;
     final tgt = isHebrewToAramaic ? aramaic : hebrew;
     Clipboard.setData(ClipboardData(text: '$srcLabel: $src\n$tgtLabel: $tgt'));
@@ -91,7 +96,7 @@ class AramaicResultCard extends StatelessWidget {
           const SizedBox(width: AppTokens.spaceXS),
           SecondaryIconButton(
               icon: FluentIcons.copy_24_regular,
-              tooltip: 'העתק',
+              tooltip: 'dictionary.copy'.tr(),
               onPressed: () => _copy(context)),
         ],
       ),

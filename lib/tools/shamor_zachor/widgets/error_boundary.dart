@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:logging/logging.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 
 import '../models/error_model.dart';
 
@@ -122,12 +123,12 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
                         ElevatedButton.icon(
                           icon: const Icon(FluentIcons.arrow_sync_24_regular),
                           onPressed: _retry,
-                          label: const Text('נסה שוב'),
+                          label: Text('shamor_zachor.try_again'.tr()),
                         ),
                       if (error.isRecoverable) const SizedBox(width: 16),
                       OutlinedButton(
                         onPressed: _reset,
-                        child: const Text('איפוס'),
+                        child: Text('shamor_zachor.reset'.tr()),
                       ),
                     ],
                   ),
@@ -135,7 +136,7 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
                   if (kDebugMode && error.details != null) ...[
                     const SizedBox(height: 16),
                     ExpansionTile(
-                      title: const Text('פרטים טכניים'),
+                      title: Text('shamor_zachor.technical_details'.tr()),
                       children: [
                         // This Container with a fixed height is the key.
                         // It gives the inner SingleChildScrollView bounded constraints.

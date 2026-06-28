@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -19,51 +20,51 @@ class LibrarySettingsPanel extends StatelessWidget {
   static const List<SettingsSearchEntry> searchEntries = [
     SettingsSearchEntry(
       id: 'library.display.view_type',
-      title: 'סוג תצוגה',
-      subtitle: 'תצוגת רשת או רשימה לספרי הקטגוריה',
+      title: 'settings.search.library_display_view_type_title',
+      subtitle: 'settings.search.library_display_view_type_sub',
       tab: SettingsTab.library,
       cardId: 'library.display',
-      keywords: ['רשת', 'רשימה', 'תצוגה', 'גריד'],
+      keywords: ['settings.search.library_display_view_type_kw'],
     ),
     SettingsSearchEntry(
       id: 'library.display.preview',
-      title: 'הצג תצוגה מקדימה',
-      subtitle: 'תצוגה מקדימה של תוכן ספרים',
+      title: 'settings.search.library_display_preview_title',
+      subtitle: 'settings.search.library_display_preview_sub',
       tab: SettingsTab.library,
       cardId: 'library.display',
-      keywords: ['תצוגה מקדימה', 'preview', 'מופעל', 'לא מופעל'],
+      keywords: ['settings.search.library_display_preview_kw'],
     ),
     SettingsSearchEntry(
       id: 'library.external.show',
-      title: 'הצגת ספרים מאתרים חיצוניים',
-      subtitle: 'הצגת קטלוגים חיצוניים בתצוגת הספרייה',
+      title: 'settings.search.library_external_show_title',
+      subtitle: 'settings.search.library_external_show_sub',
       tab: SettingsTab.library,
       cardId: 'library.display',
-      keywords: ['חיצוניים', 'קטלוגים', 'מופעל', 'לא מופעל'],
+      keywords: ['settings.search.library_external_show_kw'],
     ),
     SettingsSearchEntry(
       id: 'library.external.otzar',
-      title: 'הצג ספרים מאוצר החכמה',
-      subtitle: 'ספרים מאתר אוצר החכמה',
+      title: 'settings.search.library_external_otzar_title',
+      subtitle: 'settings.search.library_external_otzar_sub',
       tab: SettingsTab.library,
       cardId: 'library.display',
-      keywords: ['אוצר החכמה', 'otzar', 'מופעל', 'לא מופעל'],
+      keywords: ['settings.search.library_external_otzar_kw'],
     ),
     SettingsSearchEntry(
       id: 'library.external.hebrewbooks',
-      title: 'הצג ספרים מהיברובוקס',
-      subtitle: 'ספרים מאתר HebrewBooks',
+      title: 'settings.search.library_external_hebrewbooks_title',
+      subtitle: 'settings.search.library_external_hebrewbooks_sub',
       tab: SettingsTab.library,
       cardId: 'library.display',
-      keywords: ['hebrewbooks', 'היברובוקס', 'מופעל', 'לא מופעל'],
+      keywords: ['settings.search.library_external_hebrewbooks_kw'],
     ),
     SettingsSearchEntry(
       id: 'library.external.auto_sync',
-      title: 'סנכרון קטלוגים אוטומטי',
-      subtitle: 'עדכן קטלוגים חיצוניים אוטומטית',
+      title: 'settings.search.library_external_auto_sync_title',
+      subtitle: 'settings.search.library_external_auto_sync_sub',
       tab: SettingsTab.library,
       cardId: 'library.display',
-      keywords: ['סנכרון', 'קטלוגים', 'אוטומטי', 'מופעל', 'לא מופעל'],
+      keywords: ['settings.search.library_external_auto_sync_kw'],
     ),
   ];
 
@@ -76,23 +77,23 @@ class LibrarySettingsPanel extends StatelessWidget {
           children: [
             // הגדרות תצוגה
             SettingsCard(
-              title: 'תצוגת ספרייה',
+              title: 'settings.library.view_section'.tr(),
               children: [
                 SegmentedSettingsTile<String>(
-                  icon: Icon(FluentIcons.grid_24_regular),
-                  title: 'סוג תצוגה',
+                  icon: const Icon(FluentIcons.grid_24_regular),
+                  title: 'settings.library.view_mode_title'.tr(),
                   subtitle: state.libraryViewMode == 'list'
-                      ? 'תצוגת רשימה (עץ מתרחב)'
-                      : 'תצוגת רשת',
-                  options: const [
+                      ? 'settings.library.view_mode_list_subtitle'.tr()
+                      : 'settings.library.view_mode_grid_subtitle'.tr(),
+                  options: [
                     SegmentOption(
                       value: 'grid',
-                      label: 'רשת',
+                      label: 'settings.library.view_grid'.tr(),
                       icon: FluentIcons.grid_24_regular,
                     ),
                     SegmentOption(
                       value: 'list',
-                      label: 'רשימה',
+                      label: 'settings.library.view_list'.tr(),
                       icon: FluentIcons.list_24_regular,
                     ),
                   ],
@@ -105,10 +106,10 @@ class LibrarySettingsPanel extends StatelessWidget {
                 ),
                 SwitchSettingsTile.text(
                   icon: FluentIcons.eye_24_regular,
-                  title: 'הצג תצוגה מקדימה',
+                  title: 'settings.library.show_preview_title'.tr(),
                   subtitle: state.libraryShowPreview
-                      ? 'תצוגה מקדימה מוצגת'
-                      : 'תצוגה מקדימה מוסתרת',
+                      ? 'settings.library.show_preview_on'.tr()
+                      : 'settings.library.show_preview_off'.tr(),
                   value: state.libraryShowPreview,
                   onChanged: (value) {
                     context
@@ -123,17 +124,17 @@ class LibrarySettingsPanel extends StatelessWidget {
 
             // ספרים נוספים (משלב מיקום היברובוקס וספרים חיצוניים)
             SettingsCard(
-              title: 'ספרים נוספים',
+              title: 'settings.library.additional_section'.tr(),
               children: [
                 // מיקום היברובוקס (יוצג ראשון במידה והועבר לו ווידג'ט - דסקטופ בלבד)
                 if (hebrewBooksPathWidget != null) hebrewBooksPathWidget!,
 
                 SwitchSettingsTile.text(
                   icon: FluentIcons.globe_24_regular,
-                  title: 'הצגת ספרים מאתרים חיצוניים',
+                  title: 'settings.library.external_books_title'.tr(),
                   subtitle: state.showExternalBooks
-                      ? 'יוצגו גם ספרים מאתרים חיצוניים'
-                      : 'יוצגו רק ספרים מספריית אוצריא',
+                      ? 'settings.library.external_books_on'.tr()
+                      : 'settings.library.external_books_off'.tr(),
                   value: state.showExternalBooks,
                   onChanged: (value) async {
                     await ExternalCatalogSettingsHelper.updateExternalBooks(
@@ -145,8 +146,8 @@ class LibrarySettingsPanel extends StatelessWidget {
                 if (state.showExternalBooks) ...[
                   SwitchSettingsTile.text(
                     icon: FluentIcons.library_24_regular,
-                    title: 'הצג ספרים מאוצר החכמה',
-                    subtitle: 'ספרים מאתר אוצר החכמה',
+                    title: 'settings.library.otzar_title'.tr(),
+                    subtitle: 'settings.library.otzar_subtitle'.tr(),
                     value: state.showOtzarHachochma,
                     onChanged: (value) async {
                       await ExternalCatalogSettingsHelper.updateOtzarBooks(
@@ -157,8 +158,9 @@ class LibrarySettingsPanel extends StatelessWidget {
                   ),
                   SwitchSettingsTile.text(
                     icon: FluentIcons.book_open_24_regular,
-                    title: 'הצג ספרים מהיברובוקס',
-                    subtitle: 'ספרים מאתר HebrewBooks',
+                    title: 'settings.library.hebrew_books_external_title'.tr(),
+                    subtitle:
+                        'settings.library.hebrew_books_external_subtitle'.tr(),
                     value: state.showHebrewBooks,
                     onChanged: (value) async {
                       await ExternalCatalogSettingsHelper.updateHebrewBooks(
@@ -169,8 +171,8 @@ class LibrarySettingsPanel extends StatelessWidget {
                   ),
                   SwitchSettingsTile.text(
                     icon: FluentIcons.arrow_sync_24_regular,
-                    title: 'סנכרון קטלוגים אוטומטי',
-                    subtitle: 'עדכן קטלוגים חיצוניים אוטומטית',
+                    title: 'settings.library.auto_sync_title'.tr(),
+                    subtitle: 'settings.library.auto_sync_subtitle'.tr(),
                     value: state.autoSyncCatalogs,
                     onChanged: (value) {
                       context

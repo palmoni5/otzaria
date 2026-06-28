@@ -1,4 +1,5 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/indexing/bloc/indexing_bloc.dart';
@@ -129,7 +130,7 @@ class _IndexingStatusOverlayState extends State<IndexingStatusOverlay> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'התוכנה בתהליך אינדוקס',
+                                      'widgets.indexing.overlay_title'.tr(),
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleMedium
@@ -140,7 +141,7 @@ class _IndexingStatusOverlayState extends State<IndexingStatusOverlay> {
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
-                                      'תיתכן איטיות בפעילות התוכנה',
+                                      'widgets.indexing.overlay_subtitle'.tr(),
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodyMedium
@@ -151,7 +152,8 @@ class _IndexingStatusOverlayState extends State<IndexingStatusOverlay> {
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      'התקדמות: $countLabel',
+                                      'widgets.indexing.overlay_progress'
+                                          .tr(namedArgs: {'count': countLabel}),
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleSmall
@@ -178,7 +180,7 @@ class _IndexingStatusOverlayState extends State<IndexingStatusOverlay> {
                           ),
                           splashRadius: 14,
                           color: colorScheme.onSurfaceVariant,
-                          tooltip: 'סגור',
+                          tooltip: 'widgets.close'.tr(),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           onPressed: () {

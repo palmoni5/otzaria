@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
@@ -32,7 +33,7 @@ class CommentatorsFilterButton extends StatelessWidget {
                 .withValues(alpha: inactiveAlpha),
         size: iconSize,
       ),
-      tooltip: 'בחירת מפרשים',
+      tooltip: 'widgets.select_commentators'.tr(),
       padding: padding,
       constraints: constraints,
       onPressed: onPressed,

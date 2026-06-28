@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -441,7 +442,7 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
         _openLink(links.first);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('לא נמצא קישור לכותרת זו')));
+            SnackBar(content: Text('alt_toc.no_link_for_heading'.tr())));
       }
     } catch (e) {
       debugPrint('Error handling leaf click: $e');
@@ -461,7 +462,7 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
       _handleLeafClick(structure.id, roots.first);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('לא נמצאו כותרות למבנה זה')));
+          SnackBar(content: Text('alt_toc.no_headings_for_structure'.tr())));
     }
   }
 
@@ -474,7 +475,7 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
     }
 
     if (_structures.isEmpty) {
-      return const Center(child: Text('אין כותרות חלופיות זמינות'));
+      return Center(child: Text('alt_toc.no_alt_headings'.tr()));
     }
 
     final isSearching = _searchController.text.isNotEmpty;
@@ -491,7 +492,7 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
             focusNode: widget.focusNode,
             onChanged: _onSearchChanged,
             decoration: InputDecoration(
-              hintText: 'איתור כותרת...',
+              hintText: 'alt_toc.find_heading'.tr(),
               prefixIcon: const Icon(FluentIcons.search_24_regular),
               suffixIcon: isSearching
                   ? IconButton(
@@ -589,9 +590,9 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
     final matches = _getMatchingEntries(_searchController.text);
 
     if (matches.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'לא נמצאו תוצאות',
+          'alt_toc.no_results'.tr(),
         ),
       );
     }

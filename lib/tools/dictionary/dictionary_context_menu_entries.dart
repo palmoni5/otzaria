@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -44,7 +45,7 @@ List<AppContextMenuEntry> buildDictionaryContextMenuEntries({
     if (aramaicMatches.isNotEmpty) {
       entries.add(
         AppContextMenuEntry(
-          label: 'מילון ארמי-עברי',
+          label: 'dictionary.lookup.aramaic_menu'.tr(),
           icon: FluentIcons.translate_24_regular,
           children: aramaicMatches
               .map<AppContextMenuEntry>(
@@ -116,7 +117,7 @@ AppContextMenuEntry _buildAcronymSubmenu(
           .toList();
 
   return AppContextMenuEntry(
-    label: 'פתיחת ראשי תיבות',
+    label: 'dictionary.lookup.acronyms_menu'.tr(),
     icon: FluentIcons.text_quote_24_regular,
     children: items,
   );
@@ -193,6 +194,6 @@ void _showMeaningDialog({
     context: context,
     title: title,
     customContent: content,
-    confirmText: 'סגור',
+    confirmText: 'dictionary.close'.tr(),
   );
 }

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/services.dart';
 import 'package:kosher_dart/kosher_dart.dart';
 import 'package:pdf/pdf.dart';
@@ -203,7 +204,8 @@ Future<void> _addDayPages(
             pw.Container(
               padding: const pw.EdgeInsets.only(bottom: 16),
               child: pw.Text(
-                'עיר: ${dayState.selectedCity}',
+                'calendar.print_city'
+                    .tr(namedArgs: {'city': dayState.selectedCity}),
                 style: pw.TextStyle(font: font, fontSize: 12),
                 textAlign: pw.TextAlign.center,
               ),
@@ -252,7 +254,7 @@ Future<void> _addDayPages(
             ),
             pw.SizedBox(height: 20),
             pw.Text(
-              'אירועים',
+              'calendar.print_events_header'.tr(),
               style: pw.TextStyle(
                 font: font,
                 fontSize: 14,
@@ -263,7 +265,7 @@ Future<void> _addDayPages(
             pw.SizedBox(height: 8),
             if (events.isEmpty)
               pw.Text(
-                'אין אירועים ליום זה',
+                'calendar.print_no_events'.tr(),
                 style: pw.TextStyle(
                   font: font,
                   fontSize: 11,

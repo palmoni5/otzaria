@@ -1,14 +1,15 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 class CommentatorsFilterHeader extends StatelessWidget {
   final VoidCallback onBack;
-  final String title;
+  final String? title;
 
   const CommentatorsFilterHeader({
     super.key,
     required this.onBack,
-    this.title = 'בחירת מפרשים',
+    this.title,
   });
 
   @override
@@ -23,7 +24,7 @@ class CommentatorsFilterHeader extends StatelessWidget {
             Padding(
               padding: const EdgeInsetsDirectional.only(start: 48, end: 48),
               child: Text(
-                title,
+                title ?? 'widgets.select_commentators'.tr(),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
@@ -37,7 +38,7 @@ class CommentatorsFilterHeader extends StatelessWidget {
               alignment: AlignmentDirectional.centerStart,
               child: IconButton(
                 icon: const Icon(FluentIcons.arrow_left_24_regular),
-                tooltip: 'חזרה למפרשים',
+                tooltip: 'widgets.back_to_commentators'.tr(),
                 onPressed: onBack,
               ),
             ),

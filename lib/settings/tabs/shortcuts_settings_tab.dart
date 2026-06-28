@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -27,173 +28,173 @@ class ShortcutsSettingsTab extends StatelessWidget {
   static const List<SettingsSearchEntry> searchEntries = [
     SettingsSearchEntry(
       id: 'shortcuts.reset',
-      title: 'איפוס קיצורי מקשים',
-      subtitle: 'החזרת כל קיצורי המקלדת לברירת המחדל',
+      title: 'settings.search.shortcuts_reset_title',
+      subtitle: 'settings.search.shortcuts_reset_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['איפוס', 'ברירת מחדל', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_reset_kw'],
     ),
     // ── ניווט כללי ──
     SettingsSearchEntry(
       id: 'shortcuts.nav.library',
-      title: 'קיצור לספרייה',
-      subtitle: 'פתיחת מסך הספרייה',
+      title: 'settings.search.shortcuts_nav_library_title',
+      subtitle: 'settings.search.shortcuts_nav_library_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['ספרייה', 'ctrl+l', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_nav_library_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.nav.find_ref',
-      title: 'קיצור לאיתור',
-      subtitle: 'פתיחת מסך איתור מהיר',
+      title: 'settings.search.shortcuts_nav_find_ref_title',
+      subtitle: 'settings.search.shortcuts_nav_find_ref_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['איתור', 'ctrl+o', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_nav_find_ref_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.nav.reading',
-      title: 'קיצור לעיון',
-      subtitle: 'פתיחת מסך העיון בספרים',
+      title: 'settings.search.shortcuts_nav_reading_title',
+      subtitle: 'settings.search.shortcuts_nav_reading_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['עיון', 'ctrl+r', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_nav_reading_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.nav.search_window',
-      title: 'קיצור לחיפוש חדש בכל הספרים',
-      subtitle: 'פתיחת חלון חיפוש',
+      title: 'settings.search.shortcuts_nav_search_window_title',
+      subtitle: 'settings.search.shortcuts_nav_search_window_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['חיפוש', 'ctrl+shift+f', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_nav_search_window_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.nav.settings',
-      title: 'קיצור להגדרות',
-      subtitle: 'פתיחת מסך ההגדרות',
+      title: 'settings.search.shortcuts_nav_settings_title',
+      subtitle: 'settings.search.shortcuts_nav_settings_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['הגדרות', 'ctrl+comma', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_nav_settings_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.nav.tools',
-      title: 'קיצור לכלים',
-      subtitle: 'פתיחת מסך הכלים',
+      title: 'settings.search.shortcuts_nav_tools_title',
+      subtitle: 'settings.search.shortcuts_nav_tools_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['כלים', 'ctrl+m', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_nav_tools_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.nav.bookmarks',
-      title: 'קיצור לסימניות',
-      subtitle: 'פתיחת מסך הסימניות',
+      title: 'settings.search.shortcuts_nav_bookmarks_title',
+      subtitle: 'settings.search.shortcuts_nav_bookmarks_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['סימניות', 'ctrl+shift+b', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_nav_bookmarks_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.nav.history',
-      title: 'קיצור להיסטוריה',
-      subtitle: 'פתיחת מסך ההיסטוריה',
+      title: 'settings.search.shortcuts_nav_history_title',
+      subtitle: 'settings.search.shortcuts_nav_history_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['היסטוריה', 'ctrl+h', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_nav_history_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.nav.workspace',
-      title: 'קיצור להחלף שולחן עבודה',
-      subtitle: 'מעבר בין שולחנות עבודה',
+      title: 'settings.search.shortcuts_nav_workspace_title',
+      subtitle: 'settings.search.shortcuts_nav_workspace_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['שולחן עבודה', 'workspace', 'ctrl+k', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_nav_workspace_kw'],
     ),
     // ── תצוגת ספר ──
     SettingsSearchEntry(
       id: 'shortcuts.book.search_in_book',
-      title: 'קיצור לחיפוש בספר הפתוח',
-      subtitle: 'משמש לחיפוש מהיר במסכי תוכן וכלים תומכים',
+      title: 'settings.search.shortcuts_book_search_in_book_title',
+      subtitle: 'settings.search.shortcuts_book_search_in_book_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['חיפוש', 'בספר', 'ctrl+f', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_book_search_in_book_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.book.print',
-      title: 'קיצור להדפסה',
-      subtitle: 'הדפסת התוכן הנוכחי',
+      title: 'settings.search.shortcuts_book_print_title',
+      subtitle: 'settings.search.shortcuts_book_print_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['הדפסה', 'ctrl+p', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_book_print_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.book.bookmark',
-      title: 'קיצור להוסף סימניה',
-      subtitle: 'שמירת סימניה במיקום הנוכחי',
+      title: 'settings.search.shortcuts_book_bookmark_title',
+      subtitle: 'settings.search.shortcuts_book_bookmark_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['סימניה', 'הוסף סימניה', 'ctrl+b', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_book_bookmark_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.book.note',
-      title: 'קיצור להוספת הערה',
-      subtitle: 'הוספת הערה אישית',
+      title: 'settings.search.shortcuts_book_note_title',
+      subtitle: 'settings.search.shortcuts_book_note_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['הערה', 'אישית', 'ctrl+n', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_book_note_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.book.close',
-      title: 'קיצור לסגור ספר נוכחי',
-      subtitle: 'סגירת הספר הפתוח',
+      title: 'settings.search.shortcuts_book_close_title',
+      subtitle: 'settings.search.shortcuts_book_close_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['סגור ספר', 'ctrl+w', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_book_close_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.book.close_all',
-      title: 'קיצור לסגור כל הספרים',
-      subtitle: 'סגירת כל הספרים הפתוחים',
+      title: 'settings.search.shortcuts_book_close_all_title',
+      subtitle: 'settings.search.shortcuts_book_close_all_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['סגור הכל', 'ctrl+shift+w', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_book_close_all_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.book.restore_closed',
-      title: 'קיצור לפתיחת כרטיסייה אחרונה שנסגרה',
-      subtitle: 'שחזור הכרטיסייה האחרונה שנסגרה',
+      title: 'settings.search.shortcuts_book_restore_closed_title',
+      subtitle: 'settings.search.shortcuts_book_restore_closed_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['שחזור', 'כרטיסייה', 'ctrl+shift+t', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_book_restore_closed_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.book.toggle_nav_pane',
-      title: 'קיצור לפתח/סגור חלונית ניווט',
-      subtitle: 'טוגל לחלונית הניווט הצדדית',
+      title: 'settings.search.shortcuts_book_toggle_nav_pane_title',
+      subtitle: 'settings.search.shortcuts_book_toggle_nav_pane_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['ניווט', 'חלונית', 'ctrl+shift+l', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_book_toggle_nav_pane_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.book.toggle_commentators_pane',
-      title: 'קיצור לפתח/סגור חלונית מפרשים',
-      subtitle: 'טוגל לחלונית המפרשים בצד',
+      title: 'settings.search.shortcuts_book_toggle_commentators_pane_title',
+      subtitle: 'settings.search.shortcuts_book_toggle_commentators_pane_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['מפרשים', 'חלונית', 'ctrl+shift+c', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_book_toggle_commentators_pane_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.book.open_commentators_tab',
-      title: 'קיצור לפתיחת כרטיסיית מפרשים',
-      subtitle: 'פתיחת המפרשים בכרטיסייה נפרדת ליד הספר הנוכחי',
+      title: 'settings.search.shortcuts_book_open_commentators_tab_title',
+      subtitle: 'settings.search.shortcuts_book_open_commentators_tab_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['מפרשים', 'כרטיסייה', 'טאב', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_book_open_commentators_tab_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.book.toggle_pdf_view',
-      title: 'קיצור להחלפת מצב תצוגה PDF/טקסט',
-      subtitle: 'מעבר בין תצוגת PDF לתצוגת טקסט',
+      title: 'settings.search.shortcuts_book_toggle_pdf_view_title',
+      subtitle: 'settings.search.shortcuts_book_toggle_pdf_view_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['PDF', 'טקסט', 'תצוגה', 'מקלדת', 'ctrl+shift+p'],
+      keywords: ['settings.search.shortcuts_book_toggle_pdf_view_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.book.prev_toc',
@@ -229,51 +230,51 @@ class ShortcutsSettingsTab extends StatelessWidget {
     ),
     SettingsSearchEntry(
       id: 'shortcuts.calendar.toggle_times',
-      title: 'קיצור לפתיחה/סגירה זמני היום בלוח שנה',
-      subtitle: 'הצגה/הסתרה של זמני היום',
+      title: 'settings.search.shortcuts_calendar_toggle_times_title',
+      subtitle: 'settings.search.shortcuts_calendar_toggle_times_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['לוח שנה', 'זמנים', 'זמני היום', 'מקלדת', 'ctrl+t'],
+      keywords: ['settings.search.shortcuts_calendar_toggle_times_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.calendar.toggle_events',
-      title: 'קיצור לפתיחה/סגירה אירועים בלוח שנה',
-      subtitle: 'הצגה/הסתרה של אירועים',
+      title: 'settings.search.shortcuts_calendar_toggle_events_title',
+      subtitle: 'settings.search.shortcuts_calendar_toggle_events_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['לוח שנה', 'אירועים', 'מקלדת', 'ctrl+e'],
+      keywords: ['settings.search.shortcuts_calendar_toggle_events_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.calendar.today',
-      title: 'קיצור למעבר להיום בלוח שנה',
-      subtitle: 'ניווט מהיר לתאריך היום',
+      title: 'settings.search.shortcuts_calendar_today_title',
+      subtitle: 'settings.search.shortcuts_calendar_today_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['לוח שנה', 'היום', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_calendar_today_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.calendar.create_event',
-      title: 'קיצור ליצירת אירוע בלוח שנה',
-      subtitle: 'פתיחת חלון יצירת אירוע',
+      title: 'settings.search.shortcuts_calendar_create_event_title',
+      subtitle: 'settings.search.shortcuts_calendar_create_event_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['לוח שנה', 'אירוע', 'יצירה', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_calendar_create_event_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.calendar.toggle_view',
-      title: 'קיצור למעבר בין תצוגות לוח שנה',
-      subtitle: 'החלפה בין תצוגות שונות',
+      title: 'settings.search.shortcuts_calendar_toggle_view_title',
+      subtitle: 'settings.search.shortcuts_calendar_toggle_view_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['לוח שנה', 'תצוגה', 'מקלדת'],
+      keywords: ['settings.search.shortcuts_calendar_toggle_view_kw'],
     ),
     SettingsSearchEntry(
       id: 'shortcuts.shamor_zachor.cycle_filter',
-      title: 'קיצור למעבר בין סינונים בשמור וזכור',
-      subtitle: 'מחזור בין הסינונים השונים',
+      title: 'settings.search.shortcuts_shamor_zachor_cycle_filter_title',
+      subtitle: 'settings.search.shortcuts_shamor_zachor_cycle_filter_sub',
       tab: SettingsTab.shortcuts,
       cardId: 'shortcuts.main',
-      keywords: ['שמור וזכור', 'סינון', 'מקלדת', 'ctrl+s'],
+      keywords: ['settings.search.shortcuts_shamor_zachor_cycle_filter_kw'],
     ),
     // ── פתיחת כלים ──
     SettingsSearchEntry(
@@ -428,7 +429,7 @@ class ShortcutsSettingsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (Platform.isAndroid || Platform.isIOS) {
-      return const Center(child: Text('קיצורי מקשים זמינים רק בדסקטופ'));
+      return Center(child: Text('settings.shortcuts.desktop_only'.tr()));
     }
 
     return SingleChildScrollView(
@@ -553,15 +554,15 @@ class ShortcutsSettingsTab extends StatelessWidget {
         SettingsAnchor(
           cardId: 'shortcuts.main',
           child: SettingsCard(
-            title: 'כללי',
+            title: 'settings.shortcuts.general_section'.tr(),
             children: [
               SettingsActionTile.text(
                 icon: FluentIcons.arrow_reset_24_regular,
-                title: 'איפוס קיצורי מקשים',
-                subtitle: 'החזר את כל קיצורי המקשים לברירת המחדל',
+                title: 'settings.shortcuts.reset_title'.tr(),
+                subtitle: 'settings.shortcuts.reset_subtitle'.tr(),
                 actions: [
                   NeutralActionButton(
-                    text: 'איפוס',
+                    text: 'settings.shortcuts.reset_button'.tr(),
                     onPressed: () => _resetShortcuts(context),
                   ),
                 ],
@@ -574,59 +575,59 @@ class ShortcutsSettingsTab extends StatelessWidget {
 
         // ── ניווט כללי ────────────────────────────────────────────────
         SettingsCard(
-          title: 'ניווט כללי',
+          title: 'settings.shortcuts.general_navigation'.tr(),
           children: _onlyConfigured([
             _ShortcutTile(
               settingKey: 'key-shortcut-open-library-browser',
-              label: 'ספרייה',
+              label: 'settings.shortcuts.library'.tr(),
               icon: FluentIcons.library_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-open-find-ref',
-              label: 'איתור',
+              label: 'settings.shortcuts.find_ref'.tr(),
               icon: FluentIcons.book_search_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-open-reading-screen',
-              label: 'עיון',
+              label: 'settings.shortcuts.reading_screen'.tr(),
               icon: FluentIcons.book_open_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-open-new-search',
-              label: 'חיפוש חדש בכל הספרים',
+              label: 'settings.shortcuts.new_search'.tr(),
               icon: FluentIcons.search_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-open-settings',
-              label: 'הגדרות',
+              label: 'settings.shortcuts.settings'.tr(),
               icon: FluentIcons.settings_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-open-more',
-              label: 'כלים',
+              label: 'settings.shortcuts.tools'.tr(),
               icon: FluentIcons.apps_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-open-bookmarks',
-              label: 'סימניות',
+              label: 'settings.shortcuts.bookmarks'.tr(),
               icon: FluentIcons.bookmark_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-open-history',
-              label: 'היסטוריה',
+              label: 'settings.shortcuts.history'.tr(),
               icon: FluentIcons.history_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-switch-workspace',
-              label: 'החלף שולחן עבודה',
+              label: 'settings.shortcuts.switch_workspace'.tr(),
               icon: FluentIcons.grid_24_regular,
               allShortcuts: _shortcutsList,
             ),
@@ -637,72 +638,73 @@ class ShortcutsSettingsTab extends StatelessWidget {
 
         // ── תצוגת ספר ─────────────────────────────────────────────────
         SettingsCard(
-          title: 'תצוגת ספר',
+          title: 'settings.shortcuts.book_view'.tr(),
           children: _onlyConfigured([
             _ShortcutTile(
               settingKey: ShortcutValidator.currentWindowSearchKey,
-              label: 'חיפוש בספר הפתוח',
-              subtitle: 'משמש לחיפוש מהיר במסכי ספרים פתוחים',
+              label: 'settings.shortcuts.current_window_search'.tr(),
+              subtitle:
+                  'settings.shortcuts.current_window_search_subtitle'.tr(),
               icon: FluentIcons.search_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-print',
-              label: 'הדפסה',
+              label: 'settings.shortcuts.print'.tr(),
               icon: FluentIcons.print_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-add-bookmark',
-              label: 'הוסף סימניה',
+              label: 'settings.shortcuts.add_bookmark'.tr(),
               icon: FluentIcons.bookmark_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-add-note',
-              label: 'הוספת הערה',
+              label: 'settings.shortcuts.add_note'.tr(),
               icon: FluentIcons.note_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-close-tab',
-              label: 'סגור ספר נוכחי',
+              label: 'settings.shortcuts.close_tab'.tr(),
               icon: FluentIcons.dismiss_circle_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-close-all-tabs',
-              label: 'סגור כל הספרים',
+              label: 'settings.shortcuts.close_all_tabs'.tr(),
               icon: FluentIcons.dismiss_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-restore-closed-tab',
-              label: 'פתח כרטיסייה אחרונה שנסגרה',
+              label: 'settings.shortcuts.restore_closed_tab'.tr(),
               icon: FluentIcons.arrow_undo_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-toggle-nav-pane',
-              label: 'פתח/סגור חלונית ניווט',
+              label: 'settings.shortcuts.toggle_nav_pane'.tr(),
               icon: FluentIcons.panel_left_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-toggle-commentators-pane',
-              label: 'פתח/סגור חלונית מפרשים',
+              label: 'settings.shortcuts.toggle_commentators_pane'.tr(),
               icon: FluentIcons.book_open_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-toggle-pdf-view',
-              label: 'החלף מצב תצוגה (PDF/טקסט)',
+              label: 'settings.shortcuts.toggle_pdf_view'.tr(),
               icon: FluentIcons.document_pdf_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-open-commentators-tab',
-              label: 'פתח כרטיסיית מפרשים',
+              label: 'settings.shortcuts.open_commentators_tab'.tr(),
               icon: FluentIcons.open_24_regular,
               allShortcuts: _shortcutsList,
             ),
@@ -737,41 +739,41 @@ class ShortcutsSettingsTab extends StatelessWidget {
 
         // ── לוח שנה ושמור וזכור ───────────────────────────────────────
         SettingsCard(
-          title: 'לוח שנה ושמור וזכור',
+          title: 'settings.shortcuts.calendar_section'.tr(),
           children: _onlyConfigured([
             _ShortcutTile(
               settingKey: 'key-shortcut-calendar-toggle-times',
-              label: 'לוח שנה: פתיחה/סגירה זמני היום',
+              label: 'settings.shortcuts.calendar_toggle_times'.tr(),
               icon: FluentIcons.clock_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-calendar-toggle-events',
-              label: 'לוח שנה: פתיחה/סגירה אירועים',
+              label: 'settings.shortcuts.calendar_toggle_events'.tr(),
               icon: FluentIcons.calendar_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-calendar-today',
-              label: 'לוח שנה: מעבר להיום',
+              label: 'settings.shortcuts.calendar_today'.tr(),
               icon: FluentIcons.calendar_today_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-calendar-create-event',
-              label: 'לוח שנה: יצירת אירוע',
+              label: 'settings.shortcuts.calendar_create_event'.tr(),
               icon: FluentIcons.calendar_add_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-calendar-toggle-view',
-              label: 'לוח שנה: מעבר בין תצוגות',
+              label: 'settings.shortcuts.calendar_toggle_view'.tr(),
               icon: FluentIcons.calendar_multiple_24_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-shamor-zachor-cycle-filter',
-              label: 'שמור וזכור: מעבר בין הסינונים',
+              label: 'settings.shortcuts.shamor_zachor_cycle_filter'.tr(),
               icon: FluentIcons.filter_24_regular,
               allShortcuts: _shortcutsList,
             ),
@@ -812,17 +814,17 @@ class ShortcutsSettingsTab extends StatelessWidget {
         if (unconfiguredKeys.isNotEmpty) ...[
           kSettingsCardSpacing,
           SettingsCard(
-            title: 'פעולות זמינות לקיצור',
-            subtitle:
-                'פעולות הקיימות באפליקציה ועדיין לא הוגדר להן קיצור מקלדת',
+            title: 'settings.shortcuts.available_section'.tr(),
+            subtitle: 'settings.shortcuts.available_subtitle'.tr(),
             children: [
               SettingsActionTile.text(
                 icon: FluentIcons.add_24_regular,
-                title: 'הוסף קיצור לפעולה זמינה',
-                subtitle: '${unconfiguredKeys.length} פעולות זמינות',
+                title: 'settings.shortcuts.available_add_title'.tr(),
+                subtitle: 'settings.shortcuts.available_count'.tr(
+                    namedArgs: {'count': unconfiguredKeys.length.toString()}),
                 actions: [
                   RecommendedActionButton(
-                    text: 'הוסף קיצור',
+                    text: 'settings.shortcuts.available_add_button'.tr(),
                     onPressed: () => _addShortcut(context, unconfiguredKeys),
                   ),
                 ],
@@ -879,7 +881,8 @@ class ShortcutsSettingsTab extends StatelessWidget {
 
     if (conflictingNames.isNotEmpty) {
       UiSnack.showError(
-        'קיצור זה כבר בשימוש עבור: ${conflictingNames.join(', ')}',
+        'settings.shortcuts.conflict_in_use'
+            .tr(namedArgs: {'names': conflictingNames.join(', ')}),
       );
       return;
     }
@@ -890,13 +893,13 @@ class ShortcutsSettingsTab extends StatelessWidget {
   Future<void> _resetShortcuts(BuildContext context) async {
     final confirmed = await showWarningDialog(
       context: context,
-      title: 'איפוס קיצורי מקשים?',
-      content: 'כל קיצורי המקשים המותאמים אישית יאופסו לברירת המחדל.',
-      subtitle: 'פעולה זו אינה הפיכה',
+      title: 'settings.shortcuts.reset_confirm_title'.tr(),
+      content: 'settings.shortcuts.reset_confirm_content'.tr(),
+      subtitle: 'settings.shortcuts.reset_confirm_subtitle'.tr(),
     );
     if (confirmed == true && context.mounted) {
       context.read<SettingsBloc>().add(ResetShortcuts());
-      UiSnack.showSuccess('קיצורי המקשים אופסו בהצלחה');
+      UiSnack.showSuccess('settings.shortcuts.reset_success'.tr());
     }
   }
 }
@@ -953,8 +956,8 @@ class _PickActionDialog extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return AlertDialog(
       backgroundColor: cs.surfaceContainerHigh,
-      title: const Text(
-        'בחר פעולה להוספת קיצור',
+      title: Text(
+        'settings.shortcuts.pick_action_title'.tr(),
       ),
       content: SizedBox(
         width: 420,
@@ -980,7 +983,7 @@ class _PickActionDialog extends StatelessWidget {
             backgroundColor: cs.secondaryContainer,
             foregroundColor: cs.onSecondaryContainer,
           ),
-          child: const Text('ביטול'),
+          child: Text('common.cancel'.tr()),
         ),
       ],
     );

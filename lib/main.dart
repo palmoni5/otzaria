@@ -7,6 +7,7 @@ library;
 
 import 'dart:async';
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show FrameCallback;
@@ -59,6 +60,7 @@ import 'package:otzaria_search_engine/otzaria_search_engine.dart';
 import 'package:otzaria/core/app_paths.dart';
 import 'package:otzaria/core/error_log_file.dart';
 import 'package:otzaria/core/external_activation_queue.dart';
+import 'package:otzaria/core/locale_service.dart';
 import 'package:otzaria/core/portable_paths.dart';
 import 'package:otzaria/core/window_listener.dart';
 import 'package:otzaria/core/window_persistence.dart';
@@ -270,6 +272,8 @@ void main(List<String> args) async {
   // ינהל אותו בעצמו. ראו "ניהול הבהוב הסמן" ב-rtl_text_field.dart.
   EditableText.debugDeterministicCursor = true;
 
+  await EasyLocalization.ensureInitialized();
+  await LocaleService.initialize();
   await _initializeDataRootForEarlyLogging();
   await _initializeLogMetadata();
   hierarchicalLoggingEnabled = true;
@@ -453,7 +457,13 @@ Future<void> _runAppBootstrap() async {
   runApp(
     SentryWidget(
       child: RestartWidget(
-        child: const AppBootstrap(),
+        child: EasyLocalization(
+          supportedLocales: LocaleService.availableLocales,
+          path: 'assets/translations',
+          fallbackLocale: const Locale('he', 'IL'),
+          startLocale: const Locale('he', 'IL'),
+          child: const AppBootstrap(),
+        ),
       ),
     ),
   );
@@ -956,10 +966,13 @@ class _AppBootstrapState extends State<AppBootstrap> {
     if (_error != null) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
+        localizationsDelegates: context.localizationDelegates,
+        supportedLocales: context.supportedLocales,
+        locale: context.locale,
         home: Scaffold(
           body: Center(
             child: Text(
-              'שגיאת אתחול: $_error',
+              'app.init_error'.tr(namedArgs: {'error': _error.toString()}),
               textDirection: TextDirection.rtl,
             ),
           ),

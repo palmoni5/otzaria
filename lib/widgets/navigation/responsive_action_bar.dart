@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:otzaria/theme/theme_exports.dart';
@@ -232,7 +233,7 @@ class _ResponsiveActionBarState extends State<ResponsiveActionBar> {
         final menuButton = AppPopupMenuButton<ActionButtonData>(
           key: widget.overflowButtonKey,
           iconData: FluentIcons.more_vertical_24_regular,
-          tooltip: 'עוד פעולות',
+          tooltip: 'widgets.more_actions'.tr(),
           position: PopupMenuPosition.under,
           offset: widget.overflowMenuOffset,
           onSelected: (action) {

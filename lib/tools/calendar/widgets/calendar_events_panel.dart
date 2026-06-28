@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -47,12 +48,12 @@ class _CalendarEventsPanelState extends State<CalendarEventsPanel> {
 
   String _resolveEmptyEventsMessage(CalendarState state) {
     if (state.eventSearchQuery.isNotEmpty) {
-      return 'לא נמצאו אירועים מתאימים';
+      return 'calendar.no_matching_events'.tr();
     }
     if (state.showAllEvents) {
-      return 'אין אירועים במערכת';
+      return 'calendar.no_events'.tr();
     }
-    return 'אין אירועים ביום זה';
+    return 'calendar.no_events_today'.tr();
   }
 
   @override
@@ -87,7 +88,7 @@ class _CalendarEventsPanelState extends State<CalendarEventsPanel> {
               Expanded(
                 child: OtzariaSearchField(
                   controller: _searchController,
-                  hintText: 'חפש אירועים...',
+                  hintText: 'calendar.search_events_hint'.tr(),
                   onChanged: (query) =>
                       context.read<CalendarCubit>().setEventSearchQuery(query),
                   onClear: () =>
@@ -97,8 +98,8 @@ class _CalendarEventsPanelState extends State<CalendarEventsPanel> {
               const SizedBox(width: 8),
               ToolbarActionButton(
                 tooltip: widget.state.searchInDescriptions
-                    ? 'חפש רק בכותרת'
-                    : 'חפש גם בתיאור',
+                    ? 'calendar.search_title_only'.tr()
+                    : 'calendar.search_in_description'.tr(),
                 icon: widget.state.searchInDescriptions
                     ? FluentIcons.document_text_24_regular
                     : FluentIcons.text_t_24_regular,
@@ -116,15 +117,15 @@ class _CalendarEventsPanelState extends State<CalendarEventsPanel> {
             alignment: WrapAlignment.spaceBetween,
             children: [
               RecommendedActionButton(
-                text: 'צור אירוע',
+                text: 'calendar.create_event'.tr(),
                 icon: FluentIcons.add_24_regular,
                 onPressed: () => widget.onCreateEvent(),
               ),
               if (widget.state.googleCalendarEnabled)
                 ToolbarActionButton(
                   tooltip: widget.state.googleCalendarConnected
-                      ? 'סנכרן Google'
-                      : 'חבר ל-Google',
+                      ? 'calendar.sync_google'.tr()
+                      : 'calendar.connect_google'.tr(),
                   icon: FluentIcons.arrow_sync_24_regular,
                   selected: widget.state.googleCalendarSyncInProgress,
                   onPressed: widget.state.googleCalendarSyncInProgress
@@ -139,7 +140,9 @@ class _CalendarEventsPanelState extends State<CalendarEventsPanel> {
                         },
                 ),
               NeutralActionButton(
-                text: widget.state.showAllEvents ? 'הצג יום נוכחי' : 'הצג הכל',
+                text: widget.state.showAllEvents
+                    ? 'calendar.show_current_day'.tr()
+                    : 'calendar.show_all'.tr(),
                 icon: widget.state.showAllEvents
                     ? FluentIcons.calendar_month_24_regular
                     : FluentIcons.calendar_day_24_regular,
@@ -181,10 +184,10 @@ class _CalendarEventsPanelState extends State<CalendarEventsPanel> {
                   onPressed: () async {
                     final confirmed = await showConfirmationDialog(
                       context: context,
-                      title: 'אישור מחיקה',
-                      content:
-                          'האם אתה בטוח שברצונך למחוק את האירוע "${event.title}"?',
-                      confirmText: 'מחק',
+                      title: 'calendar.delete_confirm_title'.tr(),
+                      content: 'calendar.delete_event_confirm'
+                          .tr(namedArgs: {'title': event.title}),
+                      confirmText: 'calendar.delete'.tr(),
                       isDangerous: true,
                     );
                     if (confirmed == true && context.mounted) {
@@ -197,7 +200,7 @@ class _CalendarEventsPanelState extends State<CalendarEventsPanel> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     ToolbarActionButton(
-                      tooltip: 'ערוך אירוע',
+                      tooltip: 'calendar.edit_event'.tr(),
                       icon: FluentIcons.edit_24_regular,
                       onPressed: () => widget.onCreateEvent(
                         existingEvent: event,
@@ -252,7 +255,7 @@ class _CalendarEventsPanelState extends State<CalendarEventsPanel> {
                               : FluentIcons.calendar_day_24_filled,
                           text: event.eventTime != null
                               ? '${event.eventTime!.hour.toString().padLeft(2, '0')}:${event.eventTime!.minute.toString().padLeft(2, '0')}'
-                              : 'כל היום',
+                              : 'calendar.all_day'.tr(),
                           backgroundColor: event.eventTime != null
                               ? scheme.primaryContainer
                               : scheme.secondaryContainer,
@@ -351,14 +354,14 @@ class _DeleteEventAction extends StatelessWidget {
   Widget build(BuildContext context) {
     if (iconOnly) {
       return ToolbarActionButton(
-        tooltip: 'מחק אירוע',
+        tooltip: 'calendar.delete_event'.tr(),
         icon: FluentIcons.delete_24_regular,
         onPressed: onPressed,
       );
     }
 
     return NeutralActionButton(
-      text: 'מחק',
+      text: 'calendar.delete'.tr(),
       onPressed: onPressed,
     );
   }

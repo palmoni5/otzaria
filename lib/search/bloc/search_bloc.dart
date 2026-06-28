@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/indexing/repository/indexing_repository.dart';
 import 'package:otzaria/search/bloc/search_event.dart';
@@ -222,12 +223,12 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
       // (1) toast מיידי דרך UiSnack, וגם (2) שדה errorMessage ב-state כדי
       // שה-UI יציג שגיאה במקום "אין תוצאות" באופן מתמשך עד החיפוש הבא.
       debugPrint('❌ Search failed: $e\n$stackTrace');
-      UiSnack.showError('אירעה שגיאה בעת החיפוש');
+      UiSnack.showError('search.error_occurred'.tr());
       emit(state.copyWith(
         results: [],
         totalResults: 0,
         isLoading: false,
-        errorMessage: 'אירעה שגיאה בעת החיפוש',
+        errorMessage: 'search.error_occurred'.tr(),
       ));
     }
   }
@@ -305,7 +306,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
       // הסינון נורה על כל הקלדה, אך UiSnack מחזיק overlay יחיד שמתרענן
       // (לא נערם), כך שאין הצפת toasts גם אם הכשל מתמשך.
       debugPrint('❌ Book filter failed: $e\n$stackTrace');
-      UiSnack.showError('אירעה שגיאה בסינון הספרים');
+      UiSnack.showError('search.filter_books_error'.tr());
       emit(state.copyWith(
         filterQuery: event.query,
         filteredBooks: null,
@@ -712,7 +713,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
       ));
     } catch (e, stackTrace) {
       debugPrint('❌ Load more results failed: $e\n$stackTrace');
-      UiSnack.showError('אירעה שגיאה בטעינת תוצאות נוספות');
+      UiSnack.showError('search.load_more_error'.tr());
       emit(state.copyWith(isLoading: false));
     }
   }

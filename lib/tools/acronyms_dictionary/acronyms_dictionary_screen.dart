@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -66,7 +67,8 @@ class _AcronymsDictionaryScreenState extends State<AcronymsDictionaryScreen> {
       setState(() {
         _isLoading = false;
       });
-      UiSnack.showError('שגיאה בטעינת המילון: $e');
+      UiSnack.showError(
+          'dictionary.load_error'.tr(namedArgs: {'error': e.toString()}));
     }
   }
 
@@ -120,7 +122,7 @@ class _AcronymsDictionaryScreenState extends State<AcronymsDictionaryScreen> {
             center: OtzariaSearchField(
               controller: _searchController,
               focusNode: _searchFocusNode,
-              hintText: 'חפש ראשי תיבות...',
+              hintText: 'dictionary.acronyms.hint'.tr(),
               autofocus: true,
               onChanged: _performSearch,
               onClear: () => setState(() => _filteredResults = []),
@@ -138,16 +140,16 @@ class _AcronymsDictionaryScreenState extends State<AcronymsDictionaryScreen> {
 
   Widget _buildResultsList() {
     if (_searchController.text.isEmpty) {
-      return const ToolEmptyState(
+      return ToolEmptyState(
         icon: FluentIcons.text_quote_24_regular,
-        message: 'הזן ראשי תיבות לחיפוש במילון',
+        message: 'dictionary.acronyms.empty'.tr(),
       );
     }
 
     if (_filteredResults.isEmpty) {
-      return const ToolEmptyState(
+      return ToolEmptyState(
         icon: FluentIcons.search_24_regular,
-        message: 'לא נמצאו תוצאות',
+        message: 'dictionary.no_results'.tr(),
       );
     }
 

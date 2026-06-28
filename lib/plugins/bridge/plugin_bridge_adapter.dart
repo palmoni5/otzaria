@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -912,13 +913,15 @@ class PluginBridgeAdapter {
         return true;
       case 'showConfirm':
         final result = await _dependencies.showConfirmDialog(
-          title: args['title'] as String? ?? 'אישור',
+          title: args['title'] as String? ??
+              'plugins.bridge.default_confirm_title'.tr(),
           content: args['content'] as String? ?? '',
         );
         return {'confirmed': result};
       case 'showWarning':
         final result = await _dependencies.showWarningDialog(
-          title: args['title'] as String? ?? 'אזהרה',
+          title: args['title'] as String? ??
+              'plugins.bridge.default_warning_title'.tr(),
           content: args['content'] as String? ?? '',
           subtitle: args['subtitle'] as String? ?? '',
         );
@@ -1388,9 +1391,12 @@ class PluginBridgeAdapter {
         if (includeSystemInfo) {
           final packageInfo = await PackageInfo.fromPlatform();
           finalBody += '\n\n---\n';
-          finalBody += 'גרסה: ${packageInfo.version}\n';
-          finalBody += 'פלטפורמה: ${Platform.operatingSystem}\n';
-          finalBody += 'תוסף: ${plugin.name} (${plugin.pluginId})\n';
+          finalBody += 'plugins.bridge.email_app_version'
+              .tr(namedArgs: {'version': packageInfo.version});
+          finalBody += 'plugins.bridge.email_platform'
+              .tr(namedArgs: {'platform': Platform.operatingSystem});
+          finalBody += 'plugins.bridge.email_plugin'.tr(
+              namedArgs: {'name': plugin.name, 'id': plugin.pluginId});
         }
 
         final emailUri = Uri(
@@ -1664,10 +1670,11 @@ class PluginBridgeAdapter {
 
   /// Build notification details for all platforms
   NotificationDetails _buildNotificationDetails() {
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'plugin_channel',
-      'התראות תוספים',
-      channelDescription: 'התראות מתוספי אוצריא',
+      'plugins.bridge.notifications_channel_name'.tr(),
+      channelDescription:
+          'plugins.bridge.notifications_channel_description'.tr(),
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
@@ -1682,7 +1689,7 @@ class PluginBridgeAdapter {
 
     const windowsDetails = WindowsNotificationDetails();
 
-    return const NotificationDetails(
+    return NotificationDetails(
       android: androidDetails,
       iOS: iOSDetails,
       macOS: iOSDetails,

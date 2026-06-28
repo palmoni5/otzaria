@@ -149,12 +149,12 @@ void main() {
           const _PluginDesc('plugin.regular', 900),
         ],
         groupDefs: const [
-          (label: 'לוח שנה', toolIds: <String>['builtin.calendar']),
+          (labelKey: 'tools.group_calendar', toolIds: <String>['builtin.calendar']),
         ],
       );
 
-      expect(
-          groups.map((g) => g.label).toList(), ['תוספים', 'לוח שנה', 'תוספים']);
+      expect(groups.map((g) => g.label).toList(),
+          ['tools.group_plugins', 'tools.group_calendar', 'tools.group_plugins']);
       expect(
         groups.expand((g) => g.tools).map((d) => d.toolId).toList(),
         ['plugin.leading', 'builtin.calendar', 'plugin.regular'],
@@ -169,13 +169,13 @@ void main() {
           const _PluginDesc('plugin.regular', 900),
         ],
         groupDefs: const [
-          (label: 'לוח שנה', toolIds: <String>['builtin.calendar']),
-          (label: 'תורה שלמדתי', toolIds: <String>['builtin.notes']),
+          (labelKey: 'tools.group_calendar', toolIds: <String>['builtin.calendar']),
+          (labelKey: 'tools.group_notes', toolIds: <String>['builtin.notes']),
         ],
       );
 
       expect(groups.map((g) => g.label).toList(),
-          ['לוח שנה', 'תורה שלמדתי', 'תוספים']);
+          ['tools.group_calendar', 'tools.group_notes', 'tools.group_plugins']);
       expect(
           groups.last.tools.map((d) => d.toolId).toList(), ['plugin.regular']);
     });

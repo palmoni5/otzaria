@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:otzaria/widgets/misc/keyboard_dialog_navigation.dart';
 
@@ -5,8 +6,8 @@ import 'package:otzaria/widgets/misc/keyboard_dialog_navigation.dart';
 class ConfirmationDialog extends StatefulWidget {
   final String title;
   final String content;
-  final String cancelText;
-  final String confirmText;
+  final String? cancelText;
+  final String? confirmText;
   final Color? confirmColor;
   final bool isDangerous;
 
@@ -14,8 +15,8 @@ class ConfirmationDialog extends StatefulWidget {
     super.key,
     required this.title,
     required this.content,
-    this.cancelText = 'ביטול',
-    this.confirmText = 'אישור',
+    this.cancelText,
+    this.confirmText,
     this.confirmColor,
     this.isDangerous = false,
   });
@@ -36,12 +37,12 @@ class _ConfirmationDialogState extends State<ConfirmationDialog>
         content: Text(widget.content),
         actions: [
           _buildButton(
-            text: widget.cancelText,
+            text: widget.cancelText ?? 'common.cancel'.tr(),
             isFocused: focusedButtonIndex == 0,
             onPressed: () => Navigator.of(context).pop(false),
           ),
           _buildButton(
-            text: widget.confirmText,
+            text: widget.confirmText ?? 'common.ok'.tr(),
             isFocused: focusedButtonIndex == 1,
             isConfirm: true,
             onPressed: () => Navigator.of(context).pop(true),
@@ -108,8 +109,8 @@ Future<bool?> showConfirmationDialog({
   required BuildContext context,
   required String title,
   required String content,
-  String cancelText = 'ביטול',
-  String confirmText = 'אישור',
+  String? cancelText,
+  String? confirmText,
   Color? confirmColor,
   bool isDangerous = false,
   bool barrierDismissible = true,

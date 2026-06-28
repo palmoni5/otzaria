@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/phone_report_data.dart';
@@ -34,7 +35,8 @@ class PhoneReportService {
         debugPrint('Response body: ${response.body}');
 
         if (response.statusCode == 200) {
-          return PhoneReportResult.success('הדיווח נשלח בהצלחה');
+          return PhoneReportResult.success(
+              'services.phone_report_success'.tr());
         } else if (response.statusCode >= 400 && response.statusCode < 500) {
           // Client error - don't retry
           return PhoneReportResult.error(
@@ -43,56 +45,59 @@ class PhoneReportService {
           // Server error - retry if not last attempt
           if (attempt == _maxRetries) {
             return PhoneReportResult.error(
-                'השרת אינו זמין כעת. נסה שוב מאוחר יותר');
+                'services.phone_report_server_unavailable'.tr());
           }
           // Continue to next attempt
           await Future.delayed(Duration(seconds: attempt));
           continue;
         } else {
           return PhoneReportResult.error(
-              'שגיאה לא צפויה: ${response.statusCode}');
+              'services.phone_report_unexpected_status'
+                  .tr(namedArgs: {'status': '${response.statusCode}'}));
         }
       } on SocketException catch (e) {
         debugPrint('Network error on attempt $attempt: $e');
         if (attempt == _maxRetries) {
           return PhoneReportResult.error(
-              'אין חיבור לאינטרנט. בדוק את החיבור ונסה שוב');
+              'services.phone_report_no_connection'.tr());
         }
         await Future.delayed(Duration(seconds: attempt));
       } on http.ClientException catch (e) {
         debugPrint('HTTP client error on attempt $attempt: $e');
         if (attempt == _maxRetries) {
           return PhoneReportResult.error(
-              'שגיאה בשליחת הנתונים. נסה שוב מאוחר יותר');
+              'services.phone_report_send_error'.tr());
         }
         await Future.delayed(Duration(seconds: attempt));
       } on Exception catch (e) {
         debugPrint('Unexpected error on attempt $attempt: $e');
         if (attempt == _maxRetries) {
-          return PhoneReportResult.error('שגיאה לא צפויה. נסה שוב מאוחר יותר');
+          return PhoneReportResult.error(
+              'services.phone_report_unexpected_retry'.tr());
         }
         await Future.delayed(Duration(seconds: attempt));
       }
     }
 
-    return PhoneReportResult.error('שגיאה לא צפויה');
+    return PhoneReportResult.error('services.phone_report_unexpected'.tr());
   }
 
   /// Get user-friendly error message for client errors
   String _getClientErrorMessage(int statusCode) {
     switch (statusCode) {
       case 400:
-        return 'שגיאה בנתוני הדיווח. בדוק שכל השדות מלאים';
+        return 'services.phone_report_bad_data'.tr();
       case 401:
-        return 'שגיאת הרשאה. פנה לתמיכה טכנית';
+        return 'services.phone_report_auth_error'.tr();
       case 403:
-        return 'אין הרשאה לשלוח דיווח. פנה לתמיכה טכנית';
+        return 'services.phone_report_no_permission'.tr();
       case 404:
-        return 'שירות הדיווח אינו זמין. פנה לתמיכה טכנית';
+        return 'services.phone_report_service_unavailable'.tr();
       case 429:
-        return 'יותר מדי בקשות. המתן מספר דקות ונסה שוב';
+        return 'services.phone_report_too_many_requests'.tr();
       default:
-        return 'שגיאה בשליחת הנתונים ($statusCode)';
+        return 'services.phone_report_send_error_status'
+            .tr(namedArgs: {'status': '$statusCode'});
     }
   }
 

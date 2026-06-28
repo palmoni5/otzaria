@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
@@ -54,14 +55,14 @@ class ContextMenuUtils {
   }) {
     return [
       AppContextMenuEntry(
-        label: 'העתק',
+        label: 'utils.menu_copy'.tr(),
         icon: FluentIcons.copy_24_regular,
         enabled:
             savedSelectedText != null && savedSelectedText.trim().isNotEmpty,
         onTap: onCopySelected,
       ),
       AppContextMenuEntry(
-        label: 'העתק את כל הפסקה',
+        label: 'utils.menu_copy_paragraph'.tr(),
         icon: FluentIcons.document_copy_24_regular,
         onTap: () => copyCommentaryParagraph(
           context: context,
@@ -71,7 +72,7 @@ class ContextMenuUtils {
       ),
       const AppContextMenuEntry.divider(),
       AppContextMenuEntry(
-        label: 'פתח ספר זה בחלון נפרד',
+        label: 'utils.menu_open_in_new_window'.tr(),
         icon: FluentIcons.open_24_regular,
         onTap: () {
           openBookCallback(TextBookTab(
@@ -97,7 +98,7 @@ class ContextMenuUtils {
 
       final content = await link.content;
       if (content.trim().isEmpty) {
-        UiSnack.show('אין תוכן להעתקה');
+        UiSnack.show('utils.no_content_to_copy'.tr());
         return;
       }
 
@@ -159,11 +160,11 @@ class ContextMenuUtils {
         item.add(Formats.plainText(copyContent.plainText));
         item.add(Formats.htmlText(htmlText));
         await clipboard.write([item]);
-        UiSnack.show('הפסקה הועתקה בהצלחה');
+        UiSnack.show('utils.paragraph_copied'.tr());
       }
     } catch (e) {
       debugPrint('Error copying commentary paragraph: $e');
-      UiSnack.showError('שגיאה בהעתקת הפסקה');
+      UiSnack.showError('utils.paragraph_copy_error'.tr());
     }
   }
 
@@ -177,7 +178,7 @@ class ContextMenuUtils {
     final plainText = savedSelectedText;
 
     if (plainText == null || plainText.trim().isEmpty) {
-      UiSnack.show('אנא בחר טקסט להעתקה');
+      UiSnack.show('snack.no_text_selected'.tr());
       return;
     }
 
@@ -218,11 +219,11 @@ class ContextMenuUtils {
         item.add(Formats.htmlText(htmlText));
 
         await clipboard.write([item]);
-        UiSnack.show('הטקסט הועתק');
+        UiSnack.show('snack.text_copied'.tr());
       }
     } catch (e) {
       debugPrint('Error copying text: $e');
-      UiSnack.showError('שגיאה בהעתקת הטקסט');
+      UiSnack.showError('utils.text_copy_error'.tr());
     }
   }
 }

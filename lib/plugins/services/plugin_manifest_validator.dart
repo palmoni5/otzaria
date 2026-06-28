@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:path/path.dart' as p;
 import 'package:otzaria/plugins/models/plugin_manifest.dart';
 import 'package:otzaria/plugins/models/plugin_valid_permissions.dart';
@@ -14,16 +15,16 @@ class PluginManifestValidator {
   }) async {
     if (manifest.schemaVersion != 1) {
       throw Exception(
-          'גרסת סכמה ${manifest.schemaVersion} של התוסף אינה נתמכת');
+          'plugins.manifest_validator.schema_version_unsupported'.tr(
+              namedArgs: {'version': manifest.schemaVersion.toString()}));
     }
 
     if (!RegExp(r'^[a-z0-9_.-]+$').hasMatch(manifest.id)) {
-      throw Exception('מזהה התוסף אינו תקין');
+      throw Exception('plugins.manifest_validator.invalid_id'.tr());
     }
 
     if (!RegExp(r'^\d+\.\d+\.\d+(?:\+.*)?$').hasMatch(manifest.version)) {
-      throw Exception(
-          'גרסת התוסף במניפסט אינה חוקית. נדרש פורמט SemVer חוקיות.');
+      throw Exception('plugins.manifest_validator.invalid_version'.tr());
     }
 
     int compareVersionsStrict(String v1, String v2) {
@@ -38,13 +39,21 @@ class PluginManifestValidator {
       if (compareVersionsStrict(currentAppVersion, manifest.minAppVersion) <
           0) {
         throw Exception(
-            'התוסף דורש אוצריא בגרסה ${manifest.minAppVersion} לפחות, אך מותקנת $currentAppVersion');
+            'plugins.manifest_validator.min_app_version_required'.tr(
+                namedArgs: {
+              'min': manifest.minAppVersion,
+              'current': currentAppVersion
+            }));
       }
       if (manifest.maxAppVersion != null &&
           compareVersionsStrict(currentAppVersion, manifest.maxAppVersion!) >
               0) {
         throw Exception(
-            'התוסף מיועד לאוצריא עד גרסה ${manifest.maxAppVersion} בלבד, אך מותקנת $currentAppVersion');
+            'plugins.manifest_validator.max_app_version_required'.tr(
+                namedArgs: {
+              'max': manifest.maxAppVersion!,
+              'current': currentAppVersion
+            }));
       }
     }
 
@@ -52,16 +61,19 @@ class PluginManifestValidator {
       if (!pluginValidPermissions.contains(perm)) {
         final hint = apiCallToPermissionHint[perm];
         if (hint != null) {
-          throw Exception('הרשאה לא חוקית: "$perm". האם התכוונת ל-"$hint"?');
+          throw Exception(
+              'plugins.manifest_validator.invalid_permission_with_hint'
+                  .tr(namedArgs: {'perm': perm, 'hint': hint}));
         }
-        throw Exception('הרשאה לא חוקית שנדרשת על ידי התוסף: $perm');
+        throw Exception('plugins.manifest_validator.invalid_permission'
+            .tr(namedArgs: {'perm': perm}));
       }
     }
 
     if (manifest.databaseSources.isNotEmpty &&
         !manifest.permissions.contains('database.read')) {
       throw Exception(
-          'התוסף מצהיר על contributes.databaseSources אך לא מבקש את ההרשאה database.read');
+          'plugins.manifest_validator.database_read_missing'.tr());
     }
 
     for (final source in manifest.databaseSources) {
@@ -71,18 +83,19 @@ class PluginManifestValidator {
 
       if (id is! String || id.isEmpty) {
         throw Exception(
-            'כל ערך ב-contributes.databaseSources חייב לכלול id מסוג string');
+            'plugins.manifest_validator.db_source_id_required'.tr());
       }
       if (!RegExp(r'^[a-z0-9_.-]+$').hasMatch(id)) {
-        throw Exception('מזהה מקור מסד נתונים אינו תקין: "$id"');
+        throw Exception('plugins.manifest_validator.db_source_id_invalid'
+            .tr(namedArgs: {'id': id}));
       }
       if (label != null && label is! String) {
         throw Exception(
-            'השדה label ב-contributes.databaseSources חייב להיות string');
+            'plugins.manifest_validator.db_source_label_invalid'.tr());
       }
       if (required != null && required is! bool) {
         throw Exception(
-            'השדה required ב-contributes.databaseSources חייב להיות bool');
+            'plugins.manifest_validator.db_source_required_invalid'.tr());
       }
     }
 
@@ -90,19 +103,20 @@ class PluginManifestValidator {
     if (iconName != null &&
         !PluginManifest.toolTabIconNamePattern.hasMatch(iconName)) {
       throw Exception(
-          'toolTab.iconName חייב להיות שם אייקון FluentUI 24px תקין '
-          '(למשל "book_24_regular" או "calendar_24_filled")');
+          'toolTab.iconName must be a valid FluentUI 24px icon name '
+          '(e.g. "book_24_regular" or "calendar_24_filled")');
     }
 
     if (!skipFileValidation) {
       final entrypointPath =
           p.normalize(p.join(directoryPath, manifest.entrypoint));
       if (!p.isWithin(directoryPath, entrypointPath)) {
-        throw Exception(
-            'נתיב קובץ הכניסה ${manifest.entrypoint} חורג מגבולות תיקיית התוסף');
+        throw Exception('plugins.manifest_validator.entrypoint_outside_dir'
+            .tr(namedArgs: {'path': manifest.entrypoint}));
       }
       if (!File(entrypointPath).existsSync()) {
-        throw Exception('קובץ הכניסה ${manifest.entrypoint} לא נמצא בתיקייה');
+        throw Exception('plugins.manifest_validator.entrypoint_not_found'
+            .tr(namedArgs: {'path': manifest.entrypoint}));
       }
     }
   }

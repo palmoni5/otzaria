@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:otzaria/tabs/models/tab.dart';
 import 'package:otzaria/tabs/models/commentators_tab.dart';
 import 'package:otzaria/tabs/models/pdf_commentators_tab.dart';
@@ -28,13 +29,17 @@ class CombinedTab extends OpenedTab {
     this.splitRatio = 0.5,
     bool isPinned = false,
   }) : super(
-          'משולב: ${rightTab.title} | ${leftTab.title}',
+          'tabs.combined_prefix'.tr(
+            namedArgs: {'right': rightTab.title, 'left': leftTab.title},
+          ),
           isPinned: isPinned,
         );
 
   /// Updates the title when tabs change
   void updateTitle() {
-    title = 'משולב: ${rightTab.title} | ${leftTab.title}';
+    title = 'tabs.combined_prefix'.tr(
+      namedArgs: {'right': rightTab.title, 'left': leftTab.title},
+    );
   }
 
   /// Cleanup when the tab is disposed

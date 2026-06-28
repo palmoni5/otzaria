@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:otzaria/widgets/text/rtl_text_field.dart';
@@ -60,7 +61,7 @@ class _SettingsSearchFieldState extends State<SettingsSearchField> {
         style: const TextStyle(fontSize: 13),
         textAlignVertical: TextAlignVertical.center,
         decoration: InputDecoration(
-          hintText: 'חיפוש בהגדרות',
+          hintText: 'settings.search_screen.field_hint'.tr(),
           hintStyle: TextStyle(
             fontSize: 13,
             color: colorScheme.onSurfaceVariant,
@@ -77,7 +78,7 @@ class _SettingsSearchFieldState extends State<SettingsSearchField> {
           suffixIcon: hasText
               ? IconButton(
                   icon: const Icon(FluentIcons.dismiss_24_regular, size: 14),
-                  tooltip: 'נקה חיפוש',
+                  tooltip: 'settings.search_screen.clear'.tr(),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(
                     minWidth: 28,

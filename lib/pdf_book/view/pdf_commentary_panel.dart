@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pdfrx/pdfrx.dart';
@@ -346,16 +347,23 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
     setState(() {
       _commentatorGroups = [
         CommentatorGroup(
-            title: 'תורה שבכתב', commentators: eras['תורה שבכתב'] ?? const []),
-        CommentatorGroup(title: 'חז"ל', commentators: eras['חז"ל'] ?? const []),
+            title: 'pdf_book.commentator_group_torah_writings'.tr(),
+            commentators: eras['תורה שבכתב'] ?? const []),
         CommentatorGroup(
-            title: 'ראשונים', commentators: eras['ראשונים'] ?? const []),
+            title: 'pdf_book.commentator_group_hazal'.tr(),
+            commentators: eras['חז"ל'] ?? const []),
         CommentatorGroup(
-            title: 'אחרונים', commentators: eras['אחרונים'] ?? const []),
+            title: 'pdf_book.commentator_group_rishonim'.tr(),
+            commentators: eras['ראשונים'] ?? const []),
         CommentatorGroup(
-            title: 'מחברי זמננו',
+            title: 'pdf_book.commentator_group_acharonim'.tr(),
+            commentators: eras['אחרונים'] ?? const []),
+        CommentatorGroup(
+            title: 'pdf_book.commentator_group_modern_authors'.tr(),
             commentators: eras['מחברי זמננו'] ?? const []),
-        CommentatorGroup(title: 'שאר מפרשים', commentators: others),
+        CommentatorGroup(
+            title: 'pdf_book.commentator_group_other'.tr(),
+            commentators: others),
       ];
     });
   }
@@ -575,18 +583,18 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
               setState(() => _showFilterTab = false);
             }
           },
-          tabs: const [
+          tabs: [
             PanelTab(
               icon: FluentIcons.book_24_regular,
-              label: 'מפרשים',
+              label: 'pdf_book.commentary_panel.tab_commentaries'.tr(),
             ),
             PanelTab(
               icon: FluentIcons.link_24_regular,
-              label: 'קישורים',
+              label: 'pdf_book.commentary_panel.tab_links'.tr(),
             ),
             PanelTab(
               icon: FluentIcons.note_24_regular,
-              label: 'הערות',
+              label: 'pdf_book.commentary_panel.tab_notes'.tr(),
             ),
           ],
         ),
@@ -696,7 +704,9 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
                   ? FluentIcons.arrow_collapse_all_24_regular
                   : FluentIcons.arrow_expand_all_24_regular,
             ),
-            tooltip: _allExpanded ? 'כווץ את כל המפרשים' : 'הרחב את כל המפרשים',
+            tooltip: _allExpanded
+                ? 'pdf_book.commentary_panel.collapse_all'.tr()
+                : 'pdf_book.commentary_panel.expand_all'.tr(),
             onPressed: toggleAllExpanded,
           ),
         ],
@@ -704,7 +714,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
         // 3. פתיחה בכרטיסייה חדשה
         IconButton(
           icon: const Icon(FluentIcons.open_24_regular),
-          tooltip: 'פתח כרטסיית מפרשים',
+          tooltip: 'pdf_book.commentary_panel.open_commentators_tab'.tr(),
           onPressed: () => context.read<TabsBloc>().add(
                 AddTab(
                   PdfCommentatorsTab(sourceTab: widget.tab),
@@ -716,7 +726,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
         // 4. הפעלת שדה החיפוש
         IconButton(
           icon: const Icon(FluentIcons.search_24_regular),
-          tooltip: 'חיפוש',
+          tooltip: 'common.search'.tr(),
           onPressed: _openInlineSearch,
         ),
       ],
@@ -728,14 +738,14 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
   Future<void> printDisplayedCommentaries() async {
     final visibleContent = _getVisibleContent();
     if (visibleContent == null || visibleContent.commentaryLinks.isEmpty) {
-      UiSnack.show('אין מפרשים להדפסה');
+      UiSnack.show('commentary_list.no_commentaries_to_print'.tr());
       return;
     }
 
     final groups = await visibleContent.sortedGroupsFuture;
     final blocks = await buildCommentaryPrintBlocks(groups);
     if (blocks.isEmpty) {
-      UiSnack.show('אין מפרשים להדפסה');
+      UiSnack.show('commentary_list.no_commentaries_to_print'.tr());
       return;
     }
     if (!mounted) return;
@@ -761,7 +771,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
       focusNode: _searchFocusNode,
       controller: _searchController,
       decoration: InputDecoration(
-        hintText: 'חפש בתוך המפרשים המוצגים...',
+        hintText: 'pdf_book.commentary_panel.search_hint'.tr(),
         prefixIcon: const Icon(FluentIcons.search_24_regular),
         suffixIcon: Row(
           mainAxisSize: MainAxisSize.min,
@@ -803,7 +813,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
             ],
             IconButton(
               icon: const Icon(FluentIcons.dismiss_24_regular),
-              tooltip: 'סגור חיפוש',
+              tooltip: 'commentary_list.close_search'.tr(),
               onPressed: _clearSearchAndCloseField,
             ),
           ],
@@ -849,7 +859,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
-            'טוען מפרשים...',
+            'pdf_book.commentary_panel.loading_commentaries'.tr(),
             style: TextStyle(
               fontSize: widget.fontSize * 0.9,
               color: Colors.grey,
@@ -865,7 +875,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Text(
-              'טוען מפרשים...',
+              'pdf_book.commentary_panel.loading_commentaries'.tr(),
               style: TextStyle(
                 fontSize: widget.fontSize * 0.9,
                 color: Colors.grey,
@@ -899,8 +909,8 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
             children: [
               Text(
                 hasCommentaryLinks
-                    ? 'לא נמצאו מפרשים מהנבחרים לדף זה'
-                    : 'לא נמצאו מפרשים לקטע הנבחר',
+                    ? 'pdf_book.commentary_panel.no_commentaries_selected'.tr()
+                    : 'pdf_book.commentary_panel.no_commentaries'.tr(),
                 style: TextStyle(
                   fontSize: widget.fontSize * 0.9,
                   color: Colors.grey,
@@ -920,7 +930,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
                     }
                   },
                   icon: const Icon(FluentIcons.apps_list_24_regular),
-                  label: const Text('בחר מפרשים'),
+                  label: Text('pdf_book.commentary_panel.select_commentaries'.tr()),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 24,
@@ -1154,7 +1164,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
-            'טוען קישורים...',
+            'pdf_book.commentary_panel.loading_links'.tr(),
             style: TextStyle(
               fontSize: widget.fontSize * 0.9,
               color: Colors.grey,
@@ -1171,7 +1181,9 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
-            widget.linksLoading ? 'טוען קישורים...' : 'לא נמצאו קישורים לדף זה',
+            widget.linksLoading
+                ? 'pdf_book.commentary_panel.loading_links'.tr()
+                : 'pdf_book.commentary_panel.no_links'.tr(),
             style: TextStyle(
               fontSize: widget.fontSize * 0.9,
               color: Colors.grey,
@@ -1311,7 +1323,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
                           debugPrint(
                               'Error loading link content: ${snapshot.error}');
                           debugPrint('Stack trace: ${snapshot.stackTrace}');
-                          return Text('שגיאה: ${snapshot.error}');
+                          return Text('pdf_book.commentary_panel.link_error'.tr(namedArgs: {'error': '${snapshot.error}'}));
                         }
                         return BlocBuilder<SettingsBloc, SettingsState>(
                           builder: (context, settingsState) {

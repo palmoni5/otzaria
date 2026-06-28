@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:otzaria/theme/theme_exports.dart';
 
@@ -329,7 +330,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
             initialValue: widget.value,
             searchHint: widget.decoration?.hintText ??
                 widget.decoration?.labelText ??
-                'חיפוש',
+                'widgets.search'.tr(),
             filterLabels: widget.filterLabels,
             filterPredicates: widget.filterPredicates,
             menuMinWidth: widget.menuMinWidth,

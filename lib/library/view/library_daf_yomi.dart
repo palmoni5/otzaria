@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:kosher_dart/kosher_dart.dart';
 import 'package:otzaria/tools/calendar/helpers/calendar_date_helpers.dart';
@@ -114,7 +115,7 @@ class LibraryDafYomi extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Tooltip(
-        message: 'פתח דף יומי',
+        message: 'daf_yomi.open_tooltip'.tr(),
         child: InkWell(
           onTap: () => onDafYomiTap(tractate, formatAmud(dafAmud)),
           borderRadius: BorderRadius.circular(8),
@@ -138,7 +139,7 @@ class LibraryDafYomi extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'דף היומי: $dafText',
+                  'daf_yomi.label'.tr(namedArgs: {'daf': dafText}),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                   style: dafStyle,
@@ -218,7 +219,7 @@ class LibraryDafYomi extends StatelessWidget {
           );
 
     return Tooltip(
-      message: 'פתח דף יומי: $dafText',
+      message: 'daf_yomi.open_with_daf'.tr(namedArgs: {'daf': dafText}),
       child: InkWell(
         onTap: () => onDafYomiTap(tractate, formatAmud(dafAmud)),
         borderRadius: BorderRadius.circular(6),

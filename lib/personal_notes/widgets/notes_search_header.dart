@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -62,7 +63,7 @@ class _NotesSearchHeaderState extends State<NotesSearchHeader> {
                   Expanded(
                     child: OtzariaSearchField(
                       controller: _searchController,
-                      hintText: 'חפש בהערות...',
+                      hintText: 'personal_notes.search_hint'.tr(),
                       onChanged: (value) {
                         context
                             .read<PersonalNotesBloc>()
@@ -77,7 +78,7 @@ class _NotesSearchHeaderState extends State<NotesSearchHeader> {
                   ),
                   const SizedBox(width: 8),
                   IconButton(
-                    tooltip: 'רענן',
+                    tooltip: 'personal_notes.refresh'.tr(),
                     onPressed: () {
                       context.read<PersonalNotesBloc>().add(
                             LoadPersonalNotes(
@@ -115,8 +116,8 @@ class _NotesSearchHeaderState extends State<NotesSearchHeader> {
                             Expanded(
                               child: Text(
                                 widget.isPdf
-                                    ? 'הצג רק הערות לעמוד המוצג'
-                                    : 'הצג רק הערות לטקסט הנראה',
+                                    ? 'personal_notes.show_only_pdf'.tr()
+                                    : 'personal_notes.show_only_text'.tr(),
                                 style: Theme.of(context).textTheme.bodySmall,
                                 overflow: TextOverflow.ellipsis,
                               ),

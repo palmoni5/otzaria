@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -295,7 +296,7 @@ class _PersonalNoteEditorBodyState extends State<PersonalNoteEditorBody> {
                         expands: false,
                         padding: const EdgeInsets.all(12),
                         placeholder: widget.hintText ??
-                            'כתוב כאן... (Ctrl+Enter לשמירה)',
+                            'personal_notes.editor_hint'.tr(),
                         customShortcuts: _rtlArrowShortcuts,
                         // Quill מציגה אוטומטית תפריט סלקציה ב-desktop
                         // בסיום גרירה — בהערות אישיות זה מטריד.
@@ -429,27 +430,27 @@ class _PersonalNoteToolbar extends StatelessWidget {
       spacing: 4,
       children: [
         IconButton(
-          tooltip: 'מודגש',
+          tooltip: 'personal_notes.editor_bold'.tr(),
           icon: const Icon(FluentIcons.text_bold_24_regular, size: 18),
           onPressed: () => _toggleAttribute(quill.Attribute.bold),
         ),
         IconButton(
-          tooltip: 'נטוי',
+          tooltip: 'personal_notes.editor_italic'.tr(),
           icon: const Icon(FluentIcons.text_italic_24_regular, size: 18),
           onPressed: () => _toggleAttribute(quill.Attribute.italic),
         ),
         IconButton(
-          tooltip: 'קו תחתי',
+          tooltip: 'personal_notes.editor_underline'.tr(),
           icon: const Icon(FluentIcons.text_underline_24_regular, size: 18),
           onPressed: () => _toggleAttribute(quill.Attribute.underline),
         ),
         IconButton(
-          tooltip: 'קו חוצה',
+          tooltip: 'personal_notes.editor_strikethrough'.tr(),
           icon: const Icon(FluentIcons.text_strikethrough_24_regular, size: 18),
           onPressed: () => _toggleAttribute(quill.Attribute.strikeThrough),
         ),
         IconButton(
-          tooltip: 'הדגשה',
+          tooltip: 'personal_notes.editor_highlight'.tr(),
           icon: const Icon(FluentIcons.circle_highlight_24_regular, size: 18),
           onPressed: () => _toggleAttribute(
             const quill.BackgroundAttribute('#fff59d'),
@@ -466,17 +467,17 @@ class _PersonalNoteToolbar extends StatelessWidget {
           onPressed: () => _adjustFontSize(-_fontSizeStep),
         ),
         IconButton(
-          tooltip: 'כותרת',
+          tooltip: 'personal_notes.editor_heading'.tr(),
           icon: const Icon(FluentIcons.text_header_2_24_regular, size: 18),
           onPressed: () => _toggleAttribute(quill.Attribute.h2),
         ),
         IconButton(
-          tooltip: 'רשימה',
+          tooltip: 'personal_notes.editor_list'.tr(),
           icon: const Icon(FluentIcons.text_bullet_list_24_regular, size: 18),
           onPressed: () => _toggleAttribute(quill.Attribute.ul),
         ),
         IconButton(
-          tooltip: 'רשימה ממוספרת',
+          tooltip: 'personal_notes.editor_numbered_list'.tr(),
           icon: const Icon(
             FluentIcons.text_number_list_rtl_24_regular,
             size: 18,
@@ -484,12 +485,12 @@ class _PersonalNoteToolbar extends StatelessWidget {
           onPressed: () => _toggleAttribute(quill.Attribute.ol),
         ),
         IconButton(
-          tooltip: 'ציטוט',
+          tooltip: 'personal_notes.editor_quote'.tr(),
           icon: const Icon(FluentIcons.text_quote_24_regular, size: 18),
           onPressed: () => _toggleAttribute(quill.Attribute.blockQuote),
         ),
         IconButton(
-          tooltip: 'הוסף קישור',
+          tooltip: 'personal_notes.editor_add_link'.tr(),
           icon: const Icon(FluentIcons.link_24_regular, size: 18),
           onPressed: onInsertLink,
         ),

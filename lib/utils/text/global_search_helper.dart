@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/core/ui_snack.dart';
@@ -25,7 +26,7 @@ Widget buildSearchMenuLabel({
   return Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      const Text("חפש '"),
+      Text('utils.search_menu_prefix'.tr()),
       Flexible(
         child: Text(
           selectedText,
@@ -34,7 +35,7 @@ Widget buildSearchMenuLabel({
           maxLines: 1,
         ),
       ),
-      Text("' $suffix"),
+      Text('utils.search_menu_suffix'.tr(namedArgs: {'suffix': suffix})),
     ],
   );
 }
@@ -46,7 +47,7 @@ void openGlobalSearch(
 }) {
   final query = selectedText?.trim() ?? '';
   if (query.isEmpty) {
-    UiSnack.show('לא נבחר טקסט לחיפוש');
+    UiSnack.show('utils.no_text_to_search'.tr());
     return;
   }
 

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -33,7 +34,9 @@ class BookmarksDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ReusableItemsDialog(
-      title: bookFilter == null ? 'סימניות' : 'סימניות בספר זה',
+      title: bookFilter == null
+          ? 'bookmarks.title'.tr()
+          : 'bookmarks.book_title'.tr(),
       child: BookmarkView(bookFilter: bookFilter),
     );
   }
@@ -228,12 +231,12 @@ class _BookmarkViewState extends State<BookmarkView> {
               _editBookmarkLabel(ctx, item as Bookmark, originalIndex),
           onDelete: (ctx, originalIndex) {
             ctx.read<BookmarkBloc>().removeBookmark(originalIndex);
-            UiSnack.show('הסימניה נמחקה');
+            UiSnack.show('bookmarks.deleted'.tr());
           },
           onClearAll: (ctx) {
             if (bookFilter == null) {
               ctx.read<BookmarkBloc>().clearBookmarks();
-              UiSnack.show('כל הסימניות נמחקו');
+              UiSnack.show('bookmarks.all_deleted'.tr());
             } else {
               // הודעת ההצלחה תוצג רק אם באמת נמחקה סימניה - בלי זה היה
               // ייתכן שתוצג "סימניות הספר נמחקו" גם כשלא היו לספר סימניות
@@ -241,15 +244,18 @@ class _BookmarkViewState extends State<BookmarkView> {
               final removed =
                   ctx.read<BookmarkBloc>().clearBookmarksForBook(bookFilter);
               if (removed) {
-                UiSnack.show('סימניות הספר נמחקו');
+                UiSnack.show('bookmarks.book_deleted'.tr());
               }
             }
           },
-          hintText: 'חפש בסימניות...',
-          emptyText: bookFilter == null ? 'אין סימניות' : 'אין סימניות בספר זה',
-          notFoundText: 'לא נמצאו תוצאות',
-          clearAllText:
-              bookFilter == null ? 'מחק את כל הסימניות' : 'מחק סימניות הספר',
+          hintText: 'bookmarks.search_hint'.tr(),
+          emptyText: bookFilter == null
+              ? 'bookmarks.empty'.tr()
+              : 'bookmarks.book_empty'.tr(),
+          notFoundText: 'bookmarks.not_found'.tr(),
+          clearAllText: bookFilter == null
+              ? 'bookmarks.clear_all'.tr()
+              : 'bookmarks.book_clear_all'.tr(),
           leadingIconBuilder: (item) => item.book is PdfBook
               ? const Icon(FluentIcons.document_pdf_24_regular)
               : null,

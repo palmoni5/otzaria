@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -64,9 +65,6 @@ class _CustomFoldersTileState extends State<CustomFoldersTile> {
     super.dispose();
   }
 
-  static const String _customFoldersReloadNotice =
-      'לאחר הוספת ספרים חדשים לתיקייה קיימת, יש ללחוץ על סמל הרענון.';
-
   /// סורק את התיקייה (רק לפי סיומות, לא קורא תוכן) ומסווג את הרכב הקבצים.
   /// הסריקה אסינכרונית ולא חוסמת את ה-UI, ועוצרת מוקדם ברגע שהתגלה גם
   /// טקסט וגם קובץ בינארי (כלומר "מעורב").
@@ -119,7 +117,7 @@ class _CustomFoldersTileState extends State<CustomFoldersTile> {
     final dir = Directory(path);
     if (!await dir.exists()) {
       if (!mounted) return;
-      UiSnack.showError('התיקייה לא נמצאה');
+      UiSnack.showError('settings.custom_folders.folder_not_found'.tr());
       return;
     }
 
@@ -152,10 +150,12 @@ class _CustomFoldersTileState extends State<CustomFoldersTile> {
     // אין צורך לאפס כאן את הסיווג — ה-listener מאפס את כל הקאש בסיום
     // הסריקה (כולל חילוץ ZIP ששינה את הרכב הקבצים).
 
-    String msg =
-        'התיקייה "${path.split(Platform.pathSeparator).last}" נוספה בהצלחה';
+    String msg = 'settings.custom_folders.folder_added'.tr(namedArgs: {
+      'name': path.split(Platform.pathSeparator).last,
+    });
     if (zipExtracted && extractedFileName != null) {
-      msg += '\nהקובץ "$extractedFileName" חולץ בהצלחה!';
+      msg += 'settings.custom_folders.extracted_added'
+          .tr(namedArgs: {'file': extractedFileName!});
     }
     UiSnack.show(msg, duration: const Duration(seconds: 9));
   }
@@ -164,9 +164,9 @@ class _CustomFoldersTileState extends State<CustomFoldersTile> {
     final bloc = context.read<CustomFoldersBloc>();
     final confirmed = await showConfirmationDialog(
       context: context,
-      title: 'הסרת תיקייה',
-      content: 'האם להסיר את התיקייה "${folder.name}" מהספרייה?\n'
-          'הספרים יוסרו מהתוכנה, אך הקבצים המקוריים בדיסק לא יימחקו.',
+      title: 'settings.custom_folders.remove_title'.tr(),
+      content: 'settings.custom_folders.remove_content'
+          .tr(namedArgs: {'name': folder.name}),
       isDangerous: false,
     );
     if (confirmed != true || !mounted) return;
@@ -184,13 +184,8 @@ class _CustomFoldersTileState extends State<CustomFoldersTile> {
     if (toDatabase) {
       final confirmed = await showConfirmationDialog(
         context: context,
-        title: 'שמירת עותק עצמאי בתוכנה',
-        content: 'עותק של תוכן הספרים יישמר בתוך התוכנה, כך שהם יעבדו גם '
-            'אם הקבצים המקוריים יוזזו או יימחקו.\n'
-            'הקבצים המקוריים יישארו במקומם.\n\n'
-            'שים לב: אם תערוך קובץ בעתיד, יהיה עליך ללחוץ "סרוק מחדש" '
-            'כדי שהשינוי יתעדכן.\n\n'
-            'האם להמשיך?',
+        title: 'settings.custom_folders.add_to_db_title'.tr(),
+        content: 'settings.custom_folders.add_to_db_content'.tr(),
         isDangerous: false,
       );
       if (confirmed != true || !mounted) return;
@@ -224,11 +219,12 @@ class _CustomFoldersTileState extends State<CustomFoldersTile> {
           children: [
             ListTile(
               leading: const Icon(FluentIcons.folder_add_24_regular),
-              title: const Text('הוסף תיקייה לאוצריא'),
+              title: Text('settings.custom_folders.add_folder_title'.tr()),
               subtitle: Text(
                 folders.isEmpty
-                    ? 'לחץ להוספת תיקיות אישיות'
-                    : '${folders.length} תיקיות',
+                    ? 'settings.custom_folders.no_folders_subtitle'.tr()
+                    : 'settings.custom_folders.folders_count'.tr(
+                        namedArgs: {'count': folders.length.toString()}),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               hoverColor: Colors.transparent,
@@ -249,10 +245,10 @@ class _CustomFoldersTileState extends State<CustomFoldersTile> {
                           : () => context
                               .read<CustomFoldersBloc>()
                               .add(const RescanCustomFolders()),
-                      tooltip: 'סרוק מחדש תיקיות אישיות',
+                      tooltip: 'settings.custom_folders.rescan_tooltip'.tr(),
                     ),
                   RecommendedActionButton(
-                    text: 'הוסף תיקייה',
+                    text: 'settings.custom_folders.add_folder_button'.tr(),
                     icon: FluentIcons.folder_add_24_regular,
                     onPressed: _addFolder,
                     isLoading: isSyncing,
@@ -266,7 +262,9 @@ class _CustomFoldersTileState extends State<CustomFoldersTile> {
                       ),
                       onPressed: () =>
                           setState(() => _isExpanded = !_isExpanded),
-                      tooltip: _isExpanded ? 'הסתר' : 'הצג תיקיות',
+                      tooltip: _isExpanded
+                          ? 'settings.custom_folders.hide_tooltip'.tr()
+                          : 'settings.custom_folders.show_tooltip'.tr(),
                     ),
                 ],
               ),
@@ -296,7 +294,7 @@ class _CustomFoldersTileState extends State<CustomFoldersTile> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          _customFoldersReloadNotice,
+                          'settings.custom_folders.reload_notice'.tr(),
                           style:
                               Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: Theme.of(context)
@@ -406,7 +404,7 @@ class _CustomFoldersTileState extends State<CustomFoldersTile> {
               IconButton(
                 icon: const Icon(FluentIcons.delete_24_regular, size: 18),
                 onPressed: isSyncing ? null : () => _removeFolder(folder),
-                tooltip: 'הסר תיקייה',
+                tooltip: 'settings.custom_folders.remove_folder_tooltip'.tr(),
               ),
             ],
           ),
@@ -423,15 +421,15 @@ class _CustomFoldersTileState extends State<CustomFoldersTile> {
                   child: AppSegmentedControl<bool>(
                     currentValue: folder.addToDatabase,
                     onChanged: (value) => _setStorageMode(folder, value),
-                    options: const [
+                    options: [
                       SegmentOption(
                         value: false,
-                        label: 'קריאה מהקבצים',
+                        label: 'settings.custom_folders.storage_read_label'.tr(),
                         icon: FluentIcons.document_24_regular,
                       ),
                       SegmentOption(
                         value: true,
-                        label: 'עותק עצמאי',
+                        label: 'settings.custom_folders.storage_db_label'.tr(),
                         icon: FluentIcons.database_24_regular,
                       ),
                     ],
@@ -445,7 +443,7 @@ class _CustomFoldersTileState extends State<CustomFoldersTile> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Text(
-                  'קבצי PDF/Word — נקראים ישירות מהקבצים',
+                  'settings.custom_folders.pdf_word_label'.tr(),
                   style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                 ),
               ),
@@ -465,20 +463,17 @@ class _CustomFoldersTileState extends State<CustomFoldersTile> {
         children: [
           _legendRow(
             FluentIcons.document_24_regular,
-            'קריאה מהקבצים: הספרים נקראים ישירות מהקבצים שבדיסק. אל תזיז '
-            'אותם — אחרת לא ייפתחו. למחיקה: מחק את הקובץ מהדיסק וסרוק מחדש.',
+            'settings.custom_folders.legend_read'.tr(),
           ),
           const SizedBox(height: 8),
           _legendRow(
             FluentIcons.database_24_regular,
-            'עותק עצמאי: התוכן נשמר בתוך התוכנה ועובד גם אם הקבצים יוסרו. '
-            'אחרי עריכת קובץ לחץ "סרוק מחדש" לעדכון; מחיקה רק דרך הספרייה.',
+            'settings.custom_folders.legend_db'.tr(),
           ),
           const SizedBox(height: 8),
           _legendRow(
             FluentIcons.info_24_regular,
-            'קבצי PDF ו-Word נקראים תמיד ישירות מהקבצים '
-            '(לא נשמרים כעותק עצמאי).',
+            'settings.custom_folders.legend_pdf'.tr(),
           ),
         ],
       ),

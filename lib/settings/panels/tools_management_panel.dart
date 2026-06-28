@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -45,40 +46,27 @@ class ToolsManagementPanel extends StatefulWidget {
   static const List<SettingsSearchEntry> searchEntries = [
     SettingsSearchEntry(
       id: 'tools.management.hide',
-      title: 'הסתרת כלים',
-      subtitle: 'הסתר כלים מובנים או תוספים מהממשק',
+      title: 'settings.search.tools_management_hide_title',
+      subtitle: 'settings.search.tools_management_hide_sub',
       tab: SettingsTab.tools,
       cardId: 'tools.management',
-      keywords: ['הסתר', 'הסתרה', 'הסתרת', 'הצג', 'מוסתר', 'כלים', 'תוספים'],
+      keywords: ['settings.search.tools_management_hide_kw'],
     ),
     SettingsSearchEntry(
       id: 'tools.management.pin_nav_rail',
-      title: 'הצמדה לסרגל הניווט',
-      subtitle: 'הצמד כלים או תוספים לסרגל הניווט הראשי',
+      title: 'settings.search.tools_management_pin_nav_rail_title',
+      subtitle: 'settings.search.tools_management_pin_nav_rail_sub',
       tab: SettingsTab.tools,
       cardId: 'tools.management',
-      keywords: ['הצמד', 'הצמדה', 'ניווט', 'סרגל', 'nav rail'],
+      keywords: ['settings.search.tools_management_pin_nav_rail_kw'],
     ),
     SettingsSearchEntry(
       id: 'tools.management.plugins',
-      title: 'ניהול תוספים',
-      subtitle: 'השבתה, הפעלה, מחיקה והרשאות לתוספים',
+      title: 'settings.search.tools_management_plugins_title',
+      subtitle: 'settings.search.tools_management_plugins_sub',
       tab: SettingsTab.tools,
       cardId: 'tools.plugins',
-      keywords: [
-        'תוסף',
-        'תוספים',
-        'מחק',
-        'מחיקה',
-        'השבת',
-        'השבתה',
-        'הפעל',
-        'הרשאות',
-        'רשת',
-        'אינטרנט',
-        'טעינה אוטומטית',
-        'בעלייה'
-      ],
+      keywords: ['settings.search.tools_management_plugins_kw'],
     ),
   ];
 
@@ -183,9 +171,10 @@ class _ToolsManagementPanelState extends State<ToolsManagementPanel> {
                 // אזור הכלים המובנים — ללא סרגל פעולות מוצמד.
                 ..._collapsibleSectionSlivers(
                   cardId: _builtInCardId,
-                  title: 'כלים מובנים',
-                  subtitle: 'הסתר כלים מהממשק או הצמד אותם לסרגל הניווט הראשי.',
-                  summaryLabel: 'רשימת הכלים',
+                  title: 'settings.tools_management.builtin_title'.tr(),
+                  subtitle: 'settings.tools_management.builtin_subtitle'.tr(),
+                  summaryLabel:
+                      'settings.tools_management.builtin_summary'.tr(),
                   summaryIcon: FluentIcons.apps_24_regular,
                   expanded: _builtInExpanded,
                   onToggle: () =>
@@ -200,10 +189,11 @@ class _ToolsManagementPanelState extends State<ToolsManagementPanel> {
                   SliverMainAxisGroup(
                     slivers: _collapsibleSectionSlivers(
                       cardId: _pluginsCardId,
-                      title: 'תוספים מותקנים',
+                      title: 'settings.tools_management.plugins_title'.tr(),
                       subtitle:
-                          'נהל את התוספים שלך: השבתה, הסתרה, הצמדה, הרשאות ומחיקה. גרור לשינוי סדר.',
-                      summaryLabel: 'רשימת התוספים',
+                          'settings.tools_management.plugins_subtitle'.tr(),
+                      summaryLabel:
+                          'settings.tools_management.plugins_summary'.tr(),
                       summaryIcon: FluentIcons.puzzle_piece_24_regular,
                       expanded: _pluginsExpanded,
                       onToggle: () => setState(() {
@@ -429,20 +419,23 @@ class _ActionBar extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Text(
-                  '$count נבחרו',
+                  'settings.tools_management.selected_count'
+                      .tr(namedArgs: {'count': count.toString()}),
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
               ),
               TextButton.icon(
                 onPressed: onClear,
                 icon: const Icon(FluentIcons.dismiss_circle_24_regular),
-                label: const Text('נקה בחירה'),
+                label: Text('settings.tools_management.clear_selection'.tr()),
               ),
               _ActionChip(
                 icon: _allSelectedAreHidden
                     ? FluentIcons.eye_24_regular
                     : FluentIcons.eye_off_24_regular,
-                label: _allSelectedAreHidden ? 'הצג' : 'הסתר',
+                label: _allSelectedAreHidden
+                    ? 'settings.tools_management.show'.tr()
+                    : 'settings.tools_management.hide'.tr(),
                 onPressed: () => _onToggleHide(context),
               ),
               _ActionChip(
@@ -450,32 +443,34 @@ class _ActionBar extends StatelessWidget {
                     ? FluentIcons.pin_off_24_regular
                     : FluentIcons.pin_24_regular,
                 label: _allSelectedArePinnedToNav
-                    ? 'הסר מסרגל הניווט'
-                    : 'הצמד לסרגל הניווט',
+                    ? 'settings.tools_management.unpin_nav'.tr()
+                    : 'settings.tools_management.pin_nav'.tr(),
                 onPressed: () => _onTogglePinNavRail(context),
               ),
               _ActionChip(
                 icon: _allSelectedPluginsEnabled
                     ? FluentIcons.pause_circle_24_regular
                     : FluentIcons.play_circle_24_regular,
-                label: _allSelectedPluginsEnabled ? 'השבת' : 'הפעל',
+                label: _allSelectedPluginsEnabled
+                    ? 'settings.tools_management.disable'.tr()
+                    : 'settings.tools_management.enable'.tr(),
                 onPressed: () => _onToggleEnabled(context),
               ),
               _PermissionMenu(
                 icon: FluentIcons.globe_24_regular,
-                label: 'גישה לרשת',
+                label: 'settings.tools_management.network_access'.tr(),
                 onGrant: () => _setNetworkAccess(context, granted: true),
                 onRevoke: () => _setNetworkAccess(context, granted: false),
               ),
               _PermissionMenu(
                 icon: FluentIcons.power_24_regular,
-                label: 'טעינה אוטומטית בעלייה',
+                label: 'settings.tools_management.run_on_startup'.tr(),
                 onGrant: () => _setRunOnStartup(context, granted: true),
                 onRevoke: () => _setRunOnStartup(context, granted: false),
               ),
               _ActionChip(
                 icon: FluentIcons.delete_24_regular,
-                label: 'מחק',
+                label: 'settings.tools_management.delete'.tr(),
                 danger: true,
                 onPressed: () => _onDelete(context),
               ),
@@ -497,7 +492,9 @@ class _ActionBar extends StatelessWidget {
         hidden: shouldHide,
       ));
     }
-    UiSnack.show(shouldHide ? 'התוספים הוסתרו' : 'התוספים יוצגו');
+    UiSnack.show(shouldHide
+        ? 'settings.tools_management.plugins_hidden'.tr()
+        : 'settings.tools_management.plugins_shown'.tr());
   }
 
   void _onTogglePinNavRail(BuildContext context) {
@@ -529,7 +526,7 @@ class _ActionBar extends StatelessWidget {
         .where((p) => p.manifest.permissions.contains(_networkAccessPermission))
         .toList();
     if (eligible.isEmpty) {
-      UiSnack.showError('אף תוסף נבחר לא מצהיר על שימוש ברשת — אין מה לעדכן');
+      UiSnack.showError('settings.tools_management.no_network_plugin'.tr());
       return;
     }
     final bloc = context.read<PluginSystemBloc>();
@@ -541,8 +538,8 @@ class _ActionBar extends StatelessWidget {
       ));
     }
     UiSnack.show(granted
-        ? 'גישה לרשת הוענקה לתוספים הנבחרים'
-        : 'גישה לרשת בוטלה לתוספים הנבחרים');
+        ? 'settings.tools_management.network_granted'.tr()
+        : 'settings.tools_management.network_revoked'.tr());
   }
 
   void _setRunOnStartup(BuildContext context, {required bool granted}) {
@@ -551,7 +548,7 @@ class _ActionBar extends StatelessWidget {
             p.manifest.permissions.contains(pluginRunOnStartupPermission))
         .toList();
     if (eligible.isEmpty) {
-      UiSnack.showError('אף תוסף נבחר לא תומך בטעינה אוטומטית בעלייה');
+      UiSnack.showError('settings.tools_management.no_startup_plugin'.tr());
       return;
     }
     final bloc = context.read<PluginSystemBloc>();
@@ -563,8 +560,8 @@ class _ActionBar extends StatelessWidget {
       ));
     }
     UiSnack.show(granted
-        ? 'טעינה אוטומטית בעלייה הופעלה לתוספים הנבחרים'
-        : 'טעינה אוטומטית בעלייה בוטלה לתוספים הנבחרים');
+        ? 'settings.tools_management.startup_enabled'.tr()
+        : 'settings.tools_management.startup_disabled'.tr());
   }
 
   Future<void> _onDelete(BuildContext context) async {
@@ -575,10 +572,13 @@ class _ActionBar extends StatelessWidget {
     final bloc = context.read<PluginSystemBloc>();
     final confirmed = await showWarningDialog(
       context: context,
-      title: 'מחיקת תוספים',
-      content: 'האם למחוק ${plugins.length} תוסף(ים)?\n\n• $names',
-      subtitle: 'פעולה זו אינה הפיכה. נתוני התוסף יימחקו.',
-      confirmText: 'מחק',
+      title: 'settings.tools_management.delete_title'.tr(),
+      content: 'settings.tools_management.delete_content'.tr(namedArgs: {
+        'count': plugins.length.toString(),
+        'names': names,
+      }),
+      subtitle: 'settings.tools_management.delete_subtitle'.tr(),
+      confirmText: 'settings.tools_management.delete_confirm'.tr(),
     );
     if (confirmed != true) return;
     for (final p in plugins) {
@@ -588,7 +588,7 @@ class _ActionBar extends StatelessWidget {
         bloc.add(UninstallPluginRequested(p.pluginId));
       }
     }
-    UiSnack.show('התוספים סומנו למחיקה');
+    UiSnack.show('settings.tools_management.plugins_marked_delete'.tr());
   }
 }
 
@@ -644,20 +644,20 @@ class _PermissionMenu extends StatelessWidget {
     return PopupMenuButton<bool>(
       tooltip: label,
       onSelected: (grant) => grant ? onGrant() : onRevoke(),
-      itemBuilder: (_) => const [
+      itemBuilder: (_) => [
         PopupMenuItem<bool>(
           value: true,
           child: ListTile(
-            leading: Icon(FluentIcons.checkmark_24_regular),
-            title: Text('הענק'),
+            leading: const Icon(FluentIcons.checkmark_24_regular),
+            title: Text('settings.tools_management.grant'.tr()),
             dense: true,
           ),
         ),
         PopupMenuItem<bool>(
           value: false,
           child: ListTile(
-            leading: Icon(FluentIcons.dismiss_24_regular),
-            title: Text('בטל'),
+            leading: const Icon(FluentIcons.dismiss_24_regular),
+            title: Text('settings.tools_management.revoke'.tr()),
             dense: true,
           ),
         ),
@@ -708,7 +708,7 @@ class _SelectAllRow extends StatelessWidget {
         value: value,
         onChanged: (_) => toggle(),
       ),
-      title: const Text('בחר הכל'),
+      title: Text('settings.tools_management.select_all'.tr()),
       onTap: toggle,
     );
   }
@@ -751,14 +751,18 @@ class _BuiltInToolRow extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            tooltip: hidden ? 'הצג בממשק' : 'הסתר מהממשק',
+            tooltip: hidden
+                ? 'settings.tools_management.show_in_ui'.tr()
+                : 'settings.tools_management.hide_from_ui'.tr(),
             isSelected: hidden,
             icon: const Icon(FluentIcons.eye_off_24_regular),
             selectedIcon: const Icon(FluentIcons.eye_24_regular),
             onPressed: onToggleHide,
           ),
           IconButton(
-            tooltip: pinnedToNavRail ? 'הסר מסרגל הניווט' : 'הצמד לסרגל הניווט',
+            tooltip: pinnedToNavRail
+                ? 'settings.tools_management.unpin_nav'.tr()
+                : 'settings.tools_management.pin_nav'.tr(),
             isSelected: pinnedToNavRail,
             icon: const Icon(FluentIcons.pin_24_regular),
             selectedIcon: const Icon(FluentIcons.pin_off_24_regular),
@@ -814,7 +818,7 @@ class _DraggableSettingsPluginRow extends StatelessWidget {
                 child: MouseRegion(
                   cursor: SystemMouseCursors.grab,
                   child: Tooltip(
-                    message: 'גרור ושחרר לשינוי סדר',
+                    message: 'settings.tools_management.drag_to_reorder'.tr(),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4.0),
                       child: Icon(
@@ -962,20 +966,36 @@ class _StatusBadges extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final badges = <Widget>[];
     if (disabled) {
-      badges.add(_badge(context, 'מושבת', cs.errorContainer,
-          cs.onErrorContainer, FluentIcons.pause_circle_24_regular));
+      badges.add(_badge(
+          context,
+          'settings.tools_management.badge_disabled'.tr(),
+          cs.errorContainer,
+          cs.onErrorContainer,
+          FluentIcons.pause_circle_24_regular));
     }
     if (hidden) {
-      badges.add(_badge(context, 'מוסתר', cs.surfaceContainerHighest,
-          cs.onSurfaceVariant, FluentIcons.eye_off_24_regular));
+      badges.add(_badge(
+          context,
+          'settings.tools_management.badge_hidden'.tr(),
+          cs.surfaceContainerHighest,
+          cs.onSurfaceVariant,
+          FluentIcons.eye_off_24_regular));
     }
     if (pinnedToNavRail) {
-      badges.add(_badge(context, 'בסרגל ניווט', cs.primaryContainer,
-          cs.onPrimaryContainer, FluentIcons.pin_24_regular));
+      badges.add(_badge(
+          context,
+          'settings.tools_management.badge_in_nav'.tr(),
+          cs.primaryContainer,
+          cs.onPrimaryContainer,
+          FluentIcons.pin_24_regular));
     }
     if (networkDeclared) {
-      badges.add(_badge(context, 'משתמש ברשת', cs.tertiaryContainer,
-          cs.onTertiaryContainer, FluentIcons.globe_24_regular));
+      badges.add(_badge(
+          context,
+          'settings.tools_management.badge_uses_network'.tr(),
+          cs.tertiaryContainer,
+          cs.onTertiaryContainer,
+          FluentIcons.globe_24_regular));
     }
     if (badges.isEmpty) return const SizedBox.shrink();
     return Row(

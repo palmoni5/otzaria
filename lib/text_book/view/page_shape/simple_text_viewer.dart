@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/cupertino.dart'
     show cupertinoTextSelectionHandleControls;
 import 'package:flutter/foundation.dart'
@@ -1162,7 +1163,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
       final items = <AppContextMenuEntry>[];
       if (widget.onOpenSidebarTab != null) {
         items.add(AppContextMenuEntry(
-          label: 'פתח חלונית קישורים',
+          label: 'simple_viewer.open_links_pane'.tr(),
           icon: FluentIcons.panel_right_24_regular,
           onTap: () => widget.onOpenSidebarTab!(0),
         ));
@@ -1207,7 +1208,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
       final hasSelectedText = cleanedText.isNotEmpty;
       final preview = hasSelectedText ? previewForLabel(cleanedText) : '';
       entries.add(AppContextMenuEntry(
-        label: 'חיפוש',
+        label: 'combined_book.search'.tr(),
         icon: FluentIcons.search_24_regular,
         enabled: hasSelectedText,
         children: hasSelectedText
@@ -1216,14 +1217,14 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
                   label: "חפש '$preview' בספר זה",
                   labelWidget: buildSearchMenuLabel(
                     selectedText: cleanedText,
-                    suffix: 'בספר זה',
+                    suffix: 'simple_viewer.in_this_book'.tr(),
                   ),
                   icon: FluentIcons.book_search_24_regular,
                   onTap: () {
                     if (widget.onOpenSearch != null) {
                       widget.onOpenSearch!(cleanedText);
                     } else {
-                      UiSnack.show('חיפוש לא זמין בתצוגה זו');
+                      UiSnack.show('simple_viewer.search_unavailable'.tr());
                     }
                   },
                 ),
@@ -1231,7 +1232,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
                   label: "חפש '$preview' בכל הספרים",
                   labelWidget: buildSearchMenuLabel(
                     selectedText: cleanedText,
-                    suffix: 'בכל הספרים',
+                    suffix: 'simple_viewer.in_all_books'.tr(),
                   ),
                   icon: FluentIcons.library_24_regular,
                   onTap: () => openGlobalSearch(
@@ -1253,7 +1254,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
     if (hasLinkItems) {
       entries.add(const AppContextMenuEntry.divider());
       entries.add(AppContextMenuEntry(
-        label: 'קישורים',
+        label: 'combined_book.links'.tr(),
         icon: FluentIcons.link_24_regular,
         childrenBuilder: buildLinksItems,
       ));
@@ -1282,25 +1283,25 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
           onTap: () => addTextSectionBookmark(context, state, index),
         ),
       AppContextMenuEntry(
-        label: 'הוסף הערה אישית ',
+        label: 'simple_viewer.add_personal_note'.tr(),
         icon: FluentIcons.note_add_24_regular,
         onTap: () => _createNoteForCurrentLine(index, capturedText),
       ),
       if (!reportTargetBook.isUserBook)
         AppContextMenuEntry(
-          label: 'דווח על טעות בספר',
+          label: 'combined_book.report_book_error'.tr(),
           icon: FluentIcons.error_circle_24_regular,
           onTap: () => _openErrorReportDialog(capturedText ?? ''),
         ),
       const AppContextMenuEntry.divider(),
       AppContextMenuEntry(
-        label: 'העתק',
+        label: 'combined_book.copy'.tr(),
         icon: FluentIcons.copy_24_regular,
         enabled: capturedText != null && capturedText.trim().isNotEmpty,
         onTap: () => _copyFormattedText(capturedText),
       ),
       AppContextMenuEntry(
-        label: 'העתק את כל הפסקה',
+        label: 'combined_book.copy_full_paragraph'.tr(),
         icon: FluentIcons.document_copy_24_regular,
         enabled: index >= 0 && index < widget.content.length,
         onTap: () => _copyParagraphByIndex(index),
@@ -1313,7 +1314,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
       if (state.book.id != null) {
         entries.add(const AppContextMenuEntry.divider());
         entries.add(AppContextMenuEntry(
-          label: 'העתק קישור ישיר',
+          label: 'simple_viewer.copy_direct_link'.tr(),
           icon: FluentIcons.link_24_regular,
           childrenBuilder: () => buildDirectLinkContextMenuEntries(
             bookId: state.book.id!,
@@ -1356,7 +1357,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
       if (commentaryBookId != null) {
         entries.add(const AppContextMenuEntry.divider());
         entries.add(AppContextMenuEntry(
-          label: 'העתק קישור ישיר',
+          label: 'simple_viewer.copy_direct_link'.tr(),
           icon: FluentIcons.link_24_regular,
           childrenBuilder: () => buildDirectLinkContextMenuEntries(
             bookId: commentaryBookId,
@@ -1478,7 +1479,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
     final result = await showDialog<PersonalNoteEditorResult>(
       context: context,
       builder: (dialogContext) => PersonalNoteEditorDialog(
-        title: 'הערה חדשה - $bookTitle',
+        title: 'simple_viewer.new_note_title'.tr(namedArgs: {'book': bookTitle}),
         referenceText: referenceText,
         icon: FluentIcons.note_add_24_regular,
         bookId: bookTitle,
@@ -1503,9 +1504,12 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
         selectionColumn: selectionColumn,
         categoryId: categoryId,
       );
-      if (mounted) UiSnack.showSuccess('ההערה נשמרה בהצלחה');
+      if (mounted) UiSnack.showSuccess('simple_viewer.note_saved'.tr());
     } catch (e) {
-      if (mounted) UiSnack.showError('שגיאה בשמירת ההערה: $e');
+      if (mounted) {
+        UiSnack.showError(
+            'simple_viewer.note_save_error'.tr(namedArgs: {'error': '$e'}));
+      }
     }
   }
 
@@ -1640,7 +1644,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
     final plainText = capturedText ?? _savedSelectedText;
 
     if (plainText == null || plainText.trim().isEmpty) {
-      UiSnack.show('אנא בחר טקסט להעתקה');
+      UiSnack.show('combined_book.select_text_to_copy'.tr());
       return;
     }
 
@@ -1663,7 +1667,8 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
       );
     } catch (e) {
       if (mounted) {
-        UiSnack.showError('שגיאה בהעתקה מעוצבת: $e');
+        UiSnack.showError('combined_book.formatted_copy_error'
+            .tr(namedArgs: {'error': e.toString()}));
       }
     }
   }
@@ -2337,7 +2342,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
 
     return [
       AppContextMenuEntry(
-        label: 'החלף מפרש',
+        label: 'simple_viewer.swap_commentator'.tr(),
         icon: FluentIcons.arrow_swap_24_regular,
         children: normalized,
       ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -286,7 +288,7 @@ class _FindRefDialogState extends State<FindRefDialog> {
               iconSize: 18,
               visualDensity: VisualDensity.compact,
               icon: const Icon(FluentIcons.chevron_down_24_regular),
-              tooltip: 'גלול לסוף הרשימה',
+              tooltip: 'find_ref.scroll_to_end_tooltip'.tr(),
               onPressed: () {
                 _resultsScrollController.animateTo(
                   _resultsScrollController.position.maxScrollExtent,
@@ -541,9 +543,9 @@ class _FindRefDialogState extends State<FindRefDialog> {
     final focusRepository = context.read<FocusRepository>();
 
     return AlertDialog(
-      title: const Text(
-        'איתור מקורות',
-        style: TextStyle(fontWeight: FontWeight.bold),
+      title: Text(
+        'find_ref.title'.tr(),
+        style: const TextStyle(fontWeight: FontWeight.bold),
         textAlign: TextAlign.center,
       ),
       content: SizedBox(
@@ -588,7 +590,7 @@ class _FindRefDialogState extends State<FindRefDialog> {
                     autofocus: true,
                     decoration: InputDecoration(
                       hintText:
-                          'הקלד מקור מדוייק, לדוגמה: בראשית פרק א או שוע אוח יב   ',
+                          'find_ref.hint'.tr(),
                       suffixIcon: IconButton(
                         icon: const Icon(FluentIcons.dismiss_24_regular),
                         onPressed: () {
@@ -639,7 +641,7 @@ class _FindRefDialogState extends State<FindRefDialog> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Text(
-                  'כלול ספרים אישיים',
+                  'find_ref.include_personal_books'.tr(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -772,7 +774,9 @@ class _FindRefDialogState extends State<FindRefDialog> {
                                         key: menuButtonKey,
                                         icon: const Icon(
                                             FluentIcons.library_24_regular),
-                                        tooltip: 'הצג מפרשים זמינים',
+                                        tooltip:
+                                            'find_ref.show_available_commentators'
+                                                .tr(),
                                         onPressed: () => _showCommentatorsMenu(
                                             menuButtonKey, cached),
                                       )
@@ -807,7 +811,7 @@ class _FindRefDialogState extends State<FindRefDialog> {
                 alignment: AlignmentDirectional.centerEnd,
                 child: TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('סגור'),
+                  child: Text('common.close'.tr()),
                 ),
               ),
               _buildScrollToEndArrow(),

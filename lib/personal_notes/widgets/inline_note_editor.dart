@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 
 import 'package:otzaria/personal_notes/models/personal_note.dart';
@@ -103,7 +104,7 @@ class _InlineNoteEditorState extends State<InlineNoteEditor> {
 
     final result = _controller.buildResult();
     if (result.contentPlain.trim().isEmpty) {
-      UiSnack.showError('ההערה ריקה, לא נשמרה');
+      UiSnack.showError('personal_notes.empty'.tr());
       return;
     }
     _isDone = true;
@@ -190,12 +191,12 @@ class _InlineNoteEditorState extends State<InlineNoteEditor> {
           children: [
             TextButton(
               onPressed: _handleCancel,
-              child: const Text('ביטול'),
+              child: Text('common.cancel'.tr()),
             ),
             const SizedBox(width: 8),
             FilledButton(
               onPressed: _handleSave,
-              child: const Text('שמור'),
+              child: Text('common.save'.tr()),
             ),
           ],
         ),

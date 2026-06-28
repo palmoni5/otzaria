@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/services.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -416,16 +417,23 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen>
     setState(() {
       _commentatorGroups = [
         CommentatorGroup(
-            title: 'תורה שבכתב', commentators: eras['תורה שבכתב'] ?? const []),
-        CommentatorGroup(title: 'חז"ל', commentators: eras['חז"ל'] ?? const []),
+            title: 'pdf_book.commentator_group_torah_writings'.tr(),
+            commentators: eras['תורה שבכתב'] ?? const []),
         CommentatorGroup(
-            title: 'ראשונים', commentators: eras['ראשונים'] ?? const []),
+            title: 'pdf_book.commentator_group_hazal'.tr(),
+            commentators: eras['חז"ל'] ?? const []),
         CommentatorGroup(
-            title: 'אחרונים', commentators: eras['אחרונים'] ?? const []),
+            title: 'pdf_book.commentator_group_rishonim'.tr(),
+            commentators: eras['ראשונים'] ?? const []),
         CommentatorGroup(
-            title: 'מחברי זמננו',
+            title: 'pdf_book.commentator_group_acharonim'.tr(),
+            commentators: eras['אחרונים'] ?? const []),
+        CommentatorGroup(
+            title: 'pdf_book.commentator_group_modern_authors'.tr(),
             commentators: eras['מחברי זמננו'] ?? const []),
-        CommentatorGroup(title: 'שאר מפרשים', commentators: others),
+        CommentatorGroup(
+            title: 'pdf_book.commentator_group_other'.tr(),
+            commentators: others),
       ];
     });
   }
@@ -720,16 +728,20 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen>
 
     final ref = heading.isNotEmpty
         ? '${sourceTab.book.title} $heading'
-        : '${sourceTab.book.title} עמוד $page';
+        : '${sourceTab.book.title} ${'text_book.commentators.page_label'.tr(namedArgs: {
+                'page': '$page'
+              })}';
 
     final added = bookmarkBloc.addBookmark(
-      ref: 'מפרשים | $ref',
+      ref: 'text_book.commentators.ref_prefix'.tr(namedArgs: {'ref': ref}),
       book: sourceTab.book,
       index: page,
       commentatorsToShow: sourceTab.activeCommentators.toList(),
       targetKind: BookmarkTargetKind.commentators,
     );
-    UiSnack.show(added ? 'הסימניה נוספה בהצלחה' : 'הסימניה כבר קיימת');
+    UiSnack.show(added
+        ? 'text_book.bookmark_added'.tr()
+        : 'text_book.bookmark_already_exists'.tr());
   }
 
   Widget _buildAppTopBar(BuildContext context) {
@@ -738,7 +750,7 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen>
       leadingItems: [
         AppTopBarItem(
           widget: ToolbarActionButton(
-            tooltip: 'ניווט',
+            tooltip: 'text_book.commentators.navigate'.tr(),
             icon: FluentIcons.navigation_24_regular,
             compact: isCompact,
             onPressed: () {
@@ -752,16 +764,17 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen>
       ],
       center: ReaderNavCenter(
         title: Text(
-          'מפרשים על ${widget.tab.sourceTab.book.title}',
+          'text_book.commentators.title'
+              .tr(namedArgs: {'name': widget.tab.sourceTab.book.title}),
           style: AppTopBar.titleStyle(context),
           textAlign: TextAlign.center,
           overflow: TextOverflow.ellipsis,
           maxLines: 1,
         ),
-        prevMajorTooltip: 'הכותרת הקודמת',
-        prevMinorTooltip: 'הקטע הקודם',
-        nextMinorTooltip: 'הקטע הבא',
-        nextMajorTooltip: 'הכותרת הבאה',
+        prevMajorTooltip: 'text_book.commentators.previous_chapter'.tr(),
+        prevMinorTooltip: 'text_book.previous_section'.tr(),
+        nextMinorTooltip: 'text_book.next_section'.tr(),
+        nextMajorTooltip: 'text_book.commentators.next_chapter'.tr(),
         onPrevMajor: _navigateToPrevHeading,
         onPrevMinor: _navigateToPrevParagraph,
         onNextMinor: _navigateToNextParagraph,
@@ -776,7 +789,9 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen>
               // ניקוד
               ActionButtonData(
                 widget: ToolbarActionButton(
-                  tooltip: _removeNikud ? 'הצג ניקוד' : 'הסתר ניקוד',
+                  tooltip: _removeNikud
+                      ? 'text_book.show_nikud'.tr()
+                      : 'text_book.hide_nikud'.tr(),
                   icon: _removeNikud
                       ? FluentIcons.text_font_24_regular
                       : FluentIcons.text_font_info_24_regular,
@@ -786,13 +801,17 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen>
                 icon: _removeNikud
                     ? FluentIcons.text_font_24_regular
                     : FluentIcons.text_font_info_24_regular,
-                tooltip: _removeNikud ? 'הצג ניקוד' : 'הסתר ניקוד',
+                tooltip: _removeNikud
+                    ? 'text_book.show_nikud'.tr()
+                    : 'text_book.hide_nikud'.tr(),
                 onPressed: () => setState(() => _removeNikud = !_removeNikud),
               ),
               // פיסוק
               ActionButtonData(
                 widget: ToolbarActionButton(
-                  tooltip: _removePunctuation ? 'הצג פיסוק' : 'הסתר פיסוק',
+                  tooltip: _removePunctuation
+                      ? 'text_book.show_punctuation'.tr()
+                      : 'text_book.hide_punctuation'.tr(),
                   icon: _removePunctuation
                       ? FluentIcons.text_quote_24_regular
                       : FluentIcons.text_clear_formatting_24_regular,
@@ -803,34 +822,36 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen>
                 icon: _removePunctuation
                     ? FluentIcons.text_quote_24_regular
                     : FluentIcons.text_clear_formatting_24_regular,
-                tooltip: _removePunctuation ? 'הצג פיסוק' : 'הסתר פיסוק',
+                tooltip: _removePunctuation
+                    ? 'text_book.show_punctuation'.tr()
+                    : 'text_book.hide_punctuation'.tr(),
                 onPressed: () =>
                     setState(() => _removePunctuation = !_removePunctuation),
               ),
               // הדפסת המפרשים המוצגים
               ActionButtonData(
                 widget: ToolbarActionButton(
-                  tooltip: 'הדפסה',
+                  tooltip: 'text_book.print_menu'.tr(),
                   icon: FluentIcons.print_24_regular,
                   compact: isCompact,
                   onPressed: () =>
                       _panelKey.currentState?.printDisplayedCommentaries(),
                 ),
                 icon: FluentIcons.print_24_regular,
-                tooltip: 'הדפסה',
+                tooltip: 'text_book.print_menu'.tr(),
                 onPressed: () =>
                     _panelKey.currentState?.printDisplayedCommentaries(),
               ),
               // חיפוש
               ActionButtonData(
                 widget: ToolbarActionButton(
-                  tooltip: 'חיפוש',
+                  tooltip: 'text_book.search_tooltip'.tr(),
                   icon: FluentIcons.search_24_regular,
                   compact: isCompact,
                   onPressed: _openSearchPanel,
                 ),
                 icon: FluentIcons.search_24_regular,
-                tooltip: 'חיפוש',
+                tooltip: 'text_book.search_tooltip'.tr(),
                 onPressed: _openSearchPanel,
               ),
               // כיווץ/הרחבת כל המפרשים
@@ -840,8 +861,8 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen>
                   builder: (context, allExpanded, _) {
                     return ToolbarActionButton(
                       tooltip: allExpanded
-                          ? 'כווץ את כל המפרשים'
-                          : 'הרחב את כל המפרשים',
+                          ? 'text_book.commentators.collapse_all'.tr()
+                          : 'text_book.commentators.expand_all'.tr(),
                       icon: allExpanded
                           ? FluentIcons.arrow_collapse_all_24_regular
                           : FluentIcons.arrow_expand_all_24_regular,
@@ -855,57 +876,57 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen>
                     ? FluentIcons.arrow_collapse_all_24_regular
                     : FluentIcons.arrow_expand_all_24_regular,
                 tooltip: _allExpandedInChild.value
-                    ? 'כווץ את כל המפרשים'
-                    : 'הרחב את כל המפרשים',
+                    ? 'text_book.commentators.collapse_all'.tr()
+                    : 'text_book.commentators.expand_all'.tr(),
                 onPressed: () => _panelKey.currentState?.toggleAllExpanded(),
               ),
               // הוסף סימניה
               ActionButtonData(
                 widget: ToolbarActionButton(
-                  tooltip: 'הוסף סימניה',
+                  tooltip: 'text_book.add_bookmark_menu'.tr(),
                   icon: FluentIcons.bookmark_add_24_regular,
                   compact: isCompact,
                   onPressed: () => _addBookmark(context),
                 ),
                 icon: FluentIcons.bookmark_add_24_regular,
-                tooltip: 'הוסף סימניה',
+                tooltip: 'text_book.add_bookmark_menu'.tr(),
                 onPressed: () => _addBookmark(context),
               ),
               // הגדל גופן
               ActionButtonData(
                 widget: ToolbarActionButton(
-                  tooltip: 'הגדל את גודל הטקסט',
+                  tooltip: 'text_book.increase_text_size'.tr(),
                   icon: FluentIcons.zoom_in_24_regular,
                   compact: isCompact,
                   onPressed: () => _zoomIn(context),
                 ),
                 icon: FluentIcons.zoom_in_24_regular,
-                tooltip: 'הגדל את גודל הטקסט',
+                tooltip: 'text_book.increase_text_size'.tr(),
                 onPressed: () => _zoomIn(context),
               ),
               // הקטן גופן
               ActionButtonData(
                 widget: ToolbarActionButton(
-                  tooltip: 'הקטן את גודל הטקסט',
+                  tooltip: 'text_book.decrease_text_size'.tr(),
                   icon: FluentIcons.zoom_out_24_regular,
                   compact: isCompact,
                   onPressed: () => _zoomOut(context),
                 ),
                 icon: FluentIcons.zoom_out_24_regular,
-                tooltip: 'הקטן את גודל הטקסט',
+                tooltip: 'text_book.decrease_text_size'.tr(),
                 onPressed: () => _zoomOut(context),
               ),
             ],
             alwaysInMenu: [
               ActionButtonData(
                 widget: ToolbarActionButton(
-                  tooltip: 'סימניות בספר זה',
+                  tooltip: 'text_book.commentators.bookmarks_in_book'.tr(),
                   icon: FluentIcons.bookmark_multiple_24_regular,
                   compact: isCompact,
                   onPressed: () => _showBookmarksForCurrentBook(context),
                 ),
                 icon: FluentIcons.bookmark_multiple_24_regular,
-                tooltip: 'סימניות בספר זה',
+                tooltip: 'text_book.commentators.bookmarks_in_book'.tr(),
                 onPressed: () => _showBookmarksForCurrentBook(context),
               ),
             ],
@@ -937,32 +958,35 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen>
                 Expanded(
                   child: TabBar(
                     controller: _navTabController,
-                    tabs: const [
+                    tabs: [
                       Tab(
-                        icon: Icon(FluentIcons.navigation_24_regular, size: 16),
-                        iconMargin: EdgeInsets.only(bottom: 1),
+                        icon: const Icon(FluentIcons.navigation_24_regular,
+                            size: 16),
+                        iconMargin: const EdgeInsets.only(bottom: 1),
                         height: 44,
                         child: Text(
-                          'ניווט',
-                          style: TextStyle(fontSize: 11),
+                          'text_book.commentators.navigate'.tr(),
+                          style: const TextStyle(fontSize: 11),
                         ),
                       ),
                       Tab(
-                        icon: Icon(FluentIcons.apps_list_24_regular, size: 16),
-                        iconMargin: EdgeInsets.only(bottom: 1),
+                        icon: const Icon(FluentIcons.apps_list_24_regular,
+                            size: 16),
+                        iconMargin: const EdgeInsets.only(bottom: 1),
                         height: 44,
                         child: Text(
-                          'מפרשים',
-                          style: TextStyle(fontSize: 11),
+                          'text_book.commentary_panel.tab_commentaries'.tr(),
+                          style: const TextStyle(fontSize: 11),
                         ),
                       ),
                       Tab(
-                        icon: Icon(FluentIcons.search_24_regular, size: 16),
-                        iconMargin: EdgeInsets.only(bottom: 1),
+                        icon:
+                            const Icon(FluentIcons.search_24_regular, size: 16),
+                        iconMargin: const EdgeInsets.only(bottom: 1),
                         height: 44,
                         child: Text(
-                          'חיפוש',
-                          style: TextStyle(fontSize: 11),
+                          'text_book.search_tooltip'.tr(),
+                          style: const TextStyle(fontSize: 11),
                         ),
                       ),
                     ],
@@ -985,7 +1009,9 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen>
                     ),
                   ),
                   color: _pinLeftPane ? colorScheme.primary : null,
-                  tooltip: _pinLeftPane ? 'בטל נעיצה' : 'נעץ את הפאנל',
+                  tooltip: _pinLeftPane
+                      ? 'text_book.commentators.unpin_panel'.tr()
+                      : 'text_book.commentators.pin_panel'.tr(),
                 ),
               ],
             ),
@@ -1012,7 +1038,7 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen>
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
-            'טוען מפרשים...',
+            'text_book.commentators.loading'.tr(),
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ),
@@ -1045,8 +1071,8 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen>
   Widget _buildNavPanel() {
     final headings = _sortedHeadings;
     if (headings == null || headings.isEmpty) {
-      return const Center(
-        child: Text('אין ניווט'),
+      return Center(
+        child: Text('text_book.commentators.no_navigation'.tr()),
       );
     }
 
@@ -1062,7 +1088,7 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen>
               child: RtlTextField(
                 controller: _navSearchController,
                 decoration: InputDecoration(
-                  hintText: 'איתור כותרת...',
+                  hintText: 'text_book.commentators.find_heading_hint'.tr(),
                   prefixIcon: const Icon(FluentIcons.search_24_regular),
                   suffixIcon: val.text.trim().isNotEmpty
                       ? IconButton(
@@ -1224,7 +1250,9 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen>
                   size: 20,
                 ),
                 onPressed: onToggleExpand,
-                tooltip: isExpanded ? 'כווץ' : 'הרחב',
+                tooltip: isExpanded
+                    ? 'text_book.commentators.collapse'.tr()
+                    : 'text_book.commentators.expand'.tr(),
                 padding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
                 constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -1293,11 +1321,14 @@ class _PdfCommentatorsTabScreenState extends State<PdfCommentatorsTabScreen>
             builder: (context, currentIdx, _) => SearchPaneBase(
               searchController: _searchController,
               focusNode: _searchFocusNode,
-              hintText: 'חיפוש במפרשים...',
+              hintText: 'text_book.commentators.search_hint'.tr(),
               isNoResults: hasQuery && total == 0,
               resetSearchCallback: _searchController.clear,
               resultCountString: hasQuery && total > 0
-                  ? 'תוצאה ${currentIdx + 1} מתוך $total'
+                  ? 'text_book.commentators.result_of'.tr(namedArgs: {
+                      'current': '${currentIdx + 1}',
+                      'total': '$total',
+                    })
                   : null,
               resultToolbar: hasQuery && total > 0
                   ? Row(

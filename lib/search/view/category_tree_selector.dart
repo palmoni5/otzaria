@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -157,10 +158,11 @@ class _SearchScopeSelectorState extends State<SearchScopeSelector> {
     final colorScheme = Theme.of(context).colorScheme;
     final manualCount = _manualSelectedFacets.length;
     final helperText = _searchAllCategories
-        ? 'מופעל כברירת מחדל. כבה כדי לבחור קטגוריות או ספרים ידנית.'
+        ? 'search.default_all_off'.tr()
         : manualCount == 0
-            ? 'אפשר לחפש בעץ ולבחור קטגוריות או ספרים. עד שתיבחר בחירה ידנית, החיפוש יישאר בכל הקטגוריות.'
-            : 'נשמרו $manualCount פריטים לבחירה הידנית הכללית.';
+            ? 'search.manual_select_hint'.tr()
+            : 'search.manual_count_kept'
+                .tr(namedArgs: {'count': manualCount.toString()});
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -188,7 +190,7 @@ class _SearchScopeSelectorState extends State<SearchScopeSelector> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'חיפוש בכל הקטגוריות',
+                      'search.search_all_categories_label'.tr(),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
@@ -405,7 +407,7 @@ class _CategoryTreeSelectorState extends State<CategoryTreeSelector> {
         ),
         const SizedBox(width: 8),
         Text(
-          'חיפוש בקטגוריות',
+          'search.search_in_categories_label'.tr(),
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -415,7 +417,7 @@ class _CategoryTreeSelectorState extends State<CategoryTreeSelector> {
         const Spacer(),
         if (hasSelection)
           Tooltip(
-            message: 'איפוס בחירה',
+            message: 'search.reset_selection'.tr(),
             child: IconButton(
               icon: const Icon(FluentIcons.arrow_reset_24_regular, size: 16),
               onPressed: widget.onResetSelection ?? () => _toggleAll(false),
@@ -440,7 +442,7 @@ class _CategoryTreeSelectorState extends State<CategoryTreeSelector> {
           onChanged: (value) => _toggleAll(value == true),
         ),
         Text(
-          'הכל',
+          'search.all'.tr(),
           style: TextStyle(
             fontSize: 13,
             color: Theme.of(context).colorScheme.onSurface,
@@ -454,7 +456,7 @@ class _CategoryTreeSelectorState extends State<CategoryTreeSelector> {
     return RtlTextField(
       controller: _searchController,
       decoration: InputDecoration(
-        hintText: 'איתור קטגוריה או ספר...',
+        hintText: 'search.search_category_or_book'.tr(),
         prefixIcon: const Icon(FluentIcons.search_24_regular),
         suffixIcon: _searchController.text.isEmpty
             ? null
@@ -482,7 +484,8 @@ class _CategoryTreeSelectorState extends State<CategoryTreeSelector> {
     if (_normalizedSearchQuery.length < _minSearchQueryLength) {
       return Center(
         child: Text(
-          'הקלד לפחות $_minSearchQueryLength תווים כדי לחפש.',
+          'search.type_at_least_chars'
+              .tr(namedArgs: {'chars': _minSearchQueryLength.toString()}),
           style: TextStyle(color: colorScheme.onSurfaceVariant),
         ),
       );
@@ -491,7 +494,7 @@ class _CategoryTreeSelectorState extends State<CategoryTreeSelector> {
     if (results.isEmpty) {
       return Center(
         child: Text(
-          'לא נמצאו קטגוריות או ספרים תואמים.',
+          'search.no_matching_categories'.tr(),
           style: TextStyle(color: colorScheme.onSurfaceVariant),
         ),
       );
@@ -505,7 +508,8 @@ class _CategoryTreeSelectorState extends State<CategoryTreeSelector> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'נמצאו ${results.length} תוצאות',
+                'search.found_results_count'
+                    .tr(namedArgs: {'count': results.length.toString()}),
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -518,7 +522,7 @@ class _CategoryTreeSelectorState extends State<CategoryTreeSelector> {
                   SizedBox(
                     height: 30,
                     child: RecommendedActionButton(
-                      text: 'בחר הכל',
+                      text: 'search.select_all'.tr(),
                       icon: FluentIcons.checkbox_checked_24_regular,
                       onPressed: () => _selectAllSearchResults(results),
                     ),
@@ -527,7 +531,7 @@ class _CategoryTreeSelectorState extends State<CategoryTreeSelector> {
                   SizedBox(
                     height: 30,
                     child: NeutralActionButton(
-                      text: 'נקה',
+                      text: 'search.clear_button'.tr(),
                       icon: FluentIcons.eraser_24_regular,
                       onPressed: () => _clearSearchResultsSelection(results),
                     ),

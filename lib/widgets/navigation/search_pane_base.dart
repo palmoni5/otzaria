@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:otzaria/widgets/text/otzaria_search_field.dart';
@@ -132,9 +133,9 @@ class _SearchPaneBaseState extends State<SearchPaneBase> {
     final resultsArea = NotificationListener<ScrollNotification>(
       onNotification: _onScrollNotification,
       child: widget.isNoResults
-          ? const Center(
+          ? Center(
               child: Text(
-                'אין תוצאות',
+                'widgets.no_results'.tr(),
               ),
             )
           : widget.resultsWidget,

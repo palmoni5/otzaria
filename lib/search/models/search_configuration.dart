@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:otzaria_search_engine/otzaria_search_engine.dart';
 
 /// מצבי החיפוש השונים
@@ -9,18 +10,15 @@ enum SearchMode {
 
 extension SearchModePresentation on SearchMode {
   String get shortLabel => switch (this) {
-        SearchMode.advanced => 'מתקדם',
-        SearchMode.exact => 'מדויק',
-        SearchMode.fuzzy => 'מקורב',
+        SearchMode.advanced => 'search.advanced'.tr(),
+        SearchMode.exact => 'search.exact'.tr(),
+        SearchMode.fuzzy => 'search.fuzzy'.tr(),
       };
 
   String get tooltip => switch (this) {
-        SearchMode.advanced =>
-          'חיפוש מתקדם מאפשר קידומות, סיומות, מילים חילופיות ומרווחים בין מילים.',
-        SearchMode.exact =>
-          'חיפוש מדויק מחפש את המילים כפי שהוקלדו, בלי התאמות מקורבות.',
-        SearchMode.fuzzy =>
-          'חיפוש מקורב מרשה התאמות דומות ושיבושי כתיב קלים לפי מרחק החיפוש.',
+        SearchMode.advanced => 'search.mode_tooltip_advanced'.tr(),
+        SearchMode.exact => 'search.mode_tooltip_exact'.tr(),
+        SearchMode.fuzzy => 'search.mode_tooltip_fuzzy'.tr(),
       };
 }
 

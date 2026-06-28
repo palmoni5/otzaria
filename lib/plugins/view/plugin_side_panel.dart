@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -115,38 +116,39 @@ class PluginSidePanel extends StatelessWidget {
             children: [
               if (onClose != null)
                 IconButton(
-                  icon: RtlIcon(FluentIcons.dismiss_24_regular),
-                  tooltip: 'סגור',
+                  icon: const Icon(FluentIcons.dismiss_24_regular),
+                  tooltip: 'plugins.side_panel.close_tooltip'.tr(),
                   onPressed: onClose,
                   iconSize: 20,
                 ),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'תוספים',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  'plugins.side_panel.title'.tr(),
+                  style:
+                      const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                 ),
               ),
               IconButton(
-                icon: RtlIcon(FluentIcons.add_24_regular),
-                tooltip: 'התקן תוסף חדש',
+                icon: const Icon(FluentIcons.add_24_regular),
+                tooltip: 'plugins.side_panel.install_tooltip'.tr(),
                 onPressed: () => _installPlugin(context),
               ),
               if (showDevTools)
                 IconButton(
-                  icon: RtlIcon(FluentIcons.folder_add_24_regular),
-                  tooltip: 'טען תיקיית תוסף',
+                  icon: const Icon(FluentIcons.folder_add_24_regular),
+                  tooltip: 'plugins.side_panel.load_folder_tooltip'.tr(),
                   onPressed: () => _loadDevPlugin(context),
                 ),
               if (showDevTools)
                 IconButton(
-                  icon: RtlIcon(FluentIcons.globe_add_24_regular),
-                  tooltip: 'טען תוסף מ-localhost',
+                  icon: const Icon(FluentIcons.globe_add_24_regular),
+                  tooltip: 'plugins.side_panel.load_localhost_tooltip'.tr(),
                   onPressed: () => _loadLocalhostPlugin(context),
                 ),
               if (showDevTools)
                 IconButton(
-                  icon: RtlIcon(FluentIcons.arrow_sync_24_regular),
-                  tooltip: 'רענן תוספים',
+                  icon: const Icon(FluentIcons.arrow_sync_24_regular),
+                  tooltip: 'plugins.side_panel.refresh_tooltip'.tr(),
                   onPressed: () =>
                       context.read<PluginSystemBloc>().add(RefreshPlugins()),
                 ),
@@ -164,9 +166,8 @@ class PluginSidePanel extends StatelessWidget {
                 return Center(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      'שגיאה: ${state.message}',
-                    ),
+                    child: Text('plugins.side_panel.error_message'
+                        .tr(namedArgs: {'message': state.message})),
                   ),
                 );
               }
@@ -185,10 +186,11 @@ class PluginSidePanel extends StatelessWidget {
                   return Center(
                     child: Text(
                       allHiddenManually
-                          ? 'כל התוספים המותקנים הוסתרו מההגדרות'
+                          ? 'plugins.side_panel.all_hidden'.tr()
                           : (isOfflineMode && state.plugins.isNotEmpty
-                              ? 'כל התוספים המותקנים דורשים אינטרנט\nוהוסתרו במצב מנותק'
-                              : 'לא הותקנו תוספים'),
+                              ? 'plugins.side_panel.all_require_network'.tr()
+                              : 'plugins.side_panel.no_plugins_installed'
+                                  .tr()),
                       textAlign: TextAlign.center,
                     ),
                   );
@@ -296,7 +298,7 @@ class _PluginListTile extends StatelessWidget {
               right: -8,
               top: -8,
               child: Tooltip(
-                message: 'תוסף פיתוח המוטען מתיקייה מקומית',
+                message: 'plugins.side_panel.dev_plugin_tooltip'.tr(),
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
@@ -323,8 +325,8 @@ class _PluginListTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            icon: RtlIcon(FluentIcons.settings_24_regular),
-            tooltip: 'הגדרות תוסף',
+            icon: const Icon(FluentIcons.settings_24_regular),
+            tooltip: 'plugins.side_panel.settings_tooltip'.tr(),
             onPressed: () async {
               final result = await showDialog<bool>(
                 context: context,
@@ -350,7 +352,9 @@ class _PluginListTile extends StatelessWidget {
                   ? FluentIcons.pin_24_filled
                   : FluentIcons.pin_24_regular,
             ),
-            tooltip: plugin.pinned ? 'בטל הצמדה' : 'הצמד לסרגל',
+            tooltip: plugin.pinned
+                ? 'plugins.side_panel.unpin_tooltip'.tr()
+                : 'plugins.side_panel.pin_tooltip'.tr(),
             onPressed: () {
               if (plugin.pinned) {
                 context
@@ -372,10 +376,10 @@ class _PluginListTile extends StatelessWidget {
             child: MouseRegion(
               cursor: SystemMouseCursors.grab,
               child: Tooltip(
-                message: 'גרור ושחרר לסידור מחדש',
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  child: RtlIcon(FluentIcons.re_order_dots_vertical_24_regular),
+                message: 'plugins.side_panel.drag_to_reorder'.tr(),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4.0),
+                  child: Icon(FluentIcons.re_order_dots_vertical_24_regular),
                 ),
               ),
             ),

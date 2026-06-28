@@ -1,5 +1,6 @@
 // לתחזוקת הסיור המודרך ראו: docs/guided_tour_developer_guide.md
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:otzaria/tour/models/tour_step.dart';
 
@@ -18,141 +19,131 @@ class TourSteps {
       if (isRestart)
         TourStep(
           id: 'restart_welcome',
-          title: 'הסיור המודרך',
+          title: 'tour.steps.restart_welcome_title'.tr(),
           body: libraryLoaded
-              ? 'הסיור יעבור על כל הפיצ׳רים המרכזיים של אוצריא.\nלחץ "אני מוכן" כשתהיה מוכן להתחיל.'
-              : 'ללא ספרייה טעונה יוצג סיור מקוצר.\nלאחר טעינת הספרייה תוכל לצפות בסיור המלא.\nלחץ "אני מוכן" כשתהיה מוכן להתחיל.',
+              ? 'tour.steps.restart_welcome_body_loaded'.tr()
+              : 'tour.steps.restart_welcome_body_empty'.tr(),
           area: TourSpotlightArea.center,
           isDialog: true,
         )
       else
         TourStep(
           id: 'welcome',
-          title: 'ברוכים הבאים לאוצריא',
+          title: 'tour.steps.welcome_title'.tr(),
           body: libraryLoaded
-              ? 'ספרייה תורנית דיגיטלית חינמית ופתוחה. האם תרצה סיור קצר שיכיר לך את הפיצ׳רים המרכזיים? (כ-2 דקות)'
-              : 'ספרייה תורנית דיגיטלית חינמית ופתוחה.\n\nמאחר שעדיין לא טענת ספרייה, יוצג כעת סיור מקוצר. לאחר טעינת הספרייה תוכל להפעיל שוב את הסיור המלא מ: הגדרות ← מערכת.',
+              ? 'tour.steps.welcome_body_loaded'.tr()
+              : 'tour.steps.welcome_body_empty'.tr(),
           area: TourSpotlightArea.center,
           isDialog: true,
         ),
       TourStep(
         id: 'navigation',
-        title: 'הניווט הראשי',
-        body:
-            'בחלק המואר תמצא את כל חלקי האפליקציה: ספרייה, איתור, עיון, חיפוש, כלים והגדרות.\n\nקיצורים: ${shortcuts.mainNavigation}',
+        title: 'tour.steps.navigation_title'.tr(),
+        body: 'tour.steps.navigation_body'
+            .tr(namedArgs: {'shortcuts': shortcuts.mainNavigation}),
         area: TourSpotlightArea.navigation,
       ),
     ];
 
     if (libraryLoaded) {
       steps.addAll([
-        const TourStep(
+        TourStep(
           id: 'library',
-          title: 'הספרייה',
-          body:
-              'כאן מוצגים כל הספרים הזמינים. תוכל לדפדף לפי קטגוריות, לחפש לפי שם, או לפתוח ספר בלחיצה.',
+          title: 'tour.steps.library_title'.tr(),
+          body: 'tour.steps.library_body'.tr(),
           area: TourSpotlightArea.fullScreen,
           action: TourStepAction.openLibrary,
         ),
-        const TourStep(
+        TourStep(
           id: 'library_search',
-          title: 'חיפוש מהיר בספרייה',
-          body: 'הקלד כאן שם ספר, מחבר או נושא — הספרייה תסונן מיידית.',
+          title: 'tour.steps.library_search_title'.tr(),
+          body: 'tour.steps.library_search_body'.tr(),
           area: TourSpotlightArea.librarySearch,
           action: TourStepAction.openLibrary,
         ),
-        const TourStep(
+        TourStep(
           id: 'categories',
-          title: 'קטגוריות',
-          body:
-              'לחץ על קטגוריה כדי לעבור אליה: תנ״ך, משנה, תלמוד, הלכה, קבלה, מחשבה ועוד.',
+          title: 'tour.steps.categories_title'.tr(),
+          body: 'tour.steps.categories_body'.tr(),
           area: TourSpotlightArea.libraryCategories,
           action: TourStepAction.openLibraryHome,
         ),
-        const TourStep(
+        TourStep(
           id: 'open_book',
-          title: 'פתיחת ספר',
-          body:
-              'לחץ פעמיים על ספר כדי לפתוח אותו לקריאה. לחיצה אחת מציגה תצוגה מקדימה עם פרטי הספר בצד.',
+          title: 'tour.steps.open_book_title'.tr(),
+          body: 'tour.steps.open_book_body'.tr(),
           area: TourSpotlightArea.bookCard,
           action: TourStepAction.openLibraryBookPreview,
         ),
         TourStep(
           id: 'find_ref',
-          title: 'איתור מהיר',
-          body:
-              'כשאתה יודע לאן להגיע, הקלד שם ספר, פרק או פסוק. איתור = נווט, חיפוש = גלה.\n\nקיצור: ${shortcuts.findRef}',
+          title: 'tour.steps.find_ref_title'.tr(),
+          body: 'tour.steps.find_ref_body'
+              .tr(namedArgs: {'shortcut': shortcuts.findRef}),
           area: TourSpotlightArea.findRef,
           action: TourStepAction.openFindRef,
         ),
         TourStep(
           id: 'reading',
-          title: 'מסך הקריאה',
-          body:
-              'כאן קוראים את הספרים שפתחת. ניתן לפתוח מספר ספרים בטאבים שונים ולעבור ביניהם.\n\nקיצור: ${shortcuts.reading}',
+          title: 'tour.steps.reading_title'.tr(),
+          body: 'tour.steps.reading_body'
+              .tr(namedArgs: {'shortcut': shortcuts.reading}),
           area: TourSpotlightArea.reading,
           action: TourStepAction.openReading,
         ),
         TourStep(
           id: 'tabs',
-          title: 'טאבים — ספרים מרובים',
-          body:
-              'כל ספר שתפתח יופיע כטאב נפרד. Ctrl+Tab עובר בין טאבים, ושולחנות עבודה שומרים אוספי טאבים.',
+          title: 'tour.steps.tabs_title'.tr(),
+          body: 'tour.steps.tabs_body'.tr(),
           area: TourSpotlightArea.tabs,
           action: TourStepAction.openReading,
         ),
-        const TourStep(
+        TourStep(
           id: 'toc',
-          title: 'תוכן עניינים',
-          body:
-              'לחץ כדי לנווט ישירות לפרק או לסעיף בספר. פאנל ניווט נפתח בצד עם כל הפרקים.',
+          title: 'tour.steps.toc_title'.tr(),
+          body: 'tour.steps.toc_body'.tr(),
           area: TourSpotlightArea.tableOfContents,
           action: TourStepAction.openReading,
         ),
-        const TourStep(
+        TourStep(
           id: 'commentators',
-          title: 'מפרשים וביאורים',
-          body: 'בחר אם המפרשים יוצגו לצד הטקסט, מתחתיו, או בתצוגת צורת הדף.',
+          title: 'tour.steps.commentators_title'.tr(),
+          body: 'tour.steps.commentators_body'.tr(),
           area: TourSpotlightArea.commentators,
           action: TourStepAction.openReading,
         ),
-        const TourStep(
+        TourStep(
           id: 'bookmark',
-          title: 'סימניות והיסטוריה',
-          body:
-              'כדי לסמן מקום, לחץ לחיצה ימנית על הטקסט ובחר "הוסף סימניה לקטע זה". כאן תמצא את הסימניות של הספר הנוכחי. ההיסטוריה הכללית נשמרת אוטומטית, ובקצה המסך העליון תמצא סימניות והיסטוריה.',
+          title: 'tour.steps.bookmark_title'.tr(),
+          body: 'tour.steps.bookmark_body'.tr(),
           area: TourSpotlightArea.bookmark,
           action: TourStepAction.openReading,
         ),
-        const TourStep(
+        TourStep(
           id: 'book_search',
-          title: 'חיפוש בספר',
-          body:
-              'חפש מילה או משפט בספר הנוכחי בלבד. התוצאות מסומנות בתוך הטקסט.',
+          title: 'tour.steps.book_search_title'.tr(),
+          body: 'tour.steps.book_search_body'.tr(),
           area: TourSpotlightArea.bookSearch,
           action: TourStepAction.openReading,
         ),
-        const TourStep(
+        TourStep(
           id: 'reading_settings',
-          title: 'הגדרות קריאה',
-          body:
-              'פתח את פאנל הגדרות הקריאה: גודל גופן, סוג גופן, ניקוד, ריווח שורות ומצב תצוגה.',
+          title: 'tour.steps.reading_settings_title'.tr(),
+          body: 'tour.steps.reading_settings_body'.tr(),
           area: TourSpotlightArea.readingSettings,
           action: TourStepAction.openReading,
         ),
-        const TourStep(
+        TourStep(
           id: 'print',
-          title: 'הדפסה',
-          body:
-              'הדפס את הפרק הנוכחי עם הפורמט שבחרת — כולל מפרשים אם הם מוצגים.',
+          title: 'tour.steps.print_title'.tr(),
+          body: 'tour.steps.print_body'.tr(),
           area: TourSpotlightArea.print,
           action: TourStepAction.openReading,
         ),
-        const TourStep(
+        TourStep(
           id: 'side_by_side',
-          title: 'שני ספרים זה לצד זה',
-          body:
-              'לחץ לחיצה ימנית על טאב ובחר הצג לצד — שני ספרים יוצגו זה לצד זה עם מחיצה נגררת.',
+          title: 'tour.steps.side_by_side_title'.tr(),
+          body: 'tour.steps.side_by_side_body'.tr(),
           area: TourSpotlightArea.sideBySide,
           action: TourStepAction.openReading,
         ),
@@ -162,84 +153,84 @@ class TourSteps {
     steps.addAll([
       TourStep(
         id: 'advanced_search',
-        title: 'חיפוש מתקדם בכל הספרייה',
+        title: 'tour.steps.advanced_search_title'.tr(),
         body: libraryLoaded
-            ? 'חפש כל מילה או ביטוי בכל הספרים בו-זמנית. ניתן לסנן לפי קטגוריות ולגשת לכל תוצאה.\n\nקיצור: ${shortcuts.search}'
-            : 'החיפוש המתקדם יהיה זמין לאחר טעינת הספרייה. הוא מיועד למציאת רעיון או מילה כשאינך יודע היכן הם מופיעים.',
+            ? 'tour.steps.advanced_search_body_loaded'
+                .tr(namedArgs: {'shortcut': shortcuts.search})
+            : 'tour.steps.advanced_search_body_empty'.tr(),
         area: TourSpotlightArea.searchDialog,
         action: TourStepAction.openSearch,
       ),
       TourStep(
         id: 'tools',
-        title: 'כלים נוספים',
-        body:
-            'כאן תמצא לוח שנה יהודי, גימטריות, מילון ארמי, ראשי תיבות, ממיר יחידות, תוכנית לימוד והערות אישיות.\n\nקיצור: ${shortcuts.tools}',
+        title: 'tour.steps.tools_title'.tr(),
+        body: 'tour.steps.tools_body'
+            .tr(namedArgs: {'shortcut': shortcuts.tools}),
         area: TourSpotlightArea.tools,
         action: TourStepAction.openTools,
       ),
       if (!hiddenTools.contains('builtin.calendar'))
-        const TourStep(
+        TourStep(
           id: 'calendar',
-          title: 'לוח שנה יהודי',
-          body:
-              'לוח עברי-לועזי עם זמני תפילה לפי מיקום, וגם דף יומי לתלמוד בבלי ועוד.',
+          title: 'tour.steps.calendar_title'.tr(),
+          body: 'tour.steps.calendar_body'.tr(),
           area: TourSpotlightArea.toolsTabs,
           action: TourStepAction.openTools,
         ),
       if (!hiddenTools.contains('builtin.gematria'))
-        const TourStep(
+        TourStep(
           id: 'gematria',
-          title: 'חיפוש גימטריות',
-          body: 'הזן מילה וקבל את הגימטריה שלה, או חפש מילים לפי ערך גימטרי.',
+          title: 'tour.steps.gematria_title'.tr(),
+          body: 'tour.steps.gematria_body'.tr(),
           area: TourSpotlightArea.toolsTabs,
           action: TourStepAction.openTools,
         ),
       if (!hiddenTools.contains('builtin.notes'))
-        const TourStep(
+        TourStep(
           id: 'notes',
-          title: 'הערות אישיות',
-          body:
-              'הוסף הערות אישיות לכל מקום בכל ספר. ההערות שמורות במכשיר וניתנות לייצוא.',
+          title: 'tour.steps.notes_title'.tr(),
+          body: 'tour.steps.notes_body'.tr(),
           area: TourSpotlightArea.toolsTabs,
           action: TourStepAction.openTools,
         ),
       TourStep(
         id: 'settings',
-        title: 'הגדרות',
-        body:
-            'כאן תוכל להתאים אישית מראה, כתב, ספרייה, כלים, קיצורים, גיבוי ועוד.\n\nקיצור: ${shortcuts.settings}',
+        title: 'tour.steps.settings_title'.tr(),
+        body: 'tour.steps.settings_body'
+            .tr(namedArgs: {'shortcut': shortcuts.settings}),
         area: TourSpotlightArea.settings,
         action: TourStepAction.openSettings,
       ),
-      const TourStep(
+      TourStep(
         id: 'appearance',
-        title: 'מראה',
-        body: 'בחר מצב בהיר או כהה, צבע בסיסי לממשק ומצב תצוגה מלאה.',
+        title: 'tour.steps.appearance_title'.tr(),
+        body: 'tour.steps.appearance_body'.tr(),
         area: TourSpotlightArea.designSettings,
         action: TourStepAction.openDesignSettings,
       ),
-      const TourStep(
+      TourStep(
         id: 'backup',
-        title: 'גיבוי',
-        body:
-            'שמור גיבוי של הסימניות, ההיסטוריה וההערות שלך, ושחזר בכל עת גם לאחר התקנה מחדש. הגיבוי ניתן לייצוא.',
+        title: 'tour.steps.backup_title'.tr(),
+        body: 'tour.steps.backup_body'.tr(),
         area: TourSpotlightArea.backupSettings,
         action: TourStepAction.openSystemSettings,
       ),
       TourStep(
         id: 'shortcuts',
-        title: 'קיצורי מקלדת',
-        body: 'צפה בכל קיצורי המקלדת הזמינים והתאם אותם אישית.\n\n'
-            '${shortcuts.shortcutTable}',
+        title: 'tour.steps.shortcuts_title'.tr(),
+        body: 'tour.steps.shortcuts_body'
+            .tr(namedArgs: {'table': shortcuts.shortcutTable}),
         area: TourSpotlightArea.shortcutsSettings,
         action: TourStepAction.openShortcutsSettings,
       ),
       TourStep(
         id: 'finish',
-        title: libraryLoaded ? 'הסיור הסתיים!' : 'הסיור המקוצר הסתיים',
+        title: libraryLoaded
+            ? 'tour.steps.finish_title_loaded'.tr()
+            : 'tour.steps.finish_title_empty'.tr(),
         body: libraryLoaded
-            ? 'עכשיו אתה מוכן לחקור את הספרייה. תוכל להפעיל את הסיור שוב בכל עת מ: הגדרות ← מערכת ← הפעל סיור מחדש.'
-            : 'לאחר טעינת הספרייה תוכל לחזור לסיור המלא מ: הגדרות ← מערכת ← הפעל סיור מחדש.',
+            ? 'tour.steps.finish_body_loaded'.tr()
+            : 'tour.steps.finish_body_empty'.tr(),
         area: TourSpotlightArea.center,
         action: TourStepAction.openLibrary,
         isDialog: true,
@@ -249,11 +240,10 @@ class TourSteps {
     if (!libraryLoaded) {
       return [
         steps.first, // welcome / restart_welcome
-        const TourStep(
+        TourStep(
           id: 'empty_library',
-          title: 'נתחיל בהגדרת הספרייה',
-          body:
-              'כדי להשתמש באוצריא, צריך ספרייה של ספרים. אפשר להוריד את הספרייה, לבחור תיקייה קיימת או לחלץ מקובץ ZIP.',
+          title: 'tour.steps.empty_library_title'.tr(),
+          body: 'tour.steps.empty_library_body'.tr(),
           area: TourSpotlightArea.emptyLibrary,
           action: TourStepAction.openLibrary,
         ),
@@ -277,12 +267,18 @@ class TourSteps {
 
 class _ShortcutText {
   String get mainNavigation => [
-        'ספרייה ${_read('key-shortcut-open-library-browser', 'ctrl+l')}',
-        'איתור ${_read('key-shortcut-open-find-ref', 'ctrl+o')}',
-        'עיון ${_read('key-shortcut-open-reading-screen', 'ctrl+r')}',
-        'חיפוש ${_read('key-shortcut-open-new-search', 'ctrl+shift+f')}',
-        'כלים ${_read('key-shortcut-open-more', 'ctrl+m')}',
-        'הגדרות ${_read('key-shortcut-open-settings', 'ctrl+comma')}',
+        '${'tour.steps.shortcut_label_library'.tr()} '
+            '${_read('key-shortcut-open-library-browser', 'ctrl+l')}',
+        '${'tour.steps.shortcut_label_find_ref'.tr()} '
+            '${_read('key-shortcut-open-find-ref', 'ctrl+o')}',
+        '${'tour.steps.shortcut_label_reading'.tr()} '
+            '${_read('key-shortcut-open-reading-screen', 'ctrl+r')}',
+        '${'tour.steps.shortcut_label_search'.tr()} '
+            '${_read('key-shortcut-open-new-search', 'ctrl+shift+f')}',
+        '${'tour.steps.shortcut_label_tools'.tr()} '
+            '${_read('key-shortcut-open-more', 'ctrl+m')}',
+        '${'tour.steps.shortcut_label_settings'.tr()} '
+            '${_read('key-shortcut-open-settings', 'ctrl+comma')}',
       ].join(' · ');
 
   String get findRef => _read('key-shortcut-open-find-ref', 'ctrl+o');
@@ -292,12 +288,22 @@ class _ShortcutText {
   String get settings => _read('key-shortcut-open-settings', 'ctrl+comma');
 
   String get shortcutTable => [
-        'ספרייה: ${_read('key-shortcut-open-library-browser', 'ctrl+l')}',
-        'איתור: ${_read('key-shortcut-open-find-ref', 'ctrl+o')}',
-        'עיון: ${_read('key-shortcut-open-reading-screen', 'ctrl+r')}',
-        'חיפוש מתקדם: ${_read('key-shortcut-open-new-search', 'ctrl+shift+f')}',
-        'טאב הבא: ${_read('key-shortcut-next-tab', 'ctrl+tab')}',
-        'סגור טאב: ${_read('key-shortcut-close-tab', 'ctrl+w')}',
+        'tour.steps.shortcut_table_library'.tr(namedArgs: {
+          'shortcut': _read('key-shortcut-open-library-browser', 'ctrl+l')
+        }),
+        'tour.steps.shortcut_table_find_ref'.tr(namedArgs: {
+          'shortcut': _read('key-shortcut-open-find-ref', 'ctrl+o')
+        }),
+        'tour.steps.shortcut_table_reading'.tr(namedArgs: {
+          'shortcut': _read('key-shortcut-open-reading-screen', 'ctrl+r')
+        }),
+        'tour.steps.shortcut_table_search'.tr(namedArgs: {
+          'shortcut': _read('key-shortcut-open-new-search', 'ctrl+shift+f')
+        }),
+        'tour.steps.shortcut_table_next_tab'.tr(
+            namedArgs: {'shortcut': _read('key-shortcut-next-tab', 'ctrl+tab')}),
+        'tour.steps.shortcut_table_close_tab'.tr(
+            namedArgs: {'shortcut': _read('key-shortcut-close-tab', 'ctrl+w')}),
       ].join('\n');
 
   String _read(String key, String defaultValue) {

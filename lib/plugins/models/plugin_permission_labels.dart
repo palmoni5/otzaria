@@ -1,6 +1,8 @@
-/// מידע תצוגה עבור הרשאת תוסף — שם עברי ותיאור קצר
+import 'package:easy_localization/easy_localization.dart';
+
+/// מידע תצוגה עבור הרשאת תוסף — שם ותיאור קצר
 class PluginPermissionInfo {
-  /// שם קצר בעברית (מוצג כותרת)
+  /// שם קצר (מוצג כותרת)
   final String label;
 
   /// תיאור מה ההרשאה מאפשרת (מוצג כsubtitle)
@@ -15,173 +17,199 @@ PluginPermissionInfo getPermissionInfo(String permissionKey) {
   return _permissionLabels[permissionKey] ??
       PluginPermissionInfo(
         label: permissionKey,
-        description: 'גישה לפונקציונליות: $permissionKey',
+        description: 'plugins.permissions.generic_description'
+            .tr(namedArgs: {'key': permissionKey}),
       );
 }
 
-/// מיפוי מלא של כל ההרשאות התקפות לשם ותיאור בעברית
-const Map<String, PluginPermissionInfo> _permissionLabels = {
-  // ===== מידע על האפליקציה =====
-  'app.info.read': PluginPermissionInfo(
-    label: 'מידע אפליקציה',
-    description: 'קריאת מידע כללי על האפליקציה: גרסה, פלטפורמה, ערכת נושא',
-  ),
-  'app.user_email.read': PluginPermissionInfo(
-    label: 'כתובת מייל',
-    description: 'גישה לכתובת המייל של המשתמש, לשימוש בדיווח שגיאות בלבד',
-  ),
-  'app.run_on_startup': PluginPermissionInfo(
-    label: 'טעינה אוטומטית עם עליית האפליקציה',
-    description:
-        'התוסף ייטען ויפעל ברקע מיד עם עליית אוצריא, גם בלי להיכנס למסך "כלים". מומלץ רק לתוספים שצריכים לעקוב אחרי אירועים או לתזמן פעולות.',
-  ),
+/// מיפוי מלא של כל ההרשאות התקפות לשם ותיאור
+Map<String, PluginPermissionInfo> get _permissionLabels => {
+      // ===== מידע על האפליקציה =====
+      'app.info.read': PluginPermissionInfo(
+        label: 'plugins.permissions.app_info_read_label'.tr(),
+        description: 'plugins.permissions.app_info_read_description'.tr(),
+      ),
+      'app.user_email.read': PluginPermissionInfo(
+        label: 'plugins.permissions.app_user_email_read_label'.tr(),
+        description: 'plugins.permissions.app_user_email_read_description'.tr(),
+      ),
+      'app.run_on_startup': PluginPermissionInfo(
+        label: 'plugins.permissions.app_run_on_startup_label'.tr(),
+        description: 'plugins.permissions.app_run_on_startup_description'.tr(),
+      ),
 
-  // ===== ספרייה =====
-  'library.books.read': PluginPermissionInfo(
-    label: 'רשימת ספרים',
-    description: 'חיפוש וצפייה ברשימת כל הספרים בספרייה',
-  ),
-  'library.content.read': PluginPermissionInfo(
-    label: 'תוכן ספרים',
-    description: 'קריאת תוכן הספרים מהספרייה',
-  ),
+      // ===== ספרייה =====
+      'library.books.read': PluginPermissionInfo(
+        label: 'plugins.permissions.library_books_read_label'.tr(),
+        description: 'plugins.permissions.library_books_read_description'.tr(),
+      ),
+      'library.content.read': PluginPermissionInfo(
+        label: 'plugins.permissions.library_content_read_label'.tr(),
+        description:
+            'plugins.permissions.library_content_read_description'.tr(),
+      ),
 
-  // ===== חיפוש =====
-  'search.fulltext.read': PluginPermissionInfo(
-    label: 'חיפוש טקסט מלא',
-    description: 'ביצוע חיפושי טקסט ברחבי כל הספרייה',
-  ),
+      // ===== חיפוש =====
+      'search.fulltext.read': PluginPermissionInfo(
+        label: 'plugins.permissions.search_fulltext_read_label'.tr(),
+        description:
+            'plugins.permissions.search_fulltext_read_description'.tr(),
+      ),
 
-  // ===== קורא =====
-  'reader.open': PluginPermissionInfo(
-    label: 'פתיחת ספרים',
-    description: 'פתיחת ספרים בקורא האפליקציה',
-  ),
+      // ===== קורא =====
+      'reader.open': PluginPermissionInfo(
+        label: 'plugins.permissions.reader_open_label'.tr(),
+        description: 'plugins.permissions.reader_open_description'.tr(),
+      ),
 
-  // ===== ניווט =====
-  'navigation.write': PluginPermissionInfo(
-    label: 'ניווט במסכים',
-    description: 'מעבר בין מסכים שונים באפליקציה',
-  ),
+      // ===== ניווט =====
+      'navigation.write': PluginPermissionInfo(
+        label: 'plugins.permissions.navigation_write_label'.tr(),
+        description: 'plugins.permissions.navigation_write_description'.tr(),
+      ),
 
-  // ===== הערות אישיות =====
-  'notes.read': PluginPermissionInfo(
-    label: 'צפייה בהערות',
-    description: 'קריאה וצפייה בהערות האישיות שלך',
-  ),
-  'notes.write': PluginPermissionInfo(
-    label: 'עריכת הערות',
-    description: 'יצירה, עריכה ומחיקה של הערות אישיות',
-  ),
+      // ===== הערות אישיות =====
+      'notes.read': PluginPermissionInfo(
+        label: 'plugins.permissions.notes_read_label'.tr(),
+        description: 'plugins.permissions.notes_read_description'.tr(),
+      ),
+      'notes.write': PluginPermissionInfo(
+        label: 'plugins.permissions.notes_write_label'.tr(),
+        description: 'plugins.permissions.notes_write_description'.tr(),
+      ),
 
-  // ===== לוח שנה =====
-  'calendar.read': PluginPermissionInfo(
-    label: 'לוח שנה עברי',
-    description: 'גישה ללוח השנה העברי, זמנים הלכתיים ואירועים',
-  ),
+      // ===== לוח שנה =====
+      'calendar.read': PluginPermissionInfo(
+        label: 'plugins.permissions.calendar_read_label'.tr(),
+        description: 'plugins.permissions.calendar_read_description'.tr(),
+      ),
 
-  // ===== הגדרות =====
-  'settings.read': PluginPermissionInfo(
-    label: 'הגדרות האפליקציה',
-    description: 'קריאת הגדרות האפליקציה (רק הגדרות שאושרו לתוספים)',
-  ),
+      // ===== הגדרות =====
+      'settings.read': PluginPermissionInfo(
+        label: 'plugins.permissions.settings_read_label'.tr(),
+        description: 'plugins.permissions.settings_read_description'.tr(),
+      ),
 
-  // ===== ממשק משתמש =====
-  'ui.feedback': PluginPermissionInfo(
-    label: 'הודעות ודיאלוגים',
-    description: 'הצגת הודעות, דיאלוגים ועדכונים בממשק המשתמש',
-  ),
-  'ui.create_shortcut': PluginPermissionInfo(
-    label: 'יצירת קיצור דרך',
-    description: 'יצירת קיצור דרך בשולחן העבודה או בתפריט ההתחל (לאחר אישור)',
-  ),
+      // ===== ממשק משתמש =====
+      'ui.feedback': PluginPermissionInfo(
+        label: 'plugins.permissions.ui_feedback_label'.tr(),
+        description: 'plugins.permissions.ui_feedback_description'.tr(),
+      ),
+      'ui.create_shortcut': PluginPermissionInfo(
+        label: 'plugins.permissions.ui_create_shortcut_label'.tr(),
+        description: 'plugins.permissions.ui_create_shortcut_description'.tr(),
+      ),
 
-  // ===== אחסון תוסף =====
-  'plugin.storage.read': PluginPermissionInfo(
-    label: 'אחסון מקומי — קריאה',
-    description: 'קריאת נתונים שהתוסף שמר בעבר על המכשיר',
-  ),
-  'plugin.storage.write': PluginPermissionInfo(
-    label: 'אחסון מקומי — כתיבה',
-    description: 'שמירת נתוני התוסף על המכשיר',
-  ),
+      // ===== אחסון תוסף =====
+      'plugin.storage.read': PluginPermissionInfo(
+        label: 'plugins.permissions.plugin_storage_read_label'.tr(),
+        description:
+            'plugins.permissions.plugin_storage_read_description'.tr(),
+      ),
+      'plugin.storage.write': PluginPermissionInfo(
+        label: 'plugins.permissions.plugin_storage_write_label'.tr(),
+        description:
+            'plugins.permissions.plugin_storage_write_description'.tr(),
+      ),
 
-  // ===== פרסום נתונים =====
-  'published_data.write': PluginPermissionInfo(
-    label: 'שיתוף נתונים עם האפליקציה',
-    description:
-        'פרסום נתונים מהתוסף לחלקים אחרים באפליקציה (כגון אירועי לוח שנה)',
-  ),
+      // ===== פרסום נתונים =====
+      'published_data.write': PluginPermissionInfo(
+        label: 'plugins.permissions.published_data_write_label'.tr(),
+        description:
+            'plugins.permissions.published_data_write_description'.tr(),
+      ),
 
-  // ===== רשת =====
-  'network.access': PluginPermissionInfo(
-    label: 'גישה לאינטרנט',
-    description: 'שליחה וקבלה של מידע מרשת האינטרנט',
-  ),
+      // ===== רשת =====
+      'network.access': PluginPermissionInfo(
+        label: 'plugins.permissions.network_access_label'.tr(),
+        description: 'plugins.permissions.network_access_description'.tr(),
+      ),
+      'network.localhost': PluginPermissionInfo(
+        label: 'plugins.permissions.network_localhost_label'.tr(),
+        description: 'plugins.permissions.network_localhost_description'.tr(),
+      ),
 
-  // ===== משוב ומיילים =====
-  'feedback.send_email': PluginPermissionInfo(
-    label: 'שליחת מייל',
-    description: 'שליחת משוב ודיווחים לכתובת מייל שהתוסף מגדיר',
-  ),
+      // ===== משוב ומיילים =====
+      'feedback.send_email': PluginPermissionInfo(
+        label: 'plugins.permissions.feedback_send_email_label'.tr(),
+        description:
+            'plugins.permissions.feedback_send_email_description'.tr(),
+      ),
 
-  // ===== היסטוריית קריאה =====
-  'history.read': PluginPermissionInfo(
-    label: 'היסטוריית קריאה — צפייה',
-    description: 'צפייה בהיסטוריית הקריאה והחיפושים שלך',
-  ),
-  'history.write': PluginPermissionInfo(
-    label: 'היסטוריית קריאה — עריכה',
-    description: 'מחיקה ועריכה של היסטוריית הקריאה',
-  ),
+      // ===== היסטוריית קריאה =====
+      'history.read': PluginPermissionInfo(
+        label: 'plugins.permissions.history_read_label'.tr(),
+        description: 'plugins.permissions.history_read_description'.tr(),
+      ),
+      'history.write': PluginPermissionInfo(
+        label: 'plugins.permissions.history_write_label'.tr(),
+        description: 'plugins.permissions.history_write_description'.tr(),
+      ),
 
-  // ===== מסד נתונים =====
-  'database.read': PluginPermissionInfo(
-    label: 'קריאת מסד נתונים',
-    description: 'קריאת נתונים ממקורות SQLite שהאפליקציה מאשרת לתוסף',
-  ),
+      // ===== מסד נתונים =====
+      'database.read': PluginPermissionInfo(
+        label: 'plugins.permissions.database_read_label'.tr(),
+        description: 'plugins.permissions.database_read_description'.tr(),
+      ),
 
-  // ===== התראות =====
-  'notifications.send': PluginPermissionInfo(
-    label: 'הודעות מובנות',
-    description: 'הצגת הודעות פופ-אפ בתוך האפליקציה',
-  ),
-  'notifications.system': PluginPermissionInfo(
-    label: 'התראות מערכת',
-    description: 'שליחת התראות למערכת ההפעלה (גם כשהאפליקציה סגורה)',
-  ),
+      // ===== התראות =====
+      'notifications.send': PluginPermissionInfo(
+        label: 'plugins.permissions.notifications_send_label'.tr(),
+        description:
+            'plugins.permissions.notifications_send_description'.tr(),
+      ),
+      'notifications.system': PluginPermissionInfo(
+        label: 'plugins.permissions.notifications_system_label'.tr(),
+        description:
+            'plugins.permissions.notifications_system_description'.tr(),
+      ),
 
-  // ===== אירועים =====
-  'events.subscribe:navigation.changed': PluginPermissionInfo(
-    label: 'אירועי ניווט',
-    description: 'קבלת עדכון בכל פעם שמשתמש עובר בין מסכים',
-  ),
-  'events.subscribe:reader.current_book_changed': PluginPermissionInfo(
-    label: 'אירועי פתיחת ספר',
-    description: 'קבלת עדכון בכל פעם שנפתח ספר חדש בקורא',
-  ),
-  'events.subscribe:reader.current_ref_changed': PluginPermissionInfo(
-    label: 'אירועי שינוי מיקום',
-    description: 'קבלת עדכון בכל פעם שמיקום הקריאה משתנה (דף, פרק, סעיף)',
-  ),
-  'events.subscribe:theme.changed': PluginPermissionInfo(
-    label: 'אירועי ערכת נושא',
-    description: 'קבלת עדכון בכל פעם שמשתמש מחליף ערכת נושא',
-  ),
-  'events.subscribe:settings.changed': PluginPermissionInfo(
-    label: 'אירועי הגדרות',
-    description: 'קבלת עדכון בכל פעם שמשתמש משנה הגדרה',
-  ),
-  'events.subscribe:calendar.date_changed': PluginPermissionInfo(
-    label: 'אירועי שינוי תאריך',
-    description: 'קבלת עדכון בכל פעם שמשתמש מחליף תאריך בלוח השנה',
-  ),
-  'events.subscribe:workspace.changed': PluginPermissionInfo(
-    label: 'אירועי סביבת עבודה',
-    description: 'קבלת עדכון בכל פעם שמשתמש מחליף סביבת עבודה',
-  ),
-  'events.subscribe:plugin.permissions_changed': PluginPermissionInfo(
-    label: 'אירועי שינוי הרשאות',
-    description: 'קבלת עדכון בכל פעם שהרשאות התוסף משתנות',
-  ),
-};
+      // ===== אירועים =====
+      'events.subscribe:navigation.changed': PluginPermissionInfo(
+        label: 'plugins.permissions.events_navigation_changed_label'.tr(),
+        description:
+            'plugins.permissions.events_navigation_changed_description'.tr(),
+      ),
+      'events.subscribe:reader.current_book_changed': PluginPermissionInfo(
+        label: 'plugins.permissions.events_reader_current_book_changed_label'
+            .tr(),
+        description:
+            'plugins.permissions.events_reader_current_book_changed_description'
+                .tr(),
+      ),
+      'events.subscribe:reader.current_ref_changed': PluginPermissionInfo(
+        label: 'plugins.permissions.events_reader_current_ref_changed_label'
+            .tr(),
+        description:
+            'plugins.permissions.events_reader_current_ref_changed_description'
+                .tr(),
+      ),
+      'events.subscribe:theme.changed': PluginPermissionInfo(
+        label: 'plugins.permissions.events_theme_changed_label'.tr(),
+        description:
+            'plugins.permissions.events_theme_changed_description'.tr(),
+      ),
+      'events.subscribe:settings.changed': PluginPermissionInfo(
+        label: 'plugins.permissions.events_settings_changed_label'.tr(),
+        description:
+            'plugins.permissions.events_settings_changed_description'.tr(),
+      ),
+      'events.subscribe:calendar.date_changed': PluginPermissionInfo(
+        label: 'plugins.permissions.events_calendar_date_changed_label'.tr(),
+        description:
+            'plugins.permissions.events_calendar_date_changed_description'
+                .tr(),
+      ),
+      'events.subscribe:workspace.changed': PluginPermissionInfo(
+        label: 'plugins.permissions.events_workspace_changed_label'.tr(),
+        description:
+            'plugins.permissions.events_workspace_changed_description'.tr(),
+      ),
+      'events.subscribe:plugin.permissions_changed': PluginPermissionInfo(
+        label: 'plugins.permissions.events_plugin_permissions_changed_label'
+            .tr(),
+        description:
+            'plugins.permissions.events_plugin_permissions_changed_description'
+                .tr(),
+      ),
+    };

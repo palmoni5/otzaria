@@ -1,8 +1,24 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:easy_localization/src/localization.dart';
+import 'package:easy_localization/src/translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:otzaria/utils/text/global_search_helper.dart';
 
 void main() {
+  setUpAll(() async {
+    // טוען את התרגומים האמיתיים כדי ש-.tr() יחזיר טקסט מתורגם בבדיקות.
+    final data = jsonDecode(
+      await File('assets/translations/he-IL.json').readAsString(),
+    ) as Map<String, dynamic>;
+    Localization.load(
+      const Locale('he', 'IL'),
+      translations: Translations(data),
+    );
+  });
+
   group('previewForLabel', () {
     test('מחזיר את הטקסט כמו שהוא כשהוא קצר מספיק', () {
       expect(previewForLabel('בראשית'), 'בראשית');

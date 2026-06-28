@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -274,11 +275,11 @@ class _ReadingScreenState extends State<ReadingScreen>
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Padding(
-                                padding: EdgeInsets.all(16.0),
+                              Padding(
+                                padding: const EdgeInsets.all(16.0),
                                 child: Text(
-                                  'לא נבחרו ספרים',
-                                  style: TextStyle(fontSize: 18),
+                                  'tabs.no_books_selected'.tr(),
+                                  style: const TextStyle(fontSize: 18),
                                 ),
                               ),
                               Padding(
@@ -292,7 +293,7 @@ class _ReadingScreenState extends State<ReadingScreen>
                                   },
                                   icon: const Icon(
                                       FluentIcons.library_24_regular),
-                                  label: const Text('דפדף בספרייה'),
+                                  label: Text('tabs.browse_library'.tr()),
                                 ),
                               ),
                             ],

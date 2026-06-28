@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:otzaria/core/focus_repository.dart';
 import 'package:otzaria/widgets/text/rtl_text_field.dart';
@@ -11,8 +12,8 @@ class InputDialog extends StatefulWidget {
   final String? hintText;
   final String initialValue;
   final TextInputType? keyboardType;
-  final String cancelText;
-  final String confirmText;
+  final String? cancelText;
+  final String? confirmText;
   final Color? confirmColor;
   final bool obscureText;
 
@@ -24,8 +25,8 @@ class InputDialog extends StatefulWidget {
     this.hintText,
     this.initialValue = '',
     this.keyboardType,
-    this.cancelText = 'ביטול',
-    this.confirmText = 'שמור',
+    this.cancelText,
+    this.confirmText,
     this.confirmColor,
     this.obscureText = false,
   });
@@ -96,12 +97,12 @@ class _InputDialogState extends State<InputDialog>
         ),
         actions: [
           _buildButton(
-            text: widget.cancelText,
+            text: widget.cancelText ?? 'common.cancel'.tr(),
             isFocused: focusedButtonIndex == 0,
             onPressed: () => Navigator.of(context).pop(),
           ),
           _buildButton(
-            text: widget.confirmText,
+            text: widget.confirmText ?? 'common.save'.tr(),
             isFocused: focusedButtonIndex == 1,
             isConfirm: true,
             onPressed: _submit,
@@ -160,8 +161,8 @@ Future<String?> showInputDialog({
   String? hintText,
   String initialValue = '',
   TextInputType? keyboardType,
-  String cancelText = 'ביטול',
-  String confirmText = 'שמור',
+  String? cancelText,
+  String? confirmText,
   Color? confirmColor,
 }) {
   return showDialog<String>(

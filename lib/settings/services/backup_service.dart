@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:hive_ce/hive.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
@@ -378,7 +379,7 @@ class BackupService {
   static Future<List<String>> restoreFromBackup(String backupPath) async {
     final file = File(backupPath);
     if (!await file.exists()) {
-      throw Exception('קובץ הגיבוי לא נמצא');
+      throw Exception('settings.system.backup.file_not_found'.tr());
     }
 
     final content = await file.readAsString();
@@ -387,7 +388,7 @@ class BackupService {
     // Validate backup version
     final version = backupData['version'] as String?;
     if (version != '1.0') {
-      throw Exception('גרסת גיבוי לא נתמכת');
+      throw Exception('settings.system.backup.unsupported_version'.tr());
     }
 
     final partialSections =

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
@@ -118,7 +119,8 @@ class _CommentaryContentState extends State<CommentaryContent> {
           future: content,
           loadingWidget: _buildSkeletonLoading(context),
           errorBuilder: (context, error) => Center(
-                child: Text('שגיאה בטעינת הפרשן: $error'),
+                child: Text('combined_book.commentary_load_error'
+                    .tr(namedArgs: {'error': error.toString()})),
               ),
           builder: (context, data) {
             return BlocBuilder<SettingsBloc, SettingsState>(

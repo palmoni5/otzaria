@@ -8,6 +8,7 @@
 // • מצב לא נבחר נשאר שקט יותר עם surface containers.
 
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:otzaria/theme/theme_exports.dart';
 import 'package:otzaria/widgets/misc/rtl_icon.dart';
@@ -268,7 +269,7 @@ class SecondaryIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Tooltip(
-      message: tooltip,
+      message: tooltip.isEmpty ? 'widgets.open_source'.tr() : tooltip,
       child: IconButton(
         icon: RtlIcon(icon, size: 20),
         onPressed: onPressed,
@@ -293,7 +294,7 @@ class PrimaryIconButton extends StatelessWidget {
     super.key,
     required this.onPressed,
     this.icon = FluentIcons.open_24_regular,
-    this.tooltip = 'פתח מקור',
+    this.tooltip = '',
   });
 
   @override

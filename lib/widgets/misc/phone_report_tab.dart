@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
@@ -48,19 +49,19 @@ class _PhoneReportTabState extends State<PhoneReportTab> {
     final errors = <String>[];
 
     if (widget.selectedText.isEmpty) {
-      errors.add('בחירת הטקסט שבו נמצאת השגיאה');
+      errors.add('widgets.phone_report.validation_select_text'.tr());
     }
 
     if (_selectedErrorType == null) {
-      errors.add('סוג השגיאה');
+      errors.add('widgets.phone_report.validation_error_type'.tr());
     }
 
     if (widget.bookId == null) {
-      errors.add('לא ניתן למצוא את הספר במאגר הנתונים');
+      errors.add('widgets.phone_report.validation_book_not_found'.tr());
     }
 
     if (widget.libraryVersion == 'unknown') {
-      errors.add('לא ניתן לקרוא את גירסת הספרייה');
+      errors.add('widgets.phone_report.validation_library_version'.tr());
     }
 
     return errors;
@@ -98,7 +99,7 @@ class _PhoneReportTabState extends State<PhoneReportTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'הוראות לדיווח טלפוני:',
+              'widgets.phone_report.instructions_title'.tr(),
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.onPrimaryContainer,
@@ -106,8 +107,7 @@ class _PhoneReportTabState extends State<PhoneReportTab> {
             ),
             const SizedBox(height: 8),
             Text(
-              '1. בחר את סוג השגיאה   •  '
-              '2. השתמש במספרים המוצגים למטה כשתתקשר',
+              'widgets.phone_report.instructions_steps'.tr(),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onPrimaryContainer,
                   ),
@@ -123,7 +123,7 @@ class _PhoneReportTabState extends State<PhoneReportTab> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'הטקסט שנבחר:',
+          'widgets.phone_report.selected_text_label'.tr(),
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -160,7 +160,7 @@ class _PhoneReportTabState extends State<PhoneReportTab> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'בחר סוג שגיאה:',
+          'widgets.phone_report.error_type_label'.tr(),
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -240,7 +240,7 @@ class _PhoneReportTabState extends State<PhoneReportTab> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'אי אפשר להתקדם... עדיין לא מילאתם בטופס...',
+                    'widgets.phone_report.validation_header'.tr(),
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.onErrorContainer,
@@ -310,7 +310,7 @@ class _PhoneReportTabState extends State<PhoneReportTab> {
                       ),
                       child: TextButton(
                         onPressed: widget.onCancel,
-                        child: const Text('ביטול הדיווח'),
+                        child: Text('widgets.phone_report.cancel_report'.tr()),
                       ),
                     ),
                   ],
@@ -335,7 +335,7 @@ class _PhoneReportTabState extends State<PhoneReportTab> {
       children: [
         TextButton(
           onPressed: widget.onCancel,
-          child: const Text('ביטול הדיווח'),
+          child: Text('widgets.phone_report.cancel_report'.tr()),
         ),
       ],
     );

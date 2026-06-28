@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:otzaria/settings/view/settings_screen.dart';
 
 /// פריט בודד באינדקס החיפוש של ההגדרות.
@@ -8,13 +9,13 @@ class SettingsSearchEntry {
   /// מזהה ייחודי של ההגדרה (לדוג' 'design.theme.dark_mode').
   final String id;
 
-  /// כותרת מוצגת בתוצאה (טקסט הכותרת של ההגדרה).
+  /// מפתח i18n לכותרת המוצגת בתוצאה (נפתר ב-runtime עם .tr()).
   final String title;
 
-  /// תיאור מוצג בתוצאה (subtitle או הסבר קצר).
+  /// מפתח i18n לתיאור המוצג בתוצאה (subtitle או הסבר קצר).
   final String subtitle;
 
-  /// מילות מפתח נוספות לחיפוש שלא מופיעות בכותרת/בתת-כותרת.
+  /// מפתחות i18n למילות מפתח נוספות לחיפוש (נפתרים ב-runtime עם .tr()).
   final List<String> keywords;
 
   /// הטאב בו ממוקמת ההגדרה.
@@ -39,13 +40,22 @@ class SettingsSearchEntry {
     this.expandSection,
   });
 
+  /// כותרת מתורגמת להצגה.
+  String get displayTitle => title.tr();
+
+  /// תת-כותרת מתורגמת להצגה.
+  String get displaySubtitle => subtitle.tr();
+
+  /// מילות מפתח מתורגמות לחיפוש.
+  List<String> get displayKeywords => keywords.map((k) => k.tr()).toList();
+
   /// מחשב ציון התאמה (גבוה יותר = רלוונטי יותר) לשאילתת חיפוש מנורמלת.
   /// 0 = לא מתאים. שאילתה ריקה תחזיר 0.
   int matchScore(String normalizedQuery) {
     if (normalizedQuery.isEmpty) return 0;
-    final normalizedTitle = normalize(title);
-    final normalizedSubtitle = normalize(subtitle);
-    final normalizedKeywords = keywords.map(normalize).toList();
+    final normalizedTitle = normalize(displayTitle);
+    final normalizedSubtitle = normalize(displaySubtitle);
+    final normalizedKeywords = displayKeywords.map(normalize).toList();
 
     var score = 0;
     if (normalizedTitle == normalizedQuery) {
@@ -83,5 +93,5 @@ class SettingsSearchEntry {
 
   /// טקסט החיפוש המנורמל לאותה הגדרה (משמש להשוואה).
   String get normalizedSearchText =>
-      '${normalize(title)} ${normalize(subtitle)} ${keywords.map(normalize).join(' ')}';
+      '${normalize(displayTitle)} ${normalize(displaySubtitle)} ${displayKeywords.map(normalize).join(' ')}';
 }

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:otzaria/widgets/feedback/loading_indicator.dart';
 
@@ -31,7 +32,8 @@ class AppFutureBuilder<T> extends StatelessWidget {
           }
           return Center(
             child: Text(
-              'שגיאה: ${snapshot.error}',
+              'widgets.error_with_message'
+                  .tr(namedArgs: {'error': snapshot.error.toString()}),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           );

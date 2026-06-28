@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/core/ui_snack.dart';
@@ -70,26 +71,25 @@ class ExternalCatalogSettingsHelper {
         !settingsState.softwareAndBookUpdatesEnabled) {
       await showSingleActionDialog(
         context: context,
-        title: 'מסד הקטלוגים חסר',
+        title: 'external_catalog.catalog_missing_title'.tr(),
         content: settingsState.isOfflineMode
-            ? 'לא ניתן להוריד את מסד הקטלוגים החיצוני במצב מנותק.'
-            : 'לא ניתן להוריד את מסד הקטלוגים כשהאפשרות עדכוני תוכנה וספרים מושבתת.',
-        confirmText: 'הבנתי',
+            ? 'external_catalog.catalog_missing_offline'.tr()
+            : 'external_catalog.catalog_missing_updates_disabled'.tr(),
+        confirmText: 'external_catalog.catalog_missing_understood'.tr(),
       );
       return false;
     }
 
     final shouldDownload = await showTwoActionsDialog(
       context: context,
-      title: 'מסד הקטלוגים חסר',
-      content:
-          'כדי להציג ספרים מאוצר החכמה ומהיברובוקס צריך להוריד את מסד הקטלוגים החיצוני. האם להוריד אותו עכשיו?',
-      cancelText: 'לא עכשיו',
-      confirmText: 'הורד',
+      title: 'external_catalog.catalog_missing_title'.tr(),
+      content: 'external_catalog.catalog_download_prompt'.tr(),
+      cancelText: 'external_catalog.catalog_download_later'.tr(),
+      confirmText: 'external_catalog.catalog_download_now'.tr(),
     );
 
     if (shouldDownload != true) {
-      UiSnack.show('ללא מסד הקטלוגים לא יוצגו ספרים חיצוניים');
+      UiSnack.show('external_catalog.catalog_skipped'.tr());
       return false;
     }
     if (!context.mounted) {
@@ -97,13 +97,14 @@ class ExternalCatalogSettingsHelper {
     }
 
     try {
-      UiSnack.show('מוריד את מסד הקטלוגים החיצוני...');
+      UiSnack.show('external_catalog.catalog_downloading'.tr());
       await repository.downloadLatestDatabase();
       DataRepository.instance.invalidateExternalBooksCache();
-      UiSnack.showSuccess('מסד הקטלוגים הורד בהצלחה');
+      UiSnack.showSuccess('external_catalog.catalog_download_success'.tr());
       return true;
     } catch (e) {
-      UiSnack.showError('שגיאה בהורדת מסד הקטלוגים: $e');
+      UiSnack.showError('external_catalog.catalog_download_error'
+          .tr(namedArgs: {'error': '$e'}));
       return false;
     }
   }

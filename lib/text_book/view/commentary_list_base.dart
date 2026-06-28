@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -411,7 +412,9 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
                   ? FluentIcons.arrow_collapse_all_24_regular
                   : FluentIcons.arrow_expand_all_24_regular,
             ),
-            tooltip: _allExpanded ? 'כווץ את כל המפרשים' : 'הרחב את כל המפרשים',
+            tooltip: _allExpanded
+                ? 'commentary_list.collapse_all'.tr()
+                : 'commentary_list.expand_all'.tr(),
             onPressed: () {
               setState(() {
                 _allExpanded = !_allExpanded;
@@ -427,7 +430,7 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
           const SizedBox(width: gap),
           IconButton(
             icon: const Icon(FluentIcons.open_24_regular),
-            tooltip: 'פתח כרטסיית מפרשים',
+            tooltip: 'commentary_list.open_commentators_tab'.tr(),
             onPressed: widget.onOpenInNewTab,
           ),
         ],
@@ -435,7 +438,7 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
         // 4. הפעלת שדה החיפוש
         IconButton(
           icon: const Icon(FluentIcons.search_24_regular),
-          tooltip: 'חיפוש',
+          tooltip: 'commentary_list.search'.tr(),
           onPressed: _openInlineSearch,
         ),
         // לחצן סגירת הפאנל — נשאר רק אם הקולבק קיים
@@ -473,14 +476,14 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
       commentatorsToShow: selectedCommentators,
     );
     if (links.isEmpty) {
-      UiSnack.show('אין מפרשים להדפסה');
+      UiSnack.show('commentary_list.no_commentaries_to_print'.tr());
       return;
     }
 
     final groups = await _getCachedGroups(links);
     final blocks = await buildCommentaryPrintBlocks(groups);
     if (blocks.isEmpty) {
-      UiSnack.show('אין מפרשים להדפסה');
+      UiSnack.show('commentary_list.no_commentaries_to_print'.tr());
       return;
     }
     if (!mounted) return;
@@ -518,7 +521,7 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
                         focusNode: _searchFocusNode,
                         controller: _searchController,
                         decoration: InputDecoration(
-                          hintText: 'חפש בתוך המפרשים המוצגים...',
+                          hintText: 'commentary_list.search_in_commentators'.tr(),
                           prefixIcon: const Icon(FluentIcons.search_24_regular),
                           suffixIcon: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -567,7 +570,7 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
                               IconButton(
                                 icon:
                                     const Icon(FluentIcons.dismiss_24_regular),
-                                tooltip: 'סגור חיפוש',
+                                tooltip: 'commentary_list.close_search'.tr(),
                                 onPressed: _clearSearchAndCloseField,
                               ),
                             ],
@@ -1280,7 +1283,7 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Text(
-                          'אין הערות לקטע זה',
+                          'commentary_list.no_notes_for_section'.tr(),
                           style: TextStyle(
                             fontSize: widget.fontSize * 0.7,
                             color:
@@ -1318,7 +1321,7 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Text(
-                          'טוען מפרשים...',
+                          'commentary_list.loading_commentaries'.tr(),
                           style: TextStyle(
                             fontSize: widget.fontSize * 0.7,
                             color: Colors.grey,
@@ -1355,8 +1358,8 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
                       padding: const EdgeInsets.all(16.0),
                       child: Text(
                         hasAnyCommentaryLinks
-                            ? 'לא נמצאו מפרשים מהנבחרים לקטע זה'
-                            : 'לא נמצאו מפרשים לקטע הנבחר',
+                            ? 'commentary_list.no_selected_commentators_for_section'.tr()
+                            : 'commentary_list.no_commentators_for_section'.tr(),
                         style: TextStyle(
                           fontSize: widget.fontSize * 0.7,
                           color: Colors.grey,
@@ -1636,8 +1639,8 @@ class CommentaryListBaseState extends State<CommentaryListBase> {
                               : FluentIcons.arrow_expand_all_24_regular,
                         ),
                         tooltip: _allExpanded
-                            ? 'כווץ את כל המפרשים'
-                            : 'הרחב את כל המפרשים',
+                            ? 'commentary_list.collapse_all'.tr()
+                            : 'commentary_list.expand_all'.tr(),
                         onPressed: () {
                           setState(() {
                             _allExpanded = !_allExpanded;

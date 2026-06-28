@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/foundation.dart';
 import 'package:html/dom.dart' as html_dom;
 import 'package:html/parser.dart' as html_parser;
@@ -194,7 +195,7 @@ class CopyUtils {
     try {
       final clipboard = SystemClipboard.instance;
       if (clipboard == null) {
-        UiSnack.show('לא ניתן לגשת ללוח');
+        UiSnack.show('utils.clipboard_unavailable'.tr());
         return;
       }
 
@@ -209,9 +210,9 @@ class CopyUtils {
       item.add(Formats.htmlText(htmlContent)); // טקסט עם עיצוב
 
       await clipboard.write([item]);
-      UiSnack.show('הטקסט המעוצב הועתק ללוח');
+      UiSnack.show('snack.formatted_text_copied'.tr());
     } catch (e) {
-      UiSnack.showError('שגיאה בהעתקה: $e');
+      UiSnack.showError('${'snack.copy_error'.tr()}: $e');
     }
   }
 

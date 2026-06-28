@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:otzaria/search/bloc/search_bloc.dart';
 import 'package:otzaria/search/bloc/search_event.dart';
@@ -48,9 +49,9 @@ class SearchingTab extends OpenedTab {
   static String titleForQuery(String query) {
     final trimmedQuery = query.trim();
     if (trimmedQuery.isEmpty) {
-      return 'חיפוש';
+      return 'search.default_tab'.tr();
     }
-    return 'חיפוש: $trimmedQuery';
+    return 'search.tab_with_query'.tr(namedArgs: {'query': trimmedQuery});
   }
 
   SearchingTab(

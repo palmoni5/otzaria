@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
@@ -64,13 +65,12 @@ class _PluginCrashedViewState extends State<PluginCrashedView> {
               ),
               const SizedBox(height: 16),
               Text(
-                'התוסף "$pluginLabel" גרם לקריסת התוכנה',
+                'plugins.crashed.title'.tr(namedArgs: {'name': pluginLabel}),
                 style: tt.titleLarge,
               ),
               const SizedBox(height: 12),
               Text(
-                'בהפעלה הקודמת התוסף הזה הקריס את התוכנה בעת טעינתו. כדי '
-                'למנוע קריסות חוזרות, אנחנו לא טוענים אותו אוטומטית.',
+                'plugins.crashed.explanation'.tr(),
                 style: tt.bodyMedium,
               ),
               const SizedBox(height: 16),
@@ -84,17 +84,12 @@ class _PluginCrashedViewState extends State<PluginCrashedView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'מה אפשר לעשות:',
+                      'plugins.crashed.what_to_do'.tr(),
                       style: tt.titleSmall,
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '1. אם עדכנת את התוכנה או את WebView2 — לחץ "נסה שוב" '
-                      'כדי לבדוק אם הבעיה נפתרה.\n'
-                      '2. אם הבעיה חוזרת — סביר שהתוסף לא תואם למכשיר שלך '
-                      'כרגע. אפשר להמשיך להשתמש בשאר התוספים והכלים.\n'
-                      '3. אם זה תוסף שעובד אצל אחרים — דווח לפיתוח עם מספר '
-                      'הגרסה שלך.',
+                      'plugins.crashed.instructions'.tr(),
                       style: tt.bodySmall,
                     ),
                   ],
@@ -105,7 +100,7 @@ class _PluginCrashedViewState extends State<PluginCrashedView> {
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   RecommendedActionButton(
-                    text: 'נסה שוב',
+                    text: 'plugins.crashed.retry'.tr(),
                     icon: FluentIcons.arrow_clockwise_24_regular,
                     isLoading: _retrying,
                     onPressed: _handleRetry,

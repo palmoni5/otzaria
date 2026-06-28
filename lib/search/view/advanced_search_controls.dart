@@ -1,9 +1,24 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:otzaria/search/search_query_builder.dart';
 import 'package:otzaria/tabs/models/searching_tab.dart';
 import 'package:otzaria/widgets/text/rtl_text_field.dart';
+
+String _translateSearchOption(String option) {
+  const Map<String, String> optionKeys = {
+    'קידומות דקדוקיות': 'search.option_grammatical_prefixes',
+    'סיומות דקדוקיות': 'search.option_grammatical_suffixes',
+    'קידומות': 'search.option_prefixes',
+    'סיומות': 'search.option_suffixes',
+    'כתיב מלא/חסר': 'search.option_spelling',
+    'חלק ממילה': 'search.option_partial_word',
+    'שגיאות כתיב': 'search.option_typo_tolerance',
+  };
+  final key = optionKeys[option];
+  return key != null ? key.tr() : option;
+}
 
 /// ווידג'ט לניהול אפשרויות חיפוש מתקדמות לכל מילה בנפרד.
 /// מחליף את שכפול הקוד בין SearchDialog ל-SearchEditPanel.
@@ -215,7 +230,7 @@ class _AdvancedSearchControlsState extends State<AdvancedSearchControls> {
               ),
               const SizedBox(height: 16),
               Text(
-                'לחץ על מילה בשדה החיפוש כדי להגדיר אפשרויות מתקדמות',
+                'search.advanced_word_hint'.tr(),
                 style: TextStyle(
                   fontSize: 16,
                   color: colorScheme.onSurfaceVariant,
@@ -285,8 +300,8 @@ class _AdvancedSearchControlsState extends State<AdvancedSearchControls> {
 
     return Tooltip(
       message: useGlobal
-          ? 'ההגדרות חלות על כל המילים בשאילתה ולא משתנות בעת שינוי המילים'
-          : 'ההגדרות נשמרות לכל מילה בנפרד',
+          ? 'search.scope_global_tooltip'.tr()
+          : 'search.scope_per_word_tooltip'.tr(),
       child: Container(
         decoration: BoxDecoration(
           color: useGlobal
@@ -299,7 +314,7 @@ class _AdvancedSearchControlsState extends State<AdvancedSearchControls> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'זהה לכל המילים',
+              'search.scope_same_for_all'.tr(),
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
@@ -335,7 +350,7 @@ class _AdvancedSearchControlsState extends State<AdvancedSearchControls> {
           onPressed: isEnabled && _wordIndex! > 0
               ? () => _navigateToWord(_wordIndex! - 1)
               : null,
-          tooltip: 'מילה קודמת',
+          tooltip: 'search.previous_word'.tr(),
         ),
         Flexible(
           child: Container(
@@ -347,7 +362,7 @@ class _AdvancedSearchControlsState extends State<AdvancedSearchControls> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              isEnabled ? _currentWord! : 'בחר מילה',
+              isEnabled ? _currentWord! : 'search.select_word'.tr(),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -364,7 +379,7 @@ class _AdvancedSearchControlsState extends State<AdvancedSearchControls> {
           onPressed: isEnabled && _wordIndex! < _words.length - 1
               ? () => _navigateToWord(_wordIndex! + 1)
               : null,
-          tooltip: 'מילה הבאה',
+          tooltip: 'search.next_word'.tr(),
         ),
       ],
     );
@@ -390,7 +405,7 @@ class _AdvancedSearchControlsState extends State<AdvancedSearchControls> {
                       ? _getSpacingFocusNode(_wordIndex!, _wordIndex! + 1)
                       : null,
                   decoration: InputDecoration(
-                    labelText: 'מרווח למילה הבאה',
+                    labelText: 'search.spacing_to_next_word'.tr(),
                     hintText: '0-30',
                     border: const OutlineInputBorder(),
                     contentPadding:
@@ -448,8 +463,8 @@ class _AdvancedSearchControlsState extends State<AdvancedSearchControls> {
                 focusNode: _alternativeWordFocusNode,
                 enabled: isEnabled,
                 decoration: InputDecoration(
-                  labelText: 'מילה חילופית',
-                  hintText: 'הקלד מילה...',
+                  labelText: 'search.alternative_word'.tr(),
+                  hintText: 'search.type_word'.tr(),
                   border: const OutlineInputBorder(),
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -595,7 +610,7 @@ class _AdvancedSearchControlsState extends State<AdvancedSearchControls> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    option,
+                    _translateSearchOption(option),
                     style: TextStyle(
                       fontSize: 14,
                       color: isEnabled

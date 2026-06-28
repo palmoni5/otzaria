@@ -1,3 +1,5 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
+
 /// עמודת מעקב בטבלת ההתקדמות (לימוד / חזרה / מפרש).
 ///
 /// [id] מזהה יציב שלפיו נשמרת ההתקדמות; [label] השם המוצג, ניתן לעריכה.
@@ -213,39 +215,39 @@ class BookProgressSummary {
   /// Get status text for display based on current cycle
   String getStatusText(int currentCycle) {
     if (totalItems <= 0) {
-      return 'לימוד פעיל';
+      return 'shamor_zachor.status.active_study'.tr();
     }
 
     final progress = progressPercentage;
 
     // הודעות לפי אחוז ההשלמה
     if (progress == 0.0) {
-      return 'עדיין לא התחלת!';
+      return 'shamor_zachor.status.not_started'.tr();
     } else if (progress < 0.15) {
-      return 'התחלה מצוינת!';
+      return 'shamor_zachor.status.great_start'.tr();
     } else if (progress < 0.30) {
-      return 'התחלה מצוינת!';
+      return 'shamor_zachor.status.great_start'.tr();
     } else if (progress < 0.50) {
-      return 'שליש הדרך כבר הושלם!';
+      return 'shamor_zachor.status.third_done'.tr();
     } else if (progress < 0.60) {
-      return 'חצי הדרך מאחוריך!';
+      return 'shamor_zachor.status.half_done'.tr();
     } else if (progress < 0.75) {
-      return 'רוב הדרך כבר מאחוריך!';
+      return 'shamor_zachor.status.most_done'.tr();
     } else if (progress < 1.0) {
-      return 'הסוף כבר באופק!';
+      return 'shamor_zachor.status.near_end'.tr();
     } else {
       // 100% - הודעה לפי מחזור
       switch (currentCycle) {
         case 1:
-          return 'סיימת מחזור ראשון בהצלחה!';
+          return 'shamor_zachor.status.cycle1_done'.tr();
         case 2:
-          return 'סיימת מחזור שני בהצלחה!';
+          return 'shamor_zachor.status.cycle2_done'.tr();
         case 3:
-          return 'סיימת מחזור שלישי בהצלחה!';
+          return 'shamor_zachor.status.cycle3_done'.tr();
         case 4:
-          return 'סיימת מחזור רביעי בהצלחה!';
+          return 'shamor_zachor.status.cycle4_done'.tr();
         default:
-          return 'הושלם בהצלחה!';
+          return 'shamor_zachor.status.completed'.tr();
       }
     }
   }

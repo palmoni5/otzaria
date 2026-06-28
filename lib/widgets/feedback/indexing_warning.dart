@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -60,9 +61,8 @@ class IndexingWarning extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final message = switch (mode) {
       IndexingWarningMode.inProgress =>
-        'אינדקס החיפוש בתהליך עדכון. יתכן שחלק מהספרים לא יוצגו בתוצאות החיפוש.',
-      IndexingWarningMode.missing =>
-        'אינדקס לא קיים, לא ניתן לבצע חיפוש זה ללא אינדקס.',
+        'widgets.indexing.warning_in_progress'.tr(),
+      IndexingWarningMode.missing => 'widgets.indexing.warning_missing'.tr(),
     };
     return Container(
       padding: const EdgeInsets.all(8.0),

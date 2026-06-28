@@ -1,19 +1,23 @@
 import 'dart:convert';
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
+
 /// ערך מיוחד שמציין שבחלונית השמאלית יש להציג את כל המפרשים
 /// שלא שובצו בחלוניות האחרות.
 const String pageShapeRemainingCommentatorsValue =
     '__PAGE_SHAPE_REMAINING_COMMENTATORS__';
 
 /// התווית המוצגת למשתמש עבור אפשרות שאר המפרשים.
-const String pageShapeRemainingCommentatorsLabel = 'שאר המפרשים';
+String get pageShapeRemainingCommentatorsLabel =>
+    'page_shape_screen.remaining_commentators_label'.tr();
 
 /// ערך מיוחד שמציין שהטור משתמש בבחירת מפרשים מרובים מתוך החלונית.
 const String pageShapeMultipleCommentatorsModeValue =
     '__PAGE_SHAPE_MULTIPLE_COMMENTATORS_MODE__';
 
 /// התווית המוצגת למשתמש עבור מצב בחירה מרובה.
-const String pageShapeMultipleCommentatorsModeLabel = 'מפרשים מרובים';
+String get pageShapeMultipleCommentatorsModeLabel =>
+    'page_shape_screen.multiple_commentators_mode_label'.tr();
 
 const String _pageShapeMultiCommentatorsPrefix =
     '__PAGE_SHAPE_MULTI_COMMENTATORS__:';
@@ -296,10 +300,11 @@ String formatPageShapeCommentatorSelection(String? value) {
     if (commentators.length <= 2) {
       return commentators.join(', ');
     }
-    return '${commentators.length} מפרשים';
+    return 'page_shape_screen.commentators_count'
+        .tr(namedArgs: {'count': commentators.length.toString()});
   }
 
-  return value ?? 'ללא מפרש';
+  return value ?? 'page_shape_screen.no_commentator'.tr();
 }
 
 /// מחשב את כל המפרשים שלא שובצו כבר בחלוניות האחרות.

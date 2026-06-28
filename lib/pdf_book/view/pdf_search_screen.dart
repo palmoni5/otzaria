@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/models/books.dart';
@@ -391,7 +392,8 @@ class _PdfBookSearchViewState extends State<PdfBookSearchView> {
       progressWidget:
           _isSearching ? const LinearProgressIndicator(minHeight: 4) : null,
       resultCountString: _searchResults.isNotEmpty
-          ? 'נמצאו ${_searchResults.length} תוצאות'
+          ? 'pdf_book.search.results_count'
+              .tr(namedArgs: {'count': '${_searchResults.length}'})
           : null,
       resultsWidget: ScrollablePositionedList.builder(
         itemScrollController: _resultsScrollController,
@@ -405,7 +407,8 @@ class _PdfBookSearchViewState extends State<PdfBookSearchView> {
               builder: (context, settingsState) {
                 var text = _pageTitles[item]?.isNotEmpty == true
                     ? _pageTitles[item]!
-                    : 'עמוד $item';
+                    : 'pdf_book.search.page_label'
+                        .tr(namedArgs: {'page': '$item'});
 
                 if (settingsState.replaceHolyNames) {
                   text = utils.replaceHolyNames(text);
@@ -488,14 +491,14 @@ class _PdfBookSearchViewState extends State<PdfBookSearchView> {
         _schedulePdfHighlight('');
       },
       additionalActions: const [],
-      hintText: 'חפש כאן..',
+      hintText: 'pdf_book.search.hint'.tr(),
       onAdvancedSearch: () async {
         final pdfBookBloc = context.read<PdfBookBloc>();
         // ראה הערה מקבילה ב-text_book_search_screen.dart: initialConfiguration
         // נמנעת מ-race condition של events ו-dispose נדחה ל-frame הבא כדי
         // למנוע FocusNode disposed בזמן rebuild של ה-dialog.
         final tempTab = SearchingTab(
-          'חיפוש',
+          'pdf_book.search.tab_title'.tr(),
           widget.searchController.text,
           initialConfiguration: SearchConfiguration(
             searchMode: _searchMode,

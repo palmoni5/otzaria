@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/foundation.dart';
 import 'package:otzaria/tabs/models/tab.dart';
 import 'package:otzaria/tabs/models/text_tab.dart';
@@ -34,7 +35,8 @@ class CommentatorsTab extends OpenedTab {
     @visibleForTesting TextBookBloc? blocOverride,
   })  : _disposeSourceTabOnDispose = disposeSourceTabOnDispose,
         initialSelectedLine = _resolveSelectedLine(sourceTab),
-        super('מפרשים | ${sourceTab.title}') {
+        super('tabs.commentators_prefix'
+            .tr(namedArgs: {'source': sourceTab.title})) {
     // קורא מיקום התחלתי מה-state הנוכחי של sourceTab
     final sourceState = sourceTab.bloc.state;
     final int startIndex = sourceState is TextBookLoaded

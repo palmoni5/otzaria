@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:http/http.dart' as http;
@@ -70,8 +71,6 @@ class DirectErrorReportService {
   static const Duration _timeout = Duration(seconds: 10);
   static const Duration _flushInterval = Duration(minutes: 5);
   static const int _maxQueuedFlushPerRun = 20;
-  static const String _otzariaDirectReportTarget = 'אוצריא';
-  static const String _sefariaDirectReportTarget = 'ספריא';
   static const String _psBodyMarker = 'OTZARIA_REPORTS_PS_BODY';
 
   static Timer? _flushTimer;
@@ -239,7 +238,7 @@ class DirectErrorReportService {
     if (_isOfflineMode) {
       if (!queueWhenOfflineEnabled) {
         return DirectReportDeliveryResult.failed(
-          'מצב אופליין פעיל, והגדרת התור האוטומטי כבויה.',
+          'services.direct_report_offline_disabled'.tr(),
         );
       }
 
@@ -248,9 +247,8 @@ class DirectErrorReportService {
         queueType: DirectErrorReportQueueType.automaticRetry,
       );
       return DirectReportDeliveryResult.queued(
-        'אין כרגע חיבור. הדיווח נשמר ויישלח אוטומטית '
-        'ל$directReportTargetLabel כשהתוכנה תחזור להיות מקוונת. '
-        'ניתן לנהל את הדיווחים השמורים בהגדרות.',
+        'services.direct_report_queued_offline'
+            .tr(namedArgs: {'target': directReportTargetLabel}),
       );
     }
 
@@ -260,12 +258,12 @@ class DirectErrorReportService {
       unawaited(flushPendingReports(onlyAutomaticRetry: true));
       if (_isSefariaReport(report)) {
         return DirectReportDeliveryResult.sent(
-          'הדיווח נשלח בהצלחה לספריא.',
+          'services.direct_report_sent_sefaria'.tr(),
         );
       }
 
       return DirectReportDeliveryResult.sent(
-        'הדיווח נשלח בהצלחה לצוות אוצריא.',
+        'services.direct_report_sent_otzaria'.tr(),
       );
     }
 
@@ -278,9 +276,8 @@ class DirectErrorReportService {
       queueType: DirectErrorReportQueueType.automaticRetry,
     );
     return DirectReportDeliveryResult.queued(
-      'השליחה לא הצליחה כרגע. הדיווח נשמר להמשך ויישלח אוטומטית '
-      'ל$directReportTargetLabel בניסיון הבא. ניתן לנהל את הדיווחים '
-      'השמורים בהגדרות.',
+      'services.direct_report_queued_retry'
+          .tr(namedArgs: {'target': directReportTargetLabel}),
     );
   }
 
@@ -292,8 +289,8 @@ class DirectErrorReportService {
 
   String _resolveDirectReportTargetLabel(DirectErrorReport report) {
     return _isSefariaReport(report)
-        ? _sefariaDirectReportTarget
-        : _otzariaDirectReportTarget;
+        ? 'services.report_target_sefaria'.tr()
+        : 'services.report_target_otzaria'.tr();
   }
 
   Future<int> flushPendingReports({
@@ -419,31 +416,33 @@ class DirectErrorReportService {
 
       if (_isPermanentHttpFailure(response.statusCode)) {
         return _SendAttemptResult.permanentFailure(
-          'שרת הדיווחים החזיר ${response.statusCode}. הדיווח לא נשמר להמשך כי נראה שיש בעיה קבועה בנתונים שנשלחו.',
+          'services.direct_report_permanent_failure'
+              .tr(namedArgs: {'status': '${response.statusCode}'}),
         );
       }
 
       return _SendAttemptResult.transientFailure(
-        'שרת הדיווחים החזיר ${response.statusCode}. הדיווח יישמר להמשך.',
+        'services.direct_report_transient_failure'
+            .tr(namedArgs: {'status': '${response.statusCode}'}),
       );
     } on SocketException catch (e) {
       debugPrint('Direct report network error: $e');
       return _SendAttemptResult.transientFailure(
-        'אין כרגע חיבור לאינטרנט.',
+        'services.direct_report_no_connection'.tr(),
       );
     } on http.ClientException catch (e) {
       debugPrint('Direct report client error: $e');
       return _SendAttemptResult.transientFailure(
-        'שגיאה בשליחת הדיווח.',
+        'services.direct_report_send_error'.tr(),
       );
     } on TimeoutException {
       return _SendAttemptResult.transientFailure(
-        'השרת לא הגיב בזמן.',
+        'services.direct_report_timeout'.tr(),
       );
     } catch (e) {
       debugPrint('Direct report unexpected error: $e');
       return _SendAttemptResult.transientFailure(
-        'אירעה שגיאה לא צפויה בשליחת הדיווח.',
+        'services.direct_report_unexpected'.tr(),
       );
     }
   }

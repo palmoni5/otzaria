@@ -2,6 +2,7 @@
 // docs/guided_tour_developer_guide.md
 
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -309,42 +310,42 @@ class MainWindowScreenState extends State<MainWindowScreen>
       screen: Screen.library,
       icon: FluentIcons.library_24_regular,
       iconFilled: FluentIcons.library_24_filled,
-      label: 'ספרייה',
+      labelKey: 'navigation.library',
       shortcutKey: 'key-shortcut-open-library-browser',
     ),
     (
       screen: Screen.find,
       icon: FluentIcons.book_search_24_regular,
       iconFilled: FluentIcons.book_search_24_filled,
-      label: 'איתור',
+      labelKey: 'navigation.find',
       shortcutKey: 'key-shortcut-open-find-ref',
     ),
     (
       screen: Screen.reading,
       icon: FluentIcons.book_open_24_regular,
       iconFilled: FluentIcons.book_open_24_filled,
-      label: 'עיון',
+      labelKey: 'navigation.reading',
       shortcutKey: 'key-shortcut-open-reading-screen',
     ),
     (
       screen: Screen.search,
       icon: FluentIcons.search_24_regular,
       iconFilled: FluentIcons.search_24_filled,
-      label: 'חיפוש',
+      labelKey: 'navigation.search',
       shortcutKey: 'key-shortcut-open-new-search',
     ),
     (
       screen: Screen.more,
       icon: FluentIcons.apps_24_regular,
       iconFilled: FluentIcons.apps_24_filled,
-      label: 'כלים',
+      labelKey: 'navigation.tools',
       shortcutKey: 'key-shortcut-open-more',
     ),
     (
       screen: Screen.settings,
       icon: FluentIcons.settings_24_regular,
       iconFilled: FluentIcons.settings_24_filled,
-      label: 'הגדרות',
+      labelKey: 'navigation.settings',
       shortcutKey: 'key-shortcut-open-settings',
     ),
   ];
@@ -806,11 +807,10 @@ class MainWindowScreenState extends State<MainWindowScreen>
     try {
       final result = await showTwoActionsDialog(
         context: context,
-        title: 'נדרש איפוס אינדקס',
-        content:
-            'האינדקס הקיים אינו מעודכן ביחס לשינויים האחרונים בחיפוש. עד שתבצע איפוס ואינדוקס מחדש, ייתכן שחלק מיכולות החיפוש לא יעבדו כראוי.',
-        cancelText: 'אחר כך',
-        confirmText: 'אפס ועדכן',
+        title: 'navigation.reindex_required_title'.tr(),
+        content: 'navigation.reindex_required_content'.tr(),
+        cancelText: 'navigation.reindex_later'.tr(),
+        confirmText: 'navigation.reindex_now'.tr(),
       );
       if (!mounted || !context.mounted || result != true) {
         return;
@@ -1017,7 +1017,8 @@ class MainWindowScreenState extends State<MainWindowScreen>
     final book =
         library.getAllBooks().firstWhereOrNull((b) => b.id == action.bookId);
     if (book == null) {
-      UiSnack.showError('הספר עם המזהה ${action.bookId} לא נמצא בספרייה');
+      UiSnack.showError('navigation.book_not_found_in_library'
+          .tr(namedArgs: {'bookId': action.bookId.toString()}));
       return false;
     }
     dispatchOpenBookAction(
@@ -1039,7 +1040,8 @@ class MainWindowScreenState extends State<MainWindowScreen>
           (b) => b is PdfBook && b.id == action.bookId,
         );
     if (book == null) {
-      UiSnack.showError('ספר ה-PDF עם המזהה ${action.bookId} לא נמצא בספרייה');
+      UiSnack.showError('navigation.pdf_book_not_found_in_library'
+          .tr(namedArgs: {'bookId': action.bookId.toString()}));
       return false;
     }
     dispatchOpenPdfBookAction(
@@ -1200,7 +1202,7 @@ class MainWindowScreenState extends State<MainWindowScreen>
           child: Icon(item.icon),
         ),
         selectedIcon: Icon(item.iconFilled),
-        label: item.label,
+        label: item.labelKey.tr(),
       );
     }
 
@@ -2246,9 +2248,12 @@ class MainWindowScreenState extends State<MainWindowScreen>
                     total > 0 ? (processed / total).clamp(0.0, 1.0) : null;
                 cubit.upsert(WorkStatusItem(
                   id: 'indexing',
-                  title: 'אינדוקס ספרים',
-                  message: 'התוכנה בתהליך אינדוקס',
-                  detail: 'התקדמות: $processed/$total',
+                  title: 'navigation.indexing_title'.tr(),
+                  message: 'navigation.indexing_message'.tr(),
+                  detail: 'navigation.indexing_progress'.tr(namedArgs: {
+                    'processed': processed.toString(),
+                    'total': total.toString(),
+                  }),
                   progress: progress,
                 ));
               } else {
@@ -2541,12 +2546,14 @@ class MainWindowScreenState extends State<MainWindowScreen>
                 final bloc = context.read<PluginSystemBloc>();
                 showWarningDialog(
                   context: context,
-                  title: 'התוסף כבר קיים',
-                  content:
-                      'התוסף "${state.pluginName}" בגרסה ${state.version} כבר מותקן.',
-                  subtitle: 'האם ברצונך להתקין מחדש ולדרוס אותו?',
-                  cancelText: 'ביטול',
-                  confirmText: 'התקן מחדש',
+                  title: 'navigation.plugin_overwrite_title'.tr(),
+                  content: 'navigation.plugin_overwrite_content'.tr(namedArgs: {
+                    'name': state.pluginName,
+                    'version': state.version,
+                  }),
+                  subtitle: 'navigation.plugin_overwrite_subtitle'.tr(),
+                  cancelText: 'navigation.plugin_overwrite_cancel'.tr(),
+                  confirmText: 'navigation.plugin_overwrite_confirm'.tr(),
                 ).then((value) {
                   if (value == true) {
                     bloc.add(InstallPluginRequested(state.archivePath,
@@ -2993,7 +3000,7 @@ class MainWindowScreenState extends State<MainWindowScreen>
                           onClose: _toggleReadingSettingsPanel,
                           deferChildBuildOnOpen: true,
                           preserveChildStateOnClose: true,
-                          title: 'הגדרות תצוגת הספרים',
+                          title: 'settings.reading_dialog.title'.tr(),
                           child: const Expanded(
                             child: ReadingSettingsPanel(),
                           ),
@@ -3279,7 +3286,7 @@ class MainWindowScreenState extends State<MainWindowScreen>
     return NavRailItem(
       icon: item.icon,
       iconFilled: item.iconFilled,
-      label: item.label,
+      label: item.labelKey.tr(),
       isSelected: isSelected,
       onTap: () => _onNavTap(context, index, currentScreen),
       tooltip: tooltip,

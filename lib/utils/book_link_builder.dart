@@ -1,5 +1,6 @@
 // לוגיקה טהורה לבניית קישורי deep link לספרים.
-// קובץ זה אינו תלוי ב-Flutter ולכן ניתן לבדיקה עם dart test רגיל.
+
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 
 /// בניית קישור ישיר לספר טקסט לפי מזהה
 String buildBookLink(int bookId) => 'otzaria://open/book/$bookId';
@@ -43,16 +44,19 @@ List<({String label, String? link})> buildDirectLinkSubmenuEntries({
   required String? selectedText,
 }) {
   final entries = <({String label, String? link})>[
-    (label: 'העתק קישור למקטע זה', link: buildSectionLink(bookId, index)),
     (
-      label: 'העתק קישור עם הדגשת המקטע',
+      label: 'utils.copy_section_link'.tr(),
+      link: buildSectionLink(bookId, index)
+    ),
+    (
+      label: 'utils.copy_section_mark_link'.tr(),
       link: buildSectionMarkLink(bookId, index)
     ),
   ];
 
   if (selectedText != null && selectedText.trim().isNotEmpty) {
     entries.add((
-      label: 'העתק קישור עם הדגשת הטקסט',
+      label: 'utils.copy_text_mark_link'.tr(),
       link: buildTextMarkLink(bookId, index, selectedText),
     ));
   }

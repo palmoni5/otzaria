@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:http/http.dart' as http;
 import 'package:otzaria/core/http_client_registry.dart';
 import 'package:path/path.dart' as p;
@@ -18,7 +19,8 @@ class PluginDownloadService {
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
-        'שגיאה בהורדת התוסף (${response.statusCode})',
+        'plugins.services.download_error'
+            .tr(namedArgs: {'status': '${response.statusCode}'}),
       );
     }
 

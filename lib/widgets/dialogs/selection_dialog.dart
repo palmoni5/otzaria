@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:otzaria/core/focus_repository.dart';
@@ -11,14 +12,14 @@ class SelectionDialog<T> extends StatefulWidget {
   final String title;
   final List<SelectionItem<T>> items;
   final T? initialValue;
-  final String searchHint;
+  final String? searchHint;
 
   const SelectionDialog({
     super.key,
     required this.title,
     required this.items,
     this.initialValue,
-    this.searchHint = 'חיפוש...',
+    this.searchHint,
   });
 
   @override
@@ -84,15 +85,15 @@ class _SelectionDialogState<T> extends State<SelectionDialog<T>>
               OtzariaSearchField(
                 controller: _searchController,
                 focusNode: _searchFocusNode,
-                hintText: widget.searchHint,
+                hintText: widget.searchHint ?? 'widgets.search_hint'.tr(),
                 autofocus: true,
               ),
               const SizedBox(height: 8),
               Expanded(
                 child: filteredItems.isEmpty
-                    ? const ToolEmptyState(
+                    ? ToolEmptyState(
                         icon: FluentIcons.search_24_regular,
-                        message: 'לא נמצאו תוצאות',
+                        message: 'widgets.no_selection_found'.tr(),
                       )
                     : ListView.builder(
                         itemCount: filteredItems.length,
@@ -120,7 +121,7 @@ class _SelectionDialogState<T> extends State<SelectionDialog<T>>
         ),
         actions: [
           NeutralActionButton(
-            text: 'ביטול',
+            text: 'common.cancel'.tr(),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ],
@@ -135,7 +136,7 @@ Future<T?> showSelectionDialog<T>({
   required String title,
   required List<SelectionItem<T>> items,
   T? initialValue,
-  String searchHint = 'חיפוש...',
+  String? searchHint,
   bool barrierDismissible = true,
 }) {
   return showDialog<T>(

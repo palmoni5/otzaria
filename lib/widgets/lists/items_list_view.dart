@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:otzaria/models/books.dart';
@@ -89,9 +90,13 @@ class ItemsListView extends StatefulWidget {
     }
 
     if (location.isEmpty) {
-      if (item.index as int == 0) return 'תחילת הספר';
-      if (item.book is PdfBook) return 'עמוד ${item.index as int}';
-      return 'פסקה ${item.index as int}';
+      if (item.index as int == 0) return 'widgets.book_start'.tr();
+      if (item.book is PdfBook) {
+        return 'widgets.page_number'
+            .tr(namedArgs: {'number': (item.index as int).toString()});
+      }
+      return 'widgets.paragraph_number'
+          .tr(namedArgs: {'number': (item.index as int).toString()});
     }
     return location;
   }
@@ -218,7 +223,7 @@ class _ItemsListViewState extends State<ItemsListView> {
             if (!widget.actionsInContextMenu)
               IconButton(
                 icon: const Icon(FluentIcons.delete_24_regular),
-                tooltip: 'מחק',
+                tooltip: 'widgets.delete'.tr(),
                 onPressed: () => widget.onDelete(context, originalIndex),
               ),
           ],
@@ -232,12 +237,12 @@ class _ItemsListViewState extends State<ItemsListView> {
       menuBuilder: (menuContext, _) => [
         if (widget.onEdit != null)
           AppContextMenuEntry(
-            label: 'ערוך תיאור',
+            label: 'widgets.edit_description'.tr(),
             icon: FluentIcons.edit_24_regular,
             onTap: () => widget.onEdit!(menuContext, item, originalIndex),
           ),
         AppContextMenuEntry(
-          label: 'מחק',
+          label: 'widgets.delete'.tr(),
           icon: FluentIcons.delete_24_regular,
           isDestructive: true,
           onTap: () => widget.onDelete(menuContext, originalIndex),

@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/foundation.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:otzaria/theme/theme_exports.dart';
 import 'package:otzaria/widgets/misc/rtl_icon.dart';
@@ -363,7 +364,7 @@ Future<T?> showAnchoredAppSearchMenu<T>({
   required BuildContext anchorContext,
   required List<AppMenuEntry<T>> entries,
   T? initialValue,
-  String searchHint = 'חיפוש',
+  String searchHint = '',
   PopupMenuPosition position = PopupMenuPosition.under,
   Offset offset = const Offset(0, 4),
   List<String>? filterLabels,
@@ -613,7 +614,9 @@ class _AnchoredSearchMenuContentState<T>
                         color: cs.onSurface,
                       ),
                       decoration: InputDecoration(
-                        hintText: widget.searchHint,
+                        hintText: widget.searchHint.isEmpty
+                            ? 'widgets.search'.tr()
+                            : widget.searchHint,
                         hintStyle: TextStyle(
                           color: cs.onSurfaceVariant,
                           fontSize: widget.metrics.fontSize,
@@ -687,7 +690,7 @@ class _AnchoredSearchMenuContentState<T>
                     child: filtered.isEmpty
                         ? Center(
                             child: Text(
-                              'אין תוצאות',
+                              'widgets.no_results'.tr(),
                               style: TextStyle(
                                 color: cs.onSurfaceVariant,
                                 fontSize: widget.metrics.fontSize,

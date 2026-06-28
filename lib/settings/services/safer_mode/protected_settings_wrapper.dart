@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -71,8 +72,8 @@ class _ProtectedSettingsWrapperState extends State<ProtectedSettingsWrapper> {
       context: context,
       barrierDismissible: true,
       builder: (dialogContext) => PasswordVerificationDialog(
-        title: 'הזן סיסמה',
-        hint: 'הנך במצב מוגן.\nהזן את הסיסמה כדי לגשת להגדרות',
+        title: 'settings.safer_mode.verify_title'.tr(),
+        hint: 'settings.safer_mode.access_hint'.tr(),
         onVerify: (password) async {
           return repository.verifyProtectedModePassword(password);
         },
@@ -136,8 +137,8 @@ class _ProtectedSettingsWrapperState extends State<ProtectedSettingsWrapper> {
     if (!_isVerified) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text(
-            'הגדרות',
+          title: Text(
+            'settings.title'.tr(),
           ),
           automaticallyImplyLeading: true,
         ),
@@ -154,12 +155,12 @@ class _ProtectedSettingsWrapperState extends State<ProtectedSettingsWrapper> {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'הנך במצב מוגן',
+                  'settings.safer_mode.screen_locked_title'.tr(),
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'נדרשת סיסמה כדי לגשת להגדרות',
+                  'settings.safer_mode.screen_locked_subtitle'.tr(),
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -174,7 +175,7 @@ class _ProtectedSettingsWrapperState extends State<ProtectedSettingsWrapper> {
                     _showPasswordDialog();
                   },
                   icon: const Icon(FluentIcons.key_24_regular),
-                  label: const Text('הזן סיסמה'),
+                  label: Text('settings.safer_mode.screen_locked_button'.tr()),
                 ),
               ],
             ),
@@ -205,8 +206,8 @@ Future<bool> verifyPasswordForAction(BuildContext context) async {
   final verified = await showDialog<bool>(
     context: context,
     builder: (context) => PasswordVerificationDialog(
-      title: 'אמת סיסמה',
-      hint: 'הנך במצב מוגן.\nהזן את הסיסמה כדי לבצע פעולה זו',
+      title: 'settings.safer_mode.action_title'.tr(),
+      hint: 'settings.safer_mode.action_hint'.tr(),
       onVerify: (password) async {
         return repository.verifyProtectedModePassword(password);
       },

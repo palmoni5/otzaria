@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/services.dart';
@@ -34,7 +35,7 @@ class ReportingNumbersWidget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'נתוני הדיווח:',
+              'widgets.reporting_numbers.title'.tr(),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -48,24 +49,26 @@ class ReportingNumbersWidget extends StatelessWidget {
               children: [
                 _buildCompactNumberItem(
                   context,
-                  'מספר גירסה',
+                  'widgets.reporting_numbers.version'.tr(),
                   libraryVersion,
                 ),
                 _buildCompactNumberItem(
                   context,
-                  'מספר ספר',
-                  bookId?.toString() ?? 'לא זמין',
+                  'widgets.reporting_numbers.book'.tr(),
+                  bookId?.toString() ??
+                      'widgets.reporting_numbers.not_available'.tr(),
                   enabled: bookId != null,
                 ),
                 _buildCompactNumberItem(
                   context,
-                  'מספר שורה',
+                  'widgets.reporting_numbers.line'.tr(),
                   lineNumber.toString(),
                 ),
                 _buildCompactNumberItem(
                   context,
-                  'מספר שגיאה',
-                  errorId?.toString() ?? 'לא נבחר',
+                  'widgets.reporting_numbers.error'.tr(),
+                  errorId?.toString() ??
+                      'widgets.reporting_numbers.not_selected'.tr(),
                   enabled: errorId != null,
                 ),
               ],
@@ -137,7 +140,7 @@ class ReportingNumbersWidget extends StatelessWidget {
           children: [
             // 1. הכותרת שתוצג בצד ימין
             Text(
-              'קו אוצריא:',
+              'widgets.reporting_numbers.otzaria_line'.tr(),
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -192,7 +195,7 @@ class ReportingNumbersWidget extends StatelessWidget {
             IconButton(
               onPressed: () => _copyToClipboard(context, _phoneNumber),
               icon: const Icon(FluentIcons.copy_24_regular, size: 18),
-              tooltip: 'העתק מספר טלפון',
+              tooltip: 'widgets.reporting_numbers.copy_phone'.tr(),
               visualDensity: VisualDensity.compact,
             ),
 
@@ -202,7 +205,7 @@ class ReportingNumbersWidget extends StatelessWidget {
               IconButton(
                 onPressed: () => _makePhoneCall(context),
                 icon: const Icon(FluentIcons.phone_24_regular, size: 18),
-                tooltip: 'התקשר',
+                tooltip: 'widgets.reporting_numbers.call'.tr(),
                 visualDensity: VisualDensity.compact,
               ),
             ],
@@ -212,7 +215,7 @@ class ReportingNumbersWidget extends StatelessWidget {
 
         // טקסט המשנה נשאר כמו שהיה
         Text(
-          'לפירוט נוסף, השאר הקלטה ברורה!',
+          'widgets.reporting_numbers.leave_clear_recording'.tr(),
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 fontStyle: FontStyle.italic,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -226,11 +229,12 @@ class ReportingNumbersWidget extends StatelessWidget {
     try {
       await Clipboard.setData(ClipboardData(text: text));
       if (context.mounted) {
-        UiSnack.show('הועתק ללוח: $text');
+        UiSnack.show('widgets.reporting_numbers.copied_to_clipboard'
+            .tr(namedArgs: {'text': text}));
       }
     } catch (e) {
       if (context.mounted) {
-        UiSnack.showError('שגיאה בהעתקה ללוח');
+        UiSnack.showError('widgets.reporting_numbers.copy_error'.tr());
       }
     }
   }
@@ -242,12 +246,12 @@ class ReportingNumbersWidget extends StatelessWidget {
         await launchUrl(phoneUri);
       } else {
         if (context.mounted) {
-          UiSnack.showError('לא ניתן לפתוח את אפליקציית הטלפון');
+          UiSnack.showError('widgets.reporting_numbers.cant_open_phone'.tr());
         }
       }
     } catch (e) {
       if (context.mounted) {
-        UiSnack.showError('שגיאה בפתיחת אפליקציית הטלפון');
+        UiSnack.showError('widgets.reporting_numbers.phone_open_error'.tr());
       }
     }
   }

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:otzaria/tabs/models/tab.dart';
 import 'package:otzaria/tabs/models/pdf_tab.dart';
 
@@ -15,7 +16,8 @@ class PdfCommentatorsTab extends OpenedTab {
     required this.sourceTab,
     bool disposeSourceTabOnDispose = false,
   })  : _disposeSourceTabOnDispose = disposeSourceTabOnDispose,
-        super('מפרשים | ${sourceTab.title}');
+        super('tabs.commentators_prefix'
+            .tr(namedArgs: {'source': sourceTab.title}));
 
   /// שחזור מ-JSON — בונה sourceTab חדש מהנתונים השמורים.
   factory PdfCommentatorsTab.fromJson(Map<String, dynamic> json) {

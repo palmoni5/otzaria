@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:archive/archive_io.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:path/path.dart' as path;
 import 'package:logging/logging.dart';
 
@@ -20,7 +21,7 @@ class ZipExtractorService {
       if (!directory.existsSync()) {
         return ZipExtractionResult(
           success: false,
-          errorMessage: 'התיקייה לא קיימת',
+          errorMessage: 'dialogs.zip_extraction.folder_not_exists'.tr(),
         );
       }
 
@@ -44,8 +45,8 @@ class ZipExtractorService {
       if (zipFiles.length > 1) {
         return ZipExtractionResult(
           success: false,
-          errorMessage:
-              'נמצאו ${zipFiles.length} קבצים דחוסים. אנא השאר רק קובץ דחוס אחד בתיקייה.',
+          errorMessage: 'dialogs.zip_extraction.multiple_zips'
+              .tr(namedArgs: {'count': '${zipFiles.length}'}),
           multipleZipFiles: true,
           zipFiles: zipFiles.map((f) => path.basename(f.path)).toList(),
         );
@@ -65,7 +66,10 @@ class ZipExtractorService {
         final fileSizeMB = (fileSize / 1024 / 1024).toStringAsFixed(1);
         _log.info('גודל קובץ ZIP: $fileSize bytes ($fileSizeMB MB)');
 
-        onProgress?.call(0.1, 'מתחיל חילוץ ($fileSizeMB MB)...');
+        onProgress?.call(
+            0.1,
+            'dialogs.zip_extraction.starting_extraction'
+                .tr(namedArgs: {'size': fileSizeMB}));
 
         // שימוש ב-extractFileToDisk - פונקציה אופטימלית שמטפלת ב-streaming אוטומטית
         // זה מונע טעינת כל הקובץ לזיכרון ומתאים לקבצים גדולים
@@ -74,15 +78,21 @@ class ZipExtractorService {
         try {
           await extractFileToDisk(zipFile.path, directoryPath);
           _log.info('החילוץ הושלם בהצלחה');
-          onProgress?.call(0.95, 'משלים חילוץ...');
+          onProgress?.call(0.95, 'dialogs.zip_extraction.completing_msg'.tr());
         } catch (e) {
           _log.severe('שגיאה בחילוץ עם extractFileToDisk, מנסה שיטה חלופית', e);
           // אם נכשל, ננסה את השיטה הישנה
-          onProgress?.call(0.1, 'קורא קובץ דחוס ($fileSizeMB MB)...');
+          onProgress?.call(
+              0.1,
+              'dialogs.zip_extraction.reading_zip'
+                  .tr(namedArgs: {'size': fileSizeMB}));
           final bytes = await zipFile.readAsBytes();
           _log.info('קובץ ZIP נקרא, גודל: ${bytes.length} bytes');
 
-          onProgress?.call(0.15, 'מפענח ארכיון ($fileSizeMB MB)...');
+          onProgress?.call(
+              0.15,
+              'dialogs.zip_extraction.decoding_archive'
+                  .tr(namedArgs: {'size': fileSizeMB}));
           await Future.delayed(const Duration(milliseconds: 100));
           final archive = ZipDecoder().decodeBytes(bytes);
           _log.info('ארכיון פוענח, ${archive.length} קבצים');
@@ -95,19 +105,20 @@ class ZipExtractorService {
           );
         }
 
-        onProgress?.call(0.95, 'משלים חילוץ...');
+        onProgress?.call(0.95, 'dialogs.zip_extraction.completing_msg'.tr());
         _log.info('החילוץ הושלם בהצלחה');
       } catch (extractError, extractStackTrace) {
         _log.severe('שגיאה בפעולת החילוץ', extractError, extractStackTrace);
         return ZipExtractionResult(
           success: false,
-          errorMessage: 'שגיאה בחילוץ הקובץ: ${extractError.toString()}',
+          errorMessage: 'dialogs.zip_extraction.extraction_error'
+              .tr(namedArgs: {'error': extractError.toString()}),
         );
       }
 
       // מחיקת קובץ ה-ZIP המקורי
       try {
-        onProgress?.call(0.98, 'משלים...');
+        onProgress?.call(0.98, 'dialogs.zip_extraction.finishing'.tr());
 
         // שאלת המשתמש אם למחוק
         bool shouldDelete = true;
@@ -126,7 +137,7 @@ class ZipExtractorService {
         // לא נכשיל את כל הפעולה בגלל זה
       }
 
-      onProgress?.call(1.0, 'החילוץ הושלם!');
+      onProgress?.call(1.0, 'dialogs.zip_extraction.done'.tr());
 
       return ZipExtractionResult(
         success: true,
@@ -138,7 +149,8 @@ class ZipExtractorService {
       _log.severe('שגיאה בחילוץ קובץ ZIP', e, stackTrace);
       return ZipExtractionResult(
         success: false,
-        errorMessage: 'שגיאה בחילוץ הקובץ: ${e.toString()}',
+        errorMessage: 'dialogs.zip_extraction.extraction_error'
+            .tr(namedArgs: {'error': e.toString()}),
       );
     }
   }
@@ -155,7 +167,10 @@ class ZipExtractorService {
     String directoryPath,
     Function(double progress, String message)? onProgress,
   ) async {
-    onProgress?.call(0.2, 'מתכונן לחילוץ ${archive.length} קבצים...');
+    onProgress?.call(
+        0.2,
+        'dialogs.zip_extraction.preparing'
+            .tr(namedArgs: {'count': '${archive.length}'}));
     await Future.delayed(const Duration(milliseconds: 100));
 
     final totalFiles = archive.length;
@@ -171,7 +186,10 @@ class ZipExtractorService {
     }
 
     final totalMB = (totalBytes / 1024 / 1024).toStringAsFixed(1);
-    onProgress?.call(0.22, 'מחלץ $totalMB MB...');
+    onProgress?.call(
+        0.22,
+        'dialogs.zip_extraction.extracting_size'
+            .tr(namedArgs: {'size': totalMB}));
     await Future.delayed(const Duration(milliseconds: 100));
 
     for (final file in archive) {
@@ -212,7 +230,11 @@ class ZipExtractorService {
             final totalMb = (totalBytes / 1024 / 1024).toStringAsFixed(1);
             onProgress?.call(
               progress,
-              'מחלץ: ${path.basename(filename)}\n$mb MB מתוך $totalMb MB',
+              'dialogs.zip_extraction.extracting_file'.tr(namedArgs: {
+                'name': path.basename(filename),
+                'done': mb,
+                'total': totalMb,
+              }),
             );
           }
 
@@ -233,7 +255,10 @@ class ZipExtractorService {
         final progress = 0.25 + (0.65 * extractedFiles / totalFiles);
         onProgress?.call(
           progress,
-          'מחלץ קבצים... ($extractedFiles מתוך $totalFiles)',
+          'dialogs.zip_extraction.extracting_files'.tr(namedArgs: {
+            'done': '$extractedFiles',
+            'total': '$totalFiles',
+          }),
         );
       }
     }

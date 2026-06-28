@@ -5,13 +5,13 @@ import 'package:otzaria/widgets/navigation/commentators_filter_header.dart';
 class CommentatorsFilterScreen extends StatelessWidget {
   final VoidCallback onBack;
   final Widget child;
-  final String title;
+  final String? title;
 
   const CommentatorsFilterScreen({
     super.key,
     required this.onBack,
     required this.child,
-    this.title = 'בחירת מפרשים',
+    this.title,
   });
 
   @override

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/models/links.dart';
@@ -71,7 +72,7 @@ class LinkHoverPreviewContent extends StatelessWidget {
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Text(
-                    'שגיאה בטעינת התוכן',
+                    'widgets.content_load_error'.tr(),
                     style: TextStyle(
                       color: colorScheme.error,
                       fontSize: settingsState.commentatorsFontSize - 2,
@@ -99,7 +100,7 @@ class LinkHoverPreviewContent extends StatelessWidget {
                     .trim();
                 if (cleanContent.isEmpty) {
                   return Text(
-                    'אין תוכן זמין',
+                    'widgets.no_content_available'.tr(),
                     style: TextStyle(
                       color: colorScheme.onSurfaceVariant,
                       fontSize: settingsState.commentatorsFontSize - 2,

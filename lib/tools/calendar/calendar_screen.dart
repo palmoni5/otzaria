@@ -1,6 +1,7 @@
 // lib/tools/calendar/calendar_screen.dart
 
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -528,7 +529,7 @@ class CalendarWidgetState extends State<CalendarWidget> {
                     top: 4,
                     start: 4,
                     child: ToolbarActionButton(
-                      tooltip: 'סגור חלונית',
+                      tooltip: 'calendar.close_panel'.tr(),
                       icon: FluentIcons.dismiss_24_regular,
                       onPressed: _handleSidebarClosedByUser,
                     ),
@@ -543,7 +544,7 @@ class CalendarWidgetState extends State<CalendarWidget> {
           isOpen: _isSettingsPanelOpen,
           onClose: _toggleSettingsPanel,
           width: 400,
-          title: 'הגדרות',
+          title: 'calendar.settings'.tr(),
           child: const Expanded(
             child: CalendarSettingsPanel(),
           ),
@@ -599,7 +600,7 @@ class CalendarWidgetState extends State<CalendarWidget> {
                 child: Row(
                   children: [
                     Text(
-                      'הגדרות',
+                      'calendar.settings'.tr(),
                       style: Theme.of(context)
                           .textTheme
                           .headlineMedium
@@ -800,12 +801,9 @@ class CalendarWidgetState extends State<CalendarWidget> {
   Future<void> _openCalendarCalculationPage(BuildContext context) async {
     await showSingleActionDialog(
       context: context,
-      title: 'אודות חישובי הלוח',
-      content:
-          'חישובי הלוח בתוכנה זו מיוסדים על דרכו של הרב ישראל דוד הרפנס, כפי שנתבארה בספרו ישראל והזמנים ובשאר ספריו העוסקים בענייני זמני הלכה. מטרת הדברים איננה להציג חישוב עצמאי חדש, אלא ליישם בצורה מסודרת, מדויקת ובהירה את כללי חשבון הלוח העברי על פי הביאור והסידור שנתפרשו בספריו.\n\n'
-          'הרב הרפנס, מו"ץ בהתאחדות הרבנים ורב קהילת ישראל והזמנים, נודע במיוחד בבירור סוגיות הזמן בהלכה, וספרו ישראל והזמנים הוא ספר היסוד שעל פיו נבנתה תשתית החישוב שבתוכנה. לצד ספר זה, חיבר הרב גם ספרים נוספים בענייני הלכה שונים.\n\n'
-          'אין בהבאת זמנים אלו משום נקיטת צד באופן החישוב, והם הובאו רק משום הקלות לשלבם בתוכנה.',
-      confirmText: 'הבנתי',
+      title: 'calendar.about_calc_title'.tr(),
+      content: 'calendar.about_calc_content'.tr(),
+      confirmText: 'calendar.understood'.tr(),
     );
   }
 }
