@@ -142,6 +142,78 @@ void main() {
     },
     timeout: const Timeout(Duration(seconds: 30)),
   );
+
+  test(
+    'applyDeltaPlan מחזיר את היומן ל-DELETE גם כשה-apply נכשל',
+    () async {
+      final dbPath = p.join(tmp.path, DatabaseConstants.databaseFileName);
+      _writeDb(dbPath, version: 1, marker: 'old');
+
+      final repository = LibraryUpdateRepository(
+        discovery: _unusedDiscovery(),
+        downloader: _LocalPatchDownloader(p.join(tmp.path, 'patch.db')),
+        refreshService: _NoopRefreshService(),
+        dbPathProvider: () => dbPath,
+        dataRootProvider: () async => tmp.path,
+        nowTimestamp: () => '2026-06-28T00:00:00Z',
+      );
+
+      await expectLater(
+        repository.applyDeltaPlan(_deltaPlan()),
+        throwsA(isA<PatchApplyException>()),
+      );
+
+      // יומן WAL שנשאר היה שובר פתיחת RO על מדיה לקריאה-בלבד.
+      expect(_journalMode(dbPath), 'delete');
+      expect(File('$dbPath-wal').existsSync(), isFalse);
+    },
+    timeout: const Timeout(Duration(seconds: 30)),
+  );
+
+  test(
+    'קורא RO ממשיך לקרוא בזמן כתיבת WAL (הנחת היסוד של עדכון ללא חסימה)',
+    () async {
+      final dbPath = p.join(tmp.path, DatabaseConstants.databaseFileName);
+      _writeDb(dbPath, version: 1, marker: 'old');
+
+      // קורא שנפתח לפני ההמרה ל-WAL — כמו חיבור ה-RO של האפליקציה.
+      final reader =
+          sqlite3.sqlite3.open(dbPath, mode: sqlite3.OpenMode.readOnly);
+      final writer = sqlite3.sqlite3.open(dbPath);
+      try {
+        writer.execute('PRAGMA journal_mode=WAL');
+        writer.execute('BEGIN');
+        writer.execute("UPDATE marker SET value = 'new' WHERE id = 1");
+
+        // באמצע ה-transaction: הקורא רואה את ה-snapshot הישן, בלי חסימה.
+        final during = reader.select('SELECT value FROM marker WHERE id = 1');
+        expect(during.first['value'], 'old');
+
+        writer.execute('COMMIT');
+        final after = reader.select('SELECT value FROM marker WHERE id = 1');
+        expect(after.first['value'], 'new');
+      } finally {
+        reader.close();
+        writer.close();
+      }
+    },
+    timeout: const Timeout(Duration(seconds: 30)),
+  );
+}
+
+String _journalMode(String dbPath) {
+  final db = sqlite3.sqlite3.open(dbPath, mode: sqlite3.OpenMode.readOnly);
+  try {
+    return db
+        .select('PRAGMA journal_mode')
+        .first
+        .values
+        .first
+        .toString()
+        .toLowerCase();
+  } finally {
+    db.close();
+  }
 }
 
 LibraryUpdateDiscovery _unusedDiscovery() {

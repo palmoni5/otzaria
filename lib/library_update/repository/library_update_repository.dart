@@ -364,7 +364,13 @@ class LibraryUpdateRepository implements LibraryUpdateService {
     void Function(int done, int total)? onVerifyProgress,
   }) {
     return DatabaseLibraryProvider.operationQueue.enqueue(() async {
-      await SqliteDataProvider.instance.closeForExternalWrite();
+      // WAL מאפשר לקוראים להמשיך לקרוא את ה-snapshot שלפני העדכון בזמן
+      // שהאיזולייט כותב — בלי לסגור את חיבור ה-RO (שחסם פתיחת ספרים לדקות).
+      // אם ההמרה נכשלת, נסוגים למסלול הישן: סגירת ה-RO למשך הכתיבה.
+      final concurrentReads = _trySetJournalMode(dbPath, 'WAL');
+      if (!concurrentReads) {
+        await SqliteDataProvider.instance.closeForExternalWrite();
+      }
       try {
         // ללא גיבוי מלא: ה-apply עטוף ב-transaction יחיד של SQLite, אז קריסה
         // באמצע מתגלגלת אחורה אוטומטית — ה-DB תמיד נשאר תקין (מקור או יעד).
@@ -388,9 +394,37 @@ class LibraryUpdateRepository implements LibraryUpdateService {
         await recovery.rollback(dbPath);
         rethrow;
       } finally {
-        await SqliteDataProvider.instance.reopenAfterExternalWrite();
+        if (concurrentReads) {
+          // חזרה ל-DELETE (best-effort) — פתיחת RO בעלייה הבאה לא תדרוש
+          // קובצי -wal/-shm. אם נכשל, הנרמול בעליית האפליקציה משלים.
+          _trySetJournalMode(dbPath, 'DELETE');
+        } else {
+          await SqliteDataProvider.instance.reopenAfterExternalWrite();
+        }
       }
     });
+  }
+
+  /// ממיר את מצב היומן של [dbPath] ומחזיר האם ההמרה הצליחה. ההמרה דורשת
+  /// נעילה בלעדית קצרה — busy_timeout מכסה קריאות קצרות שבאמצע.
+  bool _trySetJournalMode(String dbPath, String mode) {
+    try {
+      final db = sqlite3.sqlite3.open(dbPath);
+      try {
+        db.execute('PRAGMA busy_timeout = 5000');
+        if (mode == 'DELETE') {
+          db.execute('PRAGMA wal_checkpoint(TRUNCATE)');
+        }
+        final result = db.select('PRAGMA journal_mode=$mode');
+        return result.isNotEmpty &&
+            result.first.values.first?.toString().toLowerCase() ==
+                mode.toLowerCase();
+      } finally {
+        db.close();
+      }
+    } catch (_) {
+      return false;
+    }
   }
 
   // מאזין לתת-שלבי ה-apply דרך ReceivePort ומעביר ל-onStage (רץ ב-main isolate).
