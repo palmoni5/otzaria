@@ -1484,7 +1484,7 @@ class _SystemSettingsTabState extends State<SystemSettingsTab> {
 
   Widget _buildAdvancedSection(BuildContext context, SettingsState state) {
     final autoFrequency =
-        Settings.getValue<String>(_keyAutoBackupFrequency) ?? 'none';
+        Settings.getValue<String>(_keyAutoBackupFrequency) ?? 'weekly';
     final repository = RepositoryProvider.of<SettingsRepository>(context);
     final hasPassword = state.protectedModePasswordSet;
 

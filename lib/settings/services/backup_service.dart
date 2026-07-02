@@ -560,7 +560,7 @@ class BackupService {
   }
 
   // [EDITING DISABLED]
-    /// Restore user overrides to files
+  /// Restore user overrides to files
   // static Future<void> _restoreUserOverrides(
   //     Map<String, dynamic> overridesData) async {
   //   final overridesDir = Directory(await AppPaths.getUserOverridesRootPath());
@@ -570,10 +570,10 @@ class BackupService {
   //       final content = entry.value as String;
   //       final filePath = p.join(overridesDir.path, relativePath);
   //       final file = File(filePath);
-            // Ensure parent directory exists
+  // Ensure parent directory exists
   //       await file.parent.create(recursive: true);
-            // Only restore if file doesn't exist, to not overwrite user's latest edits,
-            // or overwrite it if wanted. The standard restore overwrites.
+  // Only restore if file doesn't exist, to not overwrite user's latest edits,
+  // or overwrite it if wanted. The standard restore overwrites.
   //       await file.writeAsString(content);
   //     } catch (e) {
   //       _logger.warning('Failed to restore override file ${entry.key}: $e');
@@ -724,7 +724,7 @@ class BackupService {
   /// Check if automatic backup is needed
   static Future<bool> shouldPerformAutoBackup() async {
     final frequency =
-        Settings.getValue<String>('key-auto-backup-frequency') ?? 'none';
+        Settings.getValue<String>('key-auto-backup-frequency') ?? 'weekly';
     if (frequency == 'none') return false;
 
     final lastBackup = Settings.getValue<String>('key-last-auto-backup');
@@ -834,8 +834,7 @@ class BackupService {
             lastBackupDate: backupDate, hasSignificantChanges: false);
       }
 
-      final hasChanges =
-          await _hasSignificantChanges(backupData, backupDate);
+      final hasChanges = await _hasSignificantChanges(backupData, backupDate);
       return BackupStatus(
           lastBackupDate: backupDate, hasSignificantChanges: hasChanges);
     } catch (e) {
@@ -874,8 +873,7 @@ class BackupService {
   }
 
   static bool _hasSettingsChanges(Map<String, dynamic> backupData) {
-    final backedUpSettings =
-        backupData['settings'] as Map<String, dynamic>?;
+    final backedUpSettings = backupData['settings'] as Map<String, dynamic>?;
     if (backedUpSettings == null) return false;
     for (final entry in backedUpSettings.entries) {
       final current = Settings.getValue(entry.key);
@@ -891,15 +889,13 @@ class BackupService {
     return workspaces.length > backedUpWorkspaces.length;
   }
 
-  static Future<bool> _hasPluginAdded(
-      Map<String, dynamic> backupData) async {
+  static Future<bool> _hasPluginAdded(Map<String, dynamic> backupData) async {
     final backedUpPlugins = backupData['plugins'] as List?;
     if (backedUpPlugins == null) return false;
     try {
       final db = PluginSystemDatabase.instance;
       final currentPlugins = await db.getAllInstalledPlugins();
-      final currentCount =
-          currentPlugins.where((p) => !p.isDevelopment).length;
+      final currentCount = currentPlugins.where((p) => !p.isDevelopment).length;
       return currentCount > backedUpPlugins.length;
     } catch (_) {
       return false;
@@ -909,14 +905,11 @@ class BackupService {
   /// Checks if shamor zachor data changed meaningfully since the backup:
   /// new books added, a book newly marked, or a review cycle crossed 50% for any book.
   static bool _hasShamorZachorChanges(Map<String, dynamic> backupData) {
-    final szBackup =
-        backupData['shamorZachor'] as Map<String, dynamic>?;
+    final szBackup = backupData['shamorZachor'] as Map<String, dynamic>?;
     if (szBackup == null) return false;
 
-    final backupProgressStr =
-        szBackup['sz:progress_by_id'] as String?;
-    final currentProgressStr =
-        Settings.getValue<String>('sz:progress_by_id');
+    final backupProgressStr = szBackup['sz:progress_by_id'] as String?;
+    final currentProgressStr = Settings.getValue<String>('sz:progress_by_id');
     if (backupProgressStr == null ||
         currentProgressStr == null ||
         currentProgressStr.isEmpty) {
@@ -1018,8 +1011,7 @@ class BackupService {
       if (currentNoteCount - backupNoteCount >= 5) return true;
 
       // 30%+ of previous notes edited
-      if (backupNoteCount > 0 &&
-          editedAfterBackup >= backupNoteCount * 0.3) {
+      if (backupNoteCount > 0 && editedAfterBackup >= backupNoteCount * 0.3) {
         return true;
       }
     } catch (_) {}

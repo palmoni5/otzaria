@@ -211,6 +211,21 @@ void main() {
       expect(await BackupService.shouldPerformAutoBackup(), isFalse);
     });
 
+    test('ברירת המחדל כשלא הוגדרה תדירות היא weekly', () async {
+      await Settings.setValue<String?>('key-auto-backup-frequency', null);
+      expect(await BackupService.shouldPerformAutoBackup(), isTrue);
+      await Settings.setValue<String>(
+        'key-last-auto-backup',
+        DateTime.now().subtract(const Duration(days: 3)).toIso8601String(),
+      );
+      expect(await BackupService.shouldPerformAutoBackup(), isFalse);
+      await Settings.setValue<String>(
+        'key-last-auto-backup',
+        DateTime.now().subtract(const Duration(days: 8)).toIso8601String(),
+      );
+      expect(await BackupService.shouldPerformAutoBackup(), isTrue);
+    });
+
     test('מחזיר true כשאין גיבוי קודם (weekly)', () async {
       expect(await BackupService.shouldPerformAutoBackup(), isTrue);
     });
