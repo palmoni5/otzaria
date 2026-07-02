@@ -174,6 +174,44 @@ begin
     Result := GetDataDir('') + '\books';
 end;
 
+// משמר את backups באיפוס הגדרות — כדי שקובצי גיבוי ישרדו ויאפשרו שחזור
+// הערות/סימניות/נתוני תוספים דרך "שחזור מגיבוי". books נמחק כי מותקן מחדש.
+procedure DelTreeExceptBackups(Path: String);
+var
+  FindRec: TFindRec;
+  ChildPath: String;
+begin
+  if not DirExists(Path) then
+    exit;
+
+  if FindFirst(Path + '\*', FindRec) then
+  begin
+    try
+      repeat
+        if (FindRec.Name <> '.') and (FindRec.Name <> '..') then
+        begin
+          ChildPath := Path + '\' + FindRec.Name;
+
+          if (FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+          begin
+            if Lowercase(FindRec.Name) <> 'backups' then
+            begin
+              DelTreeExceptBackups(ChildPath);
+              RemoveDir(ChildPath);
+            end;
+          end
+          else
+            DeleteFile(ChildPath);
+        end;
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
+
+  RemoveDir(Path);
+end;
+
 // ─── בדיקות רכיבי מערכת ───────────────────────────────────────────────────
 
 function GetWebView2Version: String;
@@ -1004,25 +1042,25 @@ begin
     begin
       AppDataPath := GetDataDir('');
       if DirExists(AppDataPath) then
-        DelTree(AppDataPath, True, True, True);
+        DelTreeExceptBackups(AppDataPath);
 
       AppDataPath := ExpandConstant('{userappdata}\otzaria');
       if DirExists(AppDataPath) then
-        DelTree(AppDataPath, True, True, True);
+        DelTreeExceptBackups(AppDataPath);
 
       AppDataPath := ExpandConstant('{commonappdata}\otzaria');
       if DirExists(AppDataPath) then
-        DelTree(AppDataPath, True, True, True);
+        DelTreeExceptBackups(AppDataPath);
 
       AppDataPath := ExpandConstant('{localappdata}\otzaria');
       if DirExists(AppDataPath) then
-        DelTree(AppDataPath, True, True, True);
-        
+        DelTreeExceptBackups(AppDataPath);
+
       // com.example הוא מזהה ברירת המחדל של Flutter — רק תת-תיקיית otzaria
       // שייכת לנו; מחיקת כל com.example תמחק נתונים של אפליקציות אחרות.
       AppDataPath := ExpandConstant('{userappdata}\com.example\otzaria');
       if DirExists(AppDataPath) then
-        DelTree(AppDataPath, True, True, True);
+        DelTreeExceptBackups(AppDataPath);
 
       // נתיבים ישנים מאוד: LocalAppData בעברית (לפני גרסה 0.9.x)
       AppDataPath := ExpandConstant('{localappdata}\אוצריא');
@@ -1101,7 +1139,7 @@ Name: "{autodesktop}\לוח שנה - {#MyAppName}"; Filename: "{app}\{#MyAppExeN
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 Name: "calendaricon"; Description: "צור קיצור דרך ישירות ללוח שנה"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "resetsettings"; Description: "איפוס הגדרות משתמש והסרת התקנות קודמות (מומלץ למעדכנים מגרסה < 0.9.80, שים לב: זה ימחק הערות אישיות!)"; Flags: unchecked
+Name: "resetsettings"; Description: "איפוס הגדרות משתמש והסרת התקנות קודמות (מומלץ למעדכנים מגרסה < 0.9.80, שים לב: זה ימחק הערות אישיות, סימניות, היסטוריה ונתוני תוספים! תיקיית הגיבויים נשמרת)"; Flags: unchecked
 Name: "addtopath"; Description: "הוסף את אוצריא ל-PATH של המשתמש (יאפשר להריץ ‎`otzaria pack-plugin`‎ ישירות מהטרמינל)"; Flags: unchecked
 
 [Files]
