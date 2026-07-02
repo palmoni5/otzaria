@@ -144,7 +144,6 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
   // נפתח (false→true) ולא בכל rebuild - אחרת היה גונב פוקוס מתוכן הספר.
   bool _wasLeftPaneShown = false;
   FocusRepository? _focusRepository; // שמירת הפניה לשימוש ב-dispose
-  final GlobalKey _viewModeMenuKey = GlobalKey(); // מפתח לתפריט בחירת התצוגה
   String? _selectedTextForSearch;
   int?
       _selectedLineForNote; // שורת המקור של הטקסט המסומן, ליצירת הערה בקיצור מקשים
@@ -766,10 +765,7 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
 
     textBookBloc.add(LoadContent(
       fontSize: settingsBloc.state.fontSize,
-      // בתצוגה משולבת, מפרשים תמיד מתחת
-      showSplitView: widget.isInCombinedView
-          ? false
-          : (Settings.getValue<bool>('key-splited-view') ?? true),
+      showSplitView: Settings.getValue<bool>('key-splited-view') ?? true,
       removeNikud: settingsBloc.state.defaultRemoveNikud,
       preserveState: true,
       // בתצוגה משולבת, חלונית הצד תמיד סגורה
@@ -998,11 +994,7 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
                   context.read<TextBookBloc>().add(
                         LoadContent(
                           fontSize: settingsState.fontSize,
-                          // בתצוגה משולבת, מפרשים תמיד מתחת (showSplitView = false)
-                          // אחרת, משתמשים בערך שנשמר ב-state של הטאב
-                          showSplitView: widget.isInCombinedView
-                              ? false
-                              : state.splitedView,
+                          showSplitView: state.splitedView,
                           removeNikud: settingsState.defaultRemoveNikud,
                           // בתצוגה משולבת, חלונית הצד תמיד סגורה
                           forceCloseLeftPane: widget.isInCombinedView,
@@ -1311,15 +1303,40 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
           key: widget.enableTourTargets
               ? textBookCommentatorsTourTargetKey
               : null,
-          child: _buildViewModeDropdown(context, state, key: _viewModeMenuKey),
+          child: _buildViewModeDropdown(context, state),
         ),
         icon: _getViewModeIcon(state),
         tooltip: _getViewModeTooltip(state),
-        onPressed: () {
-          // פתיחת התפריט באופן פרוגרמטי (למקרה שהכפתור עבר לתפריט overflow)
-          final dynamic menuState = _viewModeMenuKey.currentState;
-          menuState?.showButtonMenu();
-        },
+        // ב-overflow הכפתור עצמו לא בנוי בעץ, לכן המצבים מוצגים כתת-תפריט
+        submenuItems: [
+          ActionButtonData(
+            widget: const SizedBox.shrink(),
+            icon: FluentIcons.panel_left_24_regular,
+            tooltip: 'מפרשים בצד',
+            onPressed: () =>
+                _onViewModeSelected(context, state, _viewModeSplit),
+          ),
+          ActionButtonData(
+            widget: const SizedBox.shrink(),
+            icon: FluentIcons.panel_bottom_20_regular,
+            tooltip: 'מפרשים מתחת',
+            onPressed: () =>
+                _onViewModeSelected(context, state, _viewModeBelow),
+          ),
+          ActionButtonData(
+            widget: const SizedBox.shrink(),
+            icon: FluentIcons.book_open_24_regular,
+            tooltip: 'צורת הדף',
+            onPressed: () => _onViewModeSelected(context, state, _viewModePage),
+          ),
+          ActionButtonData(
+            widget: const SizedBox.shrink(),
+            icon: FluentIcons.open_24_regular,
+            tooltip: 'פתח כרטיסיית מפרשים',
+            onPressed: () =>
+                _onViewModeSelected(context, state, _actionOpenCommentatorsTab),
+          ),
+        ],
       ),
 
       // 3) Nikud Button
@@ -1603,9 +1620,51 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
     }
   }
 
+  /// טיפול בבחירת מצב תצוגה — משותף לתפריט הכפתור ולתת-התפריט ב-overflow
+  Future<void> _onViewModeSelected(
+      BuildContext context, TextBookLoaded state, String value) async {
+    // פתיחת כרטיסיית מפרשים נפרדת — פעולה, לא מצב תצוגה
+    if (value == _actionOpenCommentatorsTab) {
+      context.read<TabsBloc>().add(
+            AddTab(
+              CommentatorsTab(sourceTab: widget.tab),
+              insertAdjacent: true,
+            ),
+          );
+      return;
+    }
+
+    final bloc = context.read<TextBookBloc>();
+    final tourCubit = context.read<TourCubit>();
+
+    // קביעת מצב היעד לפי הבחירה
+    final bool isPageSelected = value == _viewModePage;
+    final bool isSplitSelected = value == _viewModeSplit;
+
+    // עדכון תצוגת צורת הדף במידת הצורך
+    if (isPageSelected != state.showPageShapeView) {
+      bloc.add(TogglePageShapeView(isPageSelected));
+    }
+
+    // עדכון תצוגת המפרשים במידת הצורך (רק במצבים שאינם 'צורת הדף')
+    if (!isPageSelected && isSplitSelected != state.showSplitView) {
+      bloc.add(ToggleSplitView(isSplitSelected));
+      await _savePerBookSettingsDirectly(context, state,
+          showSplitView: isSplitSelected);
+    }
+
+    if (isPageSelected || isSplitSelected) {
+      tourCubit.recordInteraction(
+        TourInteraction(
+          type: TourInteractionType.commentaryUsed,
+          primaryValue: widget.tab.title,
+        ),
+      );
+    }
+  }
+
   /// בניית תפריט נפתח לבחירת מצב תצוגה
-  Widget _buildViewModeDropdown(BuildContext context, TextBookLoaded state,
-      {Key? key}) {
+  Widget _buildViewModeDropdown(BuildContext context, TextBookLoaded state) {
     final iconWidget = Icon(_getViewModeIcon(state));
 
     final isSplit = !state.showPageShapeView && state.showSplitView;
@@ -1613,54 +1672,13 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
     final isPage = state.showPageShapeView;
 
     return AppPopupMenuButton<String>(
-      key: key,
       tooltip: 'בחר סוג תצוגת מפרשים',
       iconData: _getViewModeIcon(state),
       icon: iconWidget,
-      enabled: !widget.isInCombinedView,
       initialValue: state.showPageShapeView
           ? _viewModePage
           : (state.showSplitView ? _viewModeSplit : _viewModeBelow),
-      onSelected: (value) async {
-        // פתיחת כרטיסיית מפרשים נפרדת — פעולה, לא מצב תצוגה
-        if (value == _actionOpenCommentatorsTab) {
-          context.read<TabsBloc>().add(
-                AddTab(
-                  CommentatorsTab(sourceTab: widget.tab),
-                  insertAdjacent: true,
-                ),
-              );
-          return;
-        }
-
-        final bloc = context.read<TextBookBloc>();
-        final tourCubit = context.read<TourCubit>();
-
-        // קביעת מצב היעד לפי הבחירה
-        final bool isPageSelected = value == _viewModePage;
-        final bool isSplitSelected = value == _viewModeSplit;
-
-        // עדכון תצוגת צורת הדף במידת הצורך
-        if (isPageSelected != state.showPageShapeView) {
-          bloc.add(TogglePageShapeView(isPageSelected));
-        }
-
-        // עדכון תצוגת המפרשים במידת הצורך (רק במצבים שאינם 'צורת הדף')
-        if (!isPageSelected && isSplitSelected != state.showSplitView) {
-          bloc.add(ToggleSplitView(isSplitSelected));
-          await _savePerBookSettingsDirectly(context, state,
-              showSplitView: isSplitSelected);
-        }
-
-        if (isPageSelected || isSplitSelected) {
-          tourCubit.recordInteraction(
-            TourInteraction(
-              type: TourInteractionType.commentaryUsed,
-              primaryValue: widget.tab.title,
-            ),
-          );
-        }
-      },
+      onSelected: (value) => _onViewModeSelected(context, state, value),
       entries: [
         AppMenuEntry(
           value: _viewModeSplit,

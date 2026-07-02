@@ -22,6 +22,7 @@ import 'package:otzaria/tabs/models/text_tab.dart';
 import 'package:otzaria/text_book/bloc/text_book_bloc.dart';
 import 'package:otzaria/text_book/bloc/text_book_event.dart';
 import 'package:otzaria/text_book/bloc/text_book_state.dart';
+import 'package:otzaria/text_book/view/splited_view/splited_view_screen.dart';
 import 'package:otzaria/text_book/view/text_book_screen.dart';
 import 'package:otzaria/tools/shamor_zachor/providers/shamor_zachor_data_provider.dart';
 import 'package:otzaria/tools/shamor_zachor/providers/shamor_zachor_progress_provider.dart';
@@ -312,6 +313,58 @@ void main() {
       expect(find.byTooltip('הקטע הבא'), findsOneWidget);
       expect(find.byTooltip('הדף/פרק הבא'), findsOneWidget);
     });
+
+    testWidgets('תצוגה משולבת מכבדת את מצב התצוגה ומאפשרת לשנות אותו',
+        (tester) async {
+      // רגרסיה: בעבר תצוגה משולבת כפתה "מפרשים מתחת" ל-state (ההעדפה אבדה
+      // בפירוק ההצמדה) ונטרלה את תפריט בחירת התצוגה.
+      final book = TextBook(title: 'ספר בדיקה');
+      final bloc = _TestTextBookBloc(_loadedState(book, showSplitView: true));
+      final tab = TextBookTab(
+        book: book,
+        index: 0,
+        blocOverride: bloc,
+      );
+      final tabsBloc = _TestTabsBloc(
+        TabsState(tabs: [tab], currentTabIndex: 0),
+      );
+      final settingsBloc = _TestSettingsBloc(SettingsState.initial());
+
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+        await bloc.close();
+        await tabsBloc.close();
+        await settingsBloc.close();
+        tab.dispose();
+      });
+
+      await _setSurfaceSize(tester, const Size(1600, 900));
+      await _pumpTextBookScreen(
+        tester,
+        tab: tab,
+        textBookBloc: bloc,
+        tabsBloc: tabsBloc,
+        settingsBloc: settingsBloc,
+        focusRepository: focusRepository,
+        shamorZachorDataProvider: shamorZachorDataProvider,
+        shamorZachorProgressProvider: shamorZachorProgressProvider,
+        bookmarkBloc: bookmarkBloc,
+        personalNotesBloc: personalNotesBloc,
+        tourCubit: tourCubit,
+        isInCombinedView: true,
+      );
+
+      final splitedView = tester
+          .widget<SplitedViewScreen>(find.byType(SplitedViewScreen).first);
+      expect(splitedView.showSplitView, isTrue,
+          reason: 'מצב "מפרשים בצד" של הטאב מכובד גם בתצוגה משולבת');
+
+      // תפריט בחירת התצוגה פעיל — למשתמש יש שליטה גם בתצוגה משולבת
+      await tester.tap(find.byTooltip('בחר סוג תצוגת מפרשים'));
+      await tester.pumpAndSettle();
+      expect(find.text('מפרשים מתחת'), findsOneWidget);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
   });
 
   group('שמירת פוקוס מקלדת', () {
@@ -442,13 +495,13 @@ Future<void> _setSurfaceSize(WidgetTester tester, Size size) async {
   addTearDown(tester.view.resetDevicePixelRatio);
 }
 
-TextBookLoaded _loadedState(TextBook book) {
+TextBookLoaded _loadedState(TextBook book, {bool showSplitView = false}) {
   return TextBookLoaded(
     book: book,
     showLeftPane: false,
     content: const ['שורה א', 'שורה ב', 'שורה ג'],
     fontSize: 18,
-    showSplitView: false,
+    showSplitView: showSplitView,
     activeCommentators: const [],
     commentatorGroups: const [],
     availableCommentators: const [],
