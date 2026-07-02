@@ -135,17 +135,17 @@ class CompanionAssetsService {
       final targetDir = existingDir ?? dirs.first;
       final tempPath = p.join(Directory.systemTemp.path,
           'otzaria_${DatabaseConstants.talmudBavliArchiveFileName}');
-      await _downloadToFile(
-        client,
-        release.assetUrl,
-        tempPath,
-        onDownloadProgress,
-        cancelled,
-      );
-      if (cancelled()) return;
-
-      onStatus?.call('מחלץ את התלמוד הבבלי');
       try {
+        await _downloadToFile(
+          client,
+          release.assetUrl,
+          tempPath,
+          onDownloadProgress,
+          cancelled,
+        );
+        if (cancelled()) return;
+
+        onStatus?.call('מחלץ את התלמוד הבבלי');
         // הארכיון מכיל את התיקייה 'תלמוד בבלי/' — מחולץ לתיקיית האב.
         // ההתקדמות מכסה את שלב ה-zst; שלב פריסת ה-tar ללא מדידה — עוברים
         // להודעת ספינר כדי שהמד לא ייתקע על 100%.
@@ -160,6 +160,7 @@ class CompanionAssetsService {
           }
         });
       } finally {
+        // גם הורדה שנכשלה/בוטלה משאירה קובץ חלקי של מאות MB — מנקים תמיד.
         await File(tempPath).delete().catchError((_) => File(tempPath));
       }
       File(p.join(targetDir, talmudVersionFileName))
@@ -173,7 +174,10 @@ class CompanionAssetsService {
       http.Client client) async {
     final response = await client.get(
       Uri.parse(_talmudReleaseApiUrl),
-      headers: const {'Accept': 'application/vnd.github+json'},
+      headers: const {
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'otzaria',
+      },
     ).timeout(_apiTimeout);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('GitHub API החזיר ${response.statusCode}');

@@ -395,12 +395,12 @@ class LibraryUpdateRepository implements LibraryUpdateService {
         rethrow;
       } finally {
         if (concurrentReads) {
-          // חזרה ל-DELETE (best-effort) — פתיחת RO בעלייה הבאה לא תדרוש
-          // קובצי -wal/-shm. אם נכשל, הנרמול בעליית האפליקציה משלים.
+          // היציאה מ-WAL דורשת שאין חיבורים אחרים — סוגרים לרגע את ה-RO,
+          // אחרת ההמרה נתקעת על מלוא ה-busy_timeout ונכשלת.
+          await SqliteDataProvider.instance.closeForExternalWrite();
           _trySetJournalMode(dbPath, 'DELETE');
-        } else {
-          await SqliteDataProvider.instance.reopenAfterExternalWrite();
         }
+        await SqliteDataProvider.instance.reopenAfterExternalWrite();
       }
     });
   }
