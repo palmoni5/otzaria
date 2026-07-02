@@ -71,6 +71,42 @@ void main() {
     );
 
     testWidgets(
+      'במסך מלא מוזרק לחצן יציאה כפריט בסרגל',
+      (tester) async {
+        final settingsBloc = _TestSettingsBloc(
+          SettingsState.initial().copyWith(isFullscreen: true),
+        );
+        addTearDown(settingsBloc.close);
+
+        await tester.pumpWidget(
+          _buildBar(
+            settingsBloc: settingsBloc,
+            center: const SizedBox(width: 100, height: 8),
+          ),
+        );
+
+        expect(find.byTooltip('צא ממסך מלא'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'ללא מסך מלא לא מוצג לחצן יציאה',
+      (tester) async {
+        final settingsBloc = _TestSettingsBloc(SettingsState.initial());
+        addTearDown(settingsBloc.close);
+
+        await tester.pumpWidget(
+          _buildBar(
+            settingsBloc: settingsBloc,
+            center: const SizedBox(width: 100, height: 8),
+          ),
+        );
+
+        expect(find.byTooltip('צא ממסך מלא'), findsNothing);
+      },
+    );
+
+    testWidgets(
       'center רחב לא גולש ולא חוסם לחיצות על trailing',
       (tester) async {
         final settingsBloc = _TestSettingsBloc(SettingsState.initial());

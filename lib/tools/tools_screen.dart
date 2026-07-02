@@ -17,6 +17,7 @@ import 'package:otzaria/tools/aramaic_dictionary/aramaic_dictionary_screen.dart'
 import 'package:otzaria/tools/shamor_zachor/shamor_zachor.dart';
 import 'package:otzaria/tools/calendar/calendar_screen.dart';
 import 'package:otzaria/widgets/navigation/keyboard_navigator.dart';
+import 'package:otzaria/widgets/misc/exit_fullscreen_button.dart';
 import 'package:otzaria/widgets/misc/rtl_icon.dart';
 import 'package:otzaria/widgets/navigation/sidebar_nav_item.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_bloc.dart';
@@ -1083,10 +1084,9 @@ class ToolsScreenState extends State<ToolsScreen>
                                                   key: tourToolTabTargetKeys[
                                                       _descriptors[index]
                                                           .toolId],
-                                                  isSelected:
-                                                      _selectedToolId ==
-                                                          _descriptors[index]
-                                                              .toolId,
+                                                  isSelected: _selectedToolId ==
+                                                      _descriptors[index]
+                                                          .toolId,
                                                   onTap: () =>
                                                       _changeTab(index),
                                                 ),
@@ -1169,6 +1169,16 @@ class ToolsScreenState extends State<ToolsScreen>
                               ),
                             ),
                           ),
+                          // לתוספים אין AppTopBar שמארח את לחצן היציאה ממסך
+                          // מלא, לכן רק אצלם מוצג לחצן צף.
+                          if (isImmersive &&
+                              _descriptors.isNotEmpty &&
+                              _descriptors[safeIndex] is PluginToolDescriptor)
+                            const Positioned(
+                              top: 8,
+                              right: 8,
+                              child: ExitFullscreenButton(),
+                            ),
                           ContextOverlayPanel(
                             isOpen: _isPanelOpen,
                             onClose: () => setState(() => _isPanelOpen = false),

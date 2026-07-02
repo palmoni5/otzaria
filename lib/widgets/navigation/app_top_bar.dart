@@ -14,8 +14,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:otzaria/settings/settings_exports.dart';
 import 'package:otzaria/theme/theme_exports.dart';
+import 'package:otzaria/utils/ui/fullscreen_helper.dart';
+import 'package:otzaria/widgets/controls/action_buttons.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  AppTopBarItem
@@ -242,6 +245,24 @@ class _AppTopBarState extends State<AppTopBar>
         final hPad = isCompact ? 6.0 : 8.0;
         final vPad = isCompact ? 4.0 : 8.0;
 
+        // במסך מלא לחצן היציאה משולב כפריט ראשון בסרגל (ולא כלחצן צף),
+        // כדי שלא יכסה ולא יחסום לחיצות על פריטים אחרים.
+        final leadingItems = [
+          if (settingsState.isFullscreen)
+            AppTopBarItem(
+              widget: ToolbarActionButton(
+                tooltip: 'צא ממסך מלא',
+                icon: FluentIcons.full_screen_minimize_24_regular,
+                compact: isCompact,
+                onPressed: () => FullscreenHelper.toggleFullscreen(
+                  context,
+                  false,
+                ),
+              ),
+            ),
+          ...widget.leadingItems,
+        ];
+
         final mainBar = Material(
           color: barColor,
           elevation: 2.0,
@@ -255,11 +276,11 @@ class _AppTopBarState extends State<AppTopBar>
               // רוחבו למקום הפנוי בין הצדדים — בלי חפיפה ובלי חסימת לחיצות.
               child: NavigationToolbar(
                 middleSpacing: 8.0,
-                leading: widget.leadingItems.isEmpty
+                leading: leadingItems.isEmpty
                     ? null
                     : Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: _itemsToWidgets(context, widget.leadingItems),
+                        children: _itemsToWidgets(context, leadingItems),
                       ),
                 middle: widget.center,
                 trailing: widget.trailingItems.isEmpty

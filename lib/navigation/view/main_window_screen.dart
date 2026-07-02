@@ -3134,27 +3134,6 @@ class MainWindowScreenState extends State<MainWindowScreen>
                         // האפליקציה. הוא חי כל זמן שה-MainWindowScreen קיים,
                         // ולא תלוי במסך "כלים".
                         const PluginBackgroundHost(),
-                        if (isImmersive)
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: IconButton(
-                              tooltip: 'צא ממסך מלא',
-                              icon: Icon(
-                                  FluentIcons.full_screen_minimize_24_regular),
-                              onPressed: () async {
-                                await FullscreenHelper.toggleFullscreen(
-                                    context, false);
-                              },
-                              style: IconButton.styleFrom(
-                                backgroundColor: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerHighest,
-                                foregroundColor:
-                                    Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
-                          ),
                         ContextOverlayPanel(
                           isOpen: _isReadingSettingsPanelOpen &&
                               (state.currentScreen == Screen.reading ||
