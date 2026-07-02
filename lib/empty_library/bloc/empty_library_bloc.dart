@@ -462,7 +462,9 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
   Future<void> _handleZstFile(
       String zstFilePath, Emitter<EmptyLibraryState> emit) async {
     try {
-      final outputDir = path.dirname(zstFilePath);
+      final outputDir =
+          _defaultLibraryPathOverride ?? await AppPaths.getDefaultLibraryPath();
+      await Directory(outputDir).create(recursive: true);
       final outputPath = path.join(
         outputDir,
         DatabaseConstants.databaseFileName,
@@ -482,7 +484,8 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
       // הורדה מהרשת של ~3GB אחרי שהוא כבר הוריד אותם בחבילת ה-FULL.
       final basename = path.basename(zstFilePath).toLowerCase();
       if (basename == DatabaseConstants.databaseArchiveFileName.toLowerCase()) {
-        await _extractBundleSiblings(outputDir, emit);
+        await _extractBundleSiblings(
+            path.dirname(zstFilePath), outputDir, emit);
       }
 
       emit(EmptyLibraryExtracting(
@@ -504,13 +507,13 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
   }
 
   /// מחלץ קבצי FULL bundle נלווים (קטלוג חיצוני ו-תלמוד בבלי) אם הם
-  /// נמצאים באותה תיקייה כמו ה-DB הראשי. best-effort: כישלון בקובץ אחד
+  /// נמצאים ליד הארכיון הראשי שנבחר. best-effort: כישלון בקובץ אחד
   /// לא עוצר את האחרים, כי ה-DB הראשי כבר נחלץ בהצלחה והאפליקציה תוכל
   /// לעבוד גם בלי הקבצים הנלווים (הם יורדו דרך הזרימה הרגילה בעת הצורך).
-  Future<void> _extractBundleSiblings(
-      String dir, Emitter<EmptyLibraryState> emit) async {
+  Future<void> _extractBundleSiblings(String sourceDir, String outputDir,
+      Emitter<EmptyLibraryState> emit) async {
     final catalogArchive = File(path.join(
-      dir,
+      sourceDir,
       DatabaseConstants.externalCatalogArchiveFileName,
     ));
     if (await catalogArchive.exists()) {
@@ -522,7 +525,8 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
         ));
         await _extractCompressedDatabase(
           catalogArchive.path,
-          path.join(dir, DatabaseConstants.externalCatalogDatabaseFileName),
+          path.join(
+              outputDir, DatabaseConstants.externalCatalogDatabaseFileName),
           _extractProgress(
               emit, catalogArchive.path, 'מחלץ קטלוג אוצר החכמה...'),
         );
@@ -532,7 +536,7 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
     }
 
     final talmudArchive = File(path.join(
-      dir,
+      sourceDir,
       DatabaseConstants.talmudBavliArchiveFileName,
     ));
     if (await talmudArchive.exists()) {
@@ -544,7 +548,7 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
         ));
         await _extractTarArchive(
             talmudArchive.path,
-            dir,
+            outputDir,
             _extractProgress(
                 emit, talmudArchive.path, 'מחלץ ספרי תלמוד בבלי...'));
       } catch (e) {
@@ -562,9 +566,14 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
         message: 'מתחיל חילוץ...',
       ));
 
+      final libraryPath =
+          _defaultLibraryPathOverride ?? await AppPaths.getDefaultLibraryPath();
+      await Directory(libraryPath).create(recursive: true);
+
       final extractionResult =
           await ZipExtractorService.checkAndExtractZipIfNeeded(
         path.dirname(zipFilePath),
+        outputDirectoryPath: libraryPath,
         onProgress: (p, m) {
           emit(EmptyLibraryExtracting(
             selectedPath: zipFilePath,
@@ -587,7 +596,7 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
       if (extractionResult.successfullyExtracted) {
         emit(EmptyLibraryAskingDeleteZip(
           zipPath: zipFilePath,
-          extractedPath: path.dirname(zipFilePath),
+          extractedPath: libraryPath,
         ));
         return;
       }

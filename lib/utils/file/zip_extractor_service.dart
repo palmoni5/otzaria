@@ -9,11 +9,13 @@ class ZipExtractorService {
 
   /// בודק אם בתיקייה יש קובץ ZIP יחיד ומחלץ אותו
   /// מחזיר את נתיב התיקייה שנוצרה או null אם לא היה צורך בחילוץ
+  /// [outputDirectoryPath] - תיקיית היעד לחילוץ (ברירת מחדל: תיקיית ה-ZIP)
   /// [onProgress] - callback להתקדמות (0.0 - 1.0)
   /// [onAskDeleteZip] - callback לשאול את המשתמש אם למחוק את ה-ZIP (מחזיר `Future<bool>`)
   static Future<ZipExtractionResult> checkAndExtractZipIfNeeded(
       String directoryPath,
-      {Function(double progress, String message)? onProgress,
+      {String? outputDirectoryPath,
+      Function(double progress, String message)? onProgress,
       Future<bool> Function()? onAskDeleteZip}) async {
     try {
       final directory = Directory(directoryPath);
@@ -53,10 +55,11 @@ class ZipExtractorService {
 
       final zipFile = zipFiles.first;
       final zipFileName = path.basename(zipFile.path);
+      final targetDir = outputDirectoryPath ?? directoryPath;
 
       _log.info('נמצא קובץ דחוס: $zipFileName');
       _log.info('נתיב מלא: ${zipFile.path}');
-      _log.info('תיקיית יעד: $directoryPath');
+      _log.info('תיקיית יעד: $targetDir');
 
       // חילוץ הקובץ באמצעות archive package
       try {
@@ -72,7 +75,7 @@ class ZipExtractorService {
         _log.info('משתמש ב-extractFileToDisk לחילוץ אופטימלי');
 
         try {
-          await extractFileToDisk(zipFile.path, directoryPath);
+          await extractFileToDisk(zipFile.path, targetDir);
           _log.info('החילוץ הושלם בהצלחה');
           onProgress?.call(0.95, 'משלים חילוץ...');
         } catch (e) {
@@ -90,7 +93,7 @@ class ZipExtractorService {
           // חילוץ ידני
           await _extractArchiveManually(
             archive,
-            directoryPath,
+            targetDir,
             onProgress,
           );
         }
@@ -132,7 +135,7 @@ class ZipExtractorService {
         success: true,
         wasExtracted: true,
         extractedFileName: zipFileName,
-        extractionPath: directoryPath,
+        extractionPath: targetDir,
       );
     } catch (e, stackTrace) {
       _log.severe('שגיאה בחילוץ קובץ ZIP', e, stackTrace);

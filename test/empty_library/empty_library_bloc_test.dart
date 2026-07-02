@@ -36,26 +36,31 @@ void main() {
     });
 
     test(
-        'בחירת seforim.db.zst מחבילת FULL מחלצת גם קטלוג ותלמוד בבלי באותה תיקייה',
+        'בחירת seforim.db.zst מחבילת FULL מחלצת גם קטלוג ותלמוד בבלי למיקום הספרייה המוגדר',
         () async {
-      final tempDir = await Directory.systemTemp.createTemp(
-        'otzaria-bundle-extract-',
+      final sourceDir = await Directory.systemTemp.createTemp(
+        'otzaria-bundle-extract-src-',
+      );
+      final libraryDir = await Directory.systemTemp.createTemp(
+        'otzaria-bundle-extract-lib-',
       );
       addTearDown(() async {
-        if (await tempDir.exists()) {
-          await tempDir.delete(recursive: true);
+        for (final dir in [sourceDir, libraryDir]) {
+          if (await dir.exists()) {
+            await dir.delete(recursive: true);
+          }
         }
       });
 
       // יצירת 3 קבצי zst דמה כפי שמוצאים אחרי חילוץ otzaria-android-full.zip:
       final seforimZst = File(
-        path.join(tempDir.path, DatabaseConstants.databaseArchiveFileName),
+        path.join(sourceDir.path, DatabaseConstants.databaseArchiveFileName),
       );
       await seforimZst.writeAsString('fake-seforim-zst');
 
       final catalogZst = File(
         path.join(
-          tempDir.path,
+          sourceDir.path,
           DatabaseConstants.externalCatalogArchiveFileName,
         ),
       );
@@ -63,7 +68,7 @@ void main() {
 
       final talmudZst = File(
         path.join(
-          tempDir.path,
+          sourceDir.path,
           DatabaseConstants.talmudBavliArchiveFileName,
         ),
       );
@@ -75,14 +80,19 @@ void main() {
       final tarExtractions = <String>[];
 
       final bloc = EmptyLibraryBloc(
+        defaultLibraryPathOverride: libraryDir.path,
         extractCompressedDatabase: (archivePath, outputPath, onProgress) async {
+          // המקור נשאר בתיקיית הקובץ שנבחר, היעד הוא מיקום הספרייה
+          expect(path.dirname(archivePath), sourceDir.path);
+          expect(path.dirname(outputPath), libraryDir.path);
           compressedExtractions.add(
               '${path.basename(archivePath)}→${path.basename(outputPath)}');
           await File(outputPath).writeAsBytes(const [1, 2, 3]);
         },
         extractTarArchive: (archivePath, outputDir, onProgress) async {
-          tarExtractions
-              .add('${path.basename(archivePath)}→${path.basename(outputDir)}');
+          expect(path.dirname(archivePath), sourceDir.path);
+          expect(outputDir, libraryDir.path);
+          tarExtractions.add(path.basename(archivePath));
         },
       );
       addTearDown(bloc.close);
@@ -99,7 +109,7 @@ void main() {
       );
 
       expect(askState.zipPath, seforimZst.path);
-      expect(askState.extractedPath, tempDir.path);
+      expect(askState.extractedPath, libraryDir.path);
 
       // כל 3 הקבצים חולצו ב-tap אחד:
       expect(compressedExtractions, [
@@ -107,23 +117,28 @@ void main() {
         '${DatabaseConstants.externalCatalogArchiveFileName}→${DatabaseConstants.externalCatalogDatabaseFileName}',
       ]);
       expect(tarExtractions, [
-        '${DatabaseConstants.talmudBavliArchiveFileName}→${path.basename(tempDir.path)}',
+        DatabaseConstants.talmudBavliArchiveFileName,
       ]);
     });
 
     test('בחירת seforim.db.zst לבד (בלי קבצים נלווים) מחלצת רק את ה-DB',
         () async {
-      final tempDir = await Directory.systemTemp.createTemp(
-        'otzaria-single-zst-',
+      final sourceDir = await Directory.systemTemp.createTemp(
+        'otzaria-single-zst-src-',
+      );
+      final libraryDir = await Directory.systemTemp.createTemp(
+        'otzaria-single-zst-lib-',
       );
       addTearDown(() async {
-        if (await tempDir.exists()) {
-          await tempDir.delete(recursive: true);
+        for (final dir in [sourceDir, libraryDir]) {
+          if (await dir.exists()) {
+            await dir.delete(recursive: true);
+          }
         }
       });
 
       final seforimZst = File(
-        path.join(tempDir.path, DatabaseConstants.databaseArchiveFileName),
+        path.join(sourceDir.path, DatabaseConstants.databaseArchiveFileName),
       );
       await seforimZst.writeAsString('fake-seforim-zst');
 
@@ -133,7 +148,9 @@ void main() {
       final tarExtractions = <String>[];
 
       final bloc = EmptyLibraryBloc(
+        defaultLibraryPathOverride: libraryDir.path,
         extractCompressedDatabase: (archivePath, outputPath, onProgress) async {
+          expect(path.dirname(outputPath), libraryDir.path);
           compressedExtractions.add(path.basename(archivePath));
           await File(outputPath).writeAsBytes(const [1, 2, 3]);
         },
