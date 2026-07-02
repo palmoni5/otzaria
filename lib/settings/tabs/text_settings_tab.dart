@@ -884,16 +884,16 @@ class _TextWidthSlider extends StatefulWidget {
 class _TextWidthSliderState extends State<_TextWidthSlider> {
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
     final currentMaxWidth = widget.state.textMaxWidth;
 
+    // ערך חיובי (פיקסלים) הוא פורמט ישן — מומר לרמה לפי רוחב המסך הנוכחי
     int currentLevel;
     if (currentMaxWidth < 0) {
       currentLevel = (-currentMaxWidth).toInt();
     } else if (currentMaxWidth == 0) {
       currentLevel = 0;
     } else {
-      final ratio = currentMaxWidth / screenWidth;
+      final ratio = currentMaxWidth / MediaQuery.of(context).size.width;
       currentLevel = ((1.0 - ratio) / 0.05).round().clamp(0, 14);
     }
 
@@ -936,15 +936,12 @@ class _TextWidthSliderState extends State<_TextWidthSlider> {
             label: getLevelDescription(currentLevel),
             onChanged: (value) {
               setState(() {});
+              // נשמר כרמה שלילית (-level) כדי שהאחוז יחושב מרוחב
+              // עמודת הטקסט בפועל, לא מרוחב המסך בזמן השמירה
               final level = value.toInt();
-              double newMaxWidth;
-              if (level == 0) {
-                newMaxWidth = 0;
-              } else {
-                final widthPercent = 1.0 - (level * 0.05);
-                newMaxWidth = screenWidth * widthPercent;
-              }
-              context.read<SettingsBloc>().add(UpdateTextMaxWidth(newMaxWidth));
+              context
+                  .read<SettingsBloc>()
+                  .add(UpdateTextMaxWidth(level == 0 ? 0 : -level.toDouble()));
             },
           ),
         ),

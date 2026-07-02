@@ -7,7 +7,9 @@ class SettingsState extends Equatable {
   final bool followSystemTheme;
   final Color seedColor;
   final Color darkSeedColor;
-  final double textMaxWidth; // רוחב מקסימלי לטקסט בפיקסלים (0 = ללא הגבלה)
+  // רוחב מקסימלי לטקסט: שלילי = רמה באחוזים (-2 = 90%), 0 = ללא הגבלה,
+  // חיובי = פיקסלים (פורמט ישן, נשמר לתאימות)
+  final double textMaxWidth;
   final double fontSize;
   final String fontFamily;
   final String commentatorsFontFamily;
