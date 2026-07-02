@@ -35,19 +35,17 @@ class DatabaseConstants {
   /// שמות הקבצים והתיקיות שהתוכנה מנהלת בתוך תיקיית הספרייה. בהעברת מיקום
   /// הספרייה מעבירים רק אותם — קבצים שהמשתמש הוסיף לתיקייה נשארים במקומם.
   /// כולל קובצי לוואי של SQLite (-wal/-shm) שעשויים להישאר ליד ה-DB.
+  /// קבצי ארכיון דחוסים (zst) אינם כאן בכוונה — אינם נצרכים ולא מועברים.
   static Set<String> libraryManagedEntryNames() => {
         databaseFileName,
         '$databaseFileName-wal',
         '$databaseFileName-shm',
-        databaseArchiveFileName,
         lexicalDatabaseFileName,
         externalCatalogDatabaseFileName,
         '$externalCatalogDatabaseFileName-wal',
         '$externalCatalogDatabaseFileName-shm',
-        externalCatalogArchiveFileName,
         externalCatalogVersionFileName,
         talmudBavliFolderName,
-        talmudBavliArchiveFileName,
         'files_manifest.json',
       };
 

@@ -196,6 +196,36 @@ void main() {
       expect(await File(p.join(dest, 'my_notes.txt')).exists(), isFalse);
       expect(await File(p.join(source, 'my_notes.txt')).exists(), isTrue);
     });
+
+    test('קבצי ארכיון דחוסים נשארים במקומם בהעברת הספרייה', () async {
+      final source = src('from');
+      final dest = src('to');
+      await Directory(source).create();
+      await File(p.join(source, DatabaseConstants.databaseFileName))
+          .writeAsString('db');
+      for (final archive in [
+        DatabaseConstants.databaseArchiveFileName,
+        DatabaseConstants.externalCatalogArchiveFileName,
+        DatabaseConstants.talmudBavliArchiveFileName,
+      ]) {
+        await File(p.join(source, archive)).writeAsString('archive');
+      }
+
+      await moveDirectory(
+        source,
+        dest,
+        includeOnly: DatabaseConstants.libraryManagedEntryNames(),
+      );
+
+      for (final archive in [
+        DatabaseConstants.databaseArchiveFileName,
+        DatabaseConstants.externalCatalogArchiveFileName,
+        DatabaseConstants.talmudBavliArchiveFileName,
+      ]) {
+        expect(await File(p.join(source, archive)).exists(), isTrue);
+        expect(await File(p.join(dest, archive)).exists(), isFalse);
+      }
+    });
   });
 
   group('moveDirectory — בטיחות יעד', () {
