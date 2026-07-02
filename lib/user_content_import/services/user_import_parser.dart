@@ -53,7 +53,7 @@ class UserImportParser {
   }
 
   /// מפענח קובץ קישורים (עמודות: מקור, ספר_יעד, [מיקום_יעד], סוג,
-  /// [יעד_אישי], [ספר_מקור], [קטגוריית_יעד]).
+  /// [יעד_אישי], [ספר_מקור], [מקור_אישי], [קטגוריית_מקור], [קטגוריית_יעד]).
   static ParseResult<ParsedUserLink> parseLinks(String content) {
     final rows = <ParsedUserLink>[];
     final errors = <ImportRowError>[];
@@ -67,6 +67,8 @@ class UserImportParser {
       'type': ['סוג'],
       'targetIsUser': ['יעד_אישי'],
       'sourceBook': ['ספר_מקור'],
+      'sourceIsUser': ['מקור_אישי'],
+      'sourceCategoryId': ['קטגוריית_מקור'],
       'targetCategoryId': ['קטגוריית_יעד'],
     });
     final sourceCol = header['source'];
@@ -102,6 +104,10 @@ class UserImportParser {
       }
       rows.add(ParsedUserLink(
         sourceBookTitle: _nullable(_at(cells, header['sourceBook'])),
+        sourceIsUserBook:
+            _parseSourceIsUser(_at(cells, header['sourceIsUser'])),
+        sourceCategoryId:
+            _parseIntOrNull(_at(cells, header['sourceCategoryId'])),
         sourceLineNumber: sourceLine,
         targetTitle: targetTitle,
         targetRef: _nullable(_at(cells, header['targetRef'])),
@@ -159,8 +165,13 @@ class UserImportParser {
         errors.add(ImportRowError(n, 'סוג קישור לא מוכר'));
         continue;
       }
+      final srcFlag =
+          _pick(item, const ['מקור_אישי', 'sourceIsUserBook', 'sourceIsUser']);
       rows.add(ParsedUserLink(
         sourceBookTitle: _str(_pick(item, const ['ספר_מקור', 'sourceBook'])),
+        sourceIsUserBook: srcFlag == null ? true : _toBool(srcFlag),
+        sourceCategoryId:
+            _toInt(_pick(item, const ['קטגוריית_מקור', 'sourceCategoryId'])),
         sourceLineNumber: sourceLine,
         targetTitle: targetTitle,
         targetRef: _str(_pick(item, const ['מיקום_יעד', 'מיקום', 'ref'])),
@@ -226,6 +237,11 @@ class UserImportParser {
     final v = raw.trim().toLowerCase();
     return v == 'כן' || v == 'true' || v == '1' || v == 'yes';
   }
+
+  /// דגל "מקור אישי" עם ברירת מחדל true — עמודה חסרה/ריקה משמעה מקור אישי,
+  /// לשמירת תאימות לקבצי קישורים קיימים (שבהם המקור תמיד היה ספר אישי).
+  static bool _parseSourceIsUser(String raw) =>
+      raw.trim().isEmpty ? true : _parseBool(raw);
 
   static int? _parseIntOrNull(String raw) {
     final v = raw.trim();

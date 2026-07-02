@@ -101,6 +101,20 @@ void main() {
       final result = UserImportParser.parseLinks(csv);
       expect(result.rows.single.sourceBookTitle, 'ביאורי יוסף');
     });
+
+    test('ללא עמודת מקור_אישי — ברירת מחדל: מקור אישי', () {
+      const csv = 'מקור,ספר_יעד,סוג\n12,ברכות,פירוש\n';
+      final result = UserImportParser.parseLinks(csv);
+      expect(result.rows.single.sourceIsUserBook, isTrue);
+    });
+
+    test('מקור_אישי=לא + קטגוריית_מקור → מקור רשמי עם קטגוריה', () {
+      const csv = 'מקור_אישי,קטגוריית_מקור,מקור,ספר_יעד,סוג\n'
+          'לא,7,12,ברכות,הפניה\n';
+      final result = UserImportParser.parseLinks(csv);
+      expect(result.rows.single.sourceIsUserBook, isFalse);
+      expect(result.rows.single.sourceCategoryId, 7);
+    });
   });
 
   group('UserImportParser.parseLinksJson', () {
@@ -119,6 +133,16 @@ void main() {
       expect(result.rows[1].connectionType, 'REFERENCE');
       expect(result.rows[1].targetRef, 'רטו א');
       expect(result.rows[1].targetIsUserBook, isTrue);
+    });
+
+    test('JSON: מקור_אישי=false נקרא; חסר → ברירת מחדל אישי', () {
+      const json = '['
+          '{"מקור": 3, "ספר_יעד": "ברכות", "סוג": "הפניה", "מקור_אישי": false},'
+          '{"מקור": 5, "ספר_יעד": "ברכות", "סוג": "פירוש"}'
+          ']';
+      final result = UserImportParser.parseLinksJson(json);
+      expect(result.rows[0].sourceIsUserBook, isFalse);
+      expect(result.rows[1].sourceIsUserBook, isTrue);
     });
 
     test('JSON לא תקין → שגיאה אחת, בלי קריסה', () {

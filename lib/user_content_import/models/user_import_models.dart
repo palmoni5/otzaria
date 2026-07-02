@@ -55,6 +55,13 @@ class ParsedUserLink {
   /// בקובץ פר-ספר הערך null וספר המקור נקבע מהקשר.
   final String? sourceBookTitle;
 
+  /// האם ספר המקור אישי. ברירת המחדל true (מקור=ספר אישי) לשמירת תאימות
+  /// לקבצים קיימים; מקור רשמי מסומן במפורש בעמודת "מקור_אישי".
+  final bool sourceIsUserBook;
+
+  /// מזהה קטגוריית המקור, אם צוין (רמז ל-resolution בין ספרים חד-שמיים).
+  final int? sourceCategoryId;
+
   /// מספר השורה בספר המקור כפי שהמשתמש כתב (1-based).
   final int sourceLineNumber;
 
@@ -75,6 +82,8 @@ class ParsedUserLink {
 
   const ParsedUserLink({
     this.sourceBookTitle,
+    this.sourceIsUserBook = true,
+    this.sourceCategoryId,
     required this.sourceLineNumber,
     required this.targetTitle,
     this.targetRef,
@@ -89,7 +98,16 @@ class ParsedUserLink {
 /// אינדקסי השורות הם 0-based (כמו line.lineIndex ב-DB); בעת בניית [Link]
 /// לתצוגה מוסיפים 1 (כמו [getLinksForBookRange]).
 class UserLinkRecord {
-  final int sourceBookId;
+  /// כותרת ספר המקור — הזיהוי חוצה-DB (כמו היעד), כדי שגם ספר רשמי יוכל
+  /// לשמש מקור בלי לכתוב ל-seforim.db.
+  final String sourceTitle;
+
+  /// מזהה קטגוריית המקור, אם ידוע (פירוק כפילות-כותרת).
+  final int? sourceCategoryId;
+
+  /// האם ספר המקור אישי (מפריד בין מרחבי ה-DB של המקור).
+  final bool sourceIsUserBook;
+
   final int sourceLineIndex;
   final String targetTitle;
   final int? targetCategoryId;
@@ -98,16 +116,10 @@ class UserLinkRecord {
   final int? targetLineIndex;
   final String connectionType;
 
-  /// כותרת ספר המקור — ממולא רק בשאילתת הקישורים ההפוכים ([inverseUserLinks]),
-  /// כדי לבנות קישור שמצביע חזרה אל ספר-המשתמש.
-  final String? sourceTitle;
-
-  /// קטגוריית ספר המקור — ממולא רק ב-[inverseUserLinks], כדי שהקישור ההפוך
-  /// יוכל לפתוח את ספר-המשתמש הנכון כששתי כותרות זהות בקטגוריות שונות.
-  final int? sourceCategoryId;
-
   const UserLinkRecord({
-    required this.sourceBookId,
+    required this.sourceTitle,
+    this.sourceCategoryId,
+    this.sourceIsUserBook = true,
     required this.sourceLineIndex,
     required this.targetTitle,
     this.targetCategoryId,
@@ -115,8 +127,6 @@ class UserLinkRecord {
     this.targetRef,
     this.targetLineIndex,
     required this.connectionType,
-    this.sourceTitle,
-    this.sourceCategoryId,
   });
 }
 

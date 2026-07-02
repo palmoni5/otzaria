@@ -201,6 +201,8 @@ class MyDatabase {
         _ensureGenerationSchema(db);
       } else if (script.contains('CREATE TABLE IF NOT EXISTS author')) {
         _ensureAuthorSchema(db);
+      } else if (script.contains('CREATE TABLE IF NOT EXISTS user_link')) {
+        _ensureUserLinkSchema(db);
       }
     }
 
@@ -234,6 +236,44 @@ class MyDatabase {
     if (!columns.contains('generationId')) {
       db.execute('ALTER TABLE author ADD COLUMN generationId INTEGER');
     }
+  }
+
+  /// משדרג user_link מהסכמה הישנה (מקור=FK sourceBookId לספר אישי) לסכמה
+  /// חוצה-DB (מקור לפי כותרת+דגל). מריצים לפני יצירת האינדקסים החדשים כי הם
+  /// מתייחסים לעמודות החדשות. שורות קיימות נשמרות כמקור אישי (הסמנטיקה הישנה).
+  void _ensureUserLinkSchema(sqlite3.Database db) {
+    final columns = db
+        .select('PRAGMA table_info(user_link)')
+        .map((row) => row['name'] as String)
+        .toSet();
+    if (columns.contains('sourceTitle')) return;
+
+    db.execute('''
+      CREATE TABLE user_link_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          sourceTitle TEXT NOT NULL,
+          sourceCategoryId INTEGER,
+          sourceIsUserBook INTEGER NOT NULL DEFAULT 0,
+          sourceLineIndex INTEGER NOT NULL,
+          targetTitle TEXT NOT NULL,
+          targetCategoryId INTEGER,
+          targetIsUserBook INTEGER NOT NULL DEFAULT 0,
+          targetRef TEXT,
+          targetLineIndex INTEGER,
+          connectionType TEXT NOT NULL
+      );
+    ''');
+    db.execute('''
+      INSERT INTO user_link_new (sourceTitle, sourceCategoryId, sourceIsUserBook,
+          sourceLineIndex, targetTitle, targetCategoryId, targetIsUserBook,
+          targetRef, targetLineIndex, connectionType)
+      SELECT b.title, b.categoryId, 1, ul.sourceLineIndex, ul.targetTitle,
+          ul.targetCategoryId, ul.targetIsUserBook, ul.targetRef,
+          ul.targetLineIndex, ul.connectionType
+      FROM user_link ul JOIN book b ON b.id = ul.sourceBookId;
+    ''');
+    db.execute('DROP TABLE user_link');
+    db.execute('ALTER TABLE user_link_new RENAME TO user_link');
   }
 
   void close() {
@@ -696,23 +736,25 @@ class MyDatabase {
       ''',
       'CREATE INDEX IF NOT EXISTS idx_book_generation_generation ON book_generation(generationId);',
 
-      // קישורי-משתמש שיובאו מ-CSV. מזוהה היעד לפי כותרת+ref (לא FK שלם),
-      // כדי לתמוך גם בקישור חוצה-DB אל ספר רשמי (FK חוצה-קבצים אינו אפשרי).
+      // קישורי-משתמש שיובאו מ-CSV. גם המקור וגם היעד מזוהים לפי כותרת+דגל
+      // (לא FK שלם), כדי לתמוך בקישור חוצה-DB בשני הצדדים — כולל ספר רשמי
+      // כמקור — בלי לכתוב ל-seforim.db (FK חוצה-קבצים אינו אפשרי).
       '''
       CREATE TABLE IF NOT EXISTS user_link (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          sourceBookId INTEGER NOT NULL,
+          sourceTitle TEXT NOT NULL,
+          sourceCategoryId INTEGER,
+          sourceIsUserBook INTEGER NOT NULL DEFAULT 0,
           sourceLineIndex INTEGER NOT NULL,
           targetTitle TEXT NOT NULL,
           targetCategoryId INTEGER,
           targetIsUserBook INTEGER NOT NULL DEFAULT 0,
           targetRef TEXT,
           targetLineIndex INTEGER,
-          connectionType TEXT NOT NULL,
-          FOREIGN KEY (sourceBookId) REFERENCES book(id) ON DELETE CASCADE
+          connectionType TEXT NOT NULL
       );
       ''',
-      'CREATE INDEX IF NOT EXISTS idx_user_link_source ON user_link(sourceBookId, sourceLineIndex);',
+      'CREATE INDEX IF NOT EXISTS idx_user_link_source ON user_link(sourceTitle, sourceIsUserBook);',
       'CREATE INDEX IF NOT EXISTS idx_user_link_target ON user_link(targetTitle, targetIsUserBook);',
     ];
   }

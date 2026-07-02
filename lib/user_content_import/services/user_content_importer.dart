@@ -54,6 +54,7 @@ class UserContentImporter {
     Iterable<String> filePaths,
     MyDatabase userDb, {
     UserLinkRefResolver resolveRef = resolveUserLinkTargetLine,
+    UserLinkSourceChecker sourceExists = userLinkSourceBookExists,
   }) async {
     final repo = UserContentRepository(userDb);
     final errors = <String>[];
@@ -74,15 +75,21 @@ class UserContentImporter {
         await _ingestGenerations(file, repo, generationByBook, errors);
       } else if (_folderLinkFileNames.contains(name)) {
         await _ingestLinks(file, repo, links, errors,
-            bookTitleFromFile: null, resolveRef: resolveRef);
+            bookTitleFromFile: null,
+            resolveRef: resolveRef,
+            sourceExists: sourceExists);
       } else if (lower.endsWith('.links.csv')) {
         final bookTitle = name.substring(0, name.length - '.links.csv'.length);
         await _ingestLinks(file, repo, links, errors,
-            bookTitleFromFile: bookTitle, resolveRef: resolveRef);
+            bookTitleFromFile: bookTitle,
+            resolveRef: resolveRef,
+            sourceExists: sourceExists);
       } else if (lower.endsWith('.links.json')) {
         final bookTitle = name.substring(0, name.length - '.links.json'.length);
         await _ingestLinks(file, repo, links, errors,
-            bookTitleFromFile: bookTitle, resolveRef: resolveRef);
+            bookTitleFromFile: bookTitle,
+            resolveRef: resolveRef,
+            sourceExists: sourceExists);
       } else {
         errors.add(
             '$name: קובץ לא מזוהה (צפוי "דורות.csv" או "<ספר>.links.csv")');
@@ -103,7 +110,11 @@ class UserContentImporter {
     return UserImportResult(
       generationsApplied: generationByBook.length,
       linksApplied: links.length,
-      booksWithLinks: links.map((l) => l.sourceBookId).toSet().length,
+      booksWithLinks: links
+          .map((l) => '${l.sourceIsUserBook}|${l.sourceCategoryId}|'
+              '${l.sourceTitle}')
+          .toSet()
+          .length,
       errors: errors,
     );
   }
@@ -143,6 +154,7 @@ class UserContentImporter {
     List<String> errors, {
     required String? bookTitleFromFile,
     required UserLinkRefResolver resolveRef,
+    required UserLinkSourceChecker sourceExists,
   }) async {
     final fileName = _baseName(file.path);
     final ParseResult<ParsedUserLink> parsed;
@@ -164,13 +176,25 @@ class UserContentImporter {
         errors.add('$fileName: חסר ספר מקור (עמודת "ספר_מקור")');
         continue;
       }
-      final sourceId = await repo.bookIdByTitle(sourceTitle);
-      if (sourceId == null) {
+      // מקור אישי מאומת מול user_books.db הנתון (כמו קודם); מקור רשמי מול
+      // seforim.db דרך [sourceExists] — כדי לחסום כותרת שגויה שתיצור קישור מת.
+      final bool found;
+      if (row.sourceIsUserBook) {
+        found = await repo.bookIdByTitle(sourceTitle,
+                categoryId: row.sourceCategoryId) !=
+            null;
+      } else {
+        found = await sourceExists(
+            title: sourceTitle,
+            categoryId: row.sourceCategoryId,
+            isUserBook: false);
+      }
+      if (!found) {
         errors.add('$fileName: ספר המקור "$sourceTitle" לא נמצא');
         continue;
       }
       final record =
-          await _resolveRecord(sourceId, row, resolveRef, fileName, errors);
+          await _resolveRecord(sourceTitle, row, resolveRef, fileName, errors);
       if (record != null) out.add(record);
     }
   }
@@ -179,7 +203,7 @@ class UserContentImporter {
   /// ישיר (1-based); אחרת זו כתובת טקסטואלית שנפתרת לשורה דרך [resolveRef].
   /// מחזיר null (ומוסיף שגיאה) אם חסרה כתובת או שהכתובת לא נפתרה.
   static Future<UserLinkRecord?> _resolveRecord(
-    int sourceBookId,
+    String sourceTitle,
     ParsedUserLink row,
     UserLinkRefResolver resolveRef,
     String fileName,
@@ -213,7 +237,9 @@ class UserContentImporter {
       targetLineIndex = resolved;
     }
     return UserLinkRecord(
-      sourceBookId: sourceBookId,
+      sourceTitle: sourceTitle,
+      sourceCategoryId: row.sourceCategoryId,
+      sourceIsUserBook: row.sourceIsUserBook,
       sourceLineIndex: row.sourceLineNumber - 1,
       targetTitle: row.targetTitle,
       targetCategoryId: row.targetCategoryId,

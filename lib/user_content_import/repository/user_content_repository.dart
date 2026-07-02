@@ -73,11 +73,14 @@ class UserContentRepository {
     // השוואת השדות ב-IS (ולא =) כדי ש-NULL ישווה ל-NULL — אחרת קישור עם
     // targetRef/targetLineIndex ריק לא היה נדרס בייבוא חוזר.
     db.execute(
-      'DELETE FROM user_link WHERE sourceBookId = ? AND sourceLineIndex = ? '
+      'DELETE FROM user_link WHERE sourceTitle = ? AND sourceIsUserBook = ? '
+      'AND sourceCategoryId IS ? AND sourceLineIndex = ? '
       'AND targetTitle = ? AND targetIsUserBook = ? AND targetCategoryId IS ? '
       'AND targetRef IS ? AND targetLineIndex IS ?',
       [
-        link.sourceBookId,
+        link.sourceTitle,
+        link.sourceIsUserBook ? 1 : 0,
+        link.sourceCategoryId,
         link.sourceLineIndex,
         link.targetTitle,
         link.targetIsUserBook ? 1 : 0,
@@ -87,11 +90,14 @@ class UserContentRepository {
       ],
     );
     db.execute(
-      'INSERT INTO user_link (sourceBookId, sourceLineIndex, targetTitle, '
-      'targetCategoryId, targetIsUserBook, targetRef, targetLineIndex, '
-      'connectionType) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO user_link (sourceTitle, sourceCategoryId, sourceIsUserBook, '
+      'sourceLineIndex, targetTitle, targetCategoryId, targetIsUserBook, '
+      'targetRef, targetLineIndex, connectionType) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
-        link.sourceBookId,
+        link.sourceTitle,
+        link.sourceCategoryId,
+        link.sourceIsUserBook ? 1 : 0,
         link.sourceLineIndex,
         link.targetTitle,
         link.targetCategoryId,
@@ -103,19 +109,30 @@ class UserContentRepository {
     );
   }
 
-  /// קישורי-משתמש *יוצאים* מספר מקור, בטווח שורות (0-based, כולל).
+  /// קישורי-משתמש *יוצאים* מספר מקור (לפי כותרת+דגל), בטווח שורות (0-based,
+  /// כולל). כשידועה קטגוריית המקור מסננים גם לפיה; שורות בלי קטגוריה עוברות.
   Future<List<UserLinkRecord>> forwardUserLinks(
-    int sourceBookId, {
+    String sourceTitle, {
+    required bool sourceIsUserBook,
+    int? sourceCategoryId,
     int? startLineIndex,
     int? endLineIndex,
   }) async {
     final db = await _db.database;
+    final categoryClause = sourceCategoryId != null
+        ? 'AND (sourceCategoryId IS NULL OR sourceCategoryId = ?)'
+        : '';
     final hasRange = startLineIndex != null && endLineIndex != null;
+    final rangeClause = hasRange ? 'AND sourceLineIndex BETWEEN ? AND ?' : '';
     final rows = db.select(
-      'SELECT * FROM user_link WHERE sourceBookId = ?'
-      '${hasRange ? ' AND sourceLineIndex BETWEEN ? AND ?' : ''} '
-      'ORDER BY sourceLineIndex',
-      hasRange ? [sourceBookId, startLineIndex, endLineIndex] : [sourceBookId],
+      'SELECT * FROM user_link WHERE sourceTitle = ? AND sourceIsUserBook = ? '
+      '$categoryClause $rangeClause ORDER BY sourceLineIndex',
+      [
+        sourceTitle,
+        sourceIsUserBook ? 1 : 0,
+        if (sourceCategoryId != null) sourceCategoryId,
+        if (hasRange) ...[startLineIndex, endLineIndex],
+      ],
     );
     return rows.map(_fromRow).toList();
   }
@@ -139,9 +156,7 @@ class UserContentRepository {
     final rangeClause =
         hasRange ? 'AND ul.targetLineIndex BETWEEN ? AND ?' : '';
     final rows = db.select(
-      'SELECT ul.*, b.title AS sourceTitle, b.categoryId AS sourceCategoryId '
-      'FROM user_link ul '
-      'JOIN book b ON b.id = ul.sourceBookId '
+      'SELECT ul.* FROM user_link ul '
       'WHERE ul.targetTitle = ? AND ul.targetIsUserBook = ? '
       '$categoryClause $rangeClause '
       'ORDER BY ul.targetLineIndex',
@@ -156,7 +171,9 @@ class UserContentRepository {
   }
 
   UserLinkRecord _fromRow(Map<String, Object?> row) => UserLinkRecord(
-        sourceBookId: row['sourceBookId'] as int,
+        sourceTitle: row['sourceTitle'] as String,
+        sourceCategoryId: row['sourceCategoryId'] as int?,
+        sourceIsUserBook: (row['sourceIsUserBook'] as int? ?? 0) == 1,
         sourceLineIndex: row['sourceLineIndex'] as int,
         targetTitle: row['targetTitle'] as String,
         targetCategoryId: row['targetCategoryId'] as int?,
@@ -164,7 +181,5 @@ class UserContentRepository {
         targetRef: row['targetRef'] as String?,
         targetLineIndex: row['targetLineIndex'] as int?,
         connectionType: row['connectionType'] as String,
-        sourceTitle: row['sourceTitle'] as String?,
-        sourceCategoryId: row['sourceCategoryId'] as int?,
       );
 }

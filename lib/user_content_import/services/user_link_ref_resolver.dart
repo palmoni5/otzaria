@@ -47,6 +47,28 @@ Future<int?> resolveUserLinkTargetLine({
   return matches.first['segment'] as int?;
 }
 
+/// בודק אם ספר קיים במסד הנכון (אישי/רשמי) — לאימות ספר מקור רשמי בייבוא,
+/// כדי לחסום קישור עם כותרת-מקור שגויה שתיצור קישור מת.
+typedef UserLinkSourceChecker = Future<bool> Function({
+  required String title,
+  required int? categoryId,
+  required bool isUserBook,
+});
+
+/// המימוש האמיתי של [UserLinkSourceChecker].
+Future<bool> userLinkSourceBookExists({
+  required String title,
+  required int? categoryId,
+  required bool isUserBook,
+}) async {
+  final repo = await _repositoryFor(isUserBook);
+  if (repo == null) return false;
+  final book = categoryId != null
+      ? await repo.getBookByTitleAndCategory(title, categoryId)
+      : await repo.getBookByTitle(title);
+  return book != null;
+}
+
 /// המסד שבו נמצא ספר היעד — אישי (user_books.db) או רשמי (seforim.db).
 Future<SeforimRepository?> _repositoryFor(bool isUserBook) async {
   if (isUserBook) {

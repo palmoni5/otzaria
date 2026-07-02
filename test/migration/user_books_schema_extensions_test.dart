@@ -40,7 +40,8 @@ void main() {
       expect(tables, contains('user_link'));
     });
 
-    test('user_link מכילה את העמודות הנדרשות לזיהוי יעד חוצה-DB', () async {
+    test('user_link מכילה את העמודות הנדרשות לזיהוי מקור+יעד חוצה-DB',
+        () async {
       final db = await database.database;
       final cols = db
           .select('PRAGMA table_info(user_link)')
@@ -49,7 +50,9 @@ void main() {
       expect(
         cols,
         containsAll([
-          'sourceBookId',
+          'sourceTitle',
+          'sourceCategoryId',
+          'sourceIsUserBook',
           'sourceLineIndex',
           'targetTitle',
           'targetCategoryId',
@@ -59,6 +62,61 @@ void main() {
           'connectionType',
         ]),
       );
+    });
+
+    test('user_link ישנה (sourceBookId FK) משודרגת לסכמה חוצה-DB', () async {
+      final setupDb = sqlite3.sqlite3.open(dbPath);
+      // סכמה ישנה + שורת מקור שמצביעה לספר אישי קיים.
+      setupDb.execute('''
+        CREATE TABLE book (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          categoryId INTEGER NOT NULL,
+          sourceId INTEGER NOT NULL,
+          title TEXT NOT NULL,
+          orderIndex INTEGER NOT NULL DEFAULT 999
+        );
+      ''');
+      setupDb.execute('''
+        CREATE TABLE user_link (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          sourceBookId INTEGER NOT NULL,
+          sourceLineIndex INTEGER NOT NULL,
+          targetTitle TEXT NOT NULL,
+          targetCategoryId INTEGER,
+          targetIsUserBook INTEGER NOT NULL DEFAULT 0,
+          targetRef TEXT,
+          targetLineIndex INTEGER,
+          connectionType TEXT NOT NULL
+        );
+      ''');
+      setupDb.execute(
+        'INSERT INTO book (id, categoryId, sourceId, title) '
+        'VALUES (7, 3, 1, ?)',
+        ['ביאורי יוסף'],
+      );
+      setupDb.execute(
+        'INSERT INTO user_link (sourceBookId, sourceLineIndex, targetTitle, '
+        'targetLineIndex, connectionType) VALUES (7, 11, ?, 4, ?)',
+        ['ברכות', 'COMMENTARY'],
+      );
+      setupDb.close();
+
+      final db = await database.database;
+      final cols = db
+          .select('PRAGMA table_info(user_link)')
+          .map((r) => r['name'] as String)
+          .toSet();
+      expect(cols, contains('sourceTitle'));
+      expect(cols, isNot(contains('sourceBookId')));
+
+      // השורה הישנה הומרה: מקור אישי, כותרת+קטגוריה נשאבו מ-book.
+      final row = db.select('SELECT * FROM user_link').single;
+      expect(row['sourceTitle'], 'ביאורי יוסף');
+      expect(row['sourceCategoryId'], 3);
+      expect(row['sourceIsUserBook'], 1);
+      expect(row['sourceLineIndex'], 11);
+      expect(row['targetTitle'], 'ברכות');
+      expect(row['targetLineIndex'], 4);
     });
 
     test('book_generation מצטרפת ל-generation ומחזירה את שם הדור', () async {
