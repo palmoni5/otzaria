@@ -214,6 +214,16 @@ String applyDisplayTextPreferences({
   return processed;
 }
 
+/// האם שינוי במצב הקריאה הרציף מחייב שחזור גלילה לשורת המקור הנוכחית.
+/// `previousMode == null` פירושו ה-state הראשון שנצפה — אין ממה לשחזר.
+@visibleForTesting
+bool shouldRestoreScrollOnContinuousModeChange({
+  required bool? previousMode,
+  required bool currentMode,
+}) {
+  return previousMode != null && previousMode != currentMode;
+}
+
 class _CombinedViewState extends State<CombinedView> {
   // שמירת הטקסט הנבחר האחרון
   final ValueNotifier<String?> _savedSelectedText =
@@ -264,6 +274,9 @@ class _CombinedViewState extends State<CombinedView> {
       styleIndexByCommentator: _anchorStyles(state),
     );
   }
+
+  // מצב הרצף האחרון שנצפה — לזיהוי החלפת מצב שמחייבת שחזור מיקום.
+  bool? _lastContinuousReadingMode;
 
   // האם להציג את שורת "יד הרמב"ם" מעל השורה הראשונה (נטען פעם אחת לכל ספר).
   bool _showSourceBanner = false;
@@ -342,9 +355,8 @@ class _CombinedViewState extends State<CombinedView> {
 
     // האזנה לשינויים ב-state כדי לגלול למיקום הנכון בפעם הראשונה
     _textBookBloc.stream.listen((state) {
-      if (state is TextBookLoaded &&
-          !_hasScrolledToInitialPosition &&
-          state.visibleIndices.isNotEmpty) {
+      if (state is! TextBookLoaded) return;
+      if (!_hasScrolledToInitialPosition && state.visibleIndices.isNotEmpty) {
         _hasScrolledToInitialPosition = true;
         final initialIndex = state.visibleIndices.first;
         debugPrint('DEBUG: גלילה אוטומטית למיקום שמור: $initialIndex');
@@ -354,6 +366,7 @@ class _CombinedViewState extends State<CombinedView> {
           }
         });
       }
+      _restorePositionOnContinuousModeChange(state);
     });
 
     // מוודא שהפוקוס מגיע לאזור הקריאה מיד אחרי פתיחת ספר
@@ -528,7 +541,35 @@ class _CombinedViewState extends State<CombinedView> {
     }
   }
 
-  Future<void> _scrollToSourceLine(TextBookLoaded state, int lineIndex) {
+  /// בהחלפת מצב רציף הרשימה נוצרת מחדש (key תלוי-מצב) כבר בתחילת הסגמנט
+  /// הנכון; כאן רק מדייקים אל שורת המקור עצמה בתוך פסקה ממוזגת.
+  void _restorePositionOnContinuousModeChange(TextBookLoaded state) {
+    final previousMode = _lastContinuousReadingMode;
+    _lastContinuousReadingMode = state.continuousReadingMode;
+    if (!shouldRestoreScrollOnContinuousModeChange(
+      previousMode: previousMode,
+      currentMode: state.continuousReadingMode,
+    )) {
+      return;
+    }
+
+    // לוכדים את השורה לפני ה-rebuild — אחריו widget.tab.index יידרס
+    // בתחילת הסגמנט ותאבד השורה המדויקת בתוך פסקה ממוזגת.
+    final lineIndex = widget.tab.index;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.tab.scrollController.isAttached) {
+        unawaited(
+          _scrollToSourceLine(state, lineIndex, duration: Duration.zero),
+        );
+      }
+    });
+  }
+
+  Future<void> _scrollToSourceLine(
+    TextBookLoaded state,
+    int lineIndex, {
+    Duration duration = const Duration(milliseconds: 300),
+  }) {
     return scrollToSourceLine(
       scrollController: widget.tab.scrollController,
       scrollOffsetController: widget.tab.mainOffsetController,
@@ -539,7 +580,7 @@ class _CombinedViewState extends State<CombinedView> {
           ? _viewportHeight
           : (context.size?.height ?? MediaQuery.sizeOf(context).height),
       alignment: 0.05,
-      duration: const Duration(milliseconds: 300),
+      duration: duration,
       curve: Curves.easeInOut,
     );
   }
@@ -1462,9 +1503,13 @@ class _CombinedViewState extends State<CombinedView> {
     final clampedInitial =
         itemCount == 0 ? 0 : initialIndex.clamp(0, itemCount - 1);
 
+    // המצב ב-key מאלץ יצירת רשימה חדשה בהחלפת מצב רציף, כך שהפריים הראשון
+    // כבר מצויר ב-initialScrollIndex הנכון — בלי הבזק של מיקום שגוי.
     return ScrollablePositionedList.builder(
-      key: ValueKey('combined-${widget.tab.book.title}'),
+      key: ValueKey(
+          'combined-${widget.tab.book.title}-${state.continuousReadingMode}'),
       initialScrollIndex: clampedInitial,
+      initialAlignment: kReadingAnchorAlignment,
       itemPositionsListener: widget.tab.positionsListener,
       itemScrollController: widget.tab.scrollController,
       scrollOffsetController: widget.tab.mainOffsetController,

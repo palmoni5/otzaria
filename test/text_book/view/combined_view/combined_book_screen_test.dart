@@ -288,6 +288,54 @@ void main() {
     });
   });
 
+  group('shouldRestoreScrollOnContinuousModeChange', () {
+    test('החלפת מצב (רגיל→רציף או להיפך) → משחזרים גלילה', () {
+      // הבאג שתוקן: מיפוי שורה↔פריט מתחלף אבל הרשימה נשארת על אינדקס
+      // הפריט הישן — בלי שחזור המשתמש קופץ למקום רחוק בספר.
+      expect(
+        shouldRestoreScrollOnContinuousModeChange(
+          previousMode: false,
+          currentMode: true,
+        ),
+        isTrue,
+      );
+      expect(
+        shouldRestoreScrollOnContinuousModeChange(
+          previousMode: true,
+          currentMode: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test('אותו מצב → אין שחזור (emit-ים שוטפים לא מזיזים את הגלילה)', () {
+      expect(
+        shouldRestoreScrollOnContinuousModeChange(
+          previousMode: true,
+          currentMode: true,
+        ),
+        isFalse,
+      );
+      expect(
+        shouldRestoreScrollOnContinuousModeChange(
+          previousMode: false,
+          currentMode: false,
+        ),
+        isFalse,
+      );
+    });
+
+    test('ה-state הראשון שנצפה (previousMode=null) → אין שחזור', () {
+      expect(
+        shouldRestoreScrollOnContinuousModeChange(
+          previousMode: null,
+          currentMode: true,
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group('תרחישים חוצי-טאב בחלונית הצד', () {
     test('"פתח מפרשים" מוצגת כשהחלונית פתוחה על טאב הקישורים', () {
       expect(
