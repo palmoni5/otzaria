@@ -543,6 +543,39 @@ void main() {
         'a',
       );
     });
+
+    testWidgets('נפתח כלפי מעלה ליד תחתית המסך ולא נחתך', (tester) async {
+      tester.view.physicalSize = const Size(420, 320);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final pluginBloc = _StaticPluginSystemBloc(PluginSystemLoaded([
+        _pluginFor(id: 'a', name: 'תוסף א'),
+        _pluginFor(id: 'b', name: 'תוסף ב'),
+        _pluginFor(id: 'c', name: 'תוסף ג'),
+      ]));
+      addTearDown(pluginBloc.close);
+
+      await tester.pumpWidget(_wrap(
+        pluginBloc: pluginBloc,
+        settingsBloc: _FakeSettingsBloc(),
+      ));
+      await tester.pumpAndSettle();
+
+      final actionButton = find.text('פעולות').last;
+      final buttonTop = tester.getTopLeft(actionButton).dy;
+
+      await tester.tap(actionButton);
+      await tester.pumpAndSettle();
+
+      final firstItemTop = tester.getTopLeft(find.text('ניהול הרשאות')).dy;
+      final lastItemBottom = tester.getBottomLeft(find.text('מחק תוסף')).dy;
+
+      expect(firstItemTop, greaterThanOrEqualTo(0));
+      expect(firstItemTop, lessThan(buttonTop));
+      expect(lastItemBottom, lessThanOrEqualTo(320));
+    });
   });
 
   group('Reorder UI', () {

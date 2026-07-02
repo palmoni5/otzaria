@@ -14,6 +14,7 @@ import 'package:otzaria/settings/engine/settings_bloc.dart';
 import 'package:otzaria/settings/services/safer_mode_guard.dart';
 import 'package:otzaria/theme/theme_exports.dart';
 import 'package:otzaria/widgets/dialogs/dialogs_exports.dart';
+import 'package:otzaria/widgets/misc/app_popup_menu.dart';
 
 class PluginSidePanel extends StatelessWidget {
   final Function(InstalledPlugin)? onPluginSelected;
@@ -158,9 +159,6 @@ class PluginSidePanel extends StatelessWidget {
                     ),
                   );
                 }
-                // יישום ידני של גרירה (Draggable + DragTarget) במקום
-                // ReorderableListView: ה-OverlayPortal הפנימי שלו קורס כשהפאנל
-                // יושב בתוך LayoutBuilder (FloatingPanel/ContextOverlayPanel).
                 return ListView.builder(
                   itemCount: plugins.length,
                   itemBuilder: (context, index) {
@@ -278,8 +276,6 @@ class _PluginListTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _PluginActionsMenu(plugin: plugin),
-          // ה-Draggable יושב רק על האייקון כדי שגרירה תתחיל ממנו ולא מכל
-          // מקום בשורה (כך Tap לפתיחת התוסף עדיין עובד).
           Draggable<String>(
             data: plugin.pluginId,
             dragAnchorStrategy: pointerDragAnchorStrategy,
@@ -306,8 +302,6 @@ class _PluginListTile extends StatelessWidget {
   }
 }
 
-/// תפריט "פעולות" לשורת תוסף בפאנל הצד — מרכז את כל הפעולות הזמינות
-/// בהגדרות (הרשאות, הצמדה, הסתרה, השבתה, מחיקה) בתפריט נפתח אחד.
 class _PluginActionsMenu extends StatelessWidget {
   final InstalledPlugin plugin;
 
@@ -316,86 +310,103 @@ class _PluginActionsMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return PopupMenuButton<VoidCallback>(
+    return AppPopupMenuButton<VoidCallback>(
       tooltip: 'פעולות',
-      padding: EdgeInsets.zero,
       onSelected: (action) => action(),
-      itemBuilder: (_) => [
-        _menuItem(
-          context,
-          icon: FluentIcons.shield_24_regular,
-          label: 'ניהול הרשאות',
-          onTap: () => showPluginSettingsDialog(context, plugin),
-        ),
-        _menuItem(
-          context,
-          icon: plugin.pinnedToNavRail
-              ? FluentIcons.pin_24_filled
-              : FluentIcons.pin_24_regular,
-          label:
-              plugin.pinnedToNavRail ? 'הסר מסרגל הניווט' : 'הצמד לסרגל הניווט',
-          onTap: () => togglePluginPinnedToNavRail(context, plugin),
-        ),
-        _menuItem(
-          context,
-          icon: plugin.showInTools
-              ? FluentIcons.eye_off_24_regular
-              : FluentIcons.eye_24_regular,
-          label: plugin.showInTools ? 'הסתר מהממשק' : 'הצג בממשק',
-          onTap: () => togglePluginShowInTools(context, plugin),
-        ),
-        _menuItem(
-          context,
-          icon: plugin.enabled
-              ? FluentIcons.pause_circle_24_regular
-              : FluentIcons.play_circle_24_regular,
-          label: plugin.enabled ? 'השבת' : 'הפעל',
-          onTap: () => togglePluginEnabled(context, plugin),
-        ),
-        const PopupMenuDivider(),
-        _menuItem(
-          context,
-          icon: FluentIcons.delete_24_regular,
-          label: 'מחק תוסף',
-          color: cs.error,
-          onTap: () => showDeletePluginDialog(context, plugin),
-        ),
-      ],
+      itemBuilder: (context) {
+        final metrics = Theme.of(context).extension<AppMenuMetrics>() ??
+            AppMenuMetrics.create(compactMenus: false);
+        return [
+          _menuItem(
+            context,
+            metrics,
+            AppMenuEntry<VoidCallback>(
+              value: () => showPluginSettingsDialog(context, plugin),
+              icon: FluentIcons.shield_24_regular,
+              label: 'ניהול הרשאות',
+            ),
+          ),
+          _menuItem(
+            context,
+            metrics,
+            AppMenuEntry<VoidCallback>(
+              value: () => togglePluginPinnedToNavRail(context, plugin),
+              icon: plugin.pinnedToNavRail
+                  ? FluentIcons.pin_24_filled
+                  : FluentIcons.pin_24_regular,
+              label: plugin.pinnedToNavRail
+                  ? 'הסר מסרגל הניווט'
+                  : 'הצמד לסרגל הניווט',
+            ),
+          ),
+          _menuItem(
+            context,
+            metrics,
+            AppMenuEntry<VoidCallback>(
+              value: () => togglePluginShowInTools(context, plugin),
+              icon: plugin.showInTools
+                  ? FluentIcons.eye_off_24_regular
+                  : FluentIcons.eye_24_regular,
+              label: plugin.showInTools ? 'הסתר מהממשק' : 'הצג בממשק',
+            ),
+          ),
+          _menuItem(
+            context,
+            metrics,
+            AppMenuEntry<VoidCallback>(
+              value: () => togglePluginEnabled(context, plugin),
+              icon: plugin.enabled
+                  ? FluentIcons.pause_circle_24_regular
+                  : FluentIcons.play_circle_24_regular,
+              label: plugin.enabled ? 'השבת' : 'הפעל',
+            ),
+          ),
+          const PopupMenuDivider(),
+          _menuItem(
+            context,
+            metrics,
+            AppMenuEntry<VoidCallback>(
+              value: () => showDeletePluginDialog(context, plugin),
+              icon: FluentIcons.delete_24_regular,
+              label: 'מחק תוסף',
+              isDestructive: true,
+            ),
+          ),
+        ];
+      },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('פעולות',
-                style:
-                    TextStyle(color: cs.primary, fontWeight: FontWeight.w500)),
-            Icon(FluentIcons.chevron_down_24_regular,
-                size: 16, color: cs.primary),
+            Text(
+              'פעולות',
+              style: TextStyle(
+                color: cs.primary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Icon(
+              FluentIcons.chevron_down_24_regular,
+              size: 16,
+              color: cs.primary,
+            ),
           ],
         ),
       ),
     );
   }
 
-  PopupMenuItem<VoidCallback> _menuItem(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    Color? color,
-  }) {
-    return PopupMenuItem<VoidCallback>(
-      value: onTap,
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(label,
-                style: color == null ? null : TextStyle(color: color)),
-          ),
-        ],
-      ),
+  PopupMenuEntry<VoidCallback> _menuItem(
+    BuildContext context,
+    AppMenuMetrics metrics,
+    AppMenuEntry<VoidCallback> entry,
+  ) {
+    return buildAppPopupMenuItem<VoidCallback>(
+      context,
+      entry,
+      metrics,
+      null,
     );
   }
 }
