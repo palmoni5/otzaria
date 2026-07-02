@@ -2,7 +2,9 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:async';
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:collection/collection.dart' show IterableExtension;
+import 'package:file_picker/file_picker.dart';
 import 'package:otzaria/core/ui_snack.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -24,6 +26,7 @@ import 'package:otzaria/tabs/bloc/tabs_bloc.dart';
 import 'package:otzaria/tabs/bloc/tabs_event.dart';
 import 'package:otzaria/tabs/bloc/tabs_state.dart';
 import 'package:otzaria/text_book/bloc/text_book_bloc.dart';
+import 'package:otzaria/text_book/utils/text_book_export_utils.dart';
 import 'package:otzaria/text_book/utils/visible_index.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:otzaria/text_book/bloc/text_book_event.dart';
@@ -35,7 +38,9 @@ import 'package:otzaria/data/data_providers/database_library_provider.dart';
 import 'package:otzaria/data/data_providers/sqlite_data_provider.dart';
 import 'package:otzaria/models/books.dart';
 import 'package:otzaria/tabs/models/tab.dart';
+import 'package:otzaria/printing/print_content_models.dart';
 import 'package:otzaria/printing/view/printing_screen.dart';
+import 'package:otzaria/printing/word_export_service.dart';
 import 'package:otzaria/text_book/view/text_book_scaffold.dart';
 import 'package:otzaria/text_book/view/text_book_search_screen.dart';
 import 'package:otzaria/text_book/view/toc_navigator_screen.dart';
@@ -51,6 +56,7 @@ import 'package:otzaria/text_book/view/page_shape/simple_text_viewer.dart';
 import 'package:otzaria/personal_notes/personal_notes_system.dart';
 import 'package:otzaria/shortcuts/shortcut_helper.dart';
 import 'package:otzaria/shortcuts/shortcut_validator.dart';
+import 'package:otzaria/settings/services/safer_mode_guard.dart';
 import 'package:otzaria/utils/ui/fullscreen_helper.dart';
 
 import 'package:otzaria/widgets/navigation/responsive_action_bar.dart';
@@ -63,6 +69,7 @@ import 'package:otzaria/widgets/misc/app_menu_exports.dart';
 import 'package:otzaria/widgets/layout/adaptive_side_pane.dart';
 import 'package:otzaria/settings/services/nikud_display_service.dart';
 import 'package:otzaria/utils/link_helpers.dart';
+import 'package:otzaria/widgets/dialogs/dialogs_exports.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:otzaria/widgets/navigation/panel_tab_header.dart';
@@ -75,6 +82,95 @@ const String _viewModeBelow = 'below';
 const String _viewModePage = 'page';
 // פעולה (לא מצב תצוגה): פתיחת כרטיסיית מפרשים נפרדת
 const String _actionOpenCommentatorsTab = 'open_commentators_tab';
+
+enum _TextBookExportFormat {
+  word('docx'),
+  text('txt');
+
+  final String extension;
+  const _TextBookExportFormat(this.extension);
+}
+
+class _WordExportRequest {
+  final String title;
+  final String rawContent;
+  final bool removeNikud;
+  final bool removeTaamim;
+  final bool shouldReplaceHolyNames;
+  final String? fontFamily;
+  final double fontSize;
+
+  const _WordExportRequest({
+    required this.title,
+    required this.rawContent,
+    required this.removeNikud,
+    required this.removeTaamim,
+    required this.shouldReplaceHolyNames,
+    required this.fontFamily,
+    required this.fontSize,
+  });
+}
+
+class _TextExportRequest {
+  final String rawContent;
+  final bool removeNikud;
+  final bool removeTaamim;
+  final bool shouldReplaceHolyNames;
+
+  const _TextExportRequest({
+    required this.rawContent,
+    required this.removeNikud,
+    required this.removeTaamim,
+    required this.shouldReplaceHolyNames,
+  });
+}
+
+Uint8List _createTextBookWordExport(_WordExportRequest request) {
+  final blocks = request.rawContent
+      .split('\n')
+      .map(
+        (line) => PrintBlock(
+          kind: PrintBlockKind.text,
+          text: applyTextBookExportTextTransforms(
+            line,
+            removeNikud: request.removeNikud,
+            removeTaamim: request.removeTaamim,
+            shouldReplaceHolyNames: request.shouldReplaceHolyNames,
+            stripHtml: false,
+          ),
+        ),
+      )
+      .toList(growable: false);
+
+  return WordExportService.createWordDocument(
+    title: request.title,
+    blocks: blocks,
+    format: PdfPageFormat.a4,
+    isLandscape: false,
+    pageMargin: 20,
+    fontFamily: request.fontFamily,
+    fontSize: request.fontSize,
+  );
+}
+
+String _createTextBookTextExport(_TextExportRequest request) {
+  if (request.rawContent.isEmpty) {
+    return '';
+  }
+
+  return request.rawContent
+      .split('\n')
+      .map(
+        (line) => applyTextBookExportTextTransforms(
+          line,
+          removeNikud: request.removeNikud,
+          removeTaamim: request.removeTaamim,
+          shouldReplaceHolyNames: request.shouldReplaceHolyNames,
+          stripHtml: true,
+        ),
+      )
+      .join('\n');
+}
 
 final GlobalKey textBookNavigationTourTargetKey = GlobalKey(
   debugLabel: 'text_book_navigation_tour_target',
@@ -507,6 +603,95 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
         tableOfContents: state.tableOfContents,
       ),
     );
+  }
+
+  Future<void> _exportWholeBook(TextBookLoaded state) async {
+    if (!await verifySaferModePassword(context)) return;
+    if (!mounted) return;
+
+    try {
+      final selectedFormat = await _pickTextBookExportFormat();
+      if (selectedFormat == null) return;
+
+      final extension = selectedFormat.extension;
+      final path = await FilePicker.saveFile(
+        dialogTitle: 'ייצוא הספר',
+        fileName:
+            '${sanitizeTextBookExportFileName(state.book.title)}.$extension',
+        type: FileType.custom,
+        allowedExtensions: [extension],
+        lockParentWindow: true,
+      );
+      if (path == null) return;
+      if (!mounted) return;
+
+      final file = File(normalizeTextBookExportPath(
+        path,
+        defaultExtension: extension,
+      ));
+
+      final settingsState = context.read<SettingsBloc>().state;
+      final removeTaamim = !settingsState.showTeamim;
+      final shouldReplaceHolyNames =
+          Settings.getValue<bool>('key-replace-holy-names') ?? true;
+      final fullContent =
+          await context.read<TextBookBloc>().repository.getBookContent(
+                state.book,
+              );
+
+      if (selectedFormat == _TextBookExportFormat.word) {
+        final bytes = await compute(
+          _createTextBookWordExport,
+          _WordExportRequest(
+            title: state.book.title,
+            rawContent: fullContent,
+            removeNikud: state.removeNikud,
+            removeTaamim: removeTaamim,
+            shouldReplaceHolyNames: shouldReplaceHolyNames,
+            fontFamily: settingsState.fontFamily,
+            fontSize: state.fontSize,
+          ),
+        );
+        await file.writeAsBytes(bytes);
+        UiSnack.showSuccess('קובץ Word נשמר בהצלחה');
+        return;
+      }
+
+      final text = await compute(
+        _createTextBookTextExport,
+        _TextExportRequest(
+          rawContent: fullContent,
+          removeNikud: state.removeNikud,
+          removeTaamim: removeTaamim,
+          shouldReplaceHolyNames: shouldReplaceHolyNames,
+        ),
+      );
+      await file.writeAsString(text);
+      UiSnack.showSuccess('קובץ טקסט נשמר בהצלחה');
+    } on FileSystemException catch (e) {
+      if (isLockedTextBookExportFileException(e)) {
+        UiSnack.showError(
+            'לא ניתן לשמור את הקובץ כי הוא פתוח בתוכנה אחרת. יש לסגור אותו ולנסות שוב.');
+        return;
+      }
+      UiSnack.showError('ייצוא הספר נכשל: ${e.message}');
+    } catch (e) {
+      UiSnack.showError('ייצוא הספר נכשל: $e');
+    }
+  }
+
+  Future<_TextBookExportFormat?> _pickTextBookExportFormat() async {
+    final result = await showTwoActionsDialog(
+      context: context,
+      title: 'בחירת סוג קובץ',
+      content: 'בחר פורמט לייצוא',
+      cancelText: 'טקסט',
+      confirmText: 'Word',
+      barrierDismissible: true,
+    );
+
+    if (result == null) return null;
+    return result ? _TextBookExportFormat.word : _TextBookExportFormat.text;
   }
 
   @override
@@ -1506,6 +1691,15 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
             : null,
       ),
 
+      // ייצוא הספר המלא - Word מעוצב או טקסט פשוט
+      if (!widget.isInCombinedView)
+        ActionButtonData(
+          widget: const SizedBox.shrink(),
+          icon: FluentIcons.arrow_export_ltr_24_regular,
+          tooltip: 'ייצוא הספר',
+          onPressed: () => _exportWholeBook(state),
+        ),
+
       // 6) הדפסה - לא בתצוגה משולבת
       if (!widget.isInCombinedView)
         ActionButtonData(
@@ -1560,6 +1754,12 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
               icon: FluentIcons.print_24_regular,
               tooltip: 'הדפסה',
               onPressed: () => _handlePrintPress(state),
+            ),
+            ActionButtonData(
+              widget: const SizedBox.shrink(),
+              icon: FluentIcons.arrow_export_ltr_24_regular,
+              tooltip: 'ייצוא הספר',
+              onPressed: () => _exportWholeBook(state),
             ),
             ActionButtonData(
               widget: const SizedBox.shrink(),

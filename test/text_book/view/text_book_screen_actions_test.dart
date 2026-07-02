@@ -60,7 +60,7 @@ void main() {
   });
 
   group('TextBookViewerBloc actions', () {
-    testWidgets('במצב רגיל ה-overflow כולל איפוס הגדרות והדפסה',
+    testWidgets('במצב רגיל ה-overflow כולל איפוס, ייצוא והדפסה',
         (tester) async {
       final book = TextBook(title: 'ספר בדיקה');
       final bloc = _TestTextBookBloc(_loadedState(book));
@@ -107,6 +107,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('אפס הגדרות ספר זה'), findsOneWidget);
+      expect(find.text('ייצוא הספר'), findsOneWidget);
       expect(find.text('הדפסה'), findsOneWidget);
       expect(find.text('אודות הספר'), findsOneWidget);
     });
