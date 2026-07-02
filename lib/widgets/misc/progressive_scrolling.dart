@@ -62,7 +62,6 @@ class _ProgressiveScrollState extends State<ProgressiveScroll> {
         if (mounted) _focusNode.requestFocus();
       });
     }
-    _startScrolling();
   }
 
   @override
@@ -74,20 +73,19 @@ class _ProgressiveScrollState extends State<ProgressiveScroll> {
     super.dispose();
   }
 
+  // הטיימר רץ רק בזמן לחיצת חץ. טיימר תמידי + KeyUp שהלך לאיבוד (מעבר
+  // פוקוס באמצע לחיצה) גרמו בעבר לגלילה אוטונומית אינסופית שנלחמת במשתמש.
   void _startScrolling() {
-    _scrollTickTimer?.cancel();
-    _scrollTickTimer = Timer(const Duration(milliseconds: 16), () {
-      if (_isKeyPressed) {
-        _timePressedInSeconds += 0.016; // 16 milliseconds in seconds
-        double t = _timePressedInSeconds;
-        double curvedT = exp(widget.curve * t);
-        _scrollSpeed = (curvedT * widget.accelerationFactor * _scrollDirection)
-            .clamp(-widget.maxSpeed, widget.maxSpeed);
-        //debugPrint('scroll speed: $_scrollSpeed');
-      } else {
-        _scrollSpeed = 0;
-        _timePressedInSeconds = 0;
+    if (_scrollTickTimer?.isActive ?? false) return;
+    _scrollTickTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
+      if (!_isKeyPressed) {
+        _stopScrolling();
+        return;
       }
+      _timePressedInSeconds += 0.016; // 16 milliseconds in seconds
+      double curvedT = exp(widget.curve * _timePressedInSeconds);
+      _scrollSpeed = (curvedT * widget.accelerationFactor * _scrollDirection)
+          .clamp(-widget.maxSpeed, widget.maxSpeed);
 
       if (_scrollSpeed != 0 && _canScroll) {
         widget.scrollController.animateScroll(
@@ -95,11 +93,16 @@ class _ProgressiveScrollState extends State<ProgressiveScroll> {
           duration: const Duration(milliseconds: 16),
         );
       }
-
-      if (mounted) {
-        _startScrolling();
-      }
     });
+  }
+
+  void _stopScrolling() {
+    _scrollTickTimer?.cancel();
+    _scrollTickTimer = null;
+    _isKeyPressed = false;
+    _scrollDirection = 0;
+    _scrollSpeed = 0;
+    _timePressedInSeconds = 0;
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
@@ -116,17 +119,17 @@ class _ProgressiveScrollState extends State<ProgressiveScroll> {
     }
 
     if (event is KeyUpEvent) {
-      _isKeyPressed = false;
-      if (_canScroll) {
+      if (_canScroll && _scrollDirection != 0) {
         widget.scrollController.animateScroll(
           offset: 100.0 * _scrollDirection,
           duration: const Duration(milliseconds: 150),
         );
       }
-      _scrollDirection = 0;
+      _stopScrolling();
     } else {
       _isKeyPressed = true;
       _scrollDirection = isArrowDown ? 1 : -1;
+      _startScrolling();
     }
     // בולעים את החץ כדי שלא יגלול גם Scrollable שמעל — כש"מפרשים מתחת"
     // מקונן בתוך גלילת גוף הטקסט הראשי, אחרת שניהם היו גוללים יחד.
@@ -138,6 +141,11 @@ class _ProgressiveScrollState extends State<ProgressiveScroll> {
     return Focus(
       focusNode: _focusNode,
       onKeyEvent: _handleKeyEvent,
+      // איבוד פוקוס באמצע לחיצה בולע את ה-KeyUp — חובה לעצור כאן,
+      // אחרת הגלילה ממשיכה לבד ללא דרך לעצור אותה.
+      onFocusChange: (hasFocus) {
+        if (!hasFocus) _stopScrolling();
+      },
       child: widget.child,
     );
   }
