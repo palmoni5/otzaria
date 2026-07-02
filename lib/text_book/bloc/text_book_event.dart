@@ -20,6 +20,9 @@ class LoadContent extends TextBookEvent {
   // per-book toggle) instead of applying the new value from settings.
   // Use this for font-only reloads where nikud settings did NOT change.
   final bool preserveRemoveNikud;
+  // כמו preserveRemoveNikud עבור הסתרת פיסוק, שאין לה הגדרה גלובלית.
+  // ברירת המחדל false — `_resetPerBookSettings` סומך עליה כדי לאפס את המצב.
+  final bool preserveRemovePunctuation;
   // When true and state is already loaded, keep current continuousReadingMode.
   // ברירת המחדל false — `_resetPerBookSettings` סומך עליה כדי לאפס את המצב.
   // הצרכן היחיד שצריך true הוא ה-listener על שינוי גופן/ניקוד שלא אמור
@@ -35,6 +38,7 @@ class LoadContent extends TextBookEvent {
     this.forceCloseLeftPane = false, // Default to false
     this.preserveRemoveNikud =
         false, // Default to false for backward compatibility
+    this.preserveRemovePunctuation = false,
     this.preserveContinuousReadingMode = false,
   });
 
@@ -47,6 +51,7 @@ class LoadContent extends TextBookEvent {
         loadCommentators,
         forceCloseLeftPane,
         preserveRemoveNikud,
+        preserveRemovePunctuation,
         preserveContinuousReadingMode,
       ];
 }

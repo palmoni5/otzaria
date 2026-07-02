@@ -617,6 +617,9 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
                   // השתנה - אם הגדרות הניקוד עצמן השתנו, יש להחיל את
                   // הערך החדש
                   preserveRemoveNikud: !isNikudSettingsChange,
+                  // לפיסוק אין הגדרה גלובלית — שינוי גופן/ניקוד לעולם
+                  // לא מאפס את בחירת המשתמש.
+                  preserveRemovePunctuation: true,
                   // שינוי הגדרות גלובליות (גופן/ניקוד) לעולם לא יכבה
                   // את מצב הרצף שהמשתמש בחר עבור הספר.
                   preserveContinuousReadingMode: true,

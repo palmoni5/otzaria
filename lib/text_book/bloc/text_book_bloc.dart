@@ -478,6 +478,7 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
     List<String> existingAvailableCommentators = const [];
     List<CommentatorGroup> existingCommentatorGroups = const [];
     bool? preservedRemoveNikud;
+    bool? preservedRemovePunctuation;
     bool? preservedPinLeftPane;
 
     if (state is TextBookLoaded && event.preserveState) {
@@ -498,6 +499,7 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
       existingAvailableCommentators = currentState.availableCommentators;
       existingCommentatorGroups = currentState.commentatorGroups;
       preservedRemoveNikud = currentState.removeNikud;
+      preservedRemovePunctuation = currentState.removePunctuation;
       preservedPinLeftPane = currentState.pinLeftPane;
       pinpointHighlightIndex = currentState.pinpointHighlightIndex;
       pinpointHighlightText = currentState.pinpointHighlightText;
@@ -754,6 +756,10 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
         removeNikud: (event.preserveRemoveNikud && preservedRemoveNikud != null)
             ? preservedRemoveNikud
             : removeNikud,
+        removePunctuation: (event.preserveRemovePunctuation &&
+                preservedRemovePunctuation != null)
+            ? preservedRemovePunctuation
+            : false,
         isTanach: isTanach,
         supportsContinuousReadingMode: supportsContinuousReading,
         continuousReadingMode: effectiveContinuousReading,

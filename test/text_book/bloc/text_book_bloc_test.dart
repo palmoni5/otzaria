@@ -849,6 +849,88 @@ void main() {
     );
 
     test(
+      'LoadContent(preserveRemovePunctuation:true) שומר פיסוק שהמשתמש הסתיר',
+      () async {
+        final repository = _FakeTextBookRepository();
+        final bloc =
+            _createBloc(repository: repository, showPageShapeView: false);
+
+        bloc.add(const LoadContent(
+          fontSize: 20,
+          showSplitView: false,
+          removeNikud: false,
+          loadCommentators: false,
+        ));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect((bloc.state as TextBookLoaded).removePunctuation, isFalse);
+
+        // המשתמש מסתיר פיסוק ידנית
+        bloc.add(const TogglePunctuation(true));
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect((bloc.state as TextBookLoaded).removePunctuation, isTrue);
+
+        // רענון בגין שינוי גופן – מצפה שהסתרת הפיסוק תישמר
+        bloc.add(const LoadContent(
+          fontSize: 20,
+          showSplitView: false,
+          removeNikud: false,
+          preserveState: true,
+          preserveRemoveNikud: true,
+          preserveRemovePunctuation: true,
+          loadCommentators: false,
+        ));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(
+          (bloc.state as TextBookLoaded).removePunctuation,
+          isTrue,
+          reason: 'שינוי גופן לא אמור להחזיר פיסוק שהמשתמש הסתיר',
+        );
+
+        await bloc.close();
+      },
+    );
+
+    test(
+      'LoadContent ללא preserveRemovePunctuation מאפס את הסתרת הפיסוק',
+      () async {
+        final repository = _FakeTextBookRepository();
+        final bloc =
+            _createBloc(repository: repository, showPageShapeView: false);
+
+        bloc.add(const LoadContent(
+          fontSize: 20,
+          showSplitView: false,
+          removeNikud: false,
+          loadCommentators: false,
+        ));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        bloc.add(const TogglePunctuation(true));
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect((bloc.state as TextBookLoaded).removePunctuation, isTrue);
+
+        // המסלול של _resetPerBookSettings – בלי הדגל, הפיסוק חוזר לברירת מחדל
+        bloc.add(const LoadContent(
+          fontSize: 20,
+          showSplitView: false,
+          removeNikud: false,
+          preserveState: true,
+          loadCommentators: false,
+        ));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(
+          (bloc.state as TextBookLoaded).removePunctuation,
+          isFalse,
+          reason: 'איפוס הגדרות פר-ספר חייב להחזיר את הפיסוק לברירת המחדל',
+        );
+
+        await bloc.close();
+      },
+    );
+
+    test(
       'LoadContent(preserveState:true) תמיד שומר pinLeftPane ללא קשר לשינוי הגופן',
       () async {
         final repository = _FakeTextBookRepository();
