@@ -1256,6 +1256,19 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
       state.book.title,
       workspaceId: workspaceId,
     );
+    Map<String, String?> configuration;
+    if (storedConfiguration != null) {
+      configuration = storedConfiguration;
+    } else {
+      final defaults = await DefaultCommentators.getPageShapeDefaults(
+        state.book,
+        availableCommentators: candidateCommentators,
+      );
+      configuration = defaults.commentators;
+      for (final entry in defaults.visibility.entries) {
+        if (!entry.value) columnVisibility[entry.key] = false;
+      }
+    }
     final cacheKey = [
       state.book.title,
       state.book.heCategories ?? '',
@@ -1268,12 +1281,6 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
     if (_cachedPageShapeTargetBookTitlesKey == cacheKey) {
       return _cachedPageShapeTargetBookTitles;
     }
-
-    final configuration = storedConfiguration ??
-        await DefaultCommentators.getDefaults(
-          state.book,
-          availableCommentators: candidateCommentators,
-        );
 
     final selectedCommentators = resolvePageShapeDisplayedCommentators(
       leftSelection: configuration['left'],

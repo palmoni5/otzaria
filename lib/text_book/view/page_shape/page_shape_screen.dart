@@ -307,10 +307,14 @@ class _PageShapeScreenState extends State<PageShapeScreen> {
           _resolveCommentatorNames(config, state.availableCommentators);
     } else {
       // אין הגדרה שמורה בכלל - השתמש בברירות מחדל
-      commentators = await DefaultCommentators.getDefaults(
+      final defaults = await DefaultCommentators.getPageShapeDefaults(
         state.book,
         availableCommentators: state.availableCommentators,
       );
+      commentators = defaults.commentators;
+      for (final entry in defaults.visibility.entries) {
+        if (!entry.value) _columnVisibility[entry.key] = false;
+      }
     }
 
     if (mounted) {

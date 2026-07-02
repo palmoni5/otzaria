@@ -3,8 +3,8 @@ import 'package:otzaria/models/books.dart';
 import 'package:otzaria/text_book/view/page_shape/utils/default_commentators.dart';
 
 /// טסטים למיפוי מפרשי ברירת המחדל ל-4 מיקומי צורת הדף:
-/// position 0→ימין, 1→שמאל, 2→תחתון, 3→תחתון-ימני. position חסר → מיקום ריק.
-/// התרגומים ממולאים אחרי ה-position המקסימלי של המפרשים.
+/// position 0→ימין, 1→שמאל, 2→תחתון, 3→תחתון נוסף. position חסר → מיקום ריק.
+/// מפתחות הפאנלים הפוכים לצד הפיזי (Row ב-RTL): 'left' מוצג בימין ולהפך.
 void main() {
   ({String title, int position}) c(String title, int position) =>
       (title: title, position: position);
@@ -14,8 +14,8 @@ void main() {
       final result =
           DefaultCommentators.mapToPageShape([c('רש"י', 0)], ['תרגום אונקלוס']);
 
-      expect(result['right'], 'רש"י');
-      expect(result['left'], 'תרגום אונקלוס');
+      expect(result['left'], 'רש"י');
+      expect(result['right'], 'תרגום אונקלוס');
       expect(result['bottom'], isNull);
       expect(result['bottomRight'], isNull);
     });
@@ -26,8 +26,8 @@ void main() {
         [],
       );
 
-      expect(result['right'], 'רש"י');
-      expect(result['left'], 'תוספות');
+      expect(result['left'], 'רש"י');
+      expect(result['right'], 'תוספות');
       expect(result['bottom'], isNull);
       expect(result['bottomRight'], isNull);
     });
@@ -43,8 +43,8 @@ void main() {
         [],
       );
 
-      expect(result['right'], 'רש"י');
-      expect(result['left'], 'מצודת דוד');
+      expect(result['left'], 'רש"י');
+      expect(result['right'], 'מצודת דוד');
       expect(result['bottom'], 'מצודת ציון');
       expect(result['bottomRight'], 'רד"ק');
     });
@@ -55,8 +55,8 @@ void main() {
         ['תרגום אונקלוס'],
       );
 
-      expect(result['right'], 'רש"י');
-      expect(result['left'], 'רד"ק');
+      expect(result['left'], 'רש"י');
+      expect(result['right'], 'רד"ק');
       expect(result['bottom'], 'תרגום אונקלוס');
       expect(result['bottomRight'], isNull);
     });
@@ -68,10 +68,37 @@ void main() {
         [],
       );
 
-      expect(result['right'], 'מפרש א');
-      expect(result['left'], isNull); // ה-slot הריק נשמר
+      expect(result['left'], 'מפרש א');
+      expect(result['right'], isNull); // ה-slot הריק נשמר
       expect(result['bottom'], 'מפרש ב');
       expect(result['bottomRight'], isNull);
+    });
+
+    test('slot ריק מכוון מוסתר בנראות ברירת המחדל', () {
+      final result = DefaultCommentators.mapToPageShapeDefaults(
+        [c('מפרש א', 0), c('מפרש ב', 2)],
+        [],
+      );
+
+      expect(result.commentators['left'], 'מפרש א');
+      expect(result.commentators['right'], isNull);
+      expect(result.commentators['bottom'], 'מפרש ב');
+      expect(result.visibility['left'], isTrue);
+      expect(result.visibility['right'], isFalse);
+      expect(result.visibility['bottom'], isTrue);
+      expect(result.visibility['bottomRight'], isTrue);
+    });
+
+    test('slotים שאחרי המיקום האחרון לא מוסתרים בגלל ברירת מחדל חסרה', () {
+      final result = DefaultCommentators.mapToPageShapeDefaults(
+        [c('רש"י', 0)],
+        [],
+      );
+
+      expect(result.commentators['left'], 'רש"י');
+      expect(result.commentators['right'], isNull);
+      expect(result.commentators['bottom'], isNull);
+      expect(result.visibility.values, everyElement(isTrue));
     });
 
     test('רשימות ריקות מחזירות null בכל המיקומים', () {
