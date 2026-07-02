@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:otzaria/theme/app_tokens.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -68,6 +69,13 @@ const double _kTabMaxWidth = 140.0;
 /// מתחת לרוחב הזה כפתור ה-X מוסתר ומופיע רק ב-hover/בטאב הנבחר (כמו כרום).
 const double _kTabCloseHideBelowWidth = 80.0;
 
+/// רוחב מזערי לטאב הנבחר: מבטיח שכפתור ה-X שלו תמיד נכנס (כמו כרום).
+/// כשהחלוקה השווה יורדת מתחת לזה, שאר הטאבים מתחלקים ביתרה.
+const double _kTabSelectedMinWidth = 60.0;
+
+/// רוחבי הטאבים בשורה: הנבחר עשוי להיות רחב מהשאר (ראה [_kTabSelectedMinWidth]).
+typedef _TabWidths = ({double selected, double unselected});
+
 /// סגנון משותף לכפתורי האייקון בשורת הכותרת
 final ButtonStyle _kIconButtonStyle = IconButton.styleFrom(
   minimumSize: const Size(32, 32),
@@ -84,16 +92,16 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
   bool _doubleTapOnTab = false;
 
   // האם העכבר נמצא כרגע מעל שורת הטאבים. בעת סגירת טאב כשהעכבר בפנים מקפיאים
-  // את רוחב הטאבים (ראה _pinnedTabWidth) כדי שכפתור ה-X של הטאב הבא יישאר תחת
+  // את רוחב הטאבים (ראה _pinnedTabWidths) כדי שכפתור ה-X של הטאב הבא יישאר תחת
   // הסמן וסגירות רצופות יפעלו.
   bool _pointerInsideTabStrip = false;
 
-  // כשאינו null, כל הטאבים מצוירים ברוחב הקפוא הזה במקום ברוחב המחושב. מוגדר
-  // בסגירה (כשהעכבר בפנים) ומשוחרר ביציאת העכבר מהשורה (כמו כרום).
-  double? _pinnedTabWidth;
+  // כשאינו null, כל הטאבים מצוירים ברוחבים הקפואים האלה במקום ברוחב המחושב.
+  // מוגדר בסגירה (כשהעכבר בפנים) ומשוחרר ביציאת העכבר מהשורה (כמו כרום).
+  _TabWidths? _pinnedTabWidths;
 
-  // הרוחב המחושב האחרון לטאב, לשימוש כערך הקפיאה בסגירה.
-  double? _lastComputedTabWidth;
+  // הרוחבים המחושבים האחרונים לטאב, לשימוש כערך הקפיאה בסגירה.
+  _TabWidths? _lastComputedTabWidths;
 
   // רוחב אזור הטאבים שנמדד בפריים הקודם (ע"י LayoutBuilder נפרד). הרשימה
   // נבנית עם הערך הזה ולא תחת ה-LayoutBuilder — אחרת Tooltip/OverlayPortal
@@ -437,13 +445,21 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
     );
   }
 
-  /// מחשב את רוחב הטאב כך שכל הטאבים יתחלקו בשווה במקום הפנוי, עד תקרה של
-  /// [_kTabMaxWidth]. אין רצפה: כשיש הרבה טאבים הם ממשיכים להצטמצם (ה-X/נעץ
-  /// מתחבאים והכותרת מתכווצת) כך שכולם תמיד נכנסים — ללא גלילה וללא חיתוך.
-  double _computeTabWidth(double available, int count) {
-    if (count <= 0) return _kTabMaxWidth;
+  /// מחשב את רוחב הטאבים כך שכולם יתחלקו בשווה במקום הפנוי, עד תקרה של
+  /// [_kTabMaxWidth]. אין רצפה לטאבים שאינם נבחרים: כשיש הרבה טאבים הם ממשיכים
+  /// להצטמצם כך שכולם תמיד נכנסים — ללא גלילה וללא חיתוך. הטאב הנבחר לא יורד
+  /// מ-[_kTabSelectedMinWidth] כדי שכפתור ה-X שלו יישאר תמיד (כמו כרום).
+  _TabWidths _computeTabWidths(double available, int count) {
+    if (count <= 0) return (selected: _kTabMaxWidth, unselected: _kTabMaxWidth);
     final ideal = available / count;
-    return ideal < _kTabMaxWidth ? ideal : _kTabMaxWidth;
+    final uniform = ideal < _kTabMaxWidth ? ideal : _kTabMaxWidth;
+    if (count == 1 || uniform >= _kTabSelectedMinWidth) {
+      return (selected: uniform, unselected: uniform);
+    }
+    // צפוף: הנבחר שומר רוחב מזערי (אך לא יותר מחצי השורה), השאר מתחלקים ביתרה.
+    final selected = math.min(_kTabSelectedMinWidth, available / 2);
+    final unselected = math.max(0.0, (available - selected) / (count - 1));
+    return (selected: selected, unselected: unselected);
   }
 
   Widget _buildScrollableTabsArea(TabsState state) {
@@ -472,10 +488,10 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
   Widget _buildTabsContent(TabsState state) {
     // בפריים הראשון עוד אין מדידה; אומדן לפי רוחב המסך, מתוקן בפריים הבא.
     final available = _tabsAreaWidth ?? MediaQuery.sizeOf(context).width;
-    _lastComputedTabWidth = _computeTabWidth(available, state.tabs.length);
+    _lastComputedTabWidths = _computeTabWidths(available, state.tabs.length);
     // בזמן סגירה רצופה (העכבר מעל השורה) הרוחב קפוא כדי שה-X של הטאב הבא יישאר
     // תחת הסמן; אחרת מתחלקים בשווה במקום הפנוי.
-    final tabWidth = _pinnedTabWidth ?? _lastComputedTabWidth!;
+    final tabWidths = _pinnedTabWidths ?? _lastComputedTabWidths!;
 
     // בדסקטופ גרירת-עכבר על טאב מסדרת אותו מיד (כמו כרום); בנייד נדרשת לחיצה
     // ארוכה כדי שהחלקה/גלילה במגע לא תזיז טאב בטעות.
@@ -504,6 +520,9 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
       },
       itemBuilder: (context, index) {
         final tab = state.tabs[index];
+        final tabWidth = index == state.currentTabIndex
+            ? tabWidths.selected
+            : tabWidths.unselected;
         // סימון שטח הטאב ל-hit-test, כדי שה-double-tap-to-maximize שבמסגרת
         // ידלג עליו (ראה onDoubleTapDown למטה).
         final tabChild = MetaData(
@@ -536,8 +555,8 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
       onEnter: (_) => _pointerInsideTabStrip = true,
       onExit: (_) {
         _pointerInsideTabStrip = false;
-        if (_pinnedTabWidth != null) {
-          setState(() => _pinnedTabWidth = null);
+        if (_pinnedTabWidths != null) {
+          setState(() => _pinnedTabWidths = null);
         }
       },
       child: GestureDetector(
@@ -654,8 +673,8 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
     // קופאים את רוחב הטאבים כל עוד העכבר מעל השורה, כדי שכפתור ה-X של הטאב הבא
     // יישאר בדיוק תחת הסמן וסגירות רצופות יפעלו (כמו כרום). נועלים רק בסגירה
     // הראשונה (??=) — אחרת כל סגירה הייתה דורסת בערך הרחב יותר. השחרור ביציאת העכבר.
-    if (_pointerInsideTabStrip && _lastComputedTabWidth != null) {
-      _pinnedTabWidth ??= _lastComputedTabWidth;
+    if (_pointerInsideTabStrip && _lastComputedTabWidths != null) {
+      _pinnedTabWidths ??= _lastComputedTabWidths;
     }
     context.read<HistoryBloc>().add(AddHistory(tab));
     context.read<TabsBloc>().add(RemoveTab(tab));
@@ -788,10 +807,17 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
           : !isTabActive(index) && !isTabActive(index - 1);
       final colorScheme = Theme.of(context).colorScheme;
 
-      // תקציב הרוחב לאלמנטים שאינם הכותרת (X/נעץ), אחרי ה-paddings הקבועים
-      // (~28px) ורווח הטאב הנבחר. מציגים X/נעץ רק אם נשאר מקום פיזי — אחרת הם
-      // היו גולשים בטאב צר. הכותרת תמיד ב-Expanded ומתכווצת לאפס בעת הצורך.
-      final extrasBudget = tabWidth - 28 - (isSelected ? 4 : 0);
+      // בטאב צר הריפודים האופקיים מתכווצים בהדרגה (8→3, 6→3) — אחרת ריפוד קבוע
+      // של ~28px בולע את כל הרוחב והטאב (שאין לו רקע משלו) נעלם ויזואלית.
+      final padScale = ((tabWidth - 40) / 40).clamp(0.0, 1.0);
+      final outerPad = 3 + 3 * padScale;
+      final innerPad = 3 + 5 * padScale;
+
+      // תקציב הרוחב לאלמנטים שאינם הכותרת (X/נעץ), אחרי ה-paddings ורווח הטאב
+      // הנבחר. מציגים X/נעץ רק אם נשאר מקום פיזי — אחרת הם היו גולשים בטאב צר.
+      // הכותרת תמיד ב-Expanded ומתכווצת לאפס בעת הצורך.
+      final extrasBudget =
+          tabWidth - 2 * (outerPad + innerPad) - (isSelected ? 4 : 0);
       final showClose = extrasBudget >= 25 &&
           (tabWidth >= _kTabCloseHideBelowWidth || isSelected || isTabHovered);
       final showPin =
@@ -812,8 +838,8 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
             child: Container(
               constraints: const BoxConstraints(maxHeight: 32),
               padding: EdgeInsets.only(
-                left: 6,
-                right: index == 0 ? 0 : 6,
+                left: outerPad,
+                right: index == 0 ? 0 : outerPad,
               ),
               child: CustomPaint(
                 painter: isSelected
@@ -826,7 +852,7 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
                     : null,
                 child: Tab(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    padding: EdgeInsets.symmetric(horizontal: innerPad),
                     child: DefaultTextStyle(
                       style: TextStyle(
                         color: colorScheme.onSurface,

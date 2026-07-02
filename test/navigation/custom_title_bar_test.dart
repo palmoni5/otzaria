@@ -527,6 +527,67 @@ void main() {
           reason: 'X מתחבא בטאבים צרים שאינם נבחרים/תחת hover');
     });
 
+    testWidgets('בצפיפות הטאב הנבחר שומר רוחב מזערי וכפתור ה-X שלו נשאר',
+        (tester) async {
+      // 20 טאבים ברוחב 900 → החלוקה השווה צונחת מתחת לרוחב שמכיל את ה-X. הטאב
+      // הנבחר חייב לשמור רוחב מזערי (60px) כך שה-X שלו לא ייעלם, והשאר
+      // מתחלקים ביתרה — עדיין ללא חיתוך וללא גלילה.
+      final tabs = List.generate(20, (i) => _makeTextTab('ספר מספר $i'));
+      final tabsBloc = _TestTabsBloc(TabsState(tabs: tabs, currentTabIndex: 0));
+      final navigationBloc = _TestNavigationBloc(
+        const NavigationState(currentScreen: Screen.reading),
+      );
+      final settingsBloc = _TestSettingsBloc(SettingsState.initial());
+
+      addTearDown(() async {
+        for (final t in tabs) {
+          t.dispose();
+        }
+        await tabsBloc.close();
+        await navigationBloc.close();
+        await settingsBloc.close();
+      });
+
+      await _setSurfaceSize(tester, const Size(900, 800));
+      await _pumpTitleBar(
+        tester,
+        tabsBloc: tabsBloc,
+        navigationBloc: navigationBloc,
+        settingsBloc: settingsBloc,
+      );
+      await tester.pumpAndSettle();
+
+      final widths = tester
+          .widgetList<SizedBox>(find.descendant(
+            of: find.byType(ReorderableListView),
+            matching: find.byType(SizedBox),
+          ))
+          .where((b) => b.width != null && b.child is Listener)
+          .map((b) => b.width!)
+          .toList();
+      expect(widths.length, 20);
+      expect(widths.first, moreOrLessEquals(60.0, epsilon: 1.0),
+          reason: 'הטאב הנבחר (אינדקס 0) שומר רוחב מזערי של 60px');
+      expect(widths[1], lessThan(widths.first),
+          reason: 'שאר הטאבים צרים מהנבחר — מתחלקים ביתרה');
+
+      final sumWidth = widths.fold<double>(0, (a, b) => a + b);
+      final listWidth = tester.getSize(find.byType(ReorderableListView)).width;
+      expect(sumWidth, lessThanOrEqualTo(listWidth + 1.0),
+          reason: 'גם עם הרצפה לנבחר — הכול נכנס ללא חיתוך');
+
+      // כפתור ה-X קיים בתוך הטאב הנבחר גם בצפיפות הזו.
+      final selectedClose = find.descendant(
+        of: find.ancestor(
+          of: find.text('ספר מספר 0'),
+          matching: find.byType(Tab),
+        ),
+        matching: find.byIcon(FluentIcons.dismiss_24_regular),
+      );
+      expect(selectedClose, findsOneWidget,
+          reason: 'לטאב הנבחר תמיד יש כפתור סגירה, גם כשהשורה צפופה');
+    });
+
     testWidgets('מספר טאבים גדול — כולם נכנסים ללא חיתוך וללא גלילה',
         (tester) async {
       // ללא רצפת רוחב וללא גלילה: סכום רוחבי הטאבים לא חורג מהרוחב הזמין, כך
