@@ -4,6 +4,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:otzaria/library_update/bloc/library_update_bloc.dart';
 import 'package:otzaria/library_update/repository/library_update_repository.dart';
+import 'package:otzaria/library_update/services/companion_assets_service.dart';
 import 'package:seforim_library_updater/seforim_library_updater.dart';
 
 class _FakeService implements LibraryUpdateService {
@@ -157,17 +158,37 @@ class _GatedService implements LibraryUpdateService {
   }) async {}
 }
 
+/// שירות נלווים מזויף — רושם קריאות, ואופציונלית זורק.
+class _FakeCompanionService extends CompanionAssetsService {
+  _FakeCompanionService({this.throwOnRun = false});
+  final bool throwOnRun;
+  int calls = 0;
+
+  @override
+  Future<void> verifyAndUpdate({
+    void Function(String message)? onStatus,
+    void Function(int received, int? total)? onDownloadProgress,
+    bool Function()? isCancelled,
+  }) async {
+    calls++;
+    if (throwOnRun) throw Exception('companion failed');
+    onStatus?.call('בודק את התלמוד הבבלי');
+  }
+}
+
 LibraryUpdateBloc _bloc(
   LibraryUpdateService service, {
   bool offline = false,
   bool updatesEnabled = true,
   bool prerelease = false,
+  CompanionAssetsService? companionAssets,
 }) =>
     LibraryUpdateBloc(
       repository: service,
       isOfflineMode: () => offline,
       areUpdatesEnabled: () => updatesEnabled,
       allowPrerelease: () => prerelease,
+      companionAssets: companionAssets,
     );
 
 void main() {
@@ -352,6 +373,55 @@ void main() {
       await sub.cancel();
       await bloc.close();
     });
+
+    blocTest<LibraryUpdateBloc, LibraryUpdateState>(
+      'הקבצים הנלווים נבדקים אחרי עדכון דלתא, לפני completed',
+      build: () => _bloc(_FakeService(deltaPlan),
+          companionAssets: _FakeCompanionService()),
+      act: (b) => b.add(const StartLibraryUpdate()),
+      verify: (b) =>
+          expect((b.companionAssets as _FakeCompanionService).calls, 1),
+      expect: () => [
+        isA<LibraryUpdateState>()
+            .having((s) => s.status, 'status', LibraryUpdateStatus.checking),
+        isA<LibraryUpdateState>()
+            .having((s) => s.message, 'message', 'בודק את התלמוד הבבלי'),
+        isA<LibraryUpdateState>()
+            .having((s) => s.status, 'status', LibraryUpdateStatus.completed)
+            .having((s) => s.hasUpdate, 'hasUpdate', true),
+      ],
+    );
+
+    blocTest<LibraryUpdateBloc, LibraryUpdateState>(
+      'הקבצים הנלווים נבדקים גם כשאין עדכון (plan none)',
+      build: () => _bloc(_FakeService(nonePlan),
+          companionAssets: _FakeCompanionService()),
+      act: (b) => b.add(const StartLibraryUpdate()),
+      verify: (b) =>
+          expect((b.companionAssets as _FakeCompanionService).calls, 1),
+      expect: () => [
+        isA<LibraryUpdateState>()
+            .having((s) => s.status, 'status', LibraryUpdateStatus.checking),
+        isA<LibraryUpdateState>()
+            .having((s) => s.message, 'message', 'בודק את התלמוד הבבלי'),
+        isA<LibraryUpdateState>()
+            .having((s) => s.status, 'status', LibraryUpdateStatus.completed),
+      ],
+    );
+
+    blocTest<LibraryUpdateBloc, LibraryUpdateState>(
+      'כשל בקבצים הנלווים לא מפיל את העדכון — עדיין completed',
+      build: () => _bloc(_FakeService(deltaPlan),
+          companionAssets: _FakeCompanionService(throwOnRun: true)),
+      act: (b) => b.add(const StartLibraryUpdate()),
+      expect: () => [
+        isA<LibraryUpdateState>()
+            .having((s) => s.status, 'status', LibraryUpdateStatus.checking),
+        isA<LibraryUpdateState>()
+            .having((s) => s.status, 'status', LibraryUpdateStatus.completed)
+            .having((s) => s.hasUpdate, 'hasUpdate', true),
+      ],
+    );
 
     test('אירוע stage בלי מדידה מנקה applyProgress שאריתי מהאימות', () async {
       final bloc = _bloc(_VerifyThenCommitService(deltaPlan));

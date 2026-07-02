@@ -2,6 +2,7 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:otzaria/core/error_log_file.dart';
+import 'package:otzaria/library_update/services/companion_assets_service.dart';
 import 'package:seforim_library_updater/seforim_library_updater.dart';
 
 import '../repository/library_update_repository.dart';
@@ -16,6 +17,10 @@ part 'library_update_state.dart';
 /// `RefreshLibrary` + `StartIndexing` כש-[LibraryUpdateState.hasUpdate].
 class LibraryUpdateBloc extends Bloc<LibraryUpdateEvent, LibraryUpdateState> {
   final LibraryUpdateService repository;
+
+  /// אימות ועדכון הקבצים הנלווים (תלמוד, קטלוגים, מילון) בסוף כל עדכון.
+  /// null (בבדיקות) — מדלגים.
+  final CompanionAssetsService? companionAssets;
 
   /// קוראים את ההגדרות הרלוונטיות — ניתנים להזרקה לבדיקות.
   final bool Function() isOfflineMode;
@@ -33,6 +38,7 @@ class LibraryUpdateBloc extends Bloc<LibraryUpdateEvent, LibraryUpdateState> {
     required this.isOfflineMode,
     required this.areUpdatesEnabled,
     required this.allowPrerelease,
+    this.companionAssets,
   }) : super(const LibraryUpdateState()) {
     on<StartLibraryUpdate>(_onStart);
     on<ConfirmFullDownload>(_onConfirmFull);
@@ -70,6 +76,8 @@ class LibraryUpdateBloc extends Bloc<LibraryUpdateEvent, LibraryUpdateState> {
       if (_isStale(opId)) return;
       switch (plan.kind) {
         case LibraryUpdatePlanKind.none:
+          await _runCompanionAssets(emit, opId);
+          if (_isStale(opId)) return;
           emit(const LibraryUpdateState(
             status: LibraryUpdateStatus.completed,
             message: 'הספרייה מעודכנת',
@@ -117,6 +125,8 @@ class LibraryUpdateBloc extends Bloc<LibraryUpdateEvent, LibraryUpdateState> {
       // הגענו לכאן ⇒ ה-apply וה-ריענון הצליחו וה-DB עודכן. אם בוטל/הוחלף
       // בינתיים — לא נדרוס את ה-state של הריצה החדשה (ה-DB כבר רוענן ממילא).
       if (_isStale(opId)) return;
+      await _runCompanionAssets(emit, opId);
+      if (_isStale(opId)) return;
       emit(state.copyWith(
         status: LibraryUpdateStatus.completed,
         message: 'הספרייה עודכנה לגרסה ${plan.targetVersion}',
@@ -157,6 +167,8 @@ class LibraryUpdateBloc extends Bloc<LibraryUpdateEvent, LibraryUpdateState> {
         onProgress: (progress) => add(_LibraryUpdateProgressed(progress, opId)),
       );
       if (_isStale(opId)) return;
+      await _runCompanionAssets(emit, opId);
+      if (_isStale(opId)) return;
       emit(state.copyWith(
         status: LibraryUpdateStatus.completed,
         message: 'הספרייה הותקנה מחדש לגרסה ${plan.targetVersion}',
@@ -172,6 +184,39 @@ class LibraryUpdateBloc extends Bloc<LibraryUpdateEvent, LibraryUpdateState> {
         message: 'שגיאה בהורדה המלאה',
         errorMessage: e.toString(),
       ));
+    }
+  }
+
+  /// מוודא שהקבצים הנלווים (תלמוד, קטלוגים, מילון) קיימים ומעודכנים, בסוף
+  /// כל בדיקת/החלת עדכון. best-effort — כשל לא הופך את העדכון לשגיאה.
+  Future<void> _runCompanionAssets(
+    Emitter<LibraryUpdateState> emit,
+    int opId,
+  ) async {
+    final service = companionAssets;
+    if (service == null) return;
+    try {
+      await service.verifyAndUpdate(
+        isCancelled: () => _isStale(opId),
+        onStatus: (message) {
+          if (_isStale(opId)) return;
+          emit(state.copyWith(
+            status: LibraryUpdateStatus.checking,
+            message: message,
+          ));
+        },
+        onDownloadProgress: (received, total) {
+          if (_isStale(opId)) return;
+          emit(state.copyWith(
+            status: LibraryUpdateStatus.downloading,
+            bytesDownloaded: received,
+            // total לא ידוע ⇒ 0, כדי לא לרשת bytesTotal ישן מהורדת ה-DB.
+            bytesTotal: total ?? 0,
+          ));
+        },
+      );
+    } catch (e, st) {
+      _logUpdateError('companionAssets', e, st);
     }
   }
 

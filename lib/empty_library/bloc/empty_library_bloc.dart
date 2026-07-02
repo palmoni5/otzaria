@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:archive/archive_io.dart';
 import 'package:bloc/bloc.dart';
 import 'package:otzaria/core/app_paths.dart';
 import 'package:file_picker/file_picker.dart';
@@ -13,6 +12,7 @@ import 'package:otzaria/empty_library/bloc/empty_library_event.dart';
 import 'package:otzaria/empty_library/bloc/empty_library_state.dart';
 import 'package:otzaria/settings/settings_exports.dart';
 import 'package:otzaria/utils/download_eta_estimator.dart';
+import 'package:otzaria/utils/file/tar_zst_extractor.dart';
 import 'package:otzaria/utils/file/zip_extractor_service.dart';
 import 'package:otzaria/utils/file/zstd_stream_extractor.dart';
 import 'package:path/path.dart' as path;
@@ -984,19 +984,9 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
       ZstdStreamExtractor.extractToFile(archivePath, outputPath,
           onProgress: onProgress);
 
-  /// מחלץ tar.zst לתיקיית היעד בזרימה נמוכת-זיכרון: חילוץ ה-zst לקובץ tar
-  /// זמני דרך השירות המשותף, ואז `extractFileToDisk` שקורא בזרימה מהקובץ.
   static Future<void> _extractTarZst(String archivePath, String outputDir,
-      void Function(double progress)? onProgress) async {
-    final tarPath = '$archivePath.tar';
-    await ZstdStreamExtractor.extractToFile(archivePath, tarPath,
-        onProgress: onProgress);
-    try {
-      await extractFileToDisk(tarPath, outputDir);
-    } finally {
-      await File(tarPath).delete().catchError((_) => File(tarPath));
-    }
-  }
+          void Function(double progress)? onProgress) =>
+      extractTarZstToDir(archivePath, outputDir, onProgress: onProgress);
 
   /// עוקב אחרי redirects ידנית ומחזיר את ה-URL הסופי ואת גודל הקובץ
   /// (Content-Length). נדרש כי package:http מאבד את ה-Range header בעת
