@@ -99,7 +99,7 @@ bool _textOverflows({
 Decoration _libraryTooltipDecoration(BuildContext context) {
   final cs = Theme.of(context).colorScheme;
   return BoxDecoration(
-    color: cs.surfaceContainerHigh,
+    color: cs.inverseSurface,
     borderRadius: AppTokens.borderRadiusAll,
   );
 }
@@ -107,7 +107,7 @@ Decoration _libraryTooltipDecoration(BuildContext context) {
 TextStyle _libraryTooltipTextStyle(BuildContext context) {
   final theme = Theme.of(context);
   return (theme.textTheme.bodyMedium ?? const TextStyle()).copyWith(
-    color: theme.colorScheme.onSurface,
+    color: theme.colorScheme.onInverseSurface,
     fontSize: 14,
     height: 1.3,
   );
@@ -552,6 +552,31 @@ class _BookGridActionColumn extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if ((book.heShortDesc ?? '').isNotEmpty)
+          Tooltip(
+            message: book.heShortDesc ?? '',
+            waitDuration: const Duration(milliseconds: 400),
+            textAlign: TextAlign.right,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            margin: const EdgeInsets.all(12),
+            constraints: const BoxConstraints(maxWidth: 320),
+            textStyle: _libraryTooltipTextStyle(context),
+            decoration: _libraryTooltipDecoration(context),
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                FluentIcons.info_24_regular,
+                size: 15,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
         FutureBuilder<bool>(
           future: _canDeleteBookFromLibrary(book),
           builder: (context, snapshot) {
