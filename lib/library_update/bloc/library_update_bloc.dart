@@ -252,6 +252,7 @@ class LibraryUpdateBloc extends Bloc<LibraryUpdateEvent, LibraryUpdateState> {
       totalSteps: p.totalSteps,
       bytesDownloaded: p.bytesDownloaded,
       bytesTotal: p.bytesTotal,
+      applyProgress: p.applyProgress,
     ));
   }
 

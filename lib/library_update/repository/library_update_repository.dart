@@ -33,6 +33,9 @@ class LibraryUpdateProgress {
   /// תת-שלב גולמי בתוך ה-apply (מ-`PatchApplier.onStage`), לתצוגה מפורטת.
   final String? stage;
 
+  /// יחס התקדמות (0..1) בתוך שלב אימות ה-hash הארוך; null בשאר שלבי ה-apply.
+  final double? applyProgress;
+
   const LibraryUpdateProgress({
     required this.phase,
     this.stepIndex = 0,
@@ -40,6 +43,7 @@ class LibraryUpdateProgress {
     this.bytesDownloaded,
     this.bytesTotal,
     this.stage,
+    this.applyProgress,
   });
 }
 
@@ -140,6 +144,12 @@ class LibraryUpdateRepository implements LibraryUpdateService {
     final cacheDir =
         Directory(p.join(await dataRootProvider(), 'library_update_cache'));
 
+    // סך-הבתים של ה-hash מהריצה הקודמת — total מדויק למד ההתקדמות (גודל
+    // הקובץ הוא הערכת-יתר של ~25%). בריצה הראשונה נופלים לגודל הקובץ.
+    final hintFile = File(p.join(cacheDir.path, 'verify_total_bytes.txt'));
+    var verifyTotalHint = _readIntQuietly(hintFile);
+    var lastVerifyDone = 0;
+
     final steps = plan.deltaSteps;
     for (var i = 0; i < steps.length; i++) {
       final step = steps[i];
@@ -182,13 +192,29 @@ class LibraryUpdateRepository implements LibraryUpdateService {
           dbPath: dbPath,
           patchPath: patchPath,
           step: step,
+          verifyTotalBytesHint: verifyTotalHint,
           onStage: (stage) => onProgress?.call(LibraryUpdateProgress(
             phase: LibraryUpdatePhase.applying,
             stepIndex: i,
             totalSteps: steps.length,
             stage: stage,
           )),
+          onVerifyProgress: (done, total) {
+            lastVerifyDone = done;
+            onProgress?.call(LibraryUpdateProgress(
+              phase: LibraryUpdatePhase.applying,
+              stepIndex: i,
+              totalSteps: steps.length,
+              stage: 'verifyToHash',
+              applyProgress: total > 0 ? (done / total).clamp(0.0, 1.0) : null,
+            ));
+          },
         );
+        // הדיווח האחרון מ-compute הוא הסך המדויק — total לריצות הבאות.
+        if (lastVerifyDone > 0) {
+          verifyTotalHint = lastVerifyDone;
+          _writeIntQuietly(hintFile, lastVerifyDone);
+        }
       } finally {
         _deleteQuietly(patchPath); // מנקה גם בכשל apply, לא רק בהצלחה.
       }
@@ -333,7 +359,9 @@ class LibraryUpdateRepository implements LibraryUpdateService {
     required String dbPath,
     required String patchPath,
     required PatchEdge step,
+    int? verifyTotalBytesHint,
     void Function(String stage)? onStage,
+    void Function(int done, int total)? onVerifyProgress,
   }) {
     return DatabaseLibraryProvider.operationQueue.enqueue(() async {
       await SqliteDataProvider.instance.closeForExternalWrite();
@@ -351,7 +379,9 @@ class LibraryUpdateRepository implements LibraryUpdateService {
           dbPath: dbPath,
           patchPath: patchPath,
           manifest: step.manifest,
+          verifyTotalBytesHint: verifyTotalBytesHint,
           onStage: onStage,
+          onVerifyProgress: onVerifyProgress,
         );
         recovery.finishSuccess(dbPath);
       } catch (_) {
@@ -369,17 +399,25 @@ class LibraryUpdateRepository implements LibraryUpdateService {
     required String dbPath,
     required String patchPath,
     required DeltaManifest manifest,
+    int? verifyTotalBytesHint,
     void Function(String stage)? onStage,
+    void Function(int done, int total)? onVerifyProgress,
   }) async {
     final port = ReceivePort();
     final sub = port.listen((msg) {
-      if (msg is String) onStage?.call(msg);
+      // String=שם תת-שלב (onStage); record=(bytesHashed, total) של האימות.
+      if (msg is String) {
+        onStage?.call(msg);
+      } else if (msg is (int, int)) {
+        onVerifyProgress?.call(msg.$1, msg.$2);
+      }
     });
     try {
       await _runApplyIsolate(
         dbPath: dbPath,
         patchPath: patchPath,
         manifest: manifest,
+        verifyTotalBytesHint: verifyTotalBytesHint,
         sendPort: port.sendPort,
       );
     } finally {
@@ -396,11 +434,13 @@ class LibraryUpdateRepository implements LibraryUpdateService {
     required String patchPath,
     required DeltaManifest manifest,
     required SendPort sendPort,
+    int? verifyTotalBytesHint,
   }) {
     return Isolate.run(() => const PatchApplier().apply(
           dbPath: dbPath,
           patchPath: patchPath,
           manifest: manifest,
+          verifyTotalBytesHint: verifyTotalBytesHint,
           // verifyFromHash=false: verifyToHash אחרי ה-apply הוא הערובה האמיתית —
           // אם המקור שונה, ה-toHash ייכשל וה-transaction יתגלגל אחורה. הבדיקה
           // המקדימה רק כפילה קריאה של כל ה-DB (5.5GB) לחינם.
@@ -409,6 +449,7 @@ class LibraryUpdateRepository implements LibraryUpdateService {
           // שביניהן) מול ה-DB התקין, אז התאמת hash כבר שוללת הפרות FK — חוסך ~60ש.
           checkForeignKeys: false,
           onStage: (stage) => sendPort.send(stage),
+          onVerifyProgress: (done, total) => sendPort.send((done, total)),
         ));
   }
 
@@ -424,6 +465,23 @@ class LibraryUpdateRepository implements LibraryUpdateService {
     try {
       final file = File(path);
       if (file.existsSync()) file.deleteSync();
+    } catch (_) {}
+  }
+
+  static int? _readIntQuietly(File file) {
+    try {
+      if (!file.existsSync()) return null;
+      final value = int.tryParse(file.readAsStringSync().trim());
+      return (value != null && value > 0) ? value : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static void _writeIntQuietly(File file, int value) {
+    try {
+      file.parent.createSync(recursive: true);
+      file.writeAsStringSync('$value');
     } catch (_) {}
   }
 }

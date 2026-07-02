@@ -83,6 +83,48 @@ class _GatedAtApplyService implements LibraryUpdateService {
   }) async {}
 }
 
+/// שירות שמדמה רצף apply אמיתי: מדידת אימות ואז תת-שלב בלי מדידה — לבדיקת
+/// ניקוי applyProgress שאריתי.
+class _VerifyThenCommitService implements LibraryUpdateService {
+  final LibraryUpdatePlan plan;
+  _VerifyThenCommitService(this.plan);
+
+  @override
+  Future<RecoveryResult> recoverIfNeeded() async =>
+      const RecoveryResult(RecoveryAction.none);
+
+  @override
+  Future<LibraryUpdatePlan> checkForUpdate(
+          {required bool allowPrerelease}) async =>
+      plan;
+
+  @override
+  Future<void> applyDeltaPlan(
+    LibraryUpdatePlan plan, {
+    LibraryUpdateProgressCallback? onProgress,
+    bool Function()? isCancelled,
+  }) async {
+    onProgress?.call(const LibraryUpdateProgress(
+      phase: LibraryUpdatePhase.applying,
+      stage: 'verifyToHash',
+      applyProgress: 0.5,
+    ));
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    onProgress?.call(const LibraryUpdateProgress(
+      phase: LibraryUpdatePhase.applying,
+      stage: 'commit',
+    ));
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+
+  @override
+  Future<void> applyFullDownload(
+    LibraryUpdatePlan plan, {
+    LibraryUpdateProgressCallback? onProgress,
+    bool Function()? isCancelled,
+  }) async {}
+}
+
 /// שירות שבו applyDeltaPlan נחסם עד שמשחררים את ה-gate — לבדיקת race של ביטול.
 class _GatedService implements LibraryUpdateService {
   final LibraryUpdatePlan plan;
@@ -307,6 +349,25 @@ void main() {
           reason: 'עדכון שהושלם חייב להפעיל ריענון ספרייה/אינדוקס');
       expect(seen.contains(LibraryUpdateStatus.idle), isFalse,
           reason: 'ביטול שנחסם לא אמור להחזיר ל-idle');
+      await sub.cancel();
+      await bloc.close();
+    });
+
+    test('אירוע stage בלי מדידה מנקה applyProgress שאריתי מהאימות', () async {
+      final bloc = _bloc(_VerifyThenCommitService(deltaPlan));
+      final seen = <LibraryUpdateState>[];
+      final sub = bloc.stream.listen(seen.add);
+
+      bloc.add(const StartLibraryUpdate());
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+
+      final applying =
+          seen.where((s) => s.status == LibraryUpdateStatus.applying).toList();
+      expect(applying, hasLength(2));
+      expect(applying[0].applyProgress, 0.5);
+      expect(applying[1].applyProgress, isNull,
+          reason: 'commit ללא מדידה חייב לנקות את אחוז האימות הקודם, '
+              'אחרת המד מציג ערך שאריתי');
       await sub.cancel();
       await bloc.close();
     });
