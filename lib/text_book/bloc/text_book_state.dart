@@ -466,6 +466,11 @@ class TextBookLoaded extends TextBookState {
   List<Object?> get props => [
         book.title,
         book.id,
+        // שדות שההעשרה ברקע (UpdateResolvedBookId) מעדכנת — בלעדיהם ה-emit
+        // של העדכון נבלע כשווה-ערך והדיאלוגים לא רואים את הקטגוריות.
+        book.heCategories,
+        book.author,
+        book.heEra,
         contentVersion,
         content.length,
         fontSize,

@@ -440,6 +440,8 @@ class _PageShapeSettingsDialogState extends State<PageShapeSettingsDialog> {
       content: SizedBox(
         width: dialogWidth,
         child: SingleChildScrollView(
+          // מרווח בקצה (שמאל ב-RTL) כדי שסרגל הגלילה לא יכסה את התוכן.
+          padding: const EdgeInsetsDirectional.only(end: 14),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,

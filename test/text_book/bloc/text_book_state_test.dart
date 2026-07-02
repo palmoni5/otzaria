@@ -73,6 +73,13 @@ void main() {
     test('selectedIndices defaults to empty', () {
       expect(_loadedState().selectedIndices, isEmpty);
     });
+
+    test('changes when heCategories is enriched in background', () {
+      final beforeEnrich = _loadedState();
+      final afterEnrich = _loadedState(heCategories: 'תנ״ך, תורה');
+
+      expect(beforeEnrich, isNot(equals(afterEnrich)));
+    });
   });
 }
 
@@ -84,9 +91,10 @@ TextBookLoaded _loadedState({
   Map<String, String> spacingValues = const {},
   SearchMode searchMode = SearchMode.exact,
   Set<int> selectedIndices = const {},
+  String? heCategories,
 }) {
   return TextBookLoaded(
-    book: TextBook(title: 'ספר בדיקה'),
+    book: TextBook(title: 'ספר בדיקה', heCategories: heCategories),
     showLeftPane: false,
     content: content,
     contentVersion: contentVersion,
