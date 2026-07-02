@@ -1186,6 +1186,7 @@ class _PrintingScreenState extends State<PrintingScreen> {
     required int selectedEnd,
     required bool shouldReplaceHolyNames,
     required List<PersonalNote> personalNotes,
+    bool keepHtml = false,
   }) async {
     final blocks = <Map<String, String>>[];
 
@@ -1238,6 +1239,7 @@ class _PrintingScreenState extends State<PrintingScreen> {
             final content = await _getCommentaryContent(
               link,
               shouldReplaceHolyNames: shouldReplaceHolyNames,
+              keepHtml: keepHtml,
             );
             if (content.trim().isEmpty) continue;
             blocks.add({
@@ -1313,8 +1315,10 @@ class _PrintingScreenState extends State<PrintingScreen> {
       dataString = replaceHolyNames(dataString);
     }
 
-    final allLines = stripHtmlIfNeeded(dataString).split('\n').toList();
-    var bookName = allLines.isNotEmpty ? allLines.first : widget.bookId;
+    // שומרים את תגיות ה-HTML — WordExportService ממיר אותן לעיצוב במסמך
+    final allLines = dataString.split('\n').toList();
+    var bookName =
+        allLines.isNotEmpty ? stripHtmlIfNeeded(allLines.first) : widget.bookId;
     if (bookName.trim().isEmpty) {
       bookName = widget.bookId;
     }
@@ -1332,6 +1336,7 @@ class _PrintingScreenState extends State<PrintingScreen> {
         selectedEnd: selectedEnd,
         shouldReplaceHolyNames: shouldReplaceHolyNames,
         personalNotes: personalNotes,
+        keepHtml: true,
       ),
     );
 
@@ -1464,6 +1469,8 @@ class _PrintingScreenState extends State<PrintingScreen> {
           format: format,
           isLandscape: orientation == pw.PageOrientation.landscape,
           pageMargin: pageMargin,
+          fontFamily: fontName,
+          fontSize: fontSize,
         );
         await file.writeAsBytes(bytes);
         UiSnack.showSuccess('קובץ Word נשמר בהצלחה');
@@ -1537,13 +1544,16 @@ class _PrintingScreenState extends State<PrintingScreen> {
   Future<String> _getCommentaryContent(
     Link link, {
     required bool shouldReplaceHolyNames,
+    bool keepHtml = false,
   }) async {
-    final key = '${link.path2}::${link.index2}::${link.heRef}';
+    final key = '${link.path2}::${link.index2}::${link.heRef}::$keepHtml';
     final cached = _commentaryContentCache[key];
     if (cached != null) return cached;
 
     var text = await link.content;
-    text = stripHtmlIfNeeded(text);
+    if (!keepHtml) {
+      text = stripHtmlIfNeeded(text);
+    }
     if (_removeNikud && _removeTaamim) {
       text = removeVolwels(text);
     } else if (_removeNikud && !_removeTaamim) {

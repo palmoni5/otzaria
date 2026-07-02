@@ -20,6 +20,8 @@ Archive _buildArchive(
   PdfPageFormat format = PdfPageFormat.a4,
   bool isLandscape = false,
   double pageMargin = 20,
+  String? fontFamily,
+  double? fontSize,
 }) {
   final bytes = WordExportService.createWordDocument(
     title: title,
@@ -27,6 +29,8 @@ Archive _buildArchive(
     format: format,
     isLandscape: isLandscape,
     pageMargin: pageMargin,
+    fontFamily: fontFamily,
+    fontSize: fontSize,
   );
   return ZipDecoder().decodeBytes(bytes);
 }
@@ -537,6 +541,192 @@ void main() {
         (i) => PrintBlock(kind: PrintBlockKind.text, text: 'פסקה $i'),
       );
       expect(() => _buildArchive(blocks), returnsNormally);
+    });
+  });
+
+  // ─── עיצוב פנים-שורתי מ-HTML ─────────────────────────────────────────────────
+  group('WordExportService - עיצוב פנים-שורתי מ-HTML', () {
+    test('<b> → run מודגש, והתגית לא מודלפת לפלט', () {
+      final archive = _buildArchive(const [
+        PrintBlock(kind: PrintBlockKind.text, text: 'טקסט <b>מודגש</b> רגיל'),
+      ]);
+      final xml = _readArchiveFile(archive, 'word/document.xml');
+      expect(xml, contains('<w:b/><w:bCs/>'));
+      expect(xml, contains('מודגש'));
+      expect(xml, isNot(contains('&lt;b&gt;')));
+    });
+
+    test('טקסט מחוץ ל-<b> לא מקבל הדגשה', () {
+      final archive = _buildArchive(const [
+        PrintBlock(kind: PrintBlockKind.text, text: 'רגיל <b>מודגש</b>'),
+      ]);
+      final xml = _readArchiveFile(archive, 'word/document.xml');
+      final plainRun = RegExp('<w:r><w:rPr><w:rtl/></w:rPr>'
+          '<w:t xml:space="preserve">רגיל </w:t></w:r>');
+      expect(xml, matches(plainRun));
+    });
+
+    test('<strong> ו-<em> ממופים למודגש ונטוי', () {
+      final archive = _buildArchive(const [
+        PrintBlock(
+          kind: PrintBlockKind.text,
+          text: '<strong>חזק</strong> <em>נטוי</em>',
+        ),
+      ]);
+      final xml = _readArchiveFile(archive, 'word/document.xml');
+      expect(xml, contains('<w:b/><w:bCs/>'));
+      expect(xml, contains('<w:i/><w:iCs/>'));
+    });
+
+    test('<sup> → superscript', () {
+      final archive = _buildArchive(const [
+        PrintBlock(kind: PrintBlockKind.text, text: 'טקסט<sup>1</sup>'),
+      ]);
+      final xml = _readArchiveFile(archive, 'word/document.xml');
+      expect(xml, contains('<w:vertAlign w:val="superscript"/>'));
+    });
+
+    test('<u> → קו תחתון', () {
+      final archive = _buildArchive(const [
+        PrintBlock(kind: PrintBlockKind.text, text: '<u>מסומן</u>'),
+      ]);
+      final xml = _readArchiveFile(archive, 'word/document.xml');
+      expect(xml, contains('<w:u w:val="single"/>'));
+    });
+
+    test('<small> מקטין ו-<big> מגדיל יחסית לגודל הבסיס', () {
+      final archive = _buildArchive(
+        const [
+          PrintBlock(
+            kind: PrintBlockKind.text,
+            text: '<small>קטן</small> <big>גדול</big>',
+          ),
+        ],
+        fontSize: 10,
+      );
+      final xml = _readArchiveFile(archive, 'word/document.xml');
+      expect(xml, contains('<w:sz w:val="16"/>')); // 10*0.8=8pt
+      expect(xml, contains('<w:sz w:val="24"/>')); // 10*1.2=12pt
+    });
+
+    test('עיצוב מקונן: <b><i> → run עם שניהם', () {
+      final archive = _buildArchive(const [
+        PrintBlock(kind: PrintBlockKind.text, text: '<b><i>שניהם</i></b>'),
+      ]);
+      final xml = _readArchiveFile(archive, 'word/document.xml');
+      expect(xml, contains('<w:b/><w:bCs/><w:i/><w:iCs/>'));
+    });
+
+    test('תגית לא מוכרת מוסרת אך התוכן נשמר', () {
+      final archive = _buildArchive(const [
+        PrintBlock(
+          kind: PrintBlockKind.text,
+          text: '<span class="x">תוכן פנימי</span>',
+        ),
+      ]);
+      final xml = _readArchiveFile(archive, 'word/document.xml');
+      expect(xml, contains('תוכן פנימי'));
+      expect(xml, isNot(contains('span')));
+    });
+
+    test('<br> מייצר w:br', () {
+      final archive = _buildArchive(const [
+        PrintBlock(kind: PrintBlockKind.text, text: 'שורה<br>שורה נוספת'),
+      ]);
+      final xml = _readArchiveFile(archive, 'word/document.xml');
+      expect(xml, contains('<w:br/>'));
+    });
+
+    test('ישות &nbsp; מפוענחת ולא מודלפת', () {
+      final archive = _buildArchive(const [
+        PrintBlock(kind: PrintBlockKind.text, text: 'מילה&nbsp;מילה'),
+      ]);
+      final xml = _readArchiveFile(archive, 'word/document.xml');
+      expect(xml, isNot(contains('nbsp')));
+    });
+
+    test('עיצוב פנים-שורתי בבלוק מפרש', () {
+      final archive = _buildArchive(const [
+        PrintBlock(
+          kind: PrintBlockKind.commentary,
+          text: '<b>ד"ה</b> פירוש',
+        ),
+      ]);
+      final xml = _readArchiveFile(archive, 'word/document.xml');
+      expect(xml, contains('<w:b/><w:bCs/>'));
+      expect(xml, contains('<w:pStyle w:val="CommentaryBody"/>'));
+    });
+  });
+
+  // ─── זיהוי כותרות מתגיות HTML ────────────────────────────────────────────────
+  group('WordExportService - זיהוי כותרות מ-HTML', () {
+    test('בלוק text עטוף <h2> → Heading2 בלי התגית', () {
+      final archive = _buildArchive(const [
+        PrintBlock(kind: PrintBlockKind.text, text: '<h2>פרק שני</h2>'),
+      ]);
+      final xml = _readArchiveFile(archive, 'word/document.xml');
+      expect(xml, contains('<w:pStyle w:val="Heading2"/>'));
+      expect(xml, contains('פרק שני'));
+    });
+
+    test('<h6> נצמד ל-Heading4', () {
+      final archive = _buildArchive(const [
+        PrintBlock(kind: PrintBlockKind.text, text: '<h6>תת-סעיף</h6>'),
+      ]);
+      final xml = _readArchiveFile(archive, 'word/document.xml');
+      expect(xml, contains('<w:pStyle w:val="Heading4"/>'));
+    });
+
+    test('שורה עם <h2> באמצע הטקסט אינה הופכת לכותרת', () {
+      final archive = _buildArchive(const [
+        PrintBlock(
+          kind: PrintBlockKind.text,
+          text: 'לפני <h2>כותרת</h2> אחרי',
+        ),
+      ]);
+      final xml = _readArchiveFile(archive, 'word/document.xml');
+      expect(xml, isNot(contains('<w:pStyle w:val="Heading2"/>')));
+    });
+  });
+
+  // ─── גופן וגודל מותאמים ──────────────────────────────────────────────────────
+  group('WordExportService - גופן וגודל מותאמים', () {
+    test('ללא פרמטרים → Times New Roman וגודל 13 (תאימות לאחור)', () {
+      final archive = _buildArchive(const [
+        PrintBlock(kind: PrintBlockKind.text, text: 'טקסט'),
+      ]);
+      final styles = _readArchiveFile(archive, 'word/styles.xml');
+      expect(styles, contains('Times New Roman'));
+      expect(styles, contains('<w:sz w:val="26"/>'));
+    });
+
+    test('מזהה משפחה באפליקציה ממופה לשם הגופן במערכת', () {
+      final archive = _buildArchive(
+        const [PrintBlock(kind: PrintBlockKind.text, text: 'טקסט')],
+        fontFamily: 'FrankRuhlCLM',
+      );
+      final styles = _readArchiveFile(archive, 'word/styles.xml');
+      expect(styles, contains('Frank Ruehl CLM'));
+      expect(styles, isNot(contains('Times New Roman')));
+    });
+
+    test('גופן שאינו במיפוי מועבר כמות שהוא', () {
+      final archive = _buildArchive(
+        const [PrintBlock(kind: PrintBlockKind.text, text: 'טקסט')],
+        fontFamily: 'David',
+      );
+      final styles = _readArchiveFile(archive, 'word/styles.xml');
+      expect(styles, contains('w:cs="David"'));
+    });
+
+    test('fontSize משנה את גודל הבסיס והכותרות נגזרות ממנו', () {
+      final archive = _buildArchive(
+        const [PrintBlock(kind: PrintBlockKind.text, text: 'טקסט')],
+        fontSize: 15,
+      );
+      final styles = _readArchiveFile(archive, 'word/styles.xml');
+      expect(styles, contains('<w:sz w:val="30"/>')); // Normal 15pt
+      expect(styles, contains('<w:sz w:val="34"/>')); // H1 = base+2
     });
   });
 }

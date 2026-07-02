@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:html/dom.dart' as dom;
+import 'package:html/parser.dart' as html_parser;
 import 'package:otzaria/printing/print_content_models.dart';
 import 'package:pdf/pdf.dart';
 
@@ -12,6 +14,8 @@ class WordExportService {
     required PdfPageFormat format,
     required bool isLandscape,
     required double pageMargin,
+    String? fontFamily,
+    double? fontSize,
   }) {
     ArchiveFile xmlFile(String path, String content) {
       final bytes = utf8.encode(content);
@@ -19,6 +23,8 @@ class WordExportService {
     }
 
     final footnotes = <_WordFootnote>[];
+    final basePt = fontSize ?? 13.0;
+    final fontName = _wordFontNames[fontFamily] ?? fontFamily;
 
     final archive = Archive()
       ..addFile(xmlFile('[Content_Types].xml', _contentTypesXml))
@@ -35,10 +41,19 @@ class WordExportService {
             format: format,
             isLandscape: isLandscape,
             pageMargin: pageMargin,
+            basePt: basePt,
           ),
         ),
       )
-      ..addFile(xmlFile('word/styles.xml', _stylesXml))
+      ..addFile(
+        xmlFile(
+          'word/styles.xml',
+          _buildStylesXml(
+            fontName: fontName ?? 'Times New Roman',
+            basePt: basePt,
+          ),
+        ),
+      )
       ..addFile(xmlFile('word/numbering.xml', _numberingXml))
       ..addFile(xmlFile('word/footnotes.xml', _buildFootnotesXml(footnotes)))
       ..addFile(xmlFile('word/header1.xml', _buildHeaderXml(title)))
@@ -56,6 +71,7 @@ class WordExportService {
     required PdfPageFormat format,
     required bool isLandscape,
     required double pageMargin,
+    required double basePt,
   }) {
     final pageWidth = isLandscape ? format.height : format.width;
     final pageHeight = isLandscape ? format.width : format.height;
@@ -65,11 +81,11 @@ class WordExportService {
     final orient = isLandscape ? ' w:orient="landscape"' : '';
 
     final body = StringBuffer()
-      ..write(_paragraphXml(title, 'Title'))
-      ..write(_paragraphXml('', 'BodyRtl'));
+      ..write(_paragraphXml(title, 'Title', basePt))
+      ..write(_paragraphXml('', 'BodyRtl', basePt));
 
     for (final block in blocks) {
-      body.write(_paragraphForBlock(block, footnotes));
+      body.write(_paragraphForBlock(block, footnotes, basePt));
     }
 
     body.write('''
@@ -104,13 +120,20 @@ class WordExportService {
 </w:document>''';
   }
 
+  /// שורה העטופה כולה בתגית כותרת, למשל `<h2>...</h2>`.
+  static final RegExp _headingWrapper = RegExp(
+    r'^<h([1-6])[^>]*>([\s\S]*)</h\1>\s*$',
+    caseSensitive: false,
+  );
+
   static String _paragraphForBlock(
     PrintBlock block,
     List<_WordFootnote> footnotes,
+    double basePt,
   ) {
     final text = block.text.trimRight();
     if (text.isEmpty) {
-      return _paragraphXml('', 'BodyRtl');
+      return _paragraphXml('', 'BodyRtl', basePt);
     }
 
     switch (block.kind) {
@@ -119,28 +142,42 @@ class WordExportService {
         return _paragraphXml(
           text,
           'Heading$level',
+          basePt,
           footnotes: block.footnotes,
           registry: footnotes,
         );
       case PrintBlockKind.text:
+        final headingMatch = _headingWrapper.firstMatch(text.trim());
+        if (headingMatch != null) {
+          final level = int.parse(headingMatch.group(1)!).clamp(1, 4);
+          return _paragraphXml(
+            headingMatch.group(2)!,
+            'Heading$level',
+            basePt,
+            footnotes: block.footnotes,
+            registry: footnotes,
+          );
+        }
         return _paragraphXml(
           text,
           'BodyRtl',
+          basePt,
           footnotes: block.footnotes,
           registry: footnotes,
         );
       case PrintBlockKind.commentaryTitle:
-        return _paragraphXml(text, 'CommentaryHeading');
+        return _paragraphXml(text, 'CommentaryHeading', basePt);
       case PrintBlockKind.commentaryGroupTitle:
-        return _paragraphXml(text, 'CommentarySubheading');
+        return _paragraphXml(text, 'CommentarySubheading', basePt);
       case PrintBlockKind.commentary:
-        return _paragraphXml(text, 'CommentaryBody');
+        return _paragraphXml(text, 'CommentaryBody', basePt);
     }
   }
 
   static String _paragraphXml(
     String text,
-    String styleId, {
+    String styleId,
+    double basePt, {
     List<PrintFootnote> footnotes = const [],
     List<_WordFootnote>? registry,
   }) {
@@ -161,19 +198,8 @@ class WordExportService {
     ${_paragraphPropertiesXml(styleId)}
   </w:pPr>''');
 
-    final parts = text.split('\n');
-    for (var i = 0; i < parts.length; i++) {
-      final part = _escapeXml(parts[i]);
-      if (part.isNotEmpty) {
-        buffer.write('''
-<w:r>
-  <w:rPr><w:rtl/></w:rPr>
-  <w:t xml:space="preserve">$part</w:t>
-</w:r>''');
-      }
-      if (i < parts.length - 1) {
-        buffer.write('<w:r><w:rPr><w:rtl/></w:rPr><w:br/></w:r>');
-      }
+    for (final run in _parseInlineRuns(text)) {
+      buffer.write(_runXml(run, basePt));
     }
 
     for (final footnote in footnotes) {
@@ -189,6 +215,74 @@ class WordExportService {
 
     buffer.write('</w:p>');
     return buffer.toString();
+  }
+
+  /// מפרק שורת HTML לרצף runs עם עיצוב פנים-שורתי (מודגש, נטוי, עילי וכו').
+  /// תגיות לא מוכרות מוסרות אך תוכנן נשמר.
+  static List<_InlineRun> _parseInlineRuns(String text) {
+    final fragment = html_parser.parseFragment(text);
+    final runs = <_InlineRun>[];
+
+    void walk(dom.Node node, _RunStyle style) {
+      if (node is dom.Text) {
+        final parts = node.data.split('\n');
+        for (var i = 0; i < parts.length; i++) {
+          if (parts[i].isNotEmpty) {
+            runs.add(_InlineRun(text: parts[i], style: style));
+          }
+          if (i < parts.length - 1) {
+            runs.add(const _InlineRun.lineBreak());
+          }
+        }
+        return;
+      }
+      if (node is dom.Element) {
+        if (node.localName == 'br') {
+          runs.add(const _InlineRun.lineBreak());
+          return;
+        }
+        final childStyle = switch (node.localName) {
+          'b' || 'strong' => style.copyWith(bold: true),
+          'i' || 'em' => style.copyWith(italic: true),
+          'u' => style.copyWith(underline: true),
+          'sup' => style.copyWith(superscript: true),
+          'sub' => style.copyWith(subscript: true),
+          'small' => style.copyWith(small: true),
+          'big' => style.copyWith(big: true),
+          _ => style,
+        };
+        for (final child in node.nodes) {
+          walk(child, childStyle);
+        }
+      }
+    }
+
+    for (final node in fragment.nodes) {
+      walk(node, const _RunStyle());
+    }
+    return runs;
+  }
+
+  static String _runXml(_InlineRun run, double basePt) {
+    if (run.isBreak) {
+      return '<w:r><w:rPr><w:rtl/></w:rPr><w:br/></w:r>';
+    }
+    final style = run.style;
+    final props = StringBuffer('<w:rtl/>');
+    if (style.bold) props.write('<w:b/><w:bCs/>');
+    if (style.italic) props.write('<w:i/><w:iCs/>');
+    if (style.underline) props.write('<w:u w:val="single"/>');
+    if (style.superscript) {
+      props.write('<w:vertAlign w:val="superscript"/>');
+    } else if (style.subscript) {
+      props.write('<w:vertAlign w:val="subscript"/>');
+    }
+    if (style.small || style.big) {
+      final sz = _halfPoints(basePt * (style.small ? 0.8 : 1.2));
+      props.write('<w:sz w:val="$sz"/><w:szCs w:val="$sz"/>');
+    }
+    return '<w:r><w:rPr>$props</w:rPr>'
+        '<w:t xml:space="preserve">${_escapeXml(run.text)}</w:t></w:r>';
   }
 
   static String _paragraphPropertiesXml(String styleId) {
@@ -348,13 +442,38 @@ const String _numberingXml =
   <w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num>
 </w:numbering>''';
 
-const String _stylesXml =
-    '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+/// שמות הגופנים כפי שהם מותקנים במערכת, לפי מזהה המשפחה באפליקציה.
+/// אם הגופן לא מותקן אצל המשתמש, וורד יבחר גופן חלופי אוטומטית.
+const Map<String, String> _wordFontNames = {
+  'TaameyDavidCLM': 'Taamey David CLM',
+  'FrankRuhlCLM': 'Frank Ruehl CLM',
+  'TaameyAshkenaz': 'Taamey Ashkenaz',
+  'KeterYG': 'Keter YG',
+  'Shofar': 'Shofar',
+  'NotoSerifHebrew': 'Noto Serif Hebrew',
+  'Tinos': 'Tinos',
+  'NotoRashiHebrew': 'Noto Rashi Hebrew',
+  'Rubik': 'Rubik',
+};
+
+int _halfPoints(double pt) => (pt.clamp(6.0, 200.0) * 2).round();
+
+String _buildStylesXml({
+  required String fontName,
+  required double basePt,
+}) {
+  final f = fontName
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('"', '&quot;');
+  String sz(double pt) => '${_halfPoints(pt)}';
+
+  return '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:docDefaults>
     <w:rPrDefault>
       <w:rPr>
-        <w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>
+        <w:rFonts w:ascii="$f" w:hAnsi="$f" w:cs="$f"/>
         <w:lang w:bidi="he-IL"/>
       </w:rPr>
     </w:rPrDefault>
@@ -372,9 +491,9 @@ const String _stylesXml =
       <w:spacing w:after="140" w:line="300" w:lineRule="auto"/>
     </w:pPr>
     <w:rPr>
-      <w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>
-      <w:sz w:val="26"/>
-      <w:szCs w:val="26"/>
+      <w:rFonts w:ascii="$f" w:hAnsi="$f" w:cs="$f"/>
+      <w:sz w:val="${sz(basePt)}"/>
+      <w:szCs w:val="${sz(basePt)}"/>
     </w:rPr>
   </w:style>
   <w:style w:type="paragraph" w:styleId="Title">
@@ -388,8 +507,8 @@ const String _stylesXml =
     </w:pPr>
     <w:rPr>
       <w:b/>
-      <w:sz w:val="34"/>
-      <w:szCs w:val="34"/>
+      <w:sz w:val="${sz(basePt + 4)}"/>
+      <w:szCs w:val="${sz(basePt + 4)}"/>
     </w:rPr>
   </w:style>
   <w:style w:type="paragraph" w:styleId="Heading1">
@@ -397,28 +516,28 @@ const String _stylesXml =
     <w:basedOn w:val="Normal"/>
     <w:qFormat/>
     <w:pPr><w:bidi/><w:spacing w:before="220" w:after="120"/></w:pPr>
-    <w:rPr><w:b/><w:color w:val="1F3B6D"/><w:sz w:val="30"/><w:szCs w:val="30"/></w:rPr>
+    <w:rPr><w:b/><w:color w:val="1F3B6D"/><w:sz w:val="${sz(basePt + 2)}"/><w:szCs w:val="${sz(basePt + 2)}"/></w:rPr>
   </w:style>
   <w:style w:type="paragraph" w:styleId="Heading2">
     <w:name w:val="Heading 2"/>
     <w:basedOn w:val="Normal"/>
     <w:qFormat/>
     <w:pPr><w:bidi/><w:spacing w:before="180" w:after="100"/></w:pPr>
-    <w:rPr><w:b/><w:color w:val="365F91"/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr>
+    <w:rPr><w:b/><w:color w:val="365F91"/><w:sz w:val="${sz(basePt + 1)}"/><w:szCs w:val="${sz(basePt + 1)}"/></w:rPr>
   </w:style>
   <w:style w:type="paragraph" w:styleId="Heading3">
     <w:name w:val="Heading 3"/>
     <w:basedOn w:val="Normal"/>
     <w:qFormat/>
     <w:pPr><w:bidi/><w:spacing w:before="160" w:after="80"/></w:pPr>
-    <w:rPr><w:b/><w:color w:val="5A5A5A"/><w:sz w:val="26"/><w:szCs w:val="26"/></w:rPr>
+    <w:rPr><w:b/><w:color w:val="5A5A5A"/><w:sz w:val="${sz(basePt)}"/><w:szCs w:val="${sz(basePt)}"/></w:rPr>
   </w:style>
   <w:style w:type="paragraph" w:styleId="Heading4">
     <w:name w:val="Heading 4"/>
     <w:basedOn w:val="Normal"/>
     <w:qFormat/>
     <w:pPr><w:bidi/><w:spacing w:before="140" w:after="70"/></w:pPr>
-    <w:rPr><w:b/><w:i/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>
+    <w:rPr><w:b/><w:i/><w:sz w:val="${sz(basePt - 1)}"/><w:szCs w:val="${sz(basePt - 1)}"/></w:rPr>
   </w:style>
   <w:style w:type="paragraph" w:styleId="BodyRtl">
     <w:name w:val="Body RTL"/>
@@ -430,47 +549,101 @@ const String _stylesXml =
       <w:spacing w:after="140" w:line="320" w:lineRule="auto"/>
     </w:pPr>
     <w:rPr>
-      <w:sz w:val="26"/>
-      <w:szCs w:val="26"/>
+      <w:sz w:val="${sz(basePt)}"/>
+      <w:szCs w:val="${sz(basePt)}"/>
     </w:rPr>
   </w:style>
   <w:style w:type="paragraph" w:styleId="CommentaryHeading">
     <w:name w:val="Commentary Heading"/>
     <w:basedOn w:val="Normal"/>
     <w:pPr><w:bidi/><w:spacing w:before="180" w:after="80"/></w:pPr>
-    <w:rPr><w:b/><w:color w:val="6A4C1F"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>
+    <w:rPr><w:b/><w:color w:val="6A4C1F"/><w:sz w:val="${sz(basePt - 1)}"/><w:szCs w:val="${sz(basePt - 1)}"/></w:rPr>
   </w:style>
   <w:style w:type="paragraph" w:styleId="CommentarySubheading">
     <w:name w:val="Commentary Subheading"/>
     <w:basedOn w:val="Normal"/>
     <w:pPr><w:bidi/><w:ind w:left="240"/><w:spacing w:before="80" w:after="60"/></w:pPr>
-    <w:rPr><w:b/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>
+    <w:rPr><w:b/><w:sz w:val="${sz(basePt - 2)}"/><w:szCs w:val="${sz(basePt - 2)}"/></w:rPr>
   </w:style>
   <w:style w:type="paragraph" w:styleId="CommentaryBody">
     <w:name w:val="Commentary Body"/>
     <w:basedOn w:val="BodyRtl"/>
     <w:pPr><w:bidi/><w:jc w:val="both"/><w:ind w:left="360"/><w:spacing w:after="100" w:line="300" w:lineRule="auto"/></w:pPr>
-    <w:rPr><w:color w:val="444444"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>
+    <w:rPr><w:color w:val="444444"/><w:sz w:val="${sz(basePt - 1)}"/><w:szCs w:val="${sz(basePt - 1)}"/></w:rPr>
   </w:style>
   <w:style w:type="paragraph" w:styleId="FootnoteText">
     <w:name w:val="Footnote Text"/>
     <w:basedOn w:val="Normal"/>
     <w:pPr><w:bidi/><w:spacing w:after="80" w:line="260" w:lineRule="auto"/></w:pPr>
-    <w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>
+    <w:rPr><w:sz w:val="${sz(basePt - 3)}"/><w:szCs w:val="${sz(basePt - 3)}"/></w:rPr>
   </w:style>
   <w:style w:type="paragraph" w:styleId="Header">
     <w:name w:val="Header"/>
     <w:basedOn w:val="Normal"/>
     <w:pPr><w:bidi/><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr>
-    <w:rPr><w:color w:val="6E6E6E"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>
+    <w:rPr><w:color w:val="6E6E6E"/><w:sz w:val="${sz(basePt - 3)}"/><w:szCs w:val="${sz(basePt - 3)}"/></w:rPr>
   </w:style>
   <w:style w:type="paragraph" w:styleId="Footer">
     <w:name w:val="Footer"/>
     <w:basedOn w:val="Normal"/>
     <w:pPr><w:bidi/><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr>
-    <w:rPr><w:color w:val="6E6E6E"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>
+    <w:rPr><w:color w:val="6E6E6E"/><w:sz w:val="${sz(basePt - 4)}"/><w:szCs w:val="${sz(basePt - 4)}"/></w:rPr>
   </w:style>
 </w:styles>''';
+}
+
+class _RunStyle {
+  final bool bold;
+  final bool italic;
+  final bool underline;
+  final bool superscript;
+  final bool subscript;
+  final bool small;
+  final bool big;
+
+  const _RunStyle({
+    this.bold = false,
+    this.italic = false,
+    this.underline = false,
+    this.superscript = false,
+    this.subscript = false,
+    this.small = false,
+    this.big = false,
+  });
+
+  _RunStyle copyWith({
+    bool? bold,
+    bool? italic,
+    bool? underline,
+    bool? superscript,
+    bool? subscript,
+    bool? small,
+    bool? big,
+  }) {
+    return _RunStyle(
+      bold: bold ?? this.bold,
+      italic: italic ?? this.italic,
+      underline: underline ?? this.underline,
+      superscript: superscript ?? this.superscript,
+      subscript: subscript ?? this.subscript,
+      small: small ?? this.small,
+      big: big ?? this.big,
+    );
+  }
+}
+
+class _InlineRun {
+  final String text;
+  final _RunStyle style;
+  final bool isBreak;
+
+  const _InlineRun({required this.text, required this.style}) : isBreak = false;
+
+  const _InlineRun.lineBreak()
+      : text = '',
+        style = const _RunStyle(),
+        isBreak = true;
+}
 
 class _WordFootnote {
   final int id;
