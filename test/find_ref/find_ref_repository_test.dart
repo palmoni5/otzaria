@@ -2752,6 +2752,57 @@ void main() {
           reason: 'סימון צד ע"ב (":") של דפים אחרים לא נחשב התאמה ל-"ב"');
     });
 
+    test('טוקן ראשון רחב: הספר המכוון עמוק ברשימה נכנס לתוך תקרת ה-TOC',
+        () async {
+      // "ראש בבא בתרא" אינו אקרוניום → נפילה לטוקן "ראש" שתופס הרבה ספרים.
+      // הספר הנכון (מכיל "בבא בתרא") מודגם במקום 55 — מעבר לתקרת 50 החיפושים.
+      // מיון-העדיפות לפי כיסוי-כותרת מעלה אותו לראש כדי שייבדק בכלל.
+      final hits = <ReferenceBookHit>[
+        for (var i = 0; i < 60; i++)
+          if (i == 55)
+            _hit(
+              bookId: 2047,
+              title: 'פסקי הרא"ש על בבא בתרא',
+              normalizedTitle: 'פסקי הראש על בבא בתרא',
+              matchRank: 2,
+            )
+          else
+            _hit(
+              bookId: 3000 + i,
+              title: 'ראש דוד $i',
+              normalizedTitle: 'ראש דוד $i',
+              matchRank: 2,
+            ),
+      ];
+
+      final repo = FindRefRepository(
+        dataRepository: MockDataRepository(),
+        isReferenceBooksCacheLoaded: () => true,
+        warmUpReferenceBooksCache: () async {},
+        searchReferenceBooks: (query, {int limit = 50}) =>
+            query == 'ראש' ? hits : const <ReferenceBookHit>[],
+        getTocEntriesForReference: (bookId, title, {queryTokens}) async =>
+            bookId == 2047
+                ? [
+                    {
+                      'reference': 'פסקי הרא"ש על בבא בתרא פרק ה הלכה ג',
+                      'segment': 100,
+                      'level': 2,
+                      'dbLineId': 1,
+                    }
+                  ]
+                : const <Map<String, dynamic>>[],
+        getCategoryPath: (_) async => '',
+        getCategoryPathSync: (_) => null,
+      );
+
+      final refs =
+          (await repo.findRefs('ראש בבא בתרא ה ג')).map((r) => r.reference);
+
+      expect(refs, contains('פסקי הרא"ש על בבא בתרא פרק ה הלכה ג'),
+          reason: 'ללא מיון-העדיפות הספר במקום 55 נחתך ע"י תקרת maxTocLookups');
+    });
+
     test(
         'outline ריק + remainingTokens לא ריק — מחזיר ריק (כמו ספר DB ללא TOC match)',
         () async {
