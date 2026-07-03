@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:otzaria/text_book/utils/reading_segment_navigation.dart';
@@ -54,4 +56,38 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  group('closePaneAfterNavigation', () {
+    test('לא סוגר את החלונית לפני שהגלילה הסתיימה', () async {
+      final navigation = Completer<void>();
+      var closed = false;
+
+      final future = closePaneAfterNavigation(
+        navigation: navigation.future,
+        closePane: () => closed = true,
+      );
+
+      // מתן הזדמנות ל-microtasks לרוץ — הסגירה עדיין אסורה.
+      await Future<void>.delayed(Duration.zero);
+      expect(closed, isFalse);
+
+      navigation.complete();
+      await future;
+      expect(closed, isTrue);
+    });
+
+    test('סוגר את החלונית גם כשהגלילה נכשלה', () async {
+      final navigation = Completer<void>();
+      var closed = false;
+
+      final future = closePaneAfterNavigation(
+        navigation: navigation.future,
+        closePane: () => closed = true,
+      );
+
+      navigation.completeError(StateError('scroll failed'));
+      await expectLater(future, throwsStateError);
+      expect(closed, isTrue);
+    });
+  });
 }

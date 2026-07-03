@@ -30,6 +30,19 @@ bool isRemnantAbovePositionAnchor(double leadingEdge, double trailingEdge) =>
     leadingEdge < kReadingAnchorAlignment &&
     _readingZonePresence(leadingEdge, trailingEdge) <= _anchorRemnantTolerance;
 
+/// סוגר את חלונית הצד רק אחרי שגלילת [navigation] הסתיימה: סגירה תוך כדי
+/// הגלילה מפעילה עיגון-מחדש של הטקסט שמבטל את האנימציה והניווט לא מתבצע.
+Future<void> closePaneAfterNavigation({
+  required Future<void> navigation,
+  required void Function() closePane,
+}) async {
+  try {
+    await navigation;
+  } finally {
+    closePane();
+  }
+}
+
 ItemPosition? _findPosition(ItemPositionsListener listener, int segmentIndex) {
   for (final position in listener.itemPositions.value) {
     if (position.index == segmentIndex) {

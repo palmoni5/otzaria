@@ -530,7 +530,7 @@ class TextBookSearchViewState extends State<TextBookSearchView>
         (result.index >= 0 && result.index < _content.length)
             ? matchFractionInLine(_content[result.index], result.query)
             : 0.0;
-    unawaited(scrollToSourceLine(
+    final navigation = scrollToSourceLine(
       scrollController: widget.scrollControler,
       scrollOffsetController: loadedState.scrollOffsetController,
       positionsListener: loadedState.positionsListener,
@@ -541,10 +541,17 @@ class TextBookSearchViewState extends State<TextBookSearchView>
       curve: Curves.ease,
       alignment: 0.35,
       intraLineFraction: intraLineFraction,
-    ));
+    );
 
     if (closePaneOnAndroid && Platform.isAndroid) {
-      widget.closeLeftPaneCallback();
+      unawaited(closePaneAfterNavigation(
+        navigation: navigation,
+        closePane: () {
+          if (mounted) widget.closeLeftPaneCallback();
+        },
+      ));
+    } else {
+      unawaited(navigation);
     }
   }
 

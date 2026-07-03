@@ -371,7 +371,7 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
       if (state is! TextBookLoaded) {
         return;
       }
-      unawaited(scrollToSourceLine(
+      final navigation = scrollToSourceLine(
         scrollController: widget.scrollController,
         scrollOffsetController: state.scrollOffsetController,
         positionsListener: state.positionsListener,
@@ -381,10 +381,17 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
             context.size?.height ?? MediaQuery.sizeOf(context).height,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
-      ));
+      );
 
       if (Platform.isAndroid) {
-        widget.closeLeftPaneCallback();
+        unawaited(closePaneAfterNavigation(
+          navigation: navigation,
+          closePane: () {
+            if (mounted) widget.closeLeftPaneCallback();
+          },
+        ));
+      } else {
+        unawaited(navigation);
       }
     } else {
       context.read<TabsBloc>().add(

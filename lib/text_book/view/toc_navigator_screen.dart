@@ -263,7 +263,7 @@ class _TocViewerState extends State<TocViewer>
       if (state is! TextBookLoaded) {
         return;
       }
-      unawaited(scrollToSourceLine(
+      final navigation = scrollToSourceLine(
         scrollController: widget.scrollController,
         scrollOffsetController: state.scrollOffsetController,
         positionsListener: state.positionsListener,
@@ -273,9 +273,16 @@ class _TocViewerState extends State<TocViewer>
             context.size?.height ?? MediaQuery.sizeOf(context).height,
         duration: const Duration(milliseconds: 250),
         curve: Curves.ease,
-      ));
+      );
       if (Platform.isAndroid) {
-        widget.closeLeftPaneCallback();
+        unawaited(closePaneAfterNavigation(
+          navigation: navigation,
+          closePane: () {
+            if (mounted) widget.closeLeftPaneCallback();
+          },
+        ));
+      } else {
+        unawaited(navigation);
       }
     }
 
