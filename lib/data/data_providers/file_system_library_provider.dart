@@ -10,6 +10,7 @@ import 'package:otzaria/models/books.dart';
 import 'package:otzaria/models/links.dart';
 import 'package:otzaria/library/models/library.dart';
 import 'package:otzaria/utils/file/docx_cache.dart';
+import 'package:otzaria/utils/file/text_encoding.dart';
 import 'package:otzaria/utils/text/text_manipulation.dart';
 import 'package:otzaria/utils/file/toc_parser.dart';
 import 'package:otzaria/settings/settings_exports.dart';
@@ -287,7 +288,7 @@ class FileSystemLibraryProvider implements LibraryProvider {
     if (path.endsWith('.docx')) {
       return convertDocxWithCache(file, title);
     } else {
-      return file.readAsString();
+      return readTextFileSmart(file);
     }
   }
 
@@ -799,7 +800,7 @@ class FileSystemLibraryProvider implements LibraryProvider {
   /// Gets a specific line from a file by index.
   Future<String> _getLineFromFile(String path, int lineIndex) async {
     final file = File(path);
-    final lines = await file.readAsLines();
+    final lines = const LineSplitter().convert(await readTextFileSmart(file));
 
     if (lineIndex < 1 || lineIndex > lines.length) {
       return 'שגיאה: אינדקס מחוץ לטווח';

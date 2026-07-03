@@ -22,6 +22,7 @@ import 'package:otzaria/migration/models/category.dart' as db_models;
 import 'package:otzaria/migration/models/book.dart' as db_models;
 import 'package:otzaria/migration/models/toc_entry.dart' as db_models;
 import 'package:otzaria/utils/file/file_hidden_utils.dart';
+import 'package:otzaria/utils/file/text_encoding.dart';
 import 'package:otzaria/migration/models/alt_toc_structure.dart';
 import 'package:otzaria/migration/models/alt_toc_entry.dart';
 import 'package:otzaria/utils/text/text_manipulation.dart';
@@ -1431,7 +1432,8 @@ class DatabaseLibraryProvider implements LibraryProvider {
                 file.path.toLowerCase().endsWith('.docx')) {
               return await convertDocxWithCache(file, title);
             }
-            return await file.readAsString();
+            // קבצים אישיים ישנים עשויים להיות ב-Windows-1255/UTF-16 ולא UTF-8.
+            return await readTextFileSmart(file);
           }
         }
         // נופל לטעינה מתוך ה-DB עצמו (טבלת `line`).
@@ -1454,7 +1456,7 @@ class DatabaseLibraryProvider implements LibraryProvider {
             if ((book.fileType ?? '').toLowerCase() == 'docx') {
               return await convertDocxWithCache(file, title);
             }
-            return await file.readAsString();
+            return await readTextFileSmart(file);
           }
         }
         // If not external or file not found, try DB text

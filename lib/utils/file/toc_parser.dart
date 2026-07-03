@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:otzaria/models/books.dart';
 import 'package:otzaria/data/data_providers/library_provider_manager.dart';
+import 'package:otzaria/utils/file/text_encoding.dart';
 
 /// Shared TOC parsing utilities used by both the TextBook navigator and
 /// the Shamor Zachor scanner. This ensures a single source of truth for
@@ -52,7 +53,7 @@ class TocParser {
         if (kDebugMode) debugPrint('Book file not found: $bookPath');
         return [];
       }
-      final content = await file.readAsString();
+      final content = await readTextFileSmart(file);
       final headers = _extractHeaders(content);
       return headers
           .map((h) => {

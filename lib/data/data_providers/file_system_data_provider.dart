@@ -12,6 +12,7 @@ import 'package:otzaria/utils/text/text_manipulation.dart';
 import 'package:otzaria/models/books.dart';
 import 'package:otzaria/library/models/library.dart';
 import 'package:otzaria/models/links.dart';
+import 'package:otzaria/utils/file/text_encoding.dart';
 import 'package:otzaria/utils/file/toc_parser.dart';
 import 'package:otzaria/external_catalog/repository/external_catalog_repository.dart';
 import 'package:otzaria/settings/settings_exports.dart';
@@ -500,7 +501,7 @@ class FileSystemData {
     }
 
     final file = File(path);
-    return file.readAsString();
+    return readTextFileSmart(file);
   }
 
   /// Saves text content to a book file.
