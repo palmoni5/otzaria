@@ -1532,20 +1532,29 @@ class TextBookBloc extends Bloc<TextBookEvent, TextBookState> {
   ) {
     if (state is TextBookLoaded) {
       final currentState = state as TextBookLoaded;
+      final scrollIndex = event.scrollToIndex ?? event.permanentHighlightLine;
+      // ניווט deep-link לא נשען על ה-position listener של גלילת הטקסט (שנבלע
+      // כשהטאב ברקע וה-controller לא מחובר). מעדכנים ישירות את המיקום הגלוי
+      // וטוענים את קישורי חלון היעד, אחרת חלוניות המפרשים נשארות על המיקום הקודם.
+      final navigateCommentary = scrollIndex != null &&
+          _shouldLoadLinksForVisibleIndicesChange(currentState);
       emit(currentState.copyWith(
         highlightText: event.highlightText,
         permanentHighlightLine: event.permanentHighlightLine,
         clearPermanentHighlight: event.permanentHighlightLine == null,
         searchText: '',
+        visibleIndices: navigateCommentary ? [scrollIndex] : null,
       ));
       // גלילה לסעיף המבוקש כדי שההדגשה תהיה גלויה
-      final scrollIndex = event.scrollToIndex ?? event.permanentHighlightLine;
       if (scrollIndex != null && scrollController.isAttached) {
         scrollController.scrollTo(
           index: scrollIndex,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
         );
+      }
+      if (navigateCommentary) {
+        _loadLinksInBackground(currentState.book, [scrollIndex]);
       }
     } else {
       // Initial או Loading — שומרים כ-pending, יוחל ב-_onLoadContent

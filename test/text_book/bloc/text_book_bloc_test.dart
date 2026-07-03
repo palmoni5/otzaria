@@ -405,6 +405,50 @@ void main() {
       },
     );
 
+    test(
+      'בצורת הדף ApplyMarkHighlight טוען קישורים לחלון היעד גם כשה-controller לא מחובר',
+      () async {
+        // רגרסיה: קישור deep-link לטאב ברקע נבלע ב-position listener (הגלילה
+        // מדולגת כי ה-controller לא מחובר), ואז חלוניות המפרשים נשארו על החלון
+        // הקודם. הטעינה הישירה של קישורי היעד מבטיחה סנכרון נכון.
+        final repository = _FakeTextBookRepository();
+        final bloc = _createBloc(
+          repository: repository,
+          showPageShapeView: true,
+          initialIndex: 10,
+        );
+
+        bloc.add(
+          const LoadContent(
+            fontSize: 20,
+            showSplitView: false,
+            removeNikud: false,
+            loadCommentators: false,
+          ),
+        );
+
+        await _waitFor(
+          () => repository.getBookLinksInRangeCalls >= 1,
+          description: 'getBookLinksInRangeCalls >= 1',
+        );
+
+        bloc.add(const ApplyMarkHighlight(
+          permanentHighlightLine: 1801,
+          scrollToIndex: 1801,
+        ));
+
+        await _waitFor(
+          () => repository.getBookLinksInRangeCalls >= 2,
+          description: 'getBookLinksInRangeCalls >= 2',
+        );
+
+        expect(repository.lastStartIndex, 1741);
+        expect(repository.lastEndIndex, 1941);
+
+        await bloc.close();
+      },
+    );
+
     test('בצורת הדף טוען קישורים רק למפרשים שנבחרו בחלוניות', () async {
       final repository = _FakeTextBookRepository();
       await PageShapeSettingsManager.saveConfiguration(
