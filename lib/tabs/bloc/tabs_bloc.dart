@@ -666,9 +666,10 @@ class TabsBloc extends Bloc<TabsEvent, TabsState> {
       return;
     }
 
-    // חישוב האינדקס החדש - אם סגרנו טאב לפני או בדיוק על הטאב הפעיל, זזים אינדקס אחד אחורה
-    var newIndex = removedTabIndex <= state.currentTabIndex
-        ? max(state.currentTabIndex - 1, 0)
+    // סגירת הטאב הפעיל מעבירה לטאב הבא (שנכנס תחת אותו אינדקס לאחר המחיקה).
+    // סגירת טאב שלפני הפעיל מזיזה את הפעיל אינדקס אחד אחורה.
+    var newIndex = removedTabIndex < state.currentTabIndex
+        ? state.currentTabIndex - 1
         : state.currentTabIndex;
 
     // וידוא שהאינדקס תקין (לא חורג מגבולות הרשימה)

@@ -654,6 +654,55 @@ void main() {
     });
   });
 
+  group('TabsBloc close active tab focus', () {
+    setUp(() async {
+      await Settings.init(cacheProvider: _MemoryCacheProvider());
+    });
+
+    test('סגירת הטאב הפעיל באמצע מעבירה לטאב הבא', () async {
+      final bloc = TabsBloc(repository: _FakeTabsRepository());
+      final first = _createTextTab('ספר א', categoryId: 1);
+      final second = _createTextTab('ספר ב', categoryId: 2);
+      final third = _createTextTab('ספר ג', categoryId: 3);
+
+      bloc.add(AddTab(first));
+      bloc.add(AddTab(second));
+      bloc.add(AddTab(third));
+      await bloc.stream.firstWhere((s) => s.tabs.length == 3);
+
+      bloc.add(const SetCurrentTab(1));
+      await bloc.stream.firstWhere((s) => s.currentTabIndex == 1);
+
+      bloc.add(RemoveTab(second));
+      await bloc.stream.firstWhere((s) => s.tabs.length == 2);
+
+      // ספר ב היה באמצע — הפוקוס עובר לטאב הבא (ספר ג), שנכנס תחת אינדקס 1.
+      expect(bloc.state.currentTabIndex, 1);
+      expect(bloc.state.tabs[1].title, 'ספר ג');
+
+      await _closeBlocAndAllowDeferredDispose(bloc);
+    });
+
+    test('סגירת הטאב הפעיל האחרון מעבירה לטאב שלפניו', () async {
+      final bloc = TabsBloc(repository: _FakeTabsRepository());
+      final first = _createTextTab('ספר א', categoryId: 1);
+      final second = _createTextTab('ספר ב', categoryId: 2);
+
+      bloc.add(AddTab(first));
+      bloc.add(AddTab(second));
+      await bloc.stream.firstWhere((s) => s.tabs.length == 2);
+
+      // ספר ב פעיל ואחרון — אין טאב הבא, נופלים לטאב שלפניו.
+      bloc.add(RemoveTab(second));
+      await bloc.stream.firstWhere((s) => s.tabs.length == 1);
+
+      expect(bloc.state.currentTabIndex, 0);
+      expect(bloc.state.tabs[0].title, 'ספר א');
+
+      await _closeBlocAndAllowDeferredDispose(bloc);
+    });
+  });
+
   group('TabsBloc restore closed tab', () {
     setUp(() async {
       await Settings.init(cacheProvider: _MemoryCacheProvider());
