@@ -2098,7 +2098,7 @@ class _CopyCommentaryIntent extends Intent {
 
 /// תצוגת המפרש הוירטואלי 'הערות' — מציגה את גוף ההערות ה-inline
 /// (<i class="footnote">) של השורות הנבחרות כאילו היו רשימת מפרשים.
-class _NotesCommentaryWidget extends StatelessWidget {
+class _NotesCommentaryWidget extends StatefulWidget {
   final List<String> notes;
   final double fontSize;
   final bool removeNikud;
@@ -2112,6 +2112,13 @@ class _NotesCommentaryWidget extends StatelessWidget {
   });
 
   @override
+  State<_NotesCommentaryWidget> createState() => _NotesCommentaryWidgetState();
+}
+
+class _NotesCommentaryWidgetState extends State<_NotesCommentaryWidget> {
+  String? _selectedText;
+
+  @override
   Widget build(BuildContext context) {
     return BlocBuilder<SettingsBloc, SettingsState>(
       builder: (context, settingsState) {
@@ -2120,52 +2127,85 @@ class _NotesCommentaryWidget extends StatelessWidget {
         // לבחור טקסט בהערות כלל.
         return RtlSelectionShortcuts(
           child: SelectionArea(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16.0, vertical: 12.0),
-                    child: Text(
-                      kNotesCommentatorTitle,
-                      style: TextStyle(
-                        fontSize: fontSize * 0.85,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: settingsState.commentatorsFontFamily,
+            // ביטול תפריט ברירת המחדל של Flutter — נשתמש ב-AppContextMenuRegion.
+            contextMenuBuilder: (context, _) => const SizedBox.shrink(),
+            onSelectionChanged: (selection) =>
+                _selectedText = selection?.plainText,
+            child: AppContextMenuRegion(
+              // לחיצה ימנית על טקסט מסומן לא תשחרר את הבחירה (ברירת המחדל של
+              // SelectableRegion ב-Windows); לחיצה מחוץ לבחירה מבטלת כרגיל.
+              shouldPreserveSelectionOnSecondaryTap: (globalPosition) {
+                final selected = _selectedText;
+                if (selected == null || selected.isEmpty) return false;
+                final root = context.findRenderObject();
+                if (root == null) return true;
+                return clickIsOnSelectionWithinArea(
+                      root: root,
+                      globalPosition: globalPosition,
+                      selectedText: selected,
+                    ) ??
+                    true;
+              },
+              menuBuilder: (menuCtx, _) => [
+                AppContextMenuEntry(
+                  label: 'העתק',
+                  icon: FluentIcons.copy_24_regular,
+                  enabled:
+                      _selectedText != null && _selectedText!.trim().isNotEmpty,
+                  onTap: () => ContextMenuUtils.copyFormattedText(
+                    context: menuCtx,
+                    savedSelectedText: _selectedText,
+                    fontSize: widget.fontSize,
+                  ),
+                ),
+              ],
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 12.0),
+                      child: Text(
+                        kNotesCommentatorTitle,
+                        style: TextStyle(
+                          fontSize: widget.fontSize * 0.85,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: settingsState.commentatorsFontFamily,
+                        ),
                       ),
                     ),
-                  ),
-                  ...notes.map((note) {
-                    return Padding(
-                      padding: const EdgeInsets.only(
-                          right: 32.0, left: 16.0, bottom: 12.0),
-                      child: SmartTextWidget(
-                        text: note,
-                        settings: RenderSettings(
-                          removeNikud: removeNikud,
-                          removePunctuation: false,
-                          removeTeamim: false,
-                          replaceHolyNames: settingsState.replaceHolyNames,
-                          searchText: '',
-                          currentSearchIndex: -1,
-                          fontSize: fontSize * 0.85,
-                          fontFamily: settingsState.commentatorsFontFamily,
-                          fontWeight: settingsState.commentatorsFontBold
-                              ? FontWeight.bold
-                              : null,
-                          lineHeight: settingsState.lineHeight,
+                    ...widget.notes.map((note) {
+                      return Padding(
+                        padding: const EdgeInsets.only(
+                            right: 32.0, left: 16.0, bottom: 12.0),
+                        child: SmartTextWidget(
+                          text: note,
+                          settings: RenderSettings(
+                            removeNikud: widget.removeNikud,
+                            removePunctuation: false,
+                            removeTeamim: false,
+                            replaceHolyNames: settingsState.replaceHolyNames,
+                            searchText: '',
+                            currentSearchIndex: -1,
+                            fontSize: widget.fontSize * 0.85,
+                            fontFamily: settingsState.commentatorsFontFamily,
+                            fontWeight: settingsState.commentatorsFontBold
+                                ? FontWeight.bold
+                                : null,
+                            lineHeight: settingsState.lineHeight,
+                          ),
+                          onOpenBook: (tab) {
+                            if (tab is TextBookTab) {
+                              widget.openBookCallback(tab);
+                            }
+                          },
                         ),
-                        onOpenBook: (tab) {
-                          if (tab is TextBookTab) {
-                            openBookCallback(tab);
-                          }
-                        },
-                      ),
-                    );
-                  }),
-                  const Divider(height: 1),
-                ],
+                      );
+                    }),
+                    const Divider(height: 1),
+                  ],
+                ),
               ),
             ),
           ),
