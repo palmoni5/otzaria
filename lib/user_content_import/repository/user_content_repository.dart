@@ -1,4 +1,5 @@
 import 'package:otzaria/migration/database/daos/database.dart';
+import 'package:otzaria/models/link_types.dart';
 import 'package:otzaria/user_content_import/models/user_import_models.dart';
 
 /// גישת כתיבה/קריאה לנתוני-המשתמש ב-user_books.db: דור הספר (book_generation)
@@ -66,17 +67,17 @@ class UserContentRepository {
   // ---- קישורי-משתמש ----
 
   /// מוסיף קישור-משתמש, או דורס קישור זהה אם כבר קיים. שני קישורים נחשבים
-  /// "זהים" כשכל שדות הזיהוי שווים (מקור, שורת-מקור, יעד ומיקומו); רק
-  /// [UserLinkRecord.connectionType] מתעדכן. כך ייבוא חוזר מצטבר ואינו מכפיל.
+  /// "זהים" כשכל שדות הזיהוי שווים (מקור, שורת-מקור, יעד ומיקומו) — targetRef
+  /// הוא תצוגה בלבד ואינו חלק מהזהות. כך ייבוא חוזר מצטבר ואינו מכפיל.
   Future<void> upsertUserLink(UserLinkRecord link) async {
     final db = await _db.database;
     // השוואת השדות ב-IS (ולא =) כדי ש-NULL ישווה ל-NULL — אחרת קישור עם
-    // targetRef/targetLineIndex ריק לא היה נדרס בייבוא חוזר.
+    // targetLineIndex ריק לא היה נדרס בייבוא חוזר.
     db.execute(
       'DELETE FROM user_link WHERE sourceTitle = ? AND sourceIsUserBook = ? '
       'AND sourceCategoryId IS ? AND sourceLineIndex = ? '
       'AND targetTitle = ? AND targetIsUserBook = ? AND targetCategoryId IS ? '
-      'AND targetRef IS ? AND targetLineIndex IS ?',
+      'AND targetLineIndex IS ?',
       [
         link.sourceTitle,
         link.sourceIsUserBook ? 1 : 0,
@@ -85,7 +86,6 @@ class UserContentRepository {
         link.targetTitle,
         link.targetIsUserBook ? 1 : 0,
         link.targetCategoryId,
-        link.targetRef,
         link.targetLineIndex,
       ],
     );
@@ -168,6 +168,31 @@ class UserContentRepository {
       ],
     );
     return rows.map(_fromRow).toList();
+  }
+
+  /// כותרות המפרשים מקישורי-משתמש של ספר בסיס: יעדי הקישורים תלויי-הטקסט
+  /// היוצאים ממנו (הכיוון הקנוני באחסון הוא בסיס→מפרש, כמו seforim.db).
+  Future<List<String>> userCommentatorTitles(
+    String sourceTitle, {
+    required bool sourceIsUserBook,
+    int? sourceCategoryId,
+  }) async {
+    final db = await _db.database;
+    final depIn = LinkTypes.dependentTextTypes.map((t) => "'$t'").join(', ');
+    final categoryClause = sourceCategoryId != null
+        ? 'AND (sourceCategoryId IS NULL OR sourceCategoryId = ?)'
+        : '';
+    final rows = db.select(
+      'SELECT DISTINCT targetTitle FROM user_link '
+      'WHERE sourceTitle = ? AND sourceIsUserBook = ? $categoryClause '
+      'AND UPPER(connectionType) IN ($depIn)',
+      [
+        sourceTitle,
+        sourceIsUserBook ? 1 : 0,
+        if (sourceCategoryId != null) sourceCategoryId,
+      ],
+    );
+    return rows.map((r) => r['targetTitle'] as String).toList();
   }
 
   UserLinkRecord _fromRow(Map<String, Object?> row) => UserLinkRecord(

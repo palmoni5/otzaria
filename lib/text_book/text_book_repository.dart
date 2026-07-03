@@ -8,6 +8,7 @@ import 'package:otzaria/user_content_import/services/user_links_loader.dart';
 import 'package:otzaria/models/link_types.dart';
 import 'package:otzaria/data/book_locator.dart';
 import 'package:otzaria/utils/file/docx_cache.dart';
+import 'package:otzaria/utils/file/text_encoding.dart';
 import 'package:otzaria/utils/file/toc_parser.dart';
 import 'package:otzaria/utils/text/text_manipulation.dart' as utils;
 import 'package:otzaria/text_book/utils/commentator_group_builder.dart';
@@ -74,7 +75,7 @@ class TextBookRepository {
             return await convertDocxWithCache(file, title);
           }
           if (ext == 'pdf') return '';
-          return await file.readAsString();
+          return await readTextFileSmart(file);
         }
       }
 
@@ -293,7 +294,7 @@ class TextBookRepository {
           } else if (ext == 'pdf') {
             content = '';
           } else {
-            content = await file.readAsString();
+            content = await readTextFileSmart(file);
           }
           if (content.isNotEmpty) {
             return await Isolate.run(
@@ -326,23 +327,30 @@ class TextBookRepository {
   /// [computeRareCommentators].
   Future<({List<String> all, Set<String> rare})> getCommentatorsWithRarity(
       TextBook book) async {
+    // מפרשים מקישורי-משתמש (user_books.db) — נוספים לרשימת המפרשים של כל
+    // ספר; מפרש מיובא לעולם אינו "נדיר" (יובא במכוון).
+    final userCommentators = (await loadUserCommentatorTitles(
+      bookTitle: book.title,
+      bookCategoryId: book.categoryId,
+      isUserBook: book.isUserBook,
+    ))
+        .toSet();
+    userOnly() =>
+        (all: userCommentators.toList()..sort(), rare: const <String>{});
+
     // ספרים אישיים אינם כוללים קישורי מפרשים במסד הנתונים הרשמי.
     // חיפוש לפי book.id ב-seforim.db יחזיר מפרשים של ספר רשמי עם אותו ID.
-    if (book.isUserBook) return (all: const <String>[], rare: const <String>{});
+    if (book.isUserBook) return userOnly();
 
     final repository = _sqliteProvider.repository;
-    if (repository == null) {
-      return (all: const <String>[], rare: const <String>{});
-    }
+    if (repository == null) return userOnly();
 
     // מקבל את ה-book ישירות מה-repository (אותו DB שממנו נשלוף את המפרשים)
     final dbBook = book.categoryId != null
         ? await repository.getBookByTitleAndCategory(
             book.title, book.categoryId!)
         : await repository.getBookByTitle(book.title);
-    if (dbBook == null) {
-      return (all: const <String>[], rare: const <String>{});
-    }
+    if (dbBook == null) return userOnly();
 
     // שולף את הפרשנים ישירות מה-DB, כולל מספר הקישורים של כל מפרש
     final commentatorsData =
@@ -359,11 +367,12 @@ class TextBookRepository {
       }
     }
 
-    final all = linkCountByTitle.keys.toList()..sort((a, b) => a.compareTo(b));
+    final all = {...linkCountByTitle.keys, ...userCommentators}.toList()
+      ..sort((a, b) => a.compareTo(b));
     final rare = computeRareCommentators(
       bookTotalLines: dbBook.totalLines,
       linkCountByCommentator: linkCountByTitle,
-    );
+    ).difference(userCommentators);
     return (all: all, rare: rare);
   }
 

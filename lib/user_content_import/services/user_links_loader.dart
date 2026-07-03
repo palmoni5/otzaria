@@ -66,13 +66,33 @@ Future<List<Link>> loadUserLinksForBook({
       index1: targetLine + 1,
       path2: r.sourceTitle,
       index2: r.sourceLineIndex + 1,
-      connectionType: r.connectionType,
+      // כמו ה-inverse של seforim.db: מפרש שקורא את בסיסו רואה אותו כ'מקור'
+      // וירטואלי בפאנל הקישורים, לא כמפרש.
+      connectionType: LinkTypes.isDependentTextLink(r.connectionType)
+          ? LinkTypes.source
+          : r.connectionType,
       targetIsUserBook: r.sourceIsUserBook,
       targetCategoryId: r.sourceCategoryId,
     ));
   }
 
   return _applyCommentatorFilter(dedupeUserLinks(result), targetBookTitles);
+}
+
+/// כותרות מפרשי-המשתמש של ספר — להזנת רשימת המפרשים לבחירה (שאחרת נבנית
+/// רק מ-seforim.db ואינה מכירה קישורי-משתמש). ריק אם user_books.db לא פתוח.
+Future<List<String>> loadUserCommentatorTitles({
+  required String bookTitle,
+  required int? bookCategoryId,
+  required bool isUserBook,
+}) async {
+  final repo = UserBooksDatabaseHolder.instance.repositoryIfInitialized;
+  if (repo == null) return const [];
+  return UserContentRepository(repo.database).userCommentatorTitles(
+    bookTitle,
+    sourceIsUserBook: isUserBook,
+    sourceCategoryId: bookCategoryId,
+  );
 }
 
 /// מסיר כפילויות בין forward ל-inverse: קישור דו-כיווני (כמו שמייצר "מנהל

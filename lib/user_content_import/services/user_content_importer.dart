@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:otzaria/migration/database/daos/database.dart';
+import 'package:otzaria/models/link_types.dart';
 import 'package:otzaria/user_content_import/models/user_import_models.dart';
 import 'package:otzaria/user_content_import/repository/user_content_repository.dart';
 import 'package:otzaria/user_content_import/services/user_import_parser.dart';
@@ -110,14 +111,35 @@ class UserContentImporter {
     for (final entry in generationByBook.entries) {
       await repo.setBookGeneration(entry.key, entry.value);
     }
+    // איחוד רשומות זהות מכל הקבצים (למשל שני צדי צמד דו-כיווני שנורמלו
+    // לאותו כיוון) — עדיפות לרשומה עם targetRef להצגה.
+    final unique = <String, UserLinkRecord>{};
     for (final link in links) {
+      final key = [
+        link.sourceIsUserBook,
+        link.sourceCategoryId,
+        link.sourceTitle,
+        link.sourceLineIndex,
+        link.targetIsUserBook,
+        link.targetCategoryId,
+        link.targetTitle,
+        link.targetLineIndex,
+        link.connectionType,
+      ].join('|');
+      final existing = unique[key];
+      if (existing == null ||
+          (existing.targetRef == null && link.targetRef != null)) {
+        unique[key] = link;
+      }
+    }
+    for (final link in unique.values) {
       await repo.upsertUserLink(link);
     }
 
     return UserImportResult(
       generationsApplied: generationByBook.length,
-      linksApplied: links.length,
-      booksWithLinks: links
+      linksApplied: unique.length,
+      booksWithLinks: unique.values
           .map((l) => '${l.sourceIsUserBook}|${l.sourceCategoryId}|'
               '${l.sourceTitle}')
           .toSet()
@@ -255,18 +277,35 @@ class UserContentImporter {
             '"${row.targetTitle}" (${target.totalLines} שורות)');
         continue;
       }
-      out.add(UserLinkRecord(
-        sourceTitle: baseTitle,
-        sourceCategoryId: source.categoryId,
-        sourceIsUserBook: source.isUserBook,
-        sourceLineIndex: row.sourceLineNumber - 1,
-        targetTitle: row.targetTitle,
-        targetCategoryId: target.categoryId,
-        targetIsUserBook: target.isUserBook,
-        targetRef: row.targetRef,
-        targetLineIndex: row.targetLineNumber - 1,
-        connectionType: row.connectionType,
-      ));
+      // צמד קבצים דו-כיווני של הכלי מייצר גם רשומת מפרש→בסיס; מנרמלים אותה
+      // לכיוון הקנוני (בסיס→מפרש) כך שהיא מתלכדת עם הרשומה מהקובץ של הבסיס.
+      final flip = LinkTypes.isDependentTextLink(row.connectionType) &&
+          source.isUserBook &&
+          !target.isUserBook;
+      out.add(flip
+          ? UserLinkRecord(
+              sourceTitle: row.targetTitle,
+              sourceCategoryId: target.categoryId,
+              sourceIsUserBook: target.isUserBook,
+              sourceLineIndex: row.targetLineNumber - 1,
+              targetTitle: baseTitle,
+              targetCategoryId: source.categoryId,
+              targetIsUserBook: source.isUserBook,
+              targetLineIndex: row.sourceLineNumber - 1,
+              connectionType: row.connectionType,
+            )
+          : UserLinkRecord(
+              sourceTitle: baseTitle,
+              sourceCategoryId: source.categoryId,
+              sourceIsUserBook: source.isUserBook,
+              sourceLineIndex: row.sourceLineNumber - 1,
+              targetTitle: row.targetTitle,
+              targetCategoryId: target.categoryId,
+              targetIsUserBook: target.isUserBook,
+              targetRef: row.targetRef,
+              targetLineIndex: row.targetLineNumber - 1,
+              connectionType: row.connectionType,
+            ));
     }
   }
 
@@ -306,6 +345,22 @@ class UserContentImporter {
         return null;
       }
       targetLineIndex = resolved;
+    }
+    // קישור תלוי-טקסט (פירוש/תרגום) נשמר בכיוון הקנוני של seforim.db —
+    // הבסיס הוא המקור. בפורמט ה-CSV עמודת המקור היא המפרש, לכן הופכים:
+    // כך המפרש מוצג בפאנל המפרשים של הבסיס, והבסיס כ'מקור' בפאנל הקישורים.
+    if (LinkTypes.isDependentTextLink(row.connectionType)) {
+      return UserLinkRecord(
+        sourceTitle: row.targetTitle,
+        sourceCategoryId: row.targetCategoryId,
+        sourceIsUserBook: row.targetIsUserBook,
+        sourceLineIndex: targetLineIndex,
+        targetTitle: sourceTitle,
+        targetCategoryId: row.sourceCategoryId,
+        targetIsUserBook: row.sourceIsUserBook,
+        targetLineIndex: row.sourceLineNumber - 1,
+        connectionType: row.connectionType,
+      );
     }
     return UserLinkRecord(
       sourceTitle: sourceTitle,

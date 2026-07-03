@@ -79,18 +79,22 @@ void main() {
       );
       expect(genRow.single['name'], 'מחברי זמננו');
 
-      final stored =
+      // פירוש נשמר בכיוון הקנוני (בסיס→מפרש): ברכות היא המקור.
+      final commentary =
+          await repo.forwardUserLinks('ברכות', sourceIsUserBook: false);
+      expect(commentary.single.sourceLineIndex, 4); // "5" → אינדקס 4
+      expect(commentary.single.targetTitle, 'ביאורי יוסף');
+      expect(commentary.single.targetIsUserBook, isTrue);
+      expect(commentary.single.targetLineIndex, 11);
+      expect(commentary.single.connectionType, 'COMMENTARY');
+
+      // הפניה נשמרת בכיוון כפי שנכתבה; כתובת טקסטואלית נשמרת להצגה.
+      final reference =
           await repo.forwardUserLinks('ביאורי יוסף', sourceIsUserBook: true);
-      expect(stored.length, 2);
-      // ממוין לפי sourceLineIndex; 1-based בקובץ → 0-based ב-DB
-      expect(stored[0].sourceLineIndex, 11);
-      expect(stored[0].targetTitle, 'ברכות');
-      expect(stored[0].connectionType, 'COMMENTARY');
-      expect(stored[0].targetLineIndex, 4); // "5" → אינדקס 4
-      // כתובת טקסטואלית: נשמרת להצגה ונפתרת לשורה דרך resolveRef
-      expect(stored[1].targetRef, 'רטו א');
-      expect(stored[1].targetLineIndex, 41);
-      expect(stored[1].connectionType, 'REFERENCE');
+      expect(reference.single.sourceLineIndex, 46);
+      expect(reference.single.targetRef, 'רטו א');
+      expect(reference.single.targetLineIndex, 41);
+      expect(reference.single.connectionType, 'REFERENCE');
     });
 
     test('קולט קישורים מקובץ JSON', () async {
@@ -102,12 +106,15 @@ void main() {
       final result = await UserContentImporter.importFiles([f], db);
       expect(result.errors, isEmpty);
       expect(result.linksApplied, 2);
-      final links =
+      // פירוש מתהפך לכיוון הקנוני; הפניה נשארת כפי שנכתבה.
+      final commentary =
+          await repo.forwardUserLinks('ברכות', sourceIsUserBook: false);
+      expect(commentary.single.connectionType, 'COMMENTARY');
+      expect(commentary.single.targetLineIndex, 11);
+      final reference =
           await repo.forwardUserLinks('ביאורי יוסף', sourceIsUserBook: true);
-      expect(links.length, 2);
-      expect(links[0].targetLineIndex, 4);
-      expect(links[0].connectionType, 'COMMENTARY');
-      expect(links[1].connectionType, 'REFERENCE');
+      expect(reference.single.connectionType, 'REFERENCE');
+      expect(reference.single.targetLineIndex, 7);
     });
 
     test('כתובת טקסטואלית נפתרת לשורה דרך resolveRef', () async {
@@ -149,7 +156,7 @@ void main() {
       await UserContentImporter.importFiles([f], db);
       await UserContentImporter.importFiles([f], db);
       final links =
-          await repo.forwardUserLinks('ביאורי יוסף', sourceIsUserBook: true);
+          await repo.forwardUserLinks('ברכות', sourceIsUserBook: false);
       expect(links.length, 1);
     });
 
@@ -162,21 +169,20 @@ void main() {
           .writeAsStringSync('מקור,ספר_יעד,מיקום_יעד,סוג\n20,ברכות,8,פירוש\n');
       await UserContentImporter.importFiles([f], db);
       final links =
-          await repo.forwardUserLinks('ביאורי יוסף', sourceIsUserBook: true);
+          await repo.forwardUserLinks('ברכות', sourceIsUserBook: false);
       expect(links.length, 2);
     });
 
     test('ייבוא חוזר של קישור זהה דורס את סוג הקשר', () async {
       final f = writeCsv('ביאורי יוסף.links.csv',
-          'מקור,ספר_יעד,מיקום_יעד,סוג\n12,ברכות,5,פירוש\n');
+          'מקור,ספר_יעד,מיקום_יעד,סוג\n12,ברכות,5,הפניה\n');
       await UserContentImporter.importFiles([f], db);
-      File(f)
-          .writeAsStringSync('מקור,ספר_יעד,מיקום_יעד,סוג\n12,ברכות,5,הפניה\n');
+      File(f).writeAsStringSync('מקור,ספר_יעד,מיקום_יעד,סוג\n12,ברכות,5,אחר\n');
       await UserContentImporter.importFiles([f], db);
       final links =
           await repo.forwardUserLinks('ביאורי יוסף', sourceIsUserBook: true);
       expect(links.length, 1);
-      expect(links.single.connectionType, 'REFERENCE');
+      expect(links.single.connectionType, 'OTHER');
     });
 
     test('דור חדש דורס דור קודם לאותו ספר', () async {
@@ -193,16 +199,21 @@ void main() {
       expect(rows.single['name'], 'אחרונים');
     });
 
-    test('קישור הפוך נמצא לפי כותרת היעד', () async {
+    test('פירוש: הכיוון הקנוני נשמר וההפוך נמצא מצד המפרש', () async {
       final f = writeCsv('ביאורי יוסף.links.csv',
           'מקור,ספר_יעד,מיקום_יעד,סוג\n12,ברכות,5,פירוש\n');
       await UserContentImporter.importFiles([f], db);
+      // בקריאת המפרש (ביאורי יוסף) הקישור נמצא כ-inverse ומצביע אל הבסיס.
       final inverse =
-          await repo.inverseUserLinks('ברכות', targetIsUserBook: false);
+          await repo.inverseUserLinks('ביאורי יוסף', targetIsUserBook: true);
       expect(inverse.length, 1);
-      expect(inverse.single.sourceTitle, 'ביאורי יוסף');
-      expect(inverse.single.sourceIsUserBook, isTrue);
+      expect(inverse.single.sourceTitle, 'ברכות');
+      expect(inverse.single.sourceIsUserBook, isFalse);
       expect(inverse.single.connectionType, 'COMMENTARY');
+      // מפרשי-המשתמש של הבסיס נגזרים מהקישורים היוצאים ממנו.
+      final commentators =
+          await repo.userCommentatorTitles('ברכות', sourceIsUserBook: false);
+      expect(commentators, ['ביאורי יוסף']);
     });
 
     test('קישור ממקור רשמי נקלט ונשמר עם sourceIsUserBook=0', () async {
@@ -291,6 +302,33 @@ void main() {
         expect(link.targetLineIndex, 4);
         expect(link.targetRef, 'הכי גרסינן מגילה ב., א');
         expect(link.connectionType, 'COMMENTARY');
+      });
+
+      test('צמד דו-כיווני מתלכד לרשומה אחת עם ה-ref נשמר', () async {
+        // הקובץ של הבסיס (מגילה) + הקובץ ההפוך שהכלי יוצר למפרש.
+        final canonical = writeCsv(
+          'מגילה_links.json',
+          '[{"line_index_1": 3, "line_index_2": 5, '
+              '"heRef_2": "הכי גרסינן מגילה ב., א", '
+              '"path_2": "הכי גרסינן מגילה.txt", '
+              '"Conection Type": "commentary"}]',
+        );
+        final reverse = writeCsv(
+          'הכי גרסינן מגילה_links.json',
+          '[{"line_index_1": 5, "line_index_2": 3, '
+              '"heRef_2": "מגילה ב.", "path_2": "מגילה.txt", '
+              '"Conection Type": "commentary"}]',
+        );
+        final result = await UserContentImporter.importFiles(
+            [canonical, reverse], db,
+            locateBook: fakeLocator);
+        expect(result.errors, isEmpty);
+        expect(result.linksApplied, 1);
+
+        final stored =
+            await repo.forwardUserLinks('מגילה', sourceIsUserBook: false);
+        expect(stored.single.targetTitle, 'הכי גרסינן מגילה');
+        expect(stored.single.targetRef, 'הכי גרסינן מגילה ב., א');
       });
 
       test('שורה מעבר ל-totalLines → שגיאה, אין כתיבה', () async {
@@ -387,11 +425,11 @@ void main() {
           'מקור,ספר_יעד,מיקום_יעד,סוג\n12,ברכות,5,פירוש\n');
       await UserContentImporter.importFiles([f], db);
       expect(
-          (await repo.forwardUserLinks('ביאורי יוסף', sourceIsUserBook: true))
+          (await repo.forwardUserLinks('ברכות', sourceIsUserBook: false))
               .length,
           1);
       await repo.clearAllUserContent();
-      expect(await repo.forwardUserLinks('ביאורי יוסף', sourceIsUserBook: true),
+      expect(await repo.forwardUserLinks('ברכות', sourceIsUserBook: false),
           isEmpty);
     });
 
