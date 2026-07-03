@@ -253,6 +253,81 @@ void main() {
       expect(result.linksApplied, 0);
     });
 
+    group('פורמט native (<ספר>_links.json)', () {
+      /// מאתר מזויף: "מגילה" רשמי (200 שורות), "הכי גרסינן מגילה" אישי
+      /// (2000 שורות); כל כותרת אחרת לא נמצאת.
+      Future<({bool isUserBook, int? categoryId, int totalLines})?> fakeLocator(
+              String title) async =>
+          switch (title) {
+            'מגילה' => (isUserBook: false, categoryId: 5, totalLines: 200),
+            'הכי גרסינן מגילה' => (
+                isUserBook: true,
+                categoryId: 1,
+                totalLines: 2000
+              ),
+            _ => null,
+          };
+
+      test('נקלט: בסיס רשמי משם הקובץ, יעד אישי מ-path_2', () async {
+        final f = writeCsv(
+          'מגילה_links.json',
+          '[{"line_index_1": 3, "line_index_2": 5, '
+              '"heRef_2": "הכי גרסינן מגילה ב., א", '
+              '"path_2": "הכי גרסינן מגילה.txt", '
+              '"Conection Type": "commentary"}]',
+        );
+        final result = await UserContentImporter.importFiles([f], db,
+            locateBook: fakeLocator);
+        expect(result.errors, isEmpty);
+        expect(result.linksApplied, 1);
+
+        final stored =
+            await repo.forwardUserLinks('מגילה', sourceIsUserBook: false);
+        final link = stored.single;
+        expect(link.sourceCategoryId, 5);
+        expect(link.sourceLineIndex, 2); // 1-based → 0-based
+        expect(link.targetTitle, 'הכי גרסינן מגילה');
+        expect(link.targetIsUserBook, isTrue);
+        expect(link.targetLineIndex, 4);
+        expect(link.targetRef, 'הכי גרסינן מגילה ב., א');
+        expect(link.connectionType, 'COMMENTARY');
+      });
+
+      test('שורה מעבר ל-totalLines → שגיאה, אין כתיבה', () async {
+        final f = writeCsv(
+          'מגילה_links.json',
+          '[{"line_index_1": 999, "line_index_2": 5, '
+              '"path_2": "הכי גרסינן מגילה.txt"}]',
+        );
+        final result = await UserContentImporter.importFiles([f], db,
+            locateBook: fakeLocator);
+        expect(result.errors.single, contains('חורגת מגבולות'));
+        expect(result.linksApplied, 0);
+      });
+
+      test('ספר בסיס לא נמצא → שגיאה אחת לקובץ', () async {
+        final f = writeCsv(
+          'ספר עלום_links.json',
+          '[{"line_index_1": 1, "line_index_2": 2, "path_2": "מגילה"}]',
+        );
+        final result = await UserContentImporter.importFiles([f], db,
+            locateBook: fakeLocator);
+        expect(result.errors.single, contains('ספר עלום'));
+        expect(result.linksApplied, 0);
+      });
+
+      test('ספר יעד לא נמצא → שגיאה, אין כתיבה', () async {
+        final f = writeCsv(
+          'מגילה_links.json',
+          '[{"line_index_1": 1, "line_index_2": 2, "path_2": "לא קיים.txt"}]',
+        );
+        final result = await UserContentImporter.importFiles([f], db,
+            locateBook: fakeLocator);
+        expect(result.errors.single, contains('לא קיים'));
+        expect(result.linksApplied, 0);
+      });
+    });
+
     test('ספר לא קיים בדורות → שגיאה, אין כתיבה', () async {
       final g = writeCsv('דורות.csv', 'ספר,דור\nספר שלא קיים,ראשונים\n');
       final result = await UserContentImporter.importFiles([g], db);

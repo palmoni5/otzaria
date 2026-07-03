@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:otzaria/user_content_import/models/user_import_models.dart';
+import 'package:otzaria/utils/text/text_manipulation.dart'
+    show getTitleFromPath;
 
 /// מפענח קבצי CSV שהוכנו מראש לייבוא דורות וקישורי-משתמש.
 ///
@@ -180,6 +182,66 @@ class UserImportParser {
             _pick(item, const ['יעד_אישי', 'targetIsUserBook', 'isUserBook'])),
         targetCategoryId:
             _toInt(_pick(item, const ['קטגוריית_יעד', 'targetCategoryId'])),
+      ));
+    }
+    return ParseResult(rows, errors);
+  }
+
+  /// מפענח קובץ קישורים בפורמט ה-native של אוצריא (`<ספר>_links.json`):
+  /// מערך אובייקטים עם line_index_1/2, path_2, heRef_2, "Conection Type".
+  /// אינדקסי השורות הם 1-based (כמו במודל [Link]).
+  static ParseResult<ParsedNativeLink> parseNativeLinksJson(String content) {
+    final rows = <ParsedNativeLink>[];
+    final errors = <ImportRowError>[];
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(content);
+    } catch (e) {
+      errors.add(ImportRowError(0, 'JSON לא תקין: $e'));
+      return ParseResult(rows, errors);
+    }
+    if (decoded is! List) {
+      errors.add(
+          const ImportRowError(0, 'הקובץ חייב להיות מערך JSON של קישורים'));
+      return ParseResult(rows, errors);
+    }
+
+    for (var i = 0; i < decoded.length; i++) {
+      final item = decoded[i];
+      final n = i + 1;
+      if (item is! Map) {
+        errors.add(ImportRowError(n, 'פריט אינו אובייקט'));
+        continue;
+      }
+      final sourceLine = _toInt(item['line_index_1']);
+      final targetLine = _toInt(item['line_index_2']);
+      if (sourceLine == null || sourceLine < 1) {
+        errors.add(ImportRowError(n, 'line_index_1 לא חוקי'));
+        continue;
+      }
+      if (targetLine == null || targetLine < 1) {
+        errors.add(ImportRowError(n, 'line_index_2 לא חוקי'));
+        continue;
+      }
+      final targetTitle = _str(item['path_2']);
+      if (targetTitle == null) {
+        errors.add(ImportRowError(n, 'חסר path_2'));
+        continue;
+      }
+      // בפורמט ה-native סוג ריק משמעו commentary (כמו Link.fromJson).
+      final rawType = _str(item['Conection Type']) ?? 'commentary';
+      final type = _connectionType(rawType);
+      if (type == null) {
+        errors.add(ImportRowError(n, 'סוג קישור לא מוכר: "$rawType"'));
+        continue;
+      }
+      rows.add(ParsedNativeLink(
+        sourceLineNumber: sourceLine,
+        // path_2 הוא נתיב — חילוץ כותרת בדיוק כמו בשאר הקוד (Link.path2).
+        targetTitle: getTitleFromPath(targetTitle).trim(),
+        targetLineNumber: targetLine,
+        targetRef: _str(item['heRef_2']),
+        connectionType: type,
       ));
     }
     return ParseResult(rows, errors);

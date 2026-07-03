@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:otzaria/data/data_providers/user_books_database_holder.dart';
 import 'package:otzaria/models/link_types.dart';
 import 'package:otzaria/models/links.dart';
@@ -71,7 +72,20 @@ Future<List<Link>> loadUserLinksForBook({
     ));
   }
 
-  return _applyCommentatorFilter(result, targetBookTitles);
+  return _applyCommentatorFilter(dedupeUserLinks(result), targetBookTitles);
+}
+
+/// מסיר כפילויות בין forward ל-inverse: קישור דו-כיווני (כמו שמייצר "מנהל
+/// המפרשים והקישורים") מיובא משני קבצים ומופיע משני הכיוונים — זהו אותו קישור.
+/// ה-forward נוסף ראשון ולכן נשמר (ה-heRef שלו עדיף).
+@visibleForTesting
+List<Link> dedupeUserLinks(List<Link> links) {
+  final seen = <String>{};
+  // המפתח כולל גם דגל-אישי וקטגוריה — שני ספרים שונים יכולים לחלוק כותרת.
+  return links
+      .where((l) => seen.add('${l.index1}|${l.path2}|${l.index2}|'
+          '${l.connectionType}|${l.targetIsUserBook}|${l.targetCategoryId}'))
+      .toList();
 }
 
 /// מסנן קישורי-מפרש לפי המפרשים הנבחרים (כמו הסינון ב-getLinksForBookRange):

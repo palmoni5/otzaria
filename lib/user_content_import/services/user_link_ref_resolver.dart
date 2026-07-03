@@ -69,6 +69,29 @@ Future<bool> userLinkSourceBookExists({
   return book != null;
 }
 
+/// מאתר ספר לפי כותרת בשני המסדים — לקבצים בפורמט ה-native שאינם מציינים
+/// אישי/רשמי. אישי נבדק ראשון (עקרון preferUserBooks). null אם לא נמצא.
+typedef UserLinkBookLocator
+    = Future<({bool isUserBook, int? categoryId, int totalLines})?> Function(
+        String title);
+
+/// המימוש האמיתי של [UserLinkBookLocator].
+Future<({bool isUserBook, int? categoryId, int totalLines})?>
+    locateUserLinkBook(String title) async {
+  for (final isUserBook in const [true, false]) {
+    final repo = await _repositoryFor(isUserBook);
+    final book = await repo?.getBookByTitle(title);
+    if (book != null) {
+      return (
+        isUserBook: isUserBook,
+        categoryId: book.categoryId,
+        totalLines: book.totalLines,
+      );
+    }
+  }
+  return null;
+}
+
 /// המסד שבו נמצא ספר היעד — אישי (user_books.db) או רשמי (seforim.db).
 Future<SeforimRepository?> _repositoryFor(bool isUserBook) async {
   if (isUserBook) {

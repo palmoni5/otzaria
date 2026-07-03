@@ -568,8 +568,9 @@ class UserContentImportTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'בחר קובצי "דורות.csv" או "<שם הספר>.links.csv" והם ייקלטו '
-                'לצמיתות. ייבוא חוזר מעדכן ערכים קיימים ומוסיף חדשים.',
+                'בחר קובצי "דורות.csv", "<שם הספר>.links.csv" או קובצי קישורים '
+                'של אוצריא ("<שם הספר>_links.json") והם ייקלטו לצמיתות. '
+                'ייבוא חוזר מעדכן ערכים קיימים ומוסיף חדשים.',
                 style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: 12),

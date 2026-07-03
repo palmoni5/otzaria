@@ -130,6 +130,33 @@ class UserLinkRecord {
   });
 }
 
+/// שורת קישור בפורמט ה-native של אוצריא (קובצי `<ספר>_links.json` מתיקיית
+/// links). שני הצדדים מזוהים לפי כותרת בלבד — אישי/רשמי מאותר אוטומטית בייבוא.
+class ParsedNativeLink {
+  /// מספר השורה בספר הבסיס (line_index_1, 1-based).
+  final int sourceLineNumber;
+
+  /// כותרת ספר היעד (path_2 ללא סיומת).
+  final String targetTitle;
+
+  /// מספר השורה בספר היעד (line_index_2, 1-based).
+  final int targetLineNumber;
+
+  /// הכתובת העברית של היעד (heRef_2) — להצגה בלבד.
+  final String? targetRef;
+
+  /// שם connection_type ב-DB.
+  final String connectionType;
+
+  const ParsedNativeLink({
+    required this.sourceLineNumber,
+    required this.targetTitle,
+    required this.targetLineNumber,
+    this.targetRef,
+    required this.connectionType,
+  });
+}
+
 /// שגיאת פענוח של שורה בודדת, לדיווח מרוכז למשתמש.
 class ImportRowError {
   /// מספר השורה בקובץ (1-based, כולל שורת הכותרת).
