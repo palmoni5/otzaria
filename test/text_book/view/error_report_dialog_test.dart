@@ -135,12 +135,37 @@ void main() {
       expect(ErrorReportHelper.isDictaSourceFolder(null), isFalse);
     });
 
-    test('builds dicta edit url with book title in q parameter', () {
+    test('builds dicta edit deep link with title parameter', () {
       final url = ErrorReportHelper.dictaEditUrlFor('ספר הזוהר');
 
       final uri = Uri.parse(url);
-      expect(uri.path, equals('/library/dicta-edit'));
-      expect(uri.queryParameters['q'], equals('ספר הזוהר'));
+      expect(uri.path, equals('/library/dicta-edit/goto'));
+      expect(uri.queryParameters['title'], equals('ספר הזוהר'));
+      expect(uri.queryParameters.containsKey('text'), isFalse);
+    });
+
+    test('includes selected text in the deep link', () {
+      final url = ErrorReportHelper.dictaEditUrlFor(
+        'ספר הזוהר',
+        selectedText: 'קטע עם טעות',
+      );
+
+      final uri = Uri.parse(url);
+      expect(uri.queryParameters['title'], equals('ספר הזוהר'));
+      expect(uri.queryParameters['text'], equals('קטע עם טעות'));
+    });
+
+    test('truncates long selected text at a word boundary', () {
+      final longText = List.generate(100, (i) => 'מילה$i').join(' ');
+      final url = ErrorReportHelper.dictaEditUrlFor(
+        'ספר הזוהר',
+        selectedText: longText,
+      );
+
+      final text = Uri.parse(url).queryParameters['text']!;
+      expect(text.length, lessThanOrEqualTo(300));
+      // נחתך בגבול מילה — הקטע החלקי הוא תחילת המקור, בלי מילה קטועה בסוף
+      expect(longText.startsWith('$text '), isTrue);
     });
 
     test('builds plain dicta edit url for empty title', () {
@@ -694,111 +719,101 @@ void main() {
     });
   });
 
-  group('ErrorReportHelper.maybeOfferDictaSelfEdit', () {
-    Future<bool?> runOffer(
+  group('RegularReportTab — באנר תיקון עצמי לספרי דיקטה', () {
+    const bannerText = 'לחץ כאן על מנת לתקן את הספר בעצמך';
+
+    Future<bool> pumpTab(
       WidgetTester tester, {
       required bool isDictaSource,
-      String? tapText,
     }) async {
-      bool? result;
+      bool cancelled = false;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: Builder(
-              builder: (ctx) => ElevatedButton(
-                onPressed: () async {
-                  result = await ErrorReportHelper.maybeOfferDictaSelfEdit(
-                    ctx,
-                    isDictaSource: isDictaSource,
-                    bookTitle: 'ספר בדיקה',
-                  );
-                },
-                child: const Text('פתח'),
-              ),
+            body: RegularReportTab(
+              selectedText: 'קטע עם טעות',
+              fontSize: 18,
+              state: _loadedState(),
+              directReportTargetLabel: 'אוצריא',
+              bookTitle: 'ספר בדיקה',
+              isDictaSource: isDictaSource,
+              onActionSelected: (_, __) {},
+              onCancel: () => cancelled = true,
             ),
           ),
         ),
       );
-
-      await tester.tap(find.text('פתח'));
       await tester.pumpAndSettle();
-
-      if (tapText != null) {
-        await tester.tap(find.text(tapText));
-        await tester.pumpAndSettle();
-      }
-      return result;
+      return cancelled;
     }
 
-    testWidgets('proceeds without offering when source is not dicta',
+    testWidgets('shows the banner for dicta books in online mode',
         (tester) async {
-      final result = await runOffer(tester, isDictaSource: false);
+      await pumpTab(tester, isDictaSource: true);
 
-      expect(find.text('ניתן לתקן בעצמך'), findsNothing);
-      expect(result, isTrue);
+      expect(find.text(bannerText), findsOneWidget);
     });
 
-    testWidgets('offers self-edit for dicta and proceeds on "continue"',
-        (tester) async {
-      final result = await runOffer(
-        tester,
-        isDictaSource: true,
-        tapText: 'המשך בדיווח רגיל',
-      );
+    testWidgets('hides the banner for non-dicta books', (tester) async {
+      await pumpTab(tester, isDictaSource: false);
 
-      expect(result, isTrue);
+      expect(find.text(bannerText), findsNothing);
     });
 
-    testWidgets('shows the dicta edit link inside the offer', (tester) async {
-      await runOffer(tester, isDictaSource: true);
+    testWidgets('hides the banner in offline mode', (tester) async {
+      await Settings.setValue<bool>(SettingsRepository.keyOfflineMode, true);
+      addTearDown(() =>
+          Settings.setValue<bool>(SettingsRepository.keyOfflineMode, false));
 
-      expect(find.text('ניתן לתקן בעצמך'), findsOneWidget);
-      expect(find.text(ErrorReportHelper.dictaEditUrl), findsOneWidget);
+      await pumpTab(tester, isDictaSource: true);
+
+      expect(find.text(bannerText), findsNothing);
     });
 
-    testWidgets('does not proceed to report when edit page opens',
+    testWidgets('closes the report form when the edit page opens',
         (tester) async {
       final previousLauncher = UrlLauncherPlatform.instance;
       UrlLauncherPlatform.instance = _SucceedingUrlLauncher();
       addTearDown(() => UrlLauncherPlatform.instance = previousLauncher);
 
-      final result = await runOffer(
-        tester,
-        isDictaSource: true,
-        tapText: 'פתח עמוד עריכה',
+      bool cancelled = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RegularReportTab(
+              selectedText: 'קטע עם טעות',
+              fontSize: 18,
+              state: _loadedState(),
+              directReportTargetLabel: 'אוצריא',
+              bookTitle: 'ספר בדיקה',
+              isDictaSource: true,
+              onActionSelected: (_, __) {},
+              onCancel: () => cancelled = true,
+            ),
+          ),
+        ),
       );
+      await tester.pumpAndSettle();
 
-      // נפתח עמוד העריכה — לא ממשיכים לטופס הדיווח
-      expect(result, isFalse);
-      expect(find.text('ניתן לתקן בעצמך'), findsNothing);
+      await tester.tap(find.text(bannerText));
+      await tester.pumpAndSettle();
+
+      // עמוד העריכה נפתח — הטופס נסגר דרך onCancel
+      expect(cancelled, isTrue);
     });
 
-    testWidgets('falls back to report when edit page fails to open',
+    testWidgets('keeps the form open when the edit page fails to open',
         (tester) async {
       final previousLauncher = UrlLauncherPlatform.instance;
       UrlLauncherPlatform.instance = _FailingUrlLauncher();
       addTearDown(() => UrlLauncherPlatform.instance = previousLauncher);
 
-      final result = await runOffer(
-        tester,
-        isDictaSource: true,
-        tapText: 'פתח עמוד עריכה',
-      );
+      await pumpTab(tester, isDictaSource: true);
+      await tester.tap(find.text(bannerText));
+      await tester.pumpAndSettle();
 
-      // הפתיחה נכשלה — ממשיכים אוטומטית לטופס הדיווח (UiSnack מודיע למשתמש)
-      expect(result, isTrue);
-      expect(find.text('ניתן לתקן בעצמך'), findsNothing);
-    });
-
-    testWidgets('skips the offer in offline mode', (tester) async {
-      await Settings.setValue<bool>(SettingsRepository.keyOfflineMode, true);
-      addTearDown(() =>
-          Settings.setValue<bool>(SettingsRepository.keyOfflineMode, false));
-
-      final result = await runOffer(tester, isDictaSource: true);
-
-      expect(find.text('ניתן לתקן בעצמך'), findsNothing);
-      expect(result, isTrue);
+      // הפתיחה נכשלה — הבאנר עדיין מוצג והטופס נשאר פתוח
+      expect(find.text(bannerText), findsOneWidget);
     });
   });
 
