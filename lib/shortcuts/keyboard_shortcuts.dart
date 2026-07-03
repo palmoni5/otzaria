@@ -150,8 +150,11 @@ class _KeyboardShortcutsState extends State<KeyboardShortcuts> {
 
     // קיצורי טאבים/עיון פועלים רק במסך העיון; במסכים אחרים נופלים ל-`ignored`
     // כדי לא לסגור/לשנות טאב שברקע (למשל Ctrl+W בספרייה או בהגדרות).
+    // Screen.search מציג את אותו עמוד טאבים כמו Screen.reading,
+    // ולכן קיצורי טאבים צריכים לפעול בשני המסכים.
+    final currentScreen = context.read<NavigationBloc>().state.currentScreen;
     final isReadingScreen =
-        context.read<NavigationBloc>().state.currentScreen == Screen.reading;
+        currentScreen == Screen.reading || currentScreen == Screen.search;
 
     // פתח/סגור חלונית ניווט. אם הטאב הפעיל אינו ספר — מחזירים `ignored`
     // כדי לא לבלוע את הקיצור (כך מנוע ה-shortcut יכול להמשיך הלאה במקום

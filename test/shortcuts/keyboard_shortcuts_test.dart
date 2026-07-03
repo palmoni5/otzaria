@@ -662,6 +662,17 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
     });
 
+    testWidgets('Ctrl+W במסך חיפוש סוגר את הטאב הנוכחי (issue #539)',
+        (tester) async {
+      final tabsBloc = await pumpOnScreen(tester, Screen.search);
+      expect(tabsBloc.state.tabs, hasLength(2));
+
+      await sendCtrlW(tester);
+      expect(tabsBloc.state.tabs, hasLength(1));
+
+      await tester.pump(const Duration(milliseconds: 400));
+    });
+
     testWidgets('Ctrl+W מחוץ למסך עיון אינו סוגר טאב', (tester) async {
       final tabsBloc = await pumpOnScreen(tester, Screen.library);
       expect(tabsBloc.state.tabs, hasLength(2));
