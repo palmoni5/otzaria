@@ -5,6 +5,7 @@ import 'package:otzaria/data/repository/data_repository.dart';
 import 'package:otzaria/find_ref/repository/find_ref_repository.dart';
 import 'package:otzaria/find_ref/repository/reference_books_cache.dart';
 import 'package:otzaria/services/commentary_service.dart';
+import 'package:otzaria/utils/text/text_manipulation.dart';
 
 class MockDataRepository extends Mock implements DataRepository {}
 
@@ -2710,6 +2711,45 @@ void main() {
       final results = await repo.findRefs('ספר אטלס');
       expect(results, hasLength(1));
       expect(results.single.reference, equals('ספר אטלס'));
+    });
+
+    test('PDF גמרא: "כריתות ב" מחזיר רק דף ב — לא את צד ע"ב של כל דף',
+        () async {
+      // outline של מסכת ב-PDF: כל דף מסומן ב-"." (ע"א) / ":" (ע"ב). הרכיב
+      // הראשון מנורמל בדיוק כמו בייצור (getPdfOutlineEntries).
+      const rawDapim = ['דף ב.', 'דף ב:', 'דף ג:', 'דף י:', 'דף כ:'];
+      final dafOutline = [
+        for (var i = 0; i < rawDapim.length; i++)
+          (normalizeForFindRefMatch(rawDapim[i]), rawDapim[i], (i + 2) * 2),
+      ];
+
+      final repo = FindRefRepository(
+        dataRepository: MockDataRepository(),
+        isReferenceBooksCacheLoaded: () => true,
+        warmUpReferenceBooksCache: () async {},
+        searchReferenceBooks: (query, {int limit = 50}) {
+          if (query == 'כריתות') {
+            return [
+              _hit(
+                bookId: -1,
+                title: 'כריתות',
+                fileType: 'pdf',
+                filePath: '/books/keritot.pdf',
+              ),
+            ];
+          }
+          return const <ReferenceBookHit>[];
+        },
+        getTocEntriesForReference: (_, __, {queryTokens}) async => const [],
+        getPdfOutlineEntries: (_) async => dafOutline,
+        getCategoryPath: (_) async => '',
+      );
+
+      final refs = (await repo.findRefs('כריתות ב')).map((r) => r.reference);
+
+      expect(refs, containsAll(['כריתות דף ב.', 'כריתות דף ב:']));
+      expect(refs.any((r) => r.contains('דף ג') || r.contains('דף י')), isFalse,
+          reason: 'סימון צד ע"ב (":") של דפים אחרים לא נחשב התאמה ל-"ב"');
     });
 
     test(

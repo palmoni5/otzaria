@@ -2613,11 +2613,26 @@ extension BookAcronymRepository on SeforimRepository {
   /// תומך בטרנספוזיציה של שתי אותיות עבריות ("טל" ↔ "לט").
   List<_CachedTocEntry> _searchTocHierarchically(
       _TocBookCache cache, List<String> tokens) {
+    // קיצור ציטוט-דף: כשהרמה העליונה מורכבת מערכי "דף" (מסכת גמרא רגילה)
+    // והשאילתה היא ציטוט דף, התאמה מיקומית מכריעה — גם כשהתוצאה ריקה.
+    // נפילה לחיפוש הרגיל הייתה מציפה: טוקן "ב" בודד נתפס ע"י סימון צד ע"ב
+    // של כל דף (פירוש דליל שאין בו דף ב' החזיר את דפי ה:/ו:/ז:).
+    final cite = parseDafCitation(tokens);
+    if (cite != null) {
+      final rootHasDaf = cache.rootEntries
+          .any((e) => e.ownTokens.isNotEmpty && e.ownTokens.first == 'דף');
+      if (rootHasDaf) {
+        return cache.rootEntries
+            .where((e) => matchDafCitation(e.ownTokens, cite) == true)
+            .toList();
+      }
+    }
+
     var searchScope = cache.rootEntries;
     var currentMatches = <_CachedTocEntry>[];
 
     for (final token in tokens) {
-      final alts = _hebrewTokenAlternatives(token);
+      final alts = hebrewTokenAlternatives(token);
 
       List<_CachedTocEntry> found = const [];
       for (final alt in alts) {
@@ -2683,16 +2698,21 @@ extension BookAcronymRepository on SeforimRepository {
       _TocBookCache cache, List<String> tokens) {
     if (tokens.isEmpty) return const [];
 
-    final lastAlts = _hebrewTokenAlternatives(tokens.last);
+    final cite = parseDafCitation(tokens);
+    final lastAlts = hebrewTokenAlternatives(tokens.last);
 
     return cache.all.where((e) {
+      if (cite != null) {
+        final m = matchDafCitation(e.ownTokens, cite);
+        if (m != null) return m; // ערך "דף" — התאמה מיקומית מכריעה
+      }
       if (!lastAlts.any((a) => e.ownTokens.contains(a))) return false;
       final pathTokens = normalizeForFindRefMatch(e.reference)
           .split(' ')
           .where((t) => t.isNotEmpty)
           .toList(growable: false);
       for (final token in tokens) {
-        final alts = _hebrewTokenAlternatives(token);
+        final alts = hebrewTokenAlternatives(token);
         if (!alts.any((a) => pathTokens.contains(a))) return false;
       }
       return true;
@@ -2734,14 +2754,19 @@ extension BookAcronymRepository on SeforimRepository {
       _TocBookCache cache, List<String> tokens) {
     if (tokens.isEmpty) return const [];
 
-    final lastAlts = _hebrewTokenAlternatives(tokens.last);
+    final cite = parseDafCitation(tokens);
+    final lastAlts = hebrewTokenAlternatives(tokens.last);
 
     return cache.all.where((e) {
+      if (cite != null) {
+        final m = matchDafCitation(e.ownTokens, cite);
+        if (m != null) return m; // ערך "דף" — התאמה מיקומית מכריעה
+      }
       // אנטי-הצפה: הטוקן האחרון חייב להתאים לטקסט של הערך עצמו (העלה).
       if (!lastAlts.any((a) => e.ownTokens.contains(a))) return false;
       // כל טוקני השאילתה חייבים להופיע בנתיב המלא (בכל סדר).
       for (final token in tokens) {
-        final alts = _hebrewTokenAlternatives(token);
+        final alts = hebrewTokenAlternatives(token);
         if (!alts.any((a) => e.pathTokens.contains(a))) return false;
       }
       return true;
@@ -2944,24 +2969,6 @@ extension BookAcronymRepository on SeforimRepository {
       });
     }
     return result;
-  }
-
-  /// מחזיר טוקן + גרסת טרנספוזיציה לאותיות עבריות דו-תווניות.
-  /// לדוגמה: "טל" → ["טל", "לט"] (שתי שיטות מניין עבריות ל-39).
-  List<String> _hebrewTokenAlternatives(String token) {
-    if (token.length == 2) {
-      final c0 = token.codeUnitAt(0);
-      final c1 = token.codeUnitAt(1);
-      // אותיות עבריות U+05D0–U+05EA
-      if (c0 >= 0x05D0 &&
-          c0 <= 0x05EA &&
-          c1 >= 0x05D0 &&
-          c1 <= 0x05EA &&
-          c0 != c1) {
-        return [token, '${token[1]}${token[0]}'];
-      }
-    }
-    return [token];
   }
 }
 

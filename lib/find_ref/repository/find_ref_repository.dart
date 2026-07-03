@@ -602,13 +602,24 @@ class FindRefRepository {
         final outlineEntries = await outlineFn(hit.filePath);
         final normalizedBookTitle = _normalizeForMatch(title);
 
+        // ציטוט דף: התאמה מיקומית (מספר מול מספר, עמוד מול עמוד) — כדי ש-"ב"
+        // בודד לא ייתפס ע"י סימון צד ע"ב ("דף ג:") של כל דף ב-outline.
+        final cite = parseDafCitation(remainingTokens);
+
         // Mirror regular book: add ALL matching outline entries (not just first).
         for (final (normChapter, origChapter, pageNumber) in outlineEntries) {
           if (normChapter == normalizedBookTitle) continue;
           final chapterWords = _tokenize(normChapter);
-          final matches = remainingTokens.every(
-            (t) => chapterWords.any((w) => w.startsWith(t)),
-          );
+          bool matches;
+          final dafMatch =
+              cite == null ? null : matchDafCitation(chapterWords, cite);
+          if (dafMatch != null) {
+            matches = dafMatch;
+          } else {
+            matches = remainingTokens.every(
+              (t) => chapterWords.any((w) => w.startsWith(t)),
+            );
+          }
           if (!matches) continue;
           results.add(DbReferenceResult(
             title: title,

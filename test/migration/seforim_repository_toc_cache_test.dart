@@ -638,4 +638,83 @@ void main() {
       );
     });
   });
+
+  // ── ציטוט-דף: "ב" בודד לא תופס את צד ע"ב של כל דף במסכת ──────────────────
+  group('SeforimRepository — ציטוט דף (התאמה מיקומית של עמוד)', () {
+    // מסכת גמרא רגילה: דפים ברמה 1 עם סימון עמוד "." (ע"א) ו-":" (ע"ב).
+    Future<int> buildGemaraBook(String title) async {
+      final catId = await createCategory();
+      final bookId = await createBook(catId, title);
+      await insertLines(bookId, List.generate(6, (i) => 'l$i'));
+
+      const dapim = ['דף ב.', 'דף ב:', 'דף ג.', 'דף ג:', 'דף ד.', 'דף ד:'];
+      for (var i = 0; i < dapim.length; i++) {
+        await insertToc(bookId: bookId, lineIndex: i, text: dapim[i], level: 1);
+      }
+      await repository.updateTocEntryLineIdsByLineIndex(bookId);
+      return bookId;
+    }
+
+    test('"ב" בודד מחזיר רק את שני צדי דף ב — לא את ע"ב של כל דף', () async {
+      final bookId = await buildGemaraBook('כריתות');
+
+      final results = await repository
+          .getTocEntriesForReference(bookId, 'כריתות', queryTokens: ['ב']);
+
+      final refs = results.map((r) => r['reference']).toSet();
+      expect(refs, equals({'כריתות דף ב.', 'כריתות דף ב:'}));
+    });
+
+    test('"ב ב" מחזיר רק דף ב ע"ב', () async {
+      final bookId = await buildGemaraBook('כריתות');
+
+      final results = await repository
+          .getTocEntriesForReference(bookId, 'כריתות', queryTokens: ['ב', 'ב']);
+
+      expect(results, hasLength(1));
+      expect(results.first['reference'], equals('כריתות דף ב:'));
+    });
+
+    test('"ב א" מחזיר רק דף ב ע"א', () async {
+      final bookId = await buildGemaraBook('כריתות');
+
+      final results = await repository
+          .getTocEntriesForReference(bookId, 'כריתות', queryTokens: ['ב', 'א']);
+
+      expect(results, hasLength(1));
+      expect(results.first['reference'], equals('כריתות דף ב.'));
+    });
+
+    test('אות שאינה עמוד ("ג") ממשיכה להחזיר את שני צדי הדף', () async {
+      final bookId = await buildGemaraBook('כריתות');
+
+      final results = await repository
+          .getTocEntriesForReference(bookId, 'כריתות', queryTokens: ['ג']);
+
+      final refs = results.map((r) => r['reference']).toSet();
+      expect(refs, equals({'כריתות דף ג.', 'כריתות דף ג:'}));
+    });
+
+    test('פירוש דליל שאין בו דף ב — מחזיר ריק ולא מציף את דפי צד ע"ב',
+        () async {
+      final catId = await createCategory();
+      final bookId = await createBook(catId, 'חידושי אגדות על כריתות');
+      await insertLines(bookId, List.generate(3, (i) => 'l$i'));
+      // פירוש שמתחיל בדף ה' — אין בו דף ב'. כל הדפים בצד ע"ב (":").
+      for (var i = 0; i < 3; i++) {
+        await insertToc(
+            bookId: bookId,
+            lineIndex: i,
+            text: ['דף ה:', 'דף ו:', 'דף ז:'][i],
+            level: 1);
+      }
+      await repository.updateTocEntryLineIdsByLineIndex(bookId);
+
+      final results = await repository.getTocEntriesForReference(
+          bookId, 'חידושי אגדות על כריתות',
+          queryTokens: ['ב']);
+
+      expect(results, isEmpty);
+    });
+  });
 }

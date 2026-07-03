@@ -879,6 +879,74 @@ String normalizeForFindRefMatch(String input) {
   return cleaned.replaceAll(RegExp(r'\s+'), ' ').trim();
 }
 
+/// ציטוט דף מנותח: מספר הדף ועמוד אופציונלי ("א"/"ב").
+typedef DafCitation = ({String number, String? amud});
+
+/// מחזיר טוקן + גרסת טרנספוזיציה לאותיות עבריות דו-תווניות.
+/// לדוגמה: "טל" → ["טל", "לט"] (שתי שיטות מניין עבריות ל-39).
+List<String> hebrewTokenAlternatives(String token) {
+  if (token.length == 2) {
+    final c0 = token.codeUnitAt(0);
+    final c1 = token.codeUnitAt(1);
+    // אותיות עבריות U+05D0–U+05EA
+    if (c0 >= 0x05D0 &&
+        c0 <= 0x05EA &&
+        c1 >= 0x05D0 &&
+        c1 <= 0x05EA &&
+        c0 != c1) {
+      return [token, '${token[1]}${token[0]}'];
+    }
+  }
+  return [token];
+}
+
+/// מנתח טוקני-מיקום כציטוט דף בפורמט "מספר ואחריו עמוד אופציונלי" (אחרי הפשטת
+/// "דף"/"עמוד"). מחזיר null אם אינו ציטוט דף נקי — אז המתקשר משתמש בהתאמה
+/// הרגילה. הבחנה זו מונעת ש-"ב" בודד (מספר דף) ייתפס ע"י סימון צד ע"ב
+/// (הנקודתיים שבנרמול הופכות ל-"ב") של כל דף במסכת.
+DafCitation? parseDafCitation(List<String> tokens) {
+  final loc =
+      tokens.where((t) => t != 'דף' && t != 'עמוד').toList(growable: false);
+  if (loc.isEmpty) return null;
+
+  // מספר דף: 1–3 אותיות עבריות בלבד (כדי לא לתפוס מילות-הקשר כמו "ראשון").
+  final number = loc.first;
+  if (number.isEmpty ||
+      number.length > 3 ||
+      !number.codeUnits.every((c) => c >= 0x05D0 && c <= 0x05EA)) {
+    return null;
+  }
+
+  String? amud;
+  if (loc.length >= 2) {
+    if (loc[1] == 'א' || loc[1] == 'ב') {
+      amud = loc[1];
+    } else {
+      return null; // טוקן מיקום שני שאינו עמוד — אינו ציטוט דף פשוט
+    }
+  }
+  if (loc.length > (amud != null ? 2 : 1)) return null;
+  return (number: number, amud: amud);
+}
+
+/// התאמה מיקומית של טוקני ערך בפורמט "דף מספר עמוד" לציטוט דף [cite].
+/// מחזיר null אם הערך אינו בפורמט "דף ..." (אז המתקשר משתמש בהתאמה הרגילה),
+/// אחרת bool האם המספר (וגם העמוד, אם צוין בשאילתה) תואמים.
+bool? matchDafCitation(List<String> ownTokens, DafCitation cite) {
+  if (ownTokens.length < 2 || ownTokens.first != 'דף') return null;
+  if (!hebrewTokenAlternatives(cite.number).contains(ownTokens[1])) {
+    return false;
+  }
+  if (cite.amud != null) {
+    final entryAmud =
+        ownTokens.length >= 3 && (ownTokens[2] == 'א' || ownTokens[2] == 'ב')
+            ? ownTokens[2]
+            : null;
+    if (cite.amud != entryAmud) return false;
+  }
+  return true;
+}
+
 /// בודק אם כותרת TOC תואמת להפניה חופשית של תוסף (למשל "ס\"ד ע\"ב" ↔ "דף סד:").
 /// תחילה התאמה גולמית, ואז התאמת טוקנים מנורמלים — כדי לגשר על פערי
 /// גרשיים, "דף"/"עמוד", וסימון העמוד ("ע\"א/ע\"ב" מול ".":/":") שבין התוסף ל-TOC.
