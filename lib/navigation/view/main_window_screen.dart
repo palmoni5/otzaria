@@ -2181,8 +2181,14 @@ class MainWindowScreenState extends State<MainWindowScreen>
         !renderObject.hasSize) {
       return null;
     }
-    final topLeft = renderObject.localToGlobal(Offset.zero);
-    return (topLeft & renderObject.size).inflate(inflate);
+    // ילד keep-alive שנגלל מחוץ ל-viewport עובר את בדיקות attached/hasSize,
+    // אבל layoutOffset שלו ב-sliver הוא null ו-localToGlobal זורק.
+    try {
+      final topLeft = renderObject.localToGlobal(Offset.zero);
+      return (topLeft & renderObject.size).inflate(inflate);
+    } catch (_) {
+      return null;
+    }
   }
 
   void _scheduleTourTargetRebuilds({required int remainingFrames}) {
