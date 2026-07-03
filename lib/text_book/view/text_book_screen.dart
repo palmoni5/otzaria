@@ -1998,7 +1998,8 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
   Widget _buildZoomInButton(BuildContext context, TextBookLoaded state) {
     final isCompact = context.read<SettingsBloc>().state.compactMenuMode;
     return ToolbarActionButton(
-      tooltip: 'הגדל את גודל הטקסט (CTRL + +)',
+      tooltip:
+          'הגדל את גודל הטקסט (${ShortcutHelper.formatShortcutForDisplay('ctrl++')})',
       icon: FluentIcons.zoom_in_24_regular,
       compact: isCompact,
       onPressed: () async {
@@ -2012,7 +2013,8 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
   Widget _buildZoomOutButton(BuildContext context, TextBookLoaded state) {
     final isCompact = context.read<SettingsBloc>().state.compactMenuMode;
     return ToolbarActionButton(
-      tooltip: 'הקטן את גודל הטקסט (CTRL + -)',
+      tooltip:
+          'הקטן את גודל הטקסט (${ShortcutHelper.formatShortcutForDisplay('ctrl+-')})',
       icon: FluentIcons.zoom_out_24_regular,
       compact: isCompact,
       onPressed: () async {

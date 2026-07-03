@@ -3967,12 +3967,12 @@ class _PdfBookScreenState extends State<PdfBookScreen>
     return buildBookViewNavigationActions(
       firstAction: buildBookViewFirstNavigationAction(
         widget: ToolbarActionButton(
-          tooltip: 'תחילת הספר (CTRL + HOME)',
+          tooltip: 'תחילת הספר (${ShortcutHelper.formatShortcutForDisplay('ctrl+home')})',
           icon: FluentIcons.arrow_previous_24_filled,
           compact: isCompact,
           onPressed: () => _goToPageWithSpreadLock(1),
         ),
-        tooltip: 'תחילת הספר (CTRL + HOME)',
+        tooltip: 'תחילת הספר (${ShortcutHelper.formatShortcutForDisplay('ctrl+home')})',
         onPressed: () => _goToPageWithSpreadLock(1),
       ),
       previousAction: buildBookViewPreviousNavigationAction(
@@ -3997,13 +3997,13 @@ class _PdfBookScreenState extends State<PdfBookScreen>
       ),
       lastAction: buildBookViewLastNavigationAction(
         widget: ToolbarActionButton(
-          tooltip: 'סוף הספר (CTRL + END)',
+          tooltip: 'סוף הספר (${ShortcutHelper.formatShortcutForDisplay('ctrl+end')})',
           icon: FluentIcons.arrow_next_24_filled,
           compact: isCompact,
           onPressed: () =>
               _goToPageWithSpreadLock(widget.tab.pdfViewerController.pageCount),
         ),
-        tooltip: 'סוף הספר (CTRL + END)',
+        tooltip: 'סוף הספר (${ShortcutHelper.formatShortcutForDisplay('ctrl+end')})',
         onPressed: () =>
             _goToPageWithSpreadLock(widget.tab.pdfViewerController.pageCount),
       ),
@@ -4039,10 +4039,10 @@ class _PdfBookScreenState extends State<PdfBookScreen>
 
     return ReaderNavCenter(
       title: title,
-      prevMajorTooltip: 'תחילת הספר (CTRL + HOME)',
+      prevMajorTooltip: 'תחילת הספר (${ShortcutHelper.formatShortcutForDisplay('ctrl+home')})',
       prevMinorTooltip: 'הקודם',
       nextMinorTooltip: 'הבא',
-      nextMajorTooltip: 'סוף הספר (CTRL + END)',
+      nextMajorTooltip: 'סוף הספר (${ShortcutHelper.formatShortcutForDisplay('ctrl+end')})',
       onPrevMajor: () => _goToPageWithSpreadLock(1),
       onPrevMinor: _goPreviousPage,
       onNextMinor: _goNextPage,
