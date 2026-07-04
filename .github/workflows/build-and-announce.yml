@@ -1430,7 +1430,6 @@ jobs:
           RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}"
 
           windows_installers=()
-          windows_portable=()
           windows_full=()
           android_apk=()
           android_full=()
@@ -1463,7 +1462,10 @@ jobs:
                 windows_installers+=("$file")
                 ;;
               *windows*.zip)
-                windows_portable+=("$file")
+                # ה-ZIP הנייד נשאר נכס ב-release (מנגנון העדכון של התקנות
+                # ניידות מוריד אותו), אבל לא מקושר בגוף ה-release — התקנה
+                # ניידת חדשה נעשית דרך האפשרות במתקין הרגיל.
+                echo "Keeping $file as an unlisted release asset (portable update channel)"
                 ;;
               *android-full*.zip)
                 android_full+=("$file")
@@ -1519,16 +1521,12 @@ jobs:
 
           EOF
 
-          if [ ${#windows_installers[@]} -gt 0 ] || [ ${#windows_portable[@]} -gt 0 ] || [ ${#windows_full[@]} -gt 0 ]; then
+          if [ ${#windows_installers[@]} -gt 0 ] || [ ${#windows_full[@]} -gt 0 ]; then
             printf "## ווינדוס\n\n" >> release-body.md
 
-            if [ ${#windows_installers[@]} -gt 0 ] || [ ${#windows_portable[@]} -gt 0 ]; then
+            if [ ${#windows_installers[@]} -gt 0 ]; then
               printf "### גרסת תוכנה בלבד\n\n" >> release-body.md
-              emit_link_group "מתקין לווינדוס (שדרוג מגרסה קיימת מותקן אוטומטית ברקע)" "${windows_installers[@]}"
-              emit_link_group "גרסה ניידת לווינדוס" "${windows_portable[@]}"
-              if [ ${#windows_portable[@]} -gt 0 ]; then
-                printf "\n> **שימו לב:** הגרסה הניידת שומרת מעתה את כל הנתונים בתיקיית \`otzaria_data\` שליד התוכנה — ניידות אמיתית, אפשר להריץ מדיסק-און-קי. מי שמעדכן גרסה ניידת ישנה יתחיל עם הגדרות נקיות.\n" >> release-body.md
-              fi
+              emit_link_group "מתקין לווינדוס (שדרוג מגרסה קיימת מותקן אוטומטית ברקע; כולל אפשרות התקנה ניידת)" "${windows_installers[@]}"
               printf "\n" >> release-body.md
             fi
 
