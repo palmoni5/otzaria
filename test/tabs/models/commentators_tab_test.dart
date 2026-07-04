@@ -120,6 +120,111 @@ void main() {
       expect(restored.sourceTab.bloc.isClosed, isTrue);
     });
 
+    test('נבנה עם בחירת המפרשים מה-sourceTab הטעון', () {
+      final sourceTab = TextBookTab(
+        book: TextBook(title: 'ספר בדיקה'),
+        index: 3,
+        blocOverride: _LoadedTextBookBloc(
+          _loadedState(
+            selectedIndex: 17,
+            visibleIndices: const [17],
+            activeCommentators: const ['רש"י', 'תוספות'],
+          ),
+        ),
+      );
+      addTearDown(sourceTab.dispose);
+
+      final tab = CommentatorsTab(sourceTab: sourceTab);
+      addTearDown(tab.dispose);
+
+      expect(tab.selectedCommentators, ['רש"י', 'תוספות']);
+    });
+
+    test('toJson משמר את בחירת המפרשים ו-fromJson משחזר אותה', () {
+      final sourceTab = TextBookTab(
+        book: TextBook(title: 'ספר בדיקה'),
+        index: 8,
+      );
+      addTearDown(sourceTab.dispose);
+
+      final tab = CommentatorsTab(sourceTab: sourceTab)
+        ..selectedCommentators = ['רש"י', 'רמב"ן'];
+      addTearDown(tab.dispose);
+
+      final json = tab.toJson();
+      expect(json['selectedCommentators'], ['רש"י', 'רמב"ן']);
+
+      final restored = CommentatorsTab.fromJson(json);
+      addTearDown(restored.dispose);
+      expect(restored.selectedCommentators, ['רש"י', 'רמב"ן']);
+    });
+
+    test('fromJson מכבד בחירה null שמורה (הצגת כל המפרשים)', () {
+      final restored = CommentatorsTab.fromJson({
+        'type': 'CommentatorsTab',
+        'isPinned': false,
+        'initialIndex': 2,
+        'bookTitle': 'ספר משוחזר',
+        'selectedCommentators': null,
+        'sourceTab': {
+          'type': 'TextBookTab',
+          'title': 'ספר משוחזר',
+          'initalIndex': 2,
+          'commentators': const ['רש"י'],
+          'book': TextBook(title: 'ספר משוחזר').toJson(),
+          'splitedView': true,
+          'showPageShapeView': false,
+          'showLeftPane': false,
+          'isPinned': false,
+        },
+      });
+      addTearDown(restored.dispose);
+
+      expect(restored.selectedCommentators, isNull);
+    });
+
+    test('fromJson ישן (ללא selectedCommentators) נופל לבחירת ה-sourceTab', () {
+      final restored = CommentatorsTab.fromJson({
+        'type': 'CommentatorsTab',
+        'isPinned': false,
+        'initialIndex': 2,
+        'bookTitle': 'ספר משוחזר',
+        'sourceTab': {
+          'type': 'TextBookTab',
+          'title': 'ספר משוחזר',
+          'initalIndex': 2,
+          'commentators': const ['רש"י', 'אבן עזרא'],
+          'book': TextBook(title: 'ספר משוחזר').toJson(),
+          'splitedView': true,
+          'showPageShapeView': false,
+          'showLeftPane': false,
+          'isPinned': false,
+        },
+      });
+      addTearDown(restored.dispose);
+
+      expect(restored.selectedCommentators, ['רש"י', 'אבן עזרא']);
+    });
+
+    test('clone מעתיק את בחירת המפרשים', () {
+      final sourceTab = TextBookTab(
+        book: TextBook(title: 'ספר בדיקה'),
+        index: 8,
+      );
+      addTearDown(sourceTab.dispose);
+
+      final tab = CommentatorsTab(sourceTab: sourceTab)
+        ..selectedCommentators = ['רש"י'];
+      addTearDown(tab.dispose);
+
+      final copy = tab.clone() as CommentatorsTab;
+      addTearDown(copy.dispose);
+
+      expect(copy.selectedCommentators, ['רש"י']);
+      copy.selectedCommentators!.add('תוספות');
+      expect(tab.selectedCommentators, ['רש"י']);
+    });
+
     test('toJson שומר sourceTab ואת סוג הטאב', () {
       final sourceTab = TextBookTab(
         book: TextBook(title: 'ספר בדיקה'),
@@ -153,6 +258,7 @@ class _LoadedTextBookBloc extends Bloc<TextBookEvent, TextBookState>
 TextBookLoaded _loadedState({
   required int? selectedIndex,
   required List<int> visibleIndices,
+  List<String> activeCommentators = const <String>[],
 }) =>
     TextBookLoaded(
       book: TextBook(title: 'ספר בדיקה'),
@@ -161,7 +267,7 @@ TextBookLoaded _loadedState({
       fontSize: 18,
       showSplitView: true,
       showPageShapeView: false,
-      activeCommentators: const <String>[],
+      activeCommentators: activeCommentators,
       commentatorGroups: const [],
       availableCommentators: const <String>[],
       links: const <Link>[],

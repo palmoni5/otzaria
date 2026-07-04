@@ -23,6 +23,10 @@ class CommentatorsTab extends OpenedTab {
   /// השורה שנבחרה ב-sourceTab בעת הפתיחה (אם הייתה), null אם לא הייתה בחירה
   final int? initialSelectedLine;
 
+  /// בחירת המפרשים של הכרטיסייה. null = ללא בחירה (מוצגים כל מפרשי הספר).
+  /// נשמר ב-toJson — בלעדיו הבחירה אבדה בסגירת התוכנה ושוחזרו "כל המפרשים".
+  List<String>? selectedCommentators;
+
   static int? _resolveSelectedLine(TextBookTab tab) {
     final s = tab.bloc.state;
     return s is TextBookLoaded ? s.selectedIndex : null;
@@ -37,6 +41,10 @@ class CommentatorsTab extends OpenedTab {
         super('מפרשים | ${sourceTab.title}') {
     // קורא מיקום התחלתי מה-state הנוכחי של sourceTab
     final sourceState = sourceTab.bloc.state;
+    if (sourceState is TextBookLoaded &&
+        sourceState.activeCommentators.isNotEmpty) {
+      selectedCommentators = List<String>.from(sourceState.activeCommentators);
+    }
     final int startIndex = sourceState is TextBookLoaded
         ? (sourceState.selectedIndex ??
             (sourceState.visibleIndices.isNotEmpty
@@ -80,12 +88,27 @@ class CommentatorsTab extends OpenedTab {
       sourceTab: sourceTab,
       disposeSourceTabOnDispose: true,
     )..isPinned = json['isPinned'] ?? false;
+    if (json.containsKey('selectedCommentators')) {
+      final saved = json['selectedCommentators'];
+      tab.selectedCommentators =
+          saved is List ? List<String>.from(saved) : null;
+    } else {
+      // JSON מגרסה שלא שמרה את בחירת הכרטיסייה — הבחירה של טאב המקור קרובה יותר
+      // מאשר "כל המפרשים".
+      final sourceCommentators = sourceTab.commentators;
+      if (sourceCommentators != null && sourceCommentators.isNotEmpty) {
+        tab.selectedCommentators = List<String>.from(sourceCommentators);
+      }
+    }
     return tab;
   }
 
   @override
-  OpenedTab clone() =>
-      CommentatorsTab(sourceTab: sourceTab)..isPinned = isPinned;
+  OpenedTab clone() => CommentatorsTab(sourceTab: sourceTab)
+    ..isPinned = isPinned
+    ..selectedCommentators = selectedCommentators == null
+        ? null
+        : List<String>.from(selectedCommentators!);
 
   @override
   void dispose() {
@@ -111,6 +134,7 @@ class CommentatorsTab extends OpenedTab {
       'initialIndex': currentIndex,
       'bookTitle': sourceTab.book.title,
       'sourceTab': sourceTab.toJson(),
+      'selectedCommentators': selectedCommentators,
     };
   }
 }

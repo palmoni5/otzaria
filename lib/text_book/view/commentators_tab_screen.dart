@@ -292,12 +292,10 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
     });
     // בקשות לפתיחת בחירת מפרשים מ-CommentaryListBase מועברות ישירות אל
     // _openCommentatorsSelectionPane דרך onFilterOpenRequested (ראה build).
-    // סנכרון חד-פעמי של המפרשים הנבחרים עם חלונית המקור
-    final sourceState = widget.tab.sourceTab.bloc.state;
-    if (sourceState is TextBookLoaded &&
-        sourceState.activeCommentators.isNotEmpty) {
-      _selectedCommentatorsOverride =
-          List<String>.from(sourceState.activeCommentators);
+    // הבחירה חיה על הטאב עצמו כדי שתישמר לדיסק ותשוחזר אחרי הפעלה מחדש.
+    final savedCommentators = widget.tab.selectedCommentators;
+    if (savedCommentators != null) {
+      _selectedCommentatorsOverride = List<String>.from(savedCommentators);
     }
     // טעינת הספר והמפרשים ב-BLoC העצמאי
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -672,9 +670,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
           autofocus: true,
           useAvailableCommentators: _selectedCommentatorsOverride == null,
           selectedCommentatorsOverride: _selectedCommentatorsOverride,
-          onSelectedCommentatorsOverrideChanged: (list) {
-            setState(() => _selectedCommentatorsOverride = list);
-          },
+          onSelectedCommentatorsOverrideChanged: _updateSelectedCommentators,
           onFilterOpenRequested: _openCommentatorsSelectionPane,
           externalSearchController: _commentarySearchController,
           externalCurrentIndexNotifier: _externalCurrentIndex,
@@ -820,6 +816,11 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
   void _openCommentatorsSelectionPane() {
     setState(() => _navPaneOpen = true);
     _navTabController.animateTo(_commentatorsTabIndex);
+  }
+
+  void _updateSelectedCommentators(List<String> list) {
+    widget.tab.selectedCommentators = List<String>.from(list);
+    setState(() => _selectedCommentatorsOverride = list);
   }
 
   /// מטפל בקיצור ההדפסה המוגדר — פעיל רק בכרטיסיית המפרשים.
@@ -1206,9 +1207,7 @@ class _CommentatorsTabScreenState extends State<CommentatorsTabScreen>
         currentIndexes: indexes,
         linksByLine: state.linksByLine,
       ),
-      onSelectionChanged: (list) {
-        setState(() => _selectedCommentatorsOverride = list);
-      },
+      onSelectionChanged: _updateSelectedCommentators,
     );
   }
 
