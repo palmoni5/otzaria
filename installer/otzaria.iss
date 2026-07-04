@@ -76,11 +76,11 @@ Name: "resetsettings"; Description: "איפוס הגדרות משתמש והסר
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; AppUserModelID: "Otzaria.Otzaria"; Check: not IsPortableInstall
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; AppUserModelID: "Otzaria.Otzaria"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; AppUserModelID: "Otzaria.Otzaria"; Check: not IsPortableInstall
 ; קיצור דרך ישיר ללוח השנה — מעביר ל-otzaria.exe deep link כפרמטר; אוצריא מזהה
 ; ארגומנט שמתחיל ב-"otzaria:" וממסרת לראוטר הפנימי (ראה docs/deep_links.md לזרימה המלאה).
 ; AppUserModelID זהה לסמל הראשי כדי שהקיצור יתאחד עם הכפתור המוצמד בשורת המשימות.
-Name: "{autodesktop}\לוח שנה - {#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "otzaria://open/calendar"; Tasks: calendaricon; AppUserModelID: "Otzaria.Otzaria"
+Name: "{autodesktop}\לוח שנה - {#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "otzaria://open/calendar"; Tasks: calendaricon; AppUserModelID: "Otzaria.Otzaria"; Check: not IsPortableInstall
 
 [Registry]
 Root: HKA; Subkey: "Software\Classes\otzaria"; ValueType: string; ValueName: ""; ValueData: "URL:Otzaria Protocol"; Flags: uninsdeletekeyifempty; Check: not IsPortableInstall
@@ -420,14 +420,13 @@ begin
 end;
 
 // פרמטרים שיש להעביר הלאה כשהמתקין משגר את עצמו מחדש ב-InitializeSetup,
-// כדי ש-/NOLAUNCH=1 ו-/PORTABLE לא יאבדו במעבר לריצה השקטה/המורמת.
+// כדי ש-/NOLAUNCH=1 לא יאבד במעבר לריצה השקטה/המורמת. /PORTABLE בכוונה
+// לא מועבר — כל מסלולי ה-/PORTABLE יוצאים לאשף לפני שיגור-מחדש כלשהו.
 function PropagatedParams(): String;
 begin
   Result := '';
   if ExpandConstant('{param:NOLAUNCH|0}') = '1' then
     Result := ' /NOLAUNCH=1';
-  if CmdLineParamExists('/PORTABLE') then
-    Result := Result + ' /PORTABLE';
 end;
 
 // Exec/ShellExec המובנות מסרבות להריץ את קובץ ה-Setup עצמו מתוך InitializeSetup;
@@ -608,13 +607,14 @@ begin
 
   if AllUsersModeRadio.Checked and (not IsAdminInstallMode) then
   begin
+    // בכוונה בלי PropagatedParams: העברת /PORTABLE הייתה מסמנת שוב את
+    // המצב הנייד במופע החדש ודורסת את הבחירה המפורשת של המשתמש.
     if IsAdmin then
       // התהליך כבר מורם אבל במצב משתמש — שיגור-מחדש עם /ALLUSERS, בלי UAC.
-      Launched := Exec(ExpandConstant('{srcexe}'),
-        '/ALLUSERS' + PropagatedParams(), '', SW_SHOWNORMAL, ewNoWait, ResultCode)
+      Launched := Exec(ExpandConstant('{srcexe}'), '/ALLUSERS',
+        '', SW_SHOWNORMAL, ewNoWait, ResultCode)
     else
-      Launched := RelaunchSetupElevated('/ALLUSERS' + PropagatedParams(),
-        SW_SHOWNORMAL, ResultCode);
+      Launched := RelaunchSetupElevated('/ALLUSERS', SW_SHOWNORMAL, ResultCode);
 
     if Launched then
     begin
@@ -632,8 +632,8 @@ begin
   if CurrentUserModeRadio.Checked and IsAdminInstallMode then
   begin
     // התהליך כבר במצב מנהל — חזרה להתקנת משתמש דורשת שיגור-מחדש.
-    Launched := Exec(ExpandConstant('{srcexe}'),
-      '/CURRENTUSER' + PropagatedParams(), '', SW_SHOWNORMAL, ewNoWait, ResultCode);
+    Launched := Exec(ExpandConstant('{srcexe}'), '/CURRENTUSER',
+      '', SW_SHOWNORMAL, ewNoWait, ResultCode);
     if Launched then
     begin
       RelaunchingForModeChange := True;

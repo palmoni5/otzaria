@@ -3,8 +3,12 @@
 ; ב-/VERYSILENT): ההגדרות וקיצורי הדרך נשמרים, והספרייה מוחלפת בחבילה
 ; החדשה בנתיב הספרים הקיים של המשתמש. התקנה חדשה או שדרוג מגרסה ישנה
 ; מקבלים את האשף המלא (בחירת רכיבים, תיקיית ספרים וכו').
-; אם התהליך רץ עם הרשאות מנהל (Run as administrator) — התקנה לכל המשתמשים;
-; אחרת — התקנה למשתמש הנוכחי בלבד (ללא UAC, כי PrivilegesRequired=lowest).
+; עמוד "סוג ההתקנה" מציע: למשתמש הנוכחי (ברירת מחדל, ללא UAC), לכל
+; המשתמשים (שיגור-מחדש מורם עם /ALLUSERS), והתקנה ניידת. בהתקנה ניידת
+; נכתב portable.marker ליד ה-EXE, הספרייה מחולצת ל-otzaria_data\books
+; בתוך תיקיית ההתקנה (הנתיב שהאפליקציה גוזרת בעצמה במצב נייד — אין צורך
+; בכתיבת הגדרות), ואין שום רישום במערכת. הפרמטר /PORTABLE פותח את האשף
+; במצב נייד גם כשמותקנת גרסה מודרנית (שאחרת הייתה משודרגת בשקט).
 
 #define MyAppName "אוצריא"
 #define MyAppVersion "0.9.95"
@@ -44,6 +48,10 @@ SolidCompression=yes
 CompressionThreads=1
 WizardStyle=modern
 DisableDirPage=no
+; התקנה ניידת אינה נרשמת במערכת — בלי uninstaller ובלי רשומה ב"הוספה או
+; הסרה של תוכניות"; להסרה מוחקים את התיקייה.
+Uninstallable=not IsPortableInstall
+CreateUninstallRegKey=not IsPortableInstall
 ; ChangesEnvironment=yes נדרש כדי שעדכון ה-PATH ייכנס לתוקף מיד עבור
 ; תהליכים חדשים ללא צורך ב-logoff. שולח WM_SETTINGCHANGE.
 ChangesEnvironment=yes
@@ -57,15 +65,16 @@ Type: filesandordirs; Name: "{app}\default.isar";
 Type: filesandordirs; Name: "{code:GetSelectedBooksPath}"
 
 [Dirs]
-Name: "{code:GetDataDir}"; Permissions: users-modify
-Name: "{code:GetDataDir}\books"; Permissions: users-modify
-Name: "{code:GetDataDir}\index"; Permissions: users-modify
+; במצב נייד הנתונים יושבים ב-otzaria_data ליד ה-EXE — האפליקציה יוצרת אותה בעצמה.
+Name: "{code:GetDataDir}"; Permissions: users-modify; Check: not IsPortableInstall
+Name: "{code:GetDataDir}\books"; Permissions: users-modify; Check: not IsPortableInstall
+Name: "{code:GetDataDir}\index"; Permissions: users-modify; Check: not IsPortableInstall
 
 [Registry]
-Root: HKA; Subkey: "Software\Classes\otzaria"; ValueType: string; ValueName: ""; ValueData: "URL:Otzaria Protocol"; Flags: uninsdeletekeyifempty
-Root: HKA; Subkey: "Software\Classes\otzaria"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Flags: uninsdeletevalue
-Root: HKA; Subkey: "Software\Classes\otzaria\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName}"; Flags: uninsdeletekeyifempty
-Root: HKA; Subkey: "Software\Classes\otzaria\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Flags: uninsdeletekeyifempty
+Root: HKA; Subkey: "Software\Classes\otzaria"; ValueType: string; ValueName: ""; ValueData: "URL:Otzaria Protocol"; Flags: uninsdeletekeyifempty; Check: not IsPortableInstall
+Root: HKA; Subkey: "Software\Classes\otzaria"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Flags: uninsdeletevalue; Check: not IsPortableInstall
+Root: HKA; Subkey: "Software\Classes\otzaria\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName}"; Flags: uninsdeletekeyifempty; Check: not IsPortableInstall
+Root: HKA; Subkey: "Software\Classes\otzaria\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Flags: uninsdeletekeyifempty; Check: not IsPortableInstall
 ; הוספת {app} ל-PATH אוטומטית (מאפשר ‎`otzaria pack-plugin`‎ מהטרמינל):
 ; התקנת מנהל → PATH המערכתי; התקנת משתמש → PATH של המשתמש. ה-Check מונע
 ; כפילויות בהתקנה חוזרת; ההסרה מתבצעת ב-CurUninstallStepChanged (לא ניתן
@@ -99,6 +108,17 @@ var
   BooksWarnLabel: TLabel;
   SelectedBooksPath: String;
 
+  ModePage: TWizardPage;
+  CurrentUserModeRadio: TNewRadioButton;
+  AllUsersModeRadio: TNewRadioButton;
+  PortableModeRadio: TNewRadioButton;
+  PortableMode: Boolean;
+  // מסמן שהאשף נסגר לטובת שיגור-מחדש במצב התקנה אחר — הסגירה שקטה,
+  // בלי שאלת האישור של ביטול התקנה.
+  RelaunchingForModeChange: Boolean;
+  RegularInstallDirDefault: String;
+  PortableInstallDirDefault: String;
+
   FeaturesPage: TWizardPage;
   SlideshowImage: TBitmapImage;
   SlideshowTimerId: LongWord;
@@ -109,6 +129,12 @@ var
   // קבצי האפליקציה. ברירת המחדל False — נשמר כדי לא לאבד נתונים בעדכון
   // שקט (Inno Setup מריץ את ה-uninstaller הישן עם /SILENT).
   DeleteUserDataOnUninstall: Boolean;
+
+// משמש גם את Uninstallable/CreateUninstallRegKey וגם רשומות Check.
+function IsPortableInstall(): Boolean;
+begin
+  Result := PortableMode;
+end;
 
 // TTimer לא זמין ב-Pascal Script של Inno Setup; נשתמש ב-Windows API.
 function SetTimer(hWnd, nIDEvent, uElapse, lpTimerFunc: LongWord): LongWord;
@@ -260,7 +286,11 @@ end;
 
 function GetSelectedBooksPath(Param: String): String;
 begin
-  if SelectedBooksPath <> '' then
+  // במצב נייד הספרייה תמיד בתוך תיקיית הנתונים הניידת שליד ה-EXE — הנתיב
+  // שהאפליקציה גוזרת בעצמה במצב נייד, ולכן אין צורך בכתיבת הגדרות.
+  if PortableMode then
+    Result := ExpandConstant('{app}') + '\otzaria_data\books'
+  else if SelectedBooksPath <> '' then
     Result := SelectedBooksPath
   else
     Result := GetDataDir('') + '\books';
@@ -621,11 +651,20 @@ begin
   if WizardSilent then
   begin
     InitializeSilentDefaults();
+    // התקנה ניידת שקטה (‎/VERYSILENT /PORTABLE /DIR=...‎): /DIR חובה —
+    // בלעדיו ברירת המחדל היא תיקיית ההתקנה הקיימת, וה-marker היה הופך
+    // אותה לניידת.
+    PortableMode := CmdLineParamExists('/PORTABLE') and
+      (ExpandConstant('{param:DIR|}') <> '');
     exit;
   end;
 
   // כבר שוגרנו מחדש עם מצב התקנה מפורש — ממשיכים ישירות (מונע לולאת שיגור).
   if CmdLineParamExists('/ALLUSERS') or CmdLineParamExists('/CURRENTUSER') then
+    exit;
+  // ‎/PORTABLE — ישר לאשף במצב נייד: בלי שדרוג שקט (המשתמש רוצה עותק נייד,
+  // לא עדכון של ההתקנה הקיימת) ובלי הסלמת הרשאות.
+  if CmdLineParamExists('/PORTABLE') then
     exit;
 
   PreviousDir := FindPreviousInstallDir(RequiresAdmin);
@@ -713,20 +752,10 @@ begin
     end;
   end;
 
-  if IsAdmin then
-  begin
-    // תהליך מורם: משגרים מחדש עם /ALLUSERS כדי שההתקנה תהיה לכל המשתמשים
-    // (PrivilegesRequired=lowest קובע אחרת מצב per-user גם כשהתהליך מורם).
-    Launched := Exec(ExpandConstant('{srcexe}'), '/ALLUSERS',
-      '', SW_SHOWNORMAL, ewNoWait, ResultCode);
-    if Launched then
-    begin
-      Result := False;
-      exit;
-    end;
-    // נכשל — ממשיכים באשף במצב משתמש (עדיף על כשל שקט).
-  end
-  else if RequiresAdmin then
+  // הבחירה בין משתמש-נוכחי / כל-המשתמשים / ניידת נעשית בעמוד "סוג ההתקנה"
+  // (כשהתהליך מורם העמוד מסומן מראש על כל-המשתמשים והשיגור-מחדש משם עובר
+  // ללא UAC).
+  if (not IsAdmin) and RequiresAdmin then
   begin
     // ההתקנה הקודמת (הישנה) בנתיב מוגן — אשף מורם עם UAC.
     Launched := RelaunchSetupElevated('/ALLUSERS', SW_SHOWNORMAL, ResultCode);
@@ -744,7 +773,74 @@ begin
       mbError, MB_OK);
     Result := False;
   end;
-  // אחרת: אשף רגיל במצב משתמש — אין צורך בשיגור מחדש.
+end;
+
+// ─── עמוד סוג ההתקנה ───────────────────────────────────────────────────────
+
+procedure CreateModePage();
+var
+  CurrentUserDesc, AllUsersDesc, PortableDesc: TNewStaticText;
+begin
+  ModePage := CreateCustomPage(FeaturesPage.ID,
+    'סוג ההתקנה',
+    'בחר עבור מי ואיך להתקין את אוצריא');
+
+  CurrentUserModeRadio := TNewRadioButton.Create(ModePage);
+  CurrentUserModeRadio.Parent := ModePage.Surface;
+  CurrentUserModeRadio.Left := 0;
+  CurrentUserModeRadio.Top := ScaleY(4);
+  CurrentUserModeRadio.Width := ModePage.SurfaceWidth;
+  CurrentUserModeRadio.Caption := 'התקנה למשתמש הנוכחי (מומלץ)';
+  CurrentUserModeRadio.Checked := True;
+
+  CurrentUserDesc := TNewStaticText.Create(ModePage);
+  CurrentUserDesc.Parent := ModePage.Surface;
+  CurrentUserDesc.Left := ScaleX(18);
+  CurrentUserDesc.Top := CurrentUserModeRadio.Top + ScaleY(20);
+  CurrentUserDesc.Width := ModePage.SurfaceWidth - ScaleX(18);
+  CurrentUserDesc.AutoSize := False;
+  CurrentUserDesc.WordWrap := True;
+  CurrentUserDesc.Height := ScaleY(28);
+  CurrentUserDesc.Caption :=
+    'מותקנת בפרופיל המשתמש המחובר, ללא צורך בהרשאות מנהל.';
+
+  AllUsersModeRadio := TNewRadioButton.Create(ModePage);
+  AllUsersModeRadio.Parent := ModePage.Surface;
+  AllUsersModeRadio.Left := 0;
+  AllUsersModeRadio.Top := CurrentUserDesc.Top + CurrentUserDesc.Height + ScaleY(10);
+  AllUsersModeRadio.Width := ModePage.SurfaceWidth;
+  AllUsersModeRadio.Caption := 'התקנה לכל המשתמשים במחשב';
+
+  AllUsersDesc := TNewStaticText.Create(ModePage);
+  AllUsersDesc.Parent := ModePage.Surface;
+  AllUsersDesc.Left := ScaleX(18);
+  AllUsersDesc.Top := AllUsersModeRadio.Top + ScaleY(20);
+  AllUsersDesc.Width := ModePage.SurfaceWidth - ScaleX(18);
+  AllUsersDesc.AutoSize := False;
+  AllUsersDesc.WordWrap := True;
+  AllUsersDesc.Height := ScaleY(28);
+  AllUsersDesc.Caption :=
+    'מותקנת ב-Program Files וזמינה לכל חשבונות המשתמש (יידרש אישור מנהל).';
+
+  PortableModeRadio := TNewRadioButton.Create(ModePage);
+  PortableModeRadio.Parent := ModePage.Surface;
+  PortableModeRadio.Left := 0;
+  PortableModeRadio.Top := AllUsersDesc.Top + AllUsersDesc.Height + ScaleY(10);
+  PortableModeRadio.Width := ModePage.SurfaceWidth;
+  PortableModeRadio.Caption := 'התקנה ניידת';
+
+  PortableDesc := TNewStaticText.Create(ModePage);
+  PortableDesc.Parent := ModePage.Surface;
+  PortableDesc.Left := ScaleX(18);
+  PortableDesc.Top := PortableModeRadio.Top + ScaleY(20);
+  PortableDesc.Width := ModePage.SurfaceWidth - ScaleX(18);
+  PortableDesc.AutoSize := False;
+  PortableDesc.WordWrap := True;
+  PortableDesc.Height := ScaleY(58);
+  PortableDesc.Caption :=
+    'מתאימה לכונן חיצוני או דיסק-און-קי: בוחרים תיקייה, והתוכנה, הספרייה ' +
+    'המצורפת וכל הנתונים (הגדרות, הערות) נשמרים בתוכה — אוצריא נודדת יחד ' +
+    'עם הכונן. ללא קיצורי דרך ורישום במערכת; להסרה פשוט מוחקים את התיקייה.';
 end;
 
 // ─── בניית עמוד בחירת רכיבים ───────────────────────────────────────────────
@@ -1018,10 +1114,32 @@ begin
   begin
     InstallWV2 := WebView2NeedsInstall;
     CreateFeaturesPage;
+    CreateModePage;
     CreateComponentsPage;
     CreateBooksPage;
+
+    RegularInstallDirDefault := WizardForm.DirEdit.Text;
+    PortableInstallDirDefault := ExpandConstant('{userdocs}\OtzariaPortable');
+
+    // בחירה מוקדמת בעמוד סוג ההתקנה: ‎/PORTABLE — מצב נייד; ריצה במצב מנהל
+    // (שיגור-מחדש עם /ALLUSERS) או תהליך מורם — לכל המשתמשים.
+    if CmdLineParamExists('/PORTABLE') then
+      PortableModeRadio.Checked := True
+    else if IsAdminInstallMode or IsAdmin then
+      AllUsersModeRadio.Checked := True;
   end;
   InitializeSlideshow;
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+  if not PortableMode then
+    exit;
+  // במצב נייד: אין קיצורי דרך/איפוס (עמוד המשימות), והספרייה תמיד בתוך
+  // התיקייה הניידת (עמוד בחירת תיקיית הספרים).
+  Result := (PageID = wpSelectTasks) or
+    ((BooksPage <> nil) and (PageID = BooksPage.ID));
 end;
 
 procedure CurPageChanged(CurPageID: Integer);
@@ -1040,10 +1158,73 @@ begin
   end;
 end;
 
-// שמירת בחירות בלחיצת "הבא"
+// שמירת בחירות בלחיצת "הבא". בעמוד סוג ההתקנה: קיבוע המצב, התאמת ברירת
+// המחדל של תיקיית היעד, ובמעבר בין משתמש-נוכחי לכל-המשתמשים — שיגור-מחדש
+// במצב ההתקנה המתאים (מצב ההתקנה של Inno נקבע בעליית התהליך).
+// בהתקנה שקטה Inno "מדפדף" בין העמודים ומפעיל גם את הפונקציה הזו — שם
+// אסור לגעת בכלום: המצב כבר נקבע ב-InitializeSetup ו-/DIR חייב להישמר.
 function NextButtonClick(CurPageID: Integer): Boolean;
+var
+  ResultCode: Integer;
+  Launched: Boolean;
 begin
   Result := True;
+  if WizardSilent then
+    exit;
+
+  if (ModePage <> nil) and (CurPageID = ModePage.ID) then
+  begin
+    PortableMode := PortableModeRadio.Checked;
+
+    // התאמת ברירת המחדל של תיקיית היעד בלי לדרוס נתיב שהמשתמש הקליד בעצמו.
+    if PortableMode and (WizardForm.DirEdit.Text = RegularInstallDirDefault) then
+      WizardForm.DirEdit.Text := PortableInstallDirDefault
+    else if (not PortableMode) and (WizardForm.DirEdit.Text = PortableInstallDirDefault) then
+      WizardForm.DirEdit.Text := RegularInstallDirDefault;
+
+    // התקנה ניידת אדישה למצב ההתקנה — כל מה שתלוי-מצב ממילא מנוטרל בה.
+    if PortableMode then
+      exit;
+
+    if AllUsersModeRadio.Checked and (not IsAdminInstallMode) then
+    begin
+      if IsAdmin then
+        // התהליך כבר מורם אבל במצב משתמש — שיגור-מחדש עם /ALLUSERS, בלי UAC.
+        Launched := Exec(ExpandConstant('{srcexe}'), '/ALLUSERS',
+          '', SW_SHOWNORMAL, ewNoWait, ResultCode)
+      else
+        Launched := RelaunchSetupElevated('/ALLUSERS', SW_SHOWNORMAL, ResultCode);
+
+      if Launched then
+      begin
+        RelaunchingForModeChange := True;
+        WizardForm.Close;
+      end
+      else
+        MsgBox('להתקנה לכל המשתמשים נדרש אישור הרשאות מנהל.' + #13#10 +
+               'ניתן לבחור "התקנה למשתמש הנוכחי" ולהמשיך ללא הרשאות.',
+               mbError, MB_OK);
+      Result := False;
+      exit;
+    end;
+
+    if CurrentUserModeRadio.Checked and IsAdminInstallMode then
+    begin
+      // התהליך כבר במצב מנהל — חזרה להתקנת משתמש דורשת שיגור-מחדש.
+      Launched := Exec(ExpandConstant('{srcexe}'), '/CURRENTUSER',
+        '', SW_SHOWNORMAL, ewNoWait, ResultCode);
+      if Launched then
+      begin
+        RelaunchingForModeChange := True;
+        WizardForm.Close;
+      end
+      else
+        MsgBox('לא ניתן היה לעבור להתקנה למשתמש הנוכחי.', mbError, MB_OK);
+      Result := False;
+    end;
+    exit;
+  end;
+
   if (CompPage <> nil) and (CurPageID = CompPage.ID) then
   begin
     InstallWV2 := WV2Check.Checked;
@@ -1057,6 +1238,13 @@ begin
       Result := False;
     end;
   end;
+end;
+
+procedure CancelButtonClick(CurPageID: Integer; var Cancel, Confirm: Boolean);
+begin
+  // סגירה לטובת שיגור-מחדש במצב אחר — בלי שאלת "האם לבטל את ההתקנה?".
+  if RelaunchingForModeChange then
+    Confirm := False;
 end;
 
 // מריץ קובץ הרצה ולוכד את פלט ה-stderr/stdout שלו, כדי שבמקרה כשל
@@ -1183,13 +1371,13 @@ end;
 
 function ShouldAddToSystemPath(): Boolean;
 begin
-  Result := IsAdminInstallMode and
+  Result := (not PortableMode) and IsAdminInstallMode and
     (not PathValueContains(HKLM, SystemEnvironmentKey, ExpandConstant('{app}')));
 end;
 
 function ShouldAddToUserPath(): Boolean;
 begin
-  Result := (not IsAdminInstallMode) and
+  Result := (not PortableMode) and (not IsAdminInstallMode) and
     (not PathValueContains(HKCU, UserEnvironmentKey, ExpandConstant('{app}')));
 end;
 
@@ -1342,6 +1530,10 @@ var
 begin
   if CurStep = ssInstall then
   begin
+    // התקנה ניידת לא נוגעת בנתוני ההתקנה המקומית שבתיקיות המשתמש.
+    if PortableMode then
+      exit;
+
     // מחק את לוג השגיאות הישן בכל התקנה/עדכון
     ErrorLogPath := ExpandConstant('{userappdata}\otzaria\logs\errors.txt');
     if FileExists(ErrorLogPath) then
@@ -1388,6 +1580,10 @@ begin
   if CurStep <> ssPostInstall then
     exit;
 
+  // במצב נייד GetSelectedBooksPath מחזיר את הנתיב שבתוך התיקייה הניידת —
+  // מיישרים את המשתנה כדי שכל החילוץ בהמשך ילך לשם.
+  SelectedBooksPath := GetSelectedBooksPath('');
+
   ZstdPath := ExpandConstant('{tmp}\zstd.exe');
   SevenZipPath := ExpandConstant('{tmp}\7za.exe');
 
@@ -1426,9 +1622,16 @@ begin
   WizardForm.ProgressGauge.Style := npbstNormal;
   WizardForm.ProgressGauge.Position := WizardForm.ProgressGauge.Max;
 
-  // יצירת תיקיית הספרים בנתיב שבחר המשתמש (אם שונה מברירת המחדל)
-  if SelectedBooksPath <> '' then
+  if PortableMode then
   begin
+    // קובץ ה-marker מפעיל את המצב הנייד באפליקציה; נתיב הספרייה לא נכתב —
+    // במצב נייד האפליקציה גוזרת אותו בעצמה (otzaria_data\books ליד ה-EXE).
+    ForceDirectories(SelectedBooksPath);
+    SaveStringToFile(ExpandConstant('{app}\portable.marker'), '', False);
+  end
+  else if SelectedBooksPath <> '' then
+  begin
+    // יצירת תיקיית הספרים בנתיב שבחר המשתמש (אם שונה מברירת המחדל)
     ForceDirectories(SelectedBooksPath);
     WriteLibraryPathToPrefs(SelectedBooksPath);
   end;
@@ -1452,12 +1655,12 @@ Filename: "{tmp}\MicrosoftEdgeWebview2Setup.exe"; Parameters: "/silent /install"
 Filename: "{app}\{#MyAppExeName}"; Description: "הפעל את {#MyAppName}"; Flags: nowait postinstall skipifsilent
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; AppUserModelID: "Otzaria.Otzaria"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; AppUserModelID: "Otzaria.Otzaria"
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; AppUserModelID: "Otzaria.Otzaria"; Check: not IsPortableInstall
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; AppUserModelID: "Otzaria.Otzaria"; Check: not IsPortableInstall
 ; קיצור דרך ישיר ללוח השנה — מעביר ל-otzaria.exe deep link כפרמטר; אוצריא מזהה
 ; ארגומנט שמתחיל ב-"otzaria:" וממסרת לראוטר הפנימי (ראה docs/deep_links.md לזרימה המלאה).
 ; AppUserModelID זהה לסמל הראשי כדי שהקיצור יתאחד עם הכפתור המוצמד בשורת המשימות.
-Name: "{autodesktop}\לוח שנה - {#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "otzaria://open/calendar"; Tasks: calendaricon; AppUserModelID: "Otzaria.Otzaria"
+Name: "{autodesktop}\לוח שנה - {#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "otzaria://open/calendar"; Tasks: calendaricon; AppUserModelID: "Otzaria.Otzaria"; Check: not IsPortableInstall
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -1493,4 +1696,4 @@ Source: "feature3.bmp"; Flags: dontcopy
 Source: "feature4.bmp"; Flags: dontcopy
 
 [INI]
-Filename: "{app}\system_install.marker"; Section: "Install"; Key: "Mode"; String: "Admin"; Check: IsAdminInstallMode
+Filename: "{app}\system_install.marker"; Section: "Install"; Key: "Mode"; String: "Admin"; Check: IsAdminInstallMode and not IsPortableInstall
