@@ -57,17 +57,16 @@ bool shouldLaunchInstallerOnExit({
 
 /// בוחר את קובץ העדכון המתאים ל-Windows מתוך נכסי ה-release.
 ///
-/// בהתקנה רגילה (exe) העדיפות היא למתקין ה**שקט** — הוא מתקין ברקע ללא
-/// אשף, משמר את ההגדרות ומפעיל את אוצריא מחדש בסיום — כך שהעדכון מתבצע
-/// כולו מתוך התוכנה. אם אין מתקין שקט ב-release (גרסאות ישנות), נופלים
-/// למתקין הרגיל. קבצי `full` (עם ספרייה מצורפת) לעולם אינם נבחרים לעדכון.
+/// בהתקנה רגילה (exe) נבחר המתקין הרגיל — הוא מזהה שדרוג מגרסה קיימת
+/// ומתקין את עצמו ברקע ללא אשף, משמר את ההגדרות ומפעיל את אוצריא מחדש
+/// בסיום — כך שהעדכון מתבצע כולו מתוך התוכנה. קבצי `full` (עם ספרייה
+/// מצורפת) לעולם אינם נבחרים לעדכון.
 @visibleForTesting
 String? pickWindowsAssetUrl(
   List<Map<String, dynamic>> assets, {
   required String preferredFormat, // 'exe' | 'zip'
 }) {
-  String? silentExe;
-  String? regularExe;
+  String? exe;
   String? zip;
 
   for (final asset in assets) {
@@ -80,17 +79,12 @@ String? pickWindowsAssetUrl(
     if (name.contains('full')) continue;
 
     if (name.endsWith('.exe')) {
-      if (name.contains('silent')) {
-        silentExe ??= url;
-      } else {
-        regularExe ??= url;
-      }
+      exe ??= url;
     } else if (name.endsWith('.zip')) {
       zip ??= url;
     }
   }
 
-  final exe = silentExe ?? regularExe;
   if (preferredFormat == 'zip') {
     return zip ?? exe;
   }
@@ -134,15 +128,16 @@ String? pickMacAssetUrl(
   return dmg;
 }
 
-/// האם ה-URL מצביע על המתקין השקט של Windows.
+/// האם ה-URL מצביע על מתקין Windows שמתקין שדרוג בשקט.
 ///
-/// ההכרעה נעשית לפי ה-URL (שמשמר את שם הנכס ב-release) ולא לפי הקובץ
-/// שהורד, כי שם הקובץ המקומי אחיד (`otzaria-<version>.exe`) ואינו מבחין
-/// בין מתקין שקט לרגיל.
+/// כל מתקיני ה-exe מזהים שדרוג מגרסה קיימת ומתקינים ברקע, והעדכון תמיד
+/// לגרסה חדשה מהנוכחית — לכן כל exe שנבחר הוא כזה. ההכרעה לפי ה-URL
+/// (שמשמר את שם הנכס ב-release) ולא לפי הקובץ שהורד, כי שם הקובץ המקומי
+/// אחיד (`otzaria-<version>.exe`).
 @visibleForTesting
 bool isSilentWindowsInstallerUrl(String url) {
   final name = url.split('/').last.toLowerCase();
-  return name.endsWith('.exe') && name.contains('silent');
+  return name.endsWith('.exe');
 }
 
 /// מטמון של תוצאות GitHub API. המפתח כולל גם את הערוץ (stable/dev) כדי למנוע
@@ -453,7 +448,7 @@ class _ManagedUpdatWidgetState extends State<_ManagedUpdatWidget> {
   String? _changelog;
   File? _installerFile;
 
-  /// האם הקובץ ב-[_installerFile] הוא המתקין השקט של Windows (נקבע לפי
+  /// האם הקובץ ב-[_installerFile] הוא מתקין Windows שמתקין בשקט (נקבע לפי
   /// ה-URL בעת ההורדה — ראה [isSilentWindowsInstallerUrl]).
   bool _installerIsSilent = false;
   bool _windowCloseHookInstalled = false;

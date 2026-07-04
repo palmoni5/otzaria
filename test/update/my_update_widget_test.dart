@@ -120,54 +120,39 @@ void main() {
 
     // נכסי release מציאותיים, כפי שמועלים ע"י build-and-announce.yml.
     final fullReleaseAssets = [
-      asset('otzaria-0.9.94-windows.exe'),
-      asset('otzaria-0.9.94-windows-silent.exe'),
-      asset('otzaria-0.9.94-windows-full.exe'),
-      asset('otzaria-0.9.94-windows-full-silent.exe'),
+      asset('otzaria-0.9.96-windows.exe'),
+      asset('otzaria-0.9.96-windows-full.exe'),
       asset('otzaria-windows.zip'),
-      asset('otzaria-0.9.94-linux.deb'),
+      asset('otzaria-0.9.96-linux.deb'),
       asset('otzaria-macos.dmg'),
     ];
 
-    test('prefers the silent installer for exe installs', () {
+    test('picks the installer for exe installs', () {
       expect(
         pickWindowsAssetUrl(fullReleaseAssets, preferredFormat: 'exe'),
-        'https://example.com/otzaria-0.9.94-windows-silent.exe',
-      );
-    });
-
-    test('falls back to the regular installer when no silent asset exists', () {
-      final assets = [
-        asset('otzaria-0.9.94-windows.exe'),
-        asset('otzaria-windows.zip'),
-      ];
-      expect(
-        pickWindowsAssetUrl(assets, preferredFormat: 'exe'),
-        'https://example.com/otzaria-0.9.94-windows.exe',
+        'https://example.com/otzaria-0.9.96-windows.exe',
       );
     });
 
     test('never selects full installers', () {
       final assets = [
-        asset('otzaria-0.9.94-windows-full.exe'),
-        asset('otzaria-0.9.94-windows-full-silent.exe'),
+        asset('otzaria-0.9.96-windows-full.exe'),
       ];
       expect(pickWindowsAssetUrl(assets, preferredFormat: 'exe'), isNull);
     });
 
-    test('prefers zip for portable installs with silent exe as fallback', () {
+    test('prefers zip for portable installs with exe as fallback', () {
       expect(
         pickWindowsAssetUrl(fullReleaseAssets, preferredFormat: 'zip'),
         'https://example.com/otzaria-windows.zip',
       );
 
       final withoutZip = [
-        asset('otzaria-0.9.94-windows.exe'),
-        asset('otzaria-0.9.94-windows-silent.exe'),
+        asset('otzaria-0.9.96-windows.exe'),
       ];
       expect(
         pickWindowsAssetUrl(withoutZip, preferredFormat: 'zip'),
-        'https://example.com/otzaria-0.9.94-windows-silent.exe',
+        'https://example.com/otzaria-0.9.96-windows.exe',
       );
     });
 
@@ -252,22 +237,16 @@ void main() {
   });
 
   group('isSilentWindowsInstallerUrl', () {
-    test('identifies the silent installer by its asset name in the URL', () {
+    test('treats every exe installer as silent-capable, zip is not', () {
       expect(
         isSilentWindowsInstallerUrl(
-          'https://github.com/Otzaria/otzaria/releases/download/0.9.94/otzaria-0.9.94-windows-silent.exe',
+          'https://github.com/Otzaria/otzaria/releases/download/0.9.96/otzaria-0.9.96-windows.exe',
         ),
         isTrue,
       );
       expect(
         isSilentWindowsInstallerUrl(
-          'https://github.com/Otzaria/otzaria/releases/download/0.9.94/otzaria-0.9.94-windows.exe',
-        ),
-        isFalse,
-      );
-      expect(
-        isSilentWindowsInstallerUrl(
-          'https://github.com/Otzaria/otzaria/releases/download/0.9.94/otzaria-windows.zip',
+          'https://github.com/Otzaria/otzaria/releases/download/0.9.96/otzaria-windows.zip',
         ),
         isFalse,
       );

@@ -53,11 +53,9 @@ awk \
     -v end_marker="# End generated Windows installers" \
     -v new_version="$NEW_VERSION" '
 BEGIN {
-    managed_count = 4
+    managed_count = 2
     managed[1] = "installer/otzaria-" new_version "-windows.exe"
     managed[2] = "installer/otzaria-" new_version "-windows-full.exe"
-    managed[3] = "installer/otzaria-" new_version "-windows-silent.exe"
-    managed[4] = "installer/otzaria-" new_version "-windows-full-silent.exe"
     inside_block = 0
     inserted_block = 0
 }
@@ -123,20 +121,6 @@ if [[ -f "$ISS" ]]; then
     echo "Updated $ISS"
 fi
 
-# ---- installer/otzaria_silent.iss ----
-ISS_SILENT="installer/otzaria_silent.iss"
-if [[ -f "$ISS_SILENT" ]]; then
-    sedi -E "s/^#define MyAppVersion .*/#define MyAppVersion \"$NEW_VERSION\"/" "$ISS_SILENT"
-    echo "Updated $ISS_SILENT"
-fi
-
-# ---- installer/otzaria_full_silent.iss ----
-ISS_FULL_SILENT="installer/otzaria_full_silent.iss"
-if [[ -f "$ISS_FULL_SILENT" ]]; then
-    sedi -E "s/^#define MyAppVersion .*/#define MyAppVersion \"$NEW_VERSION\"/" "$ISS_FULL_SILENT"
-    echo "Updated $ISS_FULL_SILENT"
-fi
-
 # ---- android/local.properties ----
 LOCAL_PROPS="android/local.properties"
 if [[ -f "$LOCAL_PROPS" ]]; then
@@ -180,8 +164,6 @@ fi
 git add ".gitignore" "pubspec.yaml" "$VERSION_FILE" "$MAIN_DART" "$CHANGELOG"
 [[ -f "$ISS_FULL" ]]   && git add "$ISS_FULL"
 [[ -f "$ISS" ]]        && git add "$ISS"
-[[ -f "$ISS_SILENT" ]] && git add "$ISS_SILENT"
-[[ -f "$ISS_FULL_SILENT" ]] && git add "$ISS_FULL_SILENT"
 # project.pbxproj is tracked but lives under a path matched by .gitignore (macos/*),
 # so plain `git add` prints a warning and exits 1 — killing the script under `set -e`.
 # -f forces the add for this already-tracked file.

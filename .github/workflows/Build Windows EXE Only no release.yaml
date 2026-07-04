@@ -2,7 +2,7 @@ name: "Build Windows EXE Only (no release)"
 
 # בנייה ידנית בלבד של Windows — בלי release ובלי announce.
 # מבצע את אותם השלבים בדיוק כמו ה-job build_windows ב-build-and-announce.yml
-# (מתקין רגיל + מתקין שקט + מתקין FULL + ZIP נייד), רק לווינדוס.
+# (מתקין רגיל + מתקין FULL + ZIP נייד), רק לווינדוס.
 
 permissions:
   contents: read
@@ -93,9 +93,9 @@ jobs:
           # MSVCP140.dll (14.36.32532.0 שהגיעה עם VS 2022 17.6, יוני 2023)
           # מכילה NULL-deref ב-+0x12f58 שמקריס כל std::string concat
           # בקוד החם של flutter_inappwebview, ובלי שדרוג מבחוץ הוא נשאר
-          # תקוע במכונת המשתמש. בנדול app-local פותר את זה לכל ארבעת מסלולי
-          # ההפצה (regular installer, silent installer, full installer, ו-
-          # portable ZIP) — אף אחד מהם כבר לא מריץ vc_redist.x64.exe בהתקנה
+          # תקוע במכונת המשתמש. בנדול app-local פותר את זה לכל מסלולי
+          # ההפצה (regular installer, full installer, ו-portable ZIP) —
+          # אף אחד מהם כבר לא מריץ vc_redist.x64.exe בהתקנה
           # (גם FULL הוסר אחרי שהוכח שה-bundling app-local מספיק).
           #
           # הגרסה מקובעת ב-env (VC_REDIST_URL + VC_REDIST_SHA256 + VC_REDIST_MIN_VERSION)
@@ -361,12 +361,6 @@ jobs:
             throw "FULL installer build failed"
           }
 
-          Write-Host "Building FULL SILENT installer (auto-runs /VERYSILENT, includes library + WebView2)..."
-          & "$env:ISCC" installer\otzaria_full_silent.iss
-          if ($LASTEXITCODE -ne 0) {
-            throw "FULL silent installer build failed"
-          }
-
           # ניקוי קבצי הספרייה והחולץ לאחר בניית ה-FULL installer
           Write-Host "Cleaning up bundled DB assets to free disk space..."
           if (Test-Path "installer\library_db") {
@@ -401,12 +395,6 @@ jobs:
             throw "Regular installer build failed"
           }
 
-          Write-Host "Building SILENT installer (auto-runs /VERYSILENT, resets settings)..."
-          & "$env:ISCC" installer\otzaria_silent.iss
-          if ($LASTEXITCODE -ne 0) {
-            throw "Silent installer build failed"
-          }
-
       - name: Upload Windows installer (regular)
         uses: actions/upload-artifact@v4.6.2
         with:
@@ -418,18 +406,6 @@ jobs:
         with:
           name: otzaria-windows-installer-full
           path: installer/otzaria-*-windows-full.exe
-
-      - name: Upload Windows installer (silent)
-        uses: actions/upload-artifact@v4.6.2
-        with:
-          name: otzaria-windows-installer-silent
-          path: installer/otzaria-*-windows-silent.exe
-
-      - name: Upload Windows installer (full silent)
-        uses: actions/upload-artifact@v4.6.2
-        with:
-          name: otzaria-windows-installer-full-silent
-          path: installer/otzaria-*-windows-full-silent.exe
 
       - name: Upload Windows ZIP
         uses: actions/upload-artifact@v4.6.2

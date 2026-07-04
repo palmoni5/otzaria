@@ -45,9 +45,7 @@ $installerStartMarker = "# Generated Windows installers"
 $installerEndMarker = "# End generated Windows installers"
 $managedInstallerLines = @(
     "installer/otzaria-$newVersion-windows.exe",
-    "installer/otzaria-$newVersion-windows-full.exe",
-    "installer/otzaria-$newVersion-windows-silent.exe",
-    "installer/otzaria-$newVersion-windows-full-silent.exe"
+    "installer/otzaria-$newVersion-windows-full.exe"
 )
 $gitignoreContent = [System.Collections.Generic.List[string]]::new()
 $gitignoreContent.AddRange([string[]](Get-Content ".gitignore"))
@@ -130,36 +128,6 @@ for ($i = 0; $i -lt $issContent.Length; $i++) {
 }
 $issContent | Set-Content "installer/otzaria.iss" -Encoding $Utf8Bom
 Write-Host "Updated installer/otzaria.iss"
-
-# Update installer/otzaria_silent.iss (silent installer)
-$silentIssFile = "installer/otzaria_silent.iss"
-if (Test-Path $silentIssFile) {
-    $silentIssContent = Get-Content $silentIssFile
-    for ($i = 0; $i -lt $silentIssContent.Length; $i++) {
-        if ($silentIssContent[$i] -match '^#define MyAppVersion\s+') {
-            $silentIssContent[$i] = "#define MyAppVersion `"$newVersion`""
-        }
-    }
-    $silentIssContent | Set-Content $silentIssFile -Encoding $Utf8Bom
-    Write-Host "Updated $silentIssFile"
-} else {
-    Write-Warning "File '$silentIssFile' not found! Skipping silent installer update."
-}
-
-# Update installer/otzaria_full_silent.iss (full silent installer)
-$fullSilentIssFile = "installer/otzaria_full_silent.iss"
-if (Test-Path $fullSilentIssFile) {
-    $fullSilentIssContent = Get-Content $fullSilentIssFile
-    for ($i = 0; $i -lt $fullSilentIssContent.Length; $i++) {
-        if ($fullSilentIssContent[$i] -match '^#define MyAppVersion\s+') {
-            $fullSilentIssContent[$i] = "#define MyAppVersion `"$newVersion`""
-        }
-    }
-    $fullSilentIssContent | Set-Content $fullSilentIssFile -Encoding $Utf8Bom
-    Write-Host "Updated $fullSilentIssFile"
-} else {
-    Write-Warning "File '$fullSilentIssFile' not found! Skipping full silent installer update."
-}
 
 # Update android/local.properties (versionName and versionCode)
 $localPropertiesFile = "android/local.properties"
@@ -246,8 +214,6 @@ Write-Host "All files have been updated to version: $newVersion"
 
 # Git commit
 $filesToStage = @(".gitignore", "pubspec.yaml", "installer/otzaria_full.iss", "installer/otzaria.iss", $changelogFile, $VersionFile, $mainDartFile)
-if (Test-Path $silentIssFile) { $filesToStage += $silentIssFile }
-if (Test-Path $fullSilentIssFile) { $filesToStage += $fullSilentIssFile }
 git add $filesToStage
 # project.pbxproj is tracked but lives under a path matched by .gitignore (macos/*),
 # so plain `git add` warns — -f forces the add for this already-tracked file.
