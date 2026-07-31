@@ -1056,6 +1056,7 @@ class MainWindowScreenState extends State<MainWindowScreen>
           InstallRemotePluginRequested(
             request.downloadUri.toString(),
             forceOverwrite: request.forceOverwrite,
+            reportContext: request.reportContext,
           ),
         );
         return true;
