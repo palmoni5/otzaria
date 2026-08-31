@@ -5,6 +5,7 @@ import 'package:otzaria/plugins/models/installed_plugin.dart';
 import 'package:otzaria/plugins/view/plugin_tab_page.dart';
 import 'package:otzaria/tools/acronyms_dictionary/acronyms_dictionary_screen.dart';
 import 'package:otzaria/tools/aramaic_dictionary/aramaic_dictionary_screen.dart';
+import 'package:otzaria/tools/biographies/biographies_screen.dart';
 import 'package:otzaria/tools/calendar/calendar_screen.dart';
 import 'package:otzaria/tools/gematria/gematria_search_screen.dart';
 import 'package:otzaria/tools/measurement_converter/measurement_converter_screen.dart';
@@ -36,6 +37,8 @@ Widget? buildBuiltInToolPage(
       return const AramaicDictionaryScreen();
     case 'builtin.acronyms_dictionary':
       return const AcronymsDictionaryScreen();
+    case 'builtin.biographies':
+      return const BiographiesScreen();
   }
   return null;
 }

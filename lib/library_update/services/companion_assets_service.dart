@@ -9,6 +9,7 @@ import 'package:otzaria/data/data_providers/file_system_data_provider.dart';
 import 'package:otzaria/data/repository/data_repository.dart';
 import 'package:otzaria/external_catalog/repository/external_catalog_repository.dart';
 import 'package:otzaria/search/magic_dictionary_downloader.dart';
+import 'package:otzaria/tools/biographies/data/biographies_downloader.dart';
 import 'package:otzaria/utils/download_sidecar.dart';
 import 'package:otzaria/utils/file/tar_zst_extractor.dart';
 import 'package:path/path.dart' as p;
@@ -61,6 +62,7 @@ class CompanionAssetsService {
   final http.Client Function() _clientFactory;
   final ExternalCatalogRepository Function() _catalogRepository;
   final MagicDictionaryDownloader Function() _dictionaryFactory;
+  final BiographiesDownloader Function() _biographiesFactory;
   final Future<void> Function(
     String archivePath,
     String outputDir,
@@ -76,6 +78,7 @@ class CompanionAssetsService {
     http.Client Function()? clientFactory,
     ExternalCatalogRepository Function()? catalogRepository,
     MagicDictionaryDownloader Function()? dictionaryFactory,
+    BiographiesDownloader Function()? biographiesFactory,
     Future<void> Function(String, String, void Function(double)?)?
     extractTarArchive,
     List<String> Function()? talmudDirsProvider,
@@ -86,6 +89,7 @@ class CompanionAssetsService {
        _catalogRepository =
            catalogRepository ?? (() => ExternalCatalogRepository.instance),
        _dictionaryFactory = dictionaryFactory ?? MagicDictionaryDownloader.new,
+       _biographiesFactory = biographiesFactory ?? BiographiesDownloader.new,
        _extractTarArchive =
            extractTarArchive ??
            ((archive, outputDir, onProgress) =>
@@ -100,9 +104,9 @@ class CompanionAssetsService {
            (() => FileSystemData.instance.clearBookCache()),
        _talmudReleaseApiUrl = talmudReleaseApiUrl ?? talmudReleaseApi;
 
-  /// מריץ אימות ועדכון של שלושת הפריטים הנלווים, לפי הסדר: תלמוד, קטלוג,
-  /// מילון. מחזיר האם תוכן הספרייה השתנה (תלמוד/קטלוג הותקנו או עודכנו) —
-  /// אז נדרש ריענון ספרייה; עדכון מילון אינו משנה את הספרייה.
+  /// מריץ אימות ועדכון של הפריטים הנלווים, לפי הסדר: תלמוד, קטלוג, מילון,
+  /// ביוגרפיות. מחזיר האם תוכן הספרייה השתנה (תלמוד/קטלוג הותקנו או עודכנו)
+  /// — אז נדרש ריענון ספרייה; עדכון מילון וביוגרפיות אינו משנה את הספרייה.
   Future<bool> verifyAndUpdate({
     CompanionAssetStatusCallback? onStatus,
     void Function(int received, int? total)? onDownloadProgress,
@@ -151,6 +155,19 @@ class CompanionAssetsService {
       }
     } catch (e) {
       debugPrint('[CompanionAssets] dictionary update failed: $e');
+    }
+    if (cancelled()) return libraryChanged;
+
+    try {
+      onStatus?.call('בודק נתוני ביוגרפיות', CompanionAssetPhase.checking);
+      final biographies = _biographiesFactory();
+      try {
+        await biographies.ensureLatest();
+      } finally {
+        biographies.dispose();
+      }
+    } catch (e) {
+      debugPrint('[CompanionAssets] biographies update failed: $e');
     }
     return libraryChanged;
   }

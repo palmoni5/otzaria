@@ -87,6 +87,13 @@ const List<BuiltInToolMeta> kBuiltInToolsCatalog = [
     icon: FluentIcons.text_quote_24_regular,
     iconFilled: FluentIcons.text_quote_24_filled,
   ),
+  BuiltInToolMeta(
+    toolId: 'builtin.biographies',
+    label: 'ביוגרפיות',
+    order: 80,
+    icon: FluentIcons.people_24_regular,
+    iconFilled: FluentIcons.people_24_filled,
+  ),
 ];
 
 /// הקטלוג לפי סדר התצוגה שנקבע ב-[BuiltInToolMeta.order] — הבסיס לכל סידור,

@@ -13,6 +13,10 @@ abstract class ToolsMessages {
   static String dictionaryLoadError(Object error) =>
       'שגיאה בטעינת המילון: $error';
 
+  // ── ביוגרפיות ──
+  static String biographiesLoadError(Object error) =>
+      'שגיאה בטעינת הביוגרפיות: $error';
+
   // ── גימטריה ──
   static const String gematriaInvalidInput =
       'קלט לא תקין. יש להזין אותיות עבריות או מספרים בלבד.';

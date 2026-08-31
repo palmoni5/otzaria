@@ -122,6 +122,7 @@ Widget _launcherHost({
   required TabsBloc tabsBloc,
   required ValueChanged<ToolCatalogEntry> onToolSelected,
   double width = 520,
+  double height = 600,
 }) => MaterialApp(
   theme: ThemeData(colorSchemeSeed: Colors.blue),
   home: Directionality(
@@ -129,7 +130,7 @@ Widget _launcherHost({
     child: Scaffold(
       body: SizedBox(
         width: width,
-        height: 600,
+        height: height,
         child: MultiBlocProvider(
           providers: [
             BlocProvider<SettingsBloc>.value(value: settingsBloc),
@@ -928,6 +929,7 @@ void main() {
       SettingsState? settings,
       PluginSystemState? pluginState,
       double width = 520,
+      double height = 600,
     }) async {
       settingsBloc = _RecordingSettingsBloc(
         settings ?? SettingsState.initial(),
@@ -950,6 +952,7 @@ void main() {
           tabsBloc: tabsBloc,
           onToolSelected: selected.add,
           width: width,
+          height: height,
         ),
       );
       await tester.pump();
@@ -1197,7 +1200,7 @@ void main() {
 
     testWidgets('בסוף הקבוצה "הזז למטה" אינו עושה דבר', (tester) async {
       await pumpPanel(tester);
-      await openMoveSubmenu(tester, 'ראשי תיבות');
+      await openMoveSubmenu(tester, 'ביוגרפיות');
       await tapMenuItem(tester, 'הזז למטה');
 
       expect(
@@ -1455,11 +1458,13 @@ void main() {
 
     testWidgets('גרירה למרחק גדול מגיעה למקום בפעולה אחת', (tester) async {
       await _asDesktop(() async {
+        await tester.binding.setSurfaceSize(const Size(800, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
         await pumpPanel(tester);
         await dragTileTo(
           tester,
           'לוח שנה',
-          'ראשי תיבות',
+          'ביוגרפיות',
           beforeTarget: false,
         );
 
@@ -1473,7 +1478,9 @@ void main() {
 
     testWidgets('גרירת תוסף על תוסף מסדרת את התוספים', (tester) async {
       await _asDesktop(() async {
-        await pumpPanel(tester);
+        await tester.binding.setSurfaceSize(const Size(800, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await pumpPanel(tester, height: 900);
         await dragTileTo(tester, 'תוסף א', 'תוסף ב', beforeTarget: false);
 
         expect(
@@ -1525,7 +1532,9 @@ void main() {
       tester,
     ) async {
       await _asDesktop(() async {
-        await pumpPanel(tester);
+        await tester.binding.setSurfaceSize(const Size(800, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await pumpPanel(tester, height: 900);
         final gesture = await dragTileToEmptySpace(tester, 'תוסף א');
 
         // קו ההוספה מוצג על סוף קבוצת התוספים — חיווי שהשחרור יתקבל.
@@ -1556,7 +1565,9 @@ void main() {
       tester,
     ) async {
       await _asDesktop(() async {
-        await pumpPanel(tester);
+        await tester.binding.setSurfaceSize(const Size(800, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await pumpPanel(tester, height: 900);
         final gesture = await dragTileToEmptySpace(tester, 'לוח שנה');
         await gesture.up();
         await tester.pumpAndSettle();

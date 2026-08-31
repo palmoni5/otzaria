@@ -241,6 +241,7 @@ void main() {
         'builtin.gematria',
         'builtin.aramaic_dictionary',
         'builtin.acronyms_dictionary',
+        'builtin.biographies',
       ]);
     });
   });

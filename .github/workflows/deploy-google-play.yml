@@ -203,7 +203,7 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: flutter build appbundle --release
+        run: flutter build appbundle --release --dart-define=BIO_OBF_KEY=${{ secrets.BIO_OBF_KEY }}
 
       - name: Upload to Google Play Production
         uses: r0adkll/upload-google-play@v1.1.3
