@@ -81,7 +81,7 @@ import 'package:otzaria/text_book/utils/note_inline_render.dart';
 import 'package:otzaria/text_book/utils/reading_segments.dart';
 import 'package:otzaria/text_book/utils/reading_segment_navigation.dart';
 import 'package:otzaria/text_book/utils/section_search_utils.dart';
-import 'package:otzaria/text_book/utils/siman_inline_markers.dart';
+import 'package:otzaria/text_book/utils/inline_section_markers.dart';
 import 'package:otzaria/text_book/view/widgets/continuous_reading_paragraph.dart';
 import 'package:otzaria/theme/theme_exports.dart';
 import 'package:otzaria/utils/text/html_link_handler.dart';
@@ -639,8 +639,8 @@ class _CombinedViewState extends State<CombinedView> {
   // באנר קרדיט מקור המוצג מעל השורה הראשונה (נטען פעם אחת לכל ספר), אם קיים.
   BookSourceBannerKind? _sourceBannerKind;
 
-  /// אותיות הפסקה (סימנים) לפי lineIndex — קיים רק במדרש רבה וחבריו.
-  Map<int, String> _simanMarkersByLine = const {};
+  /// סמני חלוקה לפי lineIndex — אותיות פסקה במדרש רבה, סעיפים בנושאי-כלים.
+  Map<int, String> _sectionMarkersByLine = const {};
 
   // מנהל בחירת טקסט משופר
   late final TextSelectionManager _selectionManager;
@@ -733,7 +733,7 @@ class _CombinedViewState extends State<CombinedView> {
     );
 
     _loadSourceBanner();
-    _loadSimanMarkers();
+    _loadSectionMarkers();
 
     // אתחול מנהל הבחירה
     _selectionManager = TextSelectionManager();
@@ -850,7 +850,7 @@ class _CombinedViewState extends State<CombinedView> {
     }
     if (!sameSourceIdentity(oldWidget.tab.book, widget.tab.book)) {
       _loadSourceBanner();
-      _loadSimanMarkers();
+      _loadSectionMarkers();
       // ה-State עלול להישמר במעבר ספר — מטמון ה"מפרשים הנוספים" ממופה לפי
       // שורה בלבד, ולכן חייב להתאפס כדי לא להחזיר מפרשים של הספר הקודם.
       _siblingController.clear();
@@ -869,7 +869,7 @@ class _CombinedViewState extends State<CombinedView> {
     }
   }
 
-  Future<void> _loadSimanMarkers() async {
+  Future<void> _loadSectionMarkers() async {
     final book = widget.tab.book;
     // הסימנים ממופים ל-lineIndex של הטקסט הממוזג במסד. ספר אישי בשם זהה,
     // מהדורה חלופית (version_line) או ספר שתוכנו מוגש מקבצים — ממוספרים
@@ -882,12 +882,12 @@ class _CombinedViewState extends State<CombinedView> {
     );
     if (provider is! DatabaseLibraryProvider) return;
     final markers = await DatabaseLibraryProvider.instance
-        .getSimanMarkersByLineIndex(book.title);
+        .getInlineSectionMarkersByLineIndex(book.title);
     // כמו ב-_loadSourceBanner: מעבר מהיר בין ספרים עלול לסיים await זה
     // אחרי החלפת הספר.
     if (!mounted || !sameSourceIdentity(book, widget.tab.book)) return;
-    if (markers.isEmpty && _simanMarkersByLine.isEmpty) return;
-    setState(() => _simanMarkersByLine = markers);
+    if (markers.isEmpty && _sectionMarkersByLine.isEmpty) return;
+    setState(() => _sectionMarkersByLine = markers);
   }
 
   @override
@@ -2447,10 +2447,10 @@ class _CombinedViewState extends State<CombinedView> {
                             state,
                           );
 
-                          // אות הפסקה — תוכן גלוי, אחרי סמני העוגן.
-                          data = prependSimanMarker(
+                          // סמן חלוקה (אות/סעיף) — תוכן גלוי, אחרי סמני העוגן.
+                          data = prependSectionMarker(
                             data,
-                            _simanMarkersByLine[primaryLineIndex],
+                            _sectionMarkersByLine[primaryLineIndex],
                           );
 
                           // איסוף קישורי inline (start/end מתייחסים לטקסט המקורי)
@@ -2773,10 +2773,10 @@ class _CombinedViewState extends State<CombinedView> {
       lineIndex,
       state,
     );
-    // אות הפסקה — תוכן גלוי, אחרי סמני העוגן.
-    textWithLinks = prependSimanMarker(
+    // סמן חלוקה (אות/סעיף) — תוכן גלוי, אחרי סמני העוגן.
+    textWithLinks = prependSectionMarker(
       textWithLinks,
-      _simanMarkersByLine[lineIndex],
+      _sectionMarkersByLine[lineIndex],
     );
     final linksForLine =
         settingsState.enableHtmlLinks && state.book.versionTitle == null

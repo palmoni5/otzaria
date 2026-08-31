@@ -908,10 +908,50 @@ Future<List<Map<String, dynamic>>> _runAlternativeStructuresInIsolate({
   );
 }
 
-/// אותיות הפסקה (סימנים) של ספר: כל עלה במבנה `Simanim` ממופה לשורת התוכן
-/// שלו. מחזיר שורות `(lineIndex, label)` — התווית היא האות (א, ב, ג...)
-/// שמודפסת במהדורות הדפוס בראש הפסקה ומשמשת במראי מקומות.
-List<Map<String, dynamic>> _loadSimanMarkerRowsInIsolate({
+/// גוזר סמני "סעיף" לנושא-כלים על השולחן ערוך מקישורי ה-COMMENTARY.
+///
+/// [rows] — קישורי הספר, שורה לכל קישור: `lineIndex` (בספר), `baseHeRef`
+/// (של שורת השו"ע), ממוינות לפי `(lineIndex, baseLineIndex)` כך שלשורה עם
+/// כמה קישורים הסעיף הראשון קובע. הסמן ניתן לשורה הראשונה של כל קבוצת
+/// ס"ק רצופה שמפרשת אותו סעיף; שורות ללא קישור (הקדמות) אינן מסומנות.
+@visibleForTesting
+Map<int, String> seifMarkersFromLinkRows(List<Map<String, dynamic>> rows) {
+  // מפתח הקבוצה הוא ה-heRef המלא (סימן+סעיף), כדי שמעבר לסימן חדש שנפתח
+  // באותה אות סעיף יקבל סמן גם הוא; התווית היא אות הסעיף בלבד.
+  final refByLine = <int, ({String key, String seif})>{};
+  for (final row in rows) {
+    final lineIndex = row['lineIndex'];
+    final heRef = row['baseHeRef'];
+    if (lineIndex is! int || heRef is! String) continue;
+    if (refByLine.containsKey(lineIndex)) continue;
+    // "שולחן ערוך, אורח חיים א, ג" — המקטע שאחרי הפסיק האחרון הוא הסעיף.
+    final comma = heRef.lastIndexOf(',');
+    if (comma < 0) continue;
+    final seif = heRef.substring(comma + 1).trim();
+    if (seif.isEmpty) continue;
+    refByLine[lineIndex] = (key: heRef, seif: seif);
+  }
+
+  final markers = <int, String>{};
+  String? previousKey;
+  final sortedLines = refByLine.keys.toList()..sort();
+  for (final lineIndex in sortedLines) {
+    final ref = refByLine[lineIndex]!;
+    if (ref.key != previousKey) {
+      markers[lineIndex] = 'סעיף ${ref.seif}';
+      previousKey = ref.key;
+    }
+  }
+  return markers;
+}
+
+/// סמני חלוקה בגוף הטקסט של ספר, ממופתחים לפי `lineIndex`:
+///
+/// 1. אותיות פסקה — עלי מבנה `Simanim` (מדרש רבה וחבריו). התווית היא
+///    האות (א, ב, ג...) שמודפסת במהדורות הדפוס ומשמשת במראי מקומות.
+/// 2. באין מבנה כזה, לנושאי-כלים שבסיסם המוצהר הוא שולחן ערוך — תווית
+///    "סעיף X" בפתיחת קבוצת הס"ק של כל סעיף, נגזרת מקישורי ה-COMMENTARY.
+Map<int, String> _loadInlineSectionMarkersInIsolate({
   required String dbPath,
   required String bookTitle,
 }) {
@@ -925,7 +965,7 @@ List<Map<String, dynamic>> _loadSimanMarkerRowsInIsolate({
     ).toMapList();
 
     if (bookResults.isEmpty) {
-      return const [];
+      return const {};
     }
 
     final bookId = bookResults.first['id'] as int;
@@ -933,7 +973,7 @@ List<Map<String, dynamic>> _loadSimanMarkerRowsInIsolate({
     // hasChildren = 0 — רק עלי הסימנים. רשומות הביניים של המבנה משכפלות
     // כותרות פרשה/פרק שכבר גלויות בטקסט (ובקוהלת רבה המבנה תלת-רמתי:
     // פרשה → פרק → סימן).
-    return db.select(
+    final simanRows = db.select(
       '''
       SELECT l.lineIndex AS lineIndex, t.text AS label
       FROM alt_toc_structure s
@@ -944,19 +984,66 @@ List<Map<String, dynamic>> _loadSimanMarkerRowsInIsolate({
       ''',
       [bookId],
     ).toMapList();
+
+    if (simanRows.isNotEmpty) {
+      final markers = <int, String>{};
+      for (final row in simanRows) {
+        final lineIndex = row['lineIndex'];
+        final label = row['label'];
+        if (lineIndex is int && label is String && label.isNotEmpty) {
+          markers[lineIndex] = label;
+        }
+      }
+      return markers;
+    }
+
+    // התוחם לשולחן ערוך מכוון: בנושאי הכלים הס"ק רצים שטוחים בתוך הסימן
+    // בלי שום ציון סעיף. בסיסים אחרים (רש"י על התורה וכד') לא נבדקו —
+    // אין להרחיב בלי לוודא שהסימון אינו רעש שם.
+    final baseRows = db.select(
+      '''
+      SELECT bbt.baseBookId AS baseBookId
+      FROM book_base_text bbt
+      JOIN book bb ON bb.id = bbt.baseBookId
+      WHERE bbt.bookId = ? AND bb.title LIKE 'שולחן ערוך%'
+      LIMIT 1
+      ''',
+      [bookId],
+    ).toMapList();
+
+    if (baseRows.isEmpty) {
+      return const {};
+    }
+
+    final baseBookId = baseRows.first['baseBookId'] as int;
+
+    final linkRows = db.select(
+      '''
+      SELECT ml.lineIndex AS lineIndex, bl.heRef AS baseHeRef
+      FROM link k
+      JOIN connection_type c ON c.id = k.connectionTypeId
+      JOIN line ml ON ml.id = k.targetLineId
+      JOIN line bl ON bl.id = k.sourceLineId
+      WHERE k.sourceBookId = ? AND k.targetBookId = ? AND c.name = 'COMMENTARY'
+      ORDER BY ml.lineIndex, bl.lineIndex
+      ''',
+      [baseBookId, bookId],
+    ).toMapList();
+
+    return seifMarkersFromLinkRows(linkRows);
   } finally {
     db?.close();
   }
 }
 
-/// Top-level wrapper עבור טעינת אותיות הפסקה ב-isolate.
+/// Top-level wrapper עבור טעינת סמני החלוקה ב-isolate.
 /// ראה ההסבר ב-[_runAlternativeStructuresInIsolate].
-Future<List<Map<String, dynamic>>> _runSimanMarkersInIsolate({
+Future<Map<int, String>> _runInlineSectionMarkersInIsolate({
   required String dbPath,
   required String bookTitle,
 }) {
   return Isolate.run(
-    () => _loadSimanMarkerRowsInIsolate(
+    () => _loadInlineSectionMarkersInIsolate(
       dbPath: dbPath,
       bookTitle: bookTitle,
     ),
@@ -3490,11 +3577,13 @@ class DatabaseLibraryProvider implements LibraryProvider {
     }
   }
 
-  /// אותיות הפסקה (סימנים) של ספר, ממופתחות לפי `lineIndex` של שורת התוכן.
-  ///
-  /// קיים רק לספרים עם מבנה alt-TOC מסוג `Simanim` (מדרש רבה וחבריו);
-  /// לכל ספר אחר מוחזרת מפה ריקה. משמש להצגת האות בגוף הטקסט (issue #773).
-  Future<Map<int, String>> getSimanMarkersByLineIndex(String bookTitle) async {
+  /// סמני חלוקה בגוף הטקסט של ספר, ממופתחים לפי `lineIndex` של שורת התוכן:
+  /// אותיות פסקה במדרש רבה וחבריו (מבנה `Simanim`), או "סעיף X" בנושאי-כלים
+  /// על השולחן ערוך (נגזר מקישורי COMMENTARY). לכל ספר אחר מוחזרת מפה
+  /// ריקה. משמש להצגת הסמן בגוף הטקסט (issue #773).
+  Future<Map<int, String>> getInlineSectionMarkersByLineIndex(
+    String bookTitle,
+  ) async {
     if (!_sqliteProvider.isInitialized || _sqliteProvider.repository == null) {
       return const {};
     }
@@ -3502,22 +3591,14 @@ class DatabaseLibraryProvider implements LibraryProvider {
     final dbPath = _sqliteProvider.dbPath;
 
     try {
-      final rows = await _runSimanMarkersInIsolate(
+      return await _runInlineSectionMarkersInIsolate(
         dbPath: dbPath,
         bookTitle: bookTitle,
       );
-
-      final markers = <int, String>{};
-      for (final row in rows) {
-        final lineIndex = row['lineIndex'];
-        final label = row['label'];
-        if (lineIndex is int && label is String && label.isNotEmpty) {
-          markers[lineIndex] = label;
-        }
-      }
-      return markers;
     } catch (e) {
-      debugPrint('⚠️ Error in getSimanMarkersByLineIndex "$bookTitle": $e');
+      debugPrint(
+        '⚠️ Error in getInlineSectionMarkersByLineIndex "$bookTitle": $e',
+      );
       return const {};
     }
   }
