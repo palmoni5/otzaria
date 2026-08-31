@@ -908,49 +908,10 @@ Future<List<Map<String, dynamic>>> _runAlternativeStructuresInIsolate({
   );
 }
 
-/// גוזר סמני "סעיף" לנושא-כלים על השולחן ערוך מקישורי ה-COMMENTARY.
-///
-/// [rows] — קישורי הספר, שורה לכל קישור: `lineIndex` (בספר), `baseHeRef`
-/// (של שורת השו"ע), ממוינות לפי `(lineIndex, baseLineIndex)` כך שלשורה עם
-/// כמה קישורים הסעיף הראשון קובע. הסמן ניתן לשורה הראשונה של כל קבוצת
-/// ס"ק רצופה שמפרשת אותו סעיף; שורות ללא קישור (הקדמות) אינן מסומנות.
-@visibleForTesting
-Map<int, String> seifMarkersFromLinkRows(List<Map<String, dynamic>> rows) {
-  // מפתח הקבוצה הוא ה-heRef המלא (סימן+סעיף), כדי שמעבר לסימן חדש שנפתח
-  // באותה אות סעיף יקבל סמן גם הוא; התווית היא אות הסעיף בלבד.
-  final refByLine = <int, ({String key, String seif})>{};
-  for (final row in rows) {
-    final lineIndex = row['lineIndex'];
-    final heRef = row['baseHeRef'];
-    if (lineIndex is! int || heRef is! String) continue;
-    if (refByLine.containsKey(lineIndex)) continue;
-    // "שולחן ערוך, אורח חיים א, ג" — המקטע שאחרי הפסיק האחרון הוא הסעיף.
-    final comma = heRef.lastIndexOf(',');
-    if (comma < 0) continue;
-    final seif = heRef.substring(comma + 1).trim();
-    if (seif.isEmpty) continue;
-    refByLine[lineIndex] = (key: heRef, seif: seif);
-  }
-
-  final markers = <int, String>{};
-  String? previousKey;
-  final sortedLines = refByLine.keys.toList()..sort();
-  for (final lineIndex in sortedLines) {
-    final ref = refByLine[lineIndex]!;
-    if (ref.key != previousKey) {
-      markers[lineIndex] = 'סעיף ${ref.seif}';
-      previousKey = ref.key;
-    }
-  }
-  return markers;
-}
-
-/// סמני חלוקה בגוף הטקסט של ספר, ממופתחים לפי `lineIndex`:
-///
-/// 1. אותיות פסקה — עלי מבנה `Simanim` (מדרש רבה וחבריו). התווית היא
-///    האות (א, ב, ג...) שמודפסת במהדורות הדפוס ומשמשת במראי מקומות.
-/// 2. באין מבנה כזה, לנושאי-כלים שבסיסם המוצהר הוא שולחן ערוך — תווית
-///    "סעיף X" בפתיחת קבוצת הס"ק של כל סעיף, נגזרת מקישורי ה-COMMENTARY.
+/// סמני חלוקה בגוף הטקסט של ספר, ממופתחים לפי `lineIndex` — עלי מבני
+/// alt-TOC של סמנים: `Simanim` (אותיות פסקה במדרש רבה וחבריו, תווית "א")
+/// ו-`Seifim` (סעיפים בנושאי-כלים על השולחן ערוך, תווית "סעיף ג";
+/// מסונתז בגנרטור של SeforimLibrary וקיים מגרסת ספרייה 24 ואילך).
 Map<int, String> _loadInlineSectionMarkersInIsolate({
   required String dbPath,
   required String bookTitle,
@@ -970,67 +931,31 @@ Map<int, String> _loadInlineSectionMarkersInIsolate({
 
     final bookId = bookResults.first['id'] as int;
 
-    // hasChildren = 0 — רק עלי הסימנים. רשומות הביניים של המבנה משכפלות
-    // כותרות פרשה/פרק שכבר גלויות בטקסט (ובקוהלת רבה המבנה תלת-רמתי:
-    // פרשה → פרק → סימן).
-    final simanRows = db.select(
+    // hasChildren = 0 — רק העלים. רשומות הביניים של המבנה משכפלות
+    // כותרות פרשה/פרק/סימן שכבר גלויות בטקסט (ובקוהלת רבה המבנה
+    // תלת-רמתי: פרשה → פרק → סימן).
+    final markerRows = db.select(
       '''
       SELECT l.lineIndex AS lineIndex, t.text AS label
       FROM alt_toc_structure s
       JOIN alt_toc_entry e ON e.structureId = s.id
       JOIN tocText t ON t.id = e.textId
       JOIN line l ON l.id = e.lineId
-      WHERE s.bookId = ? AND s.key = 'Simanim' AND e.hasChildren = 0
+      WHERE s.bookId = ? AND s.key IN ('Simanim', 'Seifim')
+        AND e.hasChildren = 0
       ''',
       [bookId],
     ).toMapList();
 
-    if (simanRows.isNotEmpty) {
-      final markers = <int, String>{};
-      for (final row in simanRows) {
-        final lineIndex = row['lineIndex'];
-        final label = row['label'];
-        if (lineIndex is int && label is String && label.isNotEmpty) {
-          markers[lineIndex] = label;
-        }
+    final markers = <int, String>{};
+    for (final row in markerRows) {
+      final lineIndex = row['lineIndex'];
+      final label = row['label'];
+      if (lineIndex is int && label is String && label.isNotEmpty) {
+        markers[lineIndex] = label;
       }
-      return markers;
     }
-
-    // התוחם לשולחן ערוך מכוון: בנושאי הכלים הס"ק רצים שטוחים בתוך הסימן
-    // בלי שום ציון סעיף. בסיסים אחרים (רש"י על התורה וכד') לא נבדקו —
-    // אין להרחיב בלי לוודא שהסימון אינו רעש שם.
-    final baseRows = db.select(
-      '''
-      SELECT bbt.baseBookId AS baseBookId
-      FROM book_base_text bbt
-      JOIN book bb ON bb.id = bbt.baseBookId
-      WHERE bbt.bookId = ? AND bb.title LIKE 'שולחן ערוך%'
-      LIMIT 1
-      ''',
-      [bookId],
-    ).toMapList();
-
-    if (baseRows.isEmpty) {
-      return const {};
-    }
-
-    final baseBookId = baseRows.first['baseBookId'] as int;
-
-    final linkRows = db.select(
-      '''
-      SELECT ml.lineIndex AS lineIndex, bl.heRef AS baseHeRef
-      FROM link k
-      JOIN connection_type c ON c.id = k.connectionTypeId
-      JOIN line ml ON ml.id = k.targetLineId
-      JOIN line bl ON bl.id = k.sourceLineId
-      WHERE k.sourceBookId = ? AND k.targetBookId = ? AND c.name = 'COMMENTARY'
-      ORDER BY ml.lineIndex, bl.lineIndex
-      ''',
-      [baseBookId, bookId],
-    ).toMapList();
-
-    return seifMarkersFromLinkRows(linkRows);
+    return markers;
   } finally {
     db?.close();
   }
@@ -3578,9 +3503,9 @@ class DatabaseLibraryProvider implements LibraryProvider {
   }
 
   /// סמני חלוקה בגוף הטקסט של ספר, ממופתחים לפי `lineIndex` של שורת התוכן:
-  /// אותיות פסקה במדרש רבה וחבריו (מבנה `Simanim`), או "סעיף X" בנושאי-כלים
-  /// על השולחן ערוך (נגזר מקישורי COMMENTARY). לכל ספר אחר מוחזרת מפה
-  /// ריקה. משמש להצגת הסמן בגוף הטקסט (issue #773).
+  /// אותיות פסקה במדרש רבה וחבריו (מבנה `Simanim`), ו"סעיף X" בנושאי-כלים
+  /// על השולחן ערוך (מבנה `Seifim`, מגרסת ספרייה 24). לכל ספר אחר מוחזרת
+  /// מפה ריקה. משמש להצגת הסמן בגוף הטקסט (issue #773).
   Future<Map<int, String>> getInlineSectionMarkersByLineIndex(
     String bookTitle,
   ) async {
