@@ -41,18 +41,29 @@ class _BiographyCardState extends State<BiographyCard> {
     final text = [
       _bio.name,
       _datesLine,
-      _bio.summary,
-      if (_expanded) _bio.biographyShort,
+      _visibleText,
+      if (_expanded) _expandableText,
     ].whereType<String>().join('\n');
     Clipboard.setData(ClipboardData(text: text));
     UiSnack.show(UiSnack.textCopied);
   }
 
+  /// הטקסט הגלוי תמיד. בהיעדר תקציר מוצגת הביוגרפיה עצמה, אחרת הכרטיס
+  /// היה נראה ריק לגמרי עד להרחבה.
+  String? get _visibleText => _bio.summary ?? _bio.biographyShort;
+
+  /// טקסט נוסף שנחשף בהרחבה — רק כשהוא באמת שונה מהגלוי.
+  String? get _expandableText {
+    final body = _bio.biographyShort;
+    if (body == null || body == _visibleText) return null;
+    return body;
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final hasBody =
-        _bio.biographyShort != null && _bio.biographyShort != _bio.summary;
+    final expandable = _expandableText;
+    final hasBody = expandable != null;
 
     return ToolResultCardShell(
       onTap: hasBody ? () => setState(() => _expanded = !_expanded) : null,
@@ -73,11 +84,6 @@ class _BiographyCardState extends State<BiographyCard> {
                 ),
               ),
               const SizedBox(width: AppTokens.spaceXS),
-              SecondaryIconButton(
-                icon: FluentIcons.copy_24_regular,
-                tooltip: 'העתק',
-                onPressed: _copy,
-              ),
               // המקום נשמר תמיד, אחרת כפתור ההעתקה זז בין כרטיס לכרטיס.
               SizedBox(
                 width: _toggleSlotWidth,
@@ -90,6 +96,12 @@ class _BiographyCardState extends State<BiographyCard> {
                         onPressed: () => setState(() => _expanded = !_expanded),
                       )
                     : null,
+              ),
+              const SizedBox(width: AppTokens.spaceXS),
+              SecondaryIconButton(
+                icon: FluentIcons.copy_24_regular,
+                tooltip: 'העתק',
+                onPressed: _copy,
               ),
             ],
           ),
@@ -104,22 +116,22 @@ class _BiographyCardState extends State<BiographyCard> {
                 ),
               ),
             ),
-          if (_bio.summary != null)
+          if (_visibleText != null)
             Padding(
               padding: const EdgeInsets.only(top: AppTokens.spaceSM),
               child: Text(
-                _bio.summary!,
+                _visibleText!,
                 style: TextStyle(
                   fontSize: AppTokens.fontMD,
                   color: cs.onSurface,
                 ),
               ),
             ),
-          if (_expanded && hasBody)
+          if (_expanded && expandable != null)
             Padding(
               padding: const EdgeInsets.only(top: AppTokens.spaceSM),
               child: Text(
-                _bio.biographyShort!,
+                expandable,
                 style: TextStyle(
                   fontSize: AppTokens.fontMD,
                   color: cs.onSurface,
