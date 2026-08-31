@@ -25,6 +25,9 @@ class _BiographyCardState extends State<BiographyCard> {
   /// רוחב הכפתור ב-[SecondaryIconButton] — משמש לשמירת המקום גם בלי כפתור.
   static const double _toggleSlotWidth = 36;
 
+  /// מספר השורות שמוצגות לפני הרחבה.
+  static const int _collapsedLines = 2;
+
   bool _expanded = false;
 
   Biography get _bio => widget.biography;
@@ -59,12 +62,47 @@ class _BiographyCardState extends State<BiographyCard> {
     return body;
   }
 
+  /// האם [text] חורג מ-[maxLines] ברוחב הנתון — קובע אם צריך כפתור הרחבה.
+  bool _overflows(String text, TextStyle style, double width, int maxLines) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      maxLines: maxLines,
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout(maxWidth: width);
+    return painter.didExceedMaxLines;
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final expandable = _expandableText;
-    final hasBody = expandable != null;
+    final visible = _visibleText;
+    final bodyStyle = TextStyle(
+      fontSize: AppTokens.fontMD,
+      color: cs.onSurface,
+    );
 
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // רוחב הטקסט בפועל: רוחב הכרטיס פחות הריפוד האופקי של המעטפת.
+        final textWidth = constraints.maxWidth - AppTokens.spaceMD * 2;
+        final clamped =
+            visible != null &&
+            _overflows(visible, bodyStyle, textWidth, _collapsedLines);
+        final hasBody = expandable != null || clamped;
+        return _buildCard(cs, bodyStyle, visible, expandable, hasBody);
+      },
+    );
+  }
+
+  Widget _buildCard(
+    ColorScheme cs,
+    TextStyle bodyStyle,
+    String? visible,
+    String? expandable,
+    bool hasBody,
+  ) {
     return ToolResultCardShell(
       onTap: hasBody ? () => setState(() => _expanded = !_expanded) : null,
       child: Column(
@@ -116,27 +154,20 @@ class _BiographyCardState extends State<BiographyCard> {
                 ),
               ),
             ),
-          if (_visibleText != null)
+          if (visible != null)
             Padding(
               padding: const EdgeInsets.only(top: AppTokens.spaceSM),
               child: Text(
-                _visibleText!,
-                style: TextStyle(
-                  fontSize: AppTokens.fontMD,
-                  color: cs.onSurface,
-                ),
+                visible,
+                style: bodyStyle,
+                maxLines: _expanded ? null : _collapsedLines,
+                overflow: _expanded ? null : TextOverflow.ellipsis,
               ),
             ),
           if (_expanded && expandable != null)
             Padding(
               padding: const EdgeInsets.only(top: AppTokens.spaceSM),
-              child: Text(
-                expandable,
-                style: TextStyle(
-                  fontSize: AppTokens.fontMD,
-                  color: cs.onSurface,
-                ),
-              ),
+              child: Text(expandable, style: bodyStyle),
             ),
         ],
       ),
