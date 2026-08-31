@@ -22,6 +22,9 @@ class BiographyCard extends StatefulWidget {
 }
 
 class _BiographyCardState extends State<BiographyCard> {
+  /// רוחב הכפתור ב-[SecondaryIconButton] — משמש לשמירת המקום גם בלי כפתור.
+  static const double _toggleSlotWidth = 36;
+
   bool _expanded = false;
 
   Biography get _bio => widget.biography;
@@ -75,14 +78,19 @@ class _BiographyCardState extends State<BiographyCard> {
                 tooltip: 'העתק',
                 onPressed: _copy,
               ),
-              if (hasBody)
-                Icon(
-                  _expanded
-                      ? FluentIcons.chevron_up_24_regular
-                      : FluentIcons.chevron_down_24_regular,
-                  size: 18,
-                  color: cs.onSurfaceVariant,
-                ),
+              // המקום נשמר תמיד, אחרת כפתור ההעתקה זז בין כרטיס לכרטיס.
+              SizedBox(
+                width: _toggleSlotWidth,
+                child: hasBody
+                    ? SecondaryIconButton(
+                        icon: _expanded
+                            ? FluentIcons.chevron_up_24_regular
+                            : FluentIcons.chevron_down_24_regular,
+                        tooltip: _expanded ? 'הסתר' : 'הרחב',
+                        onPressed: () => setState(() => _expanded = !_expanded),
+                      )
+                    : null,
+              ),
             ],
           ),
           if (_datesLine != null || _bio.generation != null)
