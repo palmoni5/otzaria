@@ -908,6 +908,61 @@ Future<List<Map<String, dynamic>>> _runAlternativeStructuresInIsolate({
   );
 }
 
+/// אותיות הפסקה (סימנים) של ספר: כל עלה במבנה `Simanim` ממופה לשורת התוכן
+/// שלו. מחזיר שורות `(lineIndex, label)` — התווית היא האות (א, ב, ג...)
+/// שמודפסת במהדורות הדפוס בראש הפסקה ומשמשת במראי מקומות.
+List<Map<String, dynamic>> _loadSimanMarkerRowsInIsolate({
+  required String dbPath,
+  required String bookTitle,
+}) {
+  sqlite3.Database? db;
+  try {
+    db = sqlite3.sqlite3.open(dbPath, mode: sqlite3.OpenMode.readOnly);
+
+    final bookResults = db.select(
+      'SELECT id FROM book WHERE title = ? LIMIT 1',
+      [bookTitle],
+    ).toMapList();
+
+    if (bookResults.isEmpty) {
+      return const [];
+    }
+
+    final bookId = bookResults.first['id'] as int;
+
+    // hasChildren = 0 — רק עלי הסימנים. רשומות הביניים של המבנה משכפלות
+    // כותרות פרשה/פרק שכבר גלויות בטקסט (ובקוהלת רבה המבנה תלת-רמתי:
+    // פרשה → פרק → סימן).
+    return db.select(
+      '''
+      SELECT l.lineIndex AS lineIndex, t.text AS label
+      FROM alt_toc_structure s
+      JOIN alt_toc_entry e ON e.structureId = s.id
+      JOIN tocText t ON t.id = e.textId
+      JOIN line l ON l.id = e.lineId
+      WHERE s.bookId = ? AND s.key = 'Simanim' AND e.hasChildren = 0
+      ''',
+      [bookId],
+    ).toMapList();
+  } finally {
+    db?.close();
+  }
+}
+
+/// Top-level wrapper עבור טעינת אותיות הפסקה ב-isolate.
+/// ראה ההסבר ב-[_runAlternativeStructuresInIsolate].
+Future<List<Map<String, dynamic>>> _runSimanMarkersInIsolate({
+  required String dbPath,
+  required String bookTitle,
+}) {
+  return Isolate.run(
+    () => _loadSimanMarkerRowsInIsolate(
+      dbPath: dbPath,
+      bookTitle: bookTitle,
+    ),
+  );
+}
+
 /// Top-level wrapper עבור טעינת קישורי ספר ב-isolate.
 /// ראה ההסבר ב-[_runAlternativeStructuresInIsolate].
 Future<List<Map<String, Object?>>> _runBookLinksInIsolate({
@@ -3432,6 +3487,38 @@ class DatabaseLibraryProvider implements LibraryProvider {
         '⚠️ Error in getAlternativeStructuresForBook "$bookTitle": $e',
       );
       return [];
+    }
+  }
+
+  /// אותיות הפסקה (סימנים) של ספר, ממופתחות לפי `lineIndex` של שורת התוכן.
+  ///
+  /// קיים רק לספרים עם מבנה alt-TOC מסוג `Simanim` (מדרש רבה וחבריו);
+  /// לכל ספר אחר מוחזרת מפה ריקה. משמש להצגת האות בגוף הטקסט (issue #773).
+  Future<Map<int, String>> getSimanMarkersByLineIndex(String bookTitle) async {
+    if (!_sqliteProvider.isInitialized || _sqliteProvider.repository == null) {
+      return const {};
+    }
+
+    final dbPath = _sqliteProvider.dbPath;
+
+    try {
+      final rows = await _runSimanMarkersInIsolate(
+        dbPath: dbPath,
+        bookTitle: bookTitle,
+      );
+
+      final markers = <int, String>{};
+      for (final row in rows) {
+        final lineIndex = row['lineIndex'];
+        final label = row['label'];
+        if (lineIndex is int && label is String && label.isNotEmpty) {
+          markers[lineIndex] = label;
+        }
+      }
+      return markers;
+    } catch (e) {
+      debugPrint('⚠️ Error in getSimanMarkersByLineIndex "$bookTitle": $e');
+      return const {};
     }
   }
 

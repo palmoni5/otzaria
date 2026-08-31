@@ -29,6 +29,8 @@ import 'package:otzaria/tabs/models/tab.dart';
 import 'package:otzaria/models/link_types.dart';
 import 'package:otzaria/models/links.dart';
 import 'package:otzaria/core/focus_repository.dart';
+import 'package:otzaria/data/data_providers/database_library_provider.dart';
+import 'package:otzaria/data/data_providers/library_provider_manager.dart';
 import 'package:otzaria/services/commentary_service.dart';
 import 'package:otzaria/utils/navigation/talmud_bavli_open_format.dart';
 import 'package:otzaria/utils/text/text_manipulation.dart' as utils;
@@ -79,6 +81,7 @@ import 'package:otzaria/text_book/utils/note_inline_render.dart';
 import 'package:otzaria/text_book/utils/reading_segments.dart';
 import 'package:otzaria/text_book/utils/reading_segment_navigation.dart';
 import 'package:otzaria/text_book/utils/section_search_utils.dart';
+import 'package:otzaria/text_book/utils/siman_inline_markers.dart';
 import 'package:otzaria/text_book/view/widgets/continuous_reading_paragraph.dart';
 import 'package:otzaria/theme/theme_exports.dart';
 import 'package:otzaria/utils/text/html_link_handler.dart';
@@ -636,6 +639,9 @@ class _CombinedViewState extends State<CombinedView> {
   // באנר קרדיט מקור המוצג מעל השורה הראשונה (נטען פעם אחת לכל ספר), אם קיים.
   BookSourceBannerKind? _sourceBannerKind;
 
+  /// אותיות הפסקה (סימנים) לפי lineIndex — קיים רק במדרש רבה וחבריו.
+  Map<int, String> _simanMarkersByLine = const {};
+
   // מנהל בחירת טקסט משופר
   late final TextSelectionManager _selectionManager;
 
@@ -727,6 +733,7 @@ class _CombinedViewState extends State<CombinedView> {
     );
 
     _loadSourceBanner();
+    _loadSimanMarkers();
 
     // אתחול מנהל הבחירה
     _selectionManager = TextSelectionManager();
@@ -843,6 +850,7 @@ class _CombinedViewState extends State<CombinedView> {
     }
     if (!sameSourceIdentity(oldWidget.tab.book, widget.tab.book)) {
       _loadSourceBanner();
+      _loadSimanMarkers();
       // ה-State עלול להישמר במעבר ספר — מטמון ה"מפרשים הנוספים" ממופה לפי
       // שורה בלבד, ולכן חייב להתאפס כדי לא להחזיר מפרשים של הספר הקודם.
       _siblingController.clear();
@@ -859,6 +867,27 @@ class _CombinedViewState extends State<CombinedView> {
         kind != _sourceBannerKind) {
       setState(() => _sourceBannerKind = kind);
     }
+  }
+
+  Future<void> _loadSimanMarkers() async {
+    final book = widget.tab.book;
+    // הסימנים ממופים ל-lineIndex של הטקסט הממוזג במסד. ספר אישי בשם זהה,
+    // מהדורה חלופית (version_line) או ספר שתוכנו מוגש מקבצים — ממוספרים
+    // אחרת, ואין להזריק בהם.
+    if (book.isUserBook || book.versionTitle != null) return;
+    final provider = LibraryProviderManager.instance.getProviderForBook(
+      book.title,
+      categoryId: book.categoryId,
+      fileType: book.fileType,
+    );
+    if (provider is! DatabaseLibraryProvider) return;
+    final markers = await DatabaseLibraryProvider.instance
+        .getSimanMarkersByLineIndex(book.title);
+    // כמו ב-_loadSourceBanner: מעבר מהיר בין ספרים עלול לסיים await זה
+    // אחרי החלפת הספר.
+    if (!mounted || !sameSourceIdentity(book, widget.tab.book)) return;
+    if (markers.isEmpty && _simanMarkersByLine.isEmpty) return;
+    setState(() => _simanMarkersByLine = markers);
   }
 
   @override
@@ -2418,6 +2447,12 @@ class _CombinedViewState extends State<CombinedView> {
                             state,
                           );
 
+                          // אות הפסקה — תוכן גלוי, אחרי סמני העוגן.
+                          data = prependSimanMarker(
+                            data,
+                            _simanMarkersByLine[primaryLineIndex],
+                          );
+
                           // איסוף קישורי inline (start/end מתייחסים לטקסט המקורי)
                           List<Link> linksForLine = const [];
                           if (settingsState.enableHtmlLinks &&
@@ -2737,6 +2772,11 @@ class _CombinedViewState extends State<CombinedView> {
       textWithLinks,
       lineIndex,
       state,
+    );
+    // אות הפסקה — תוכן גלוי, אחרי סמני העוגן.
+    textWithLinks = prependSimanMarker(
+      textWithLinks,
+      _simanMarkersByLine[lineIndex],
     );
     final linksForLine =
         settingsState.enableHtmlLinks && state.book.versionTitle == null
