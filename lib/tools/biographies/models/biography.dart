@@ -80,10 +80,17 @@ class Biography extends Equatable {
 
     var name = (entry['name'] as String?)?.trim();
     if (name == null || name.isEmpty) {
+      // בהיעדר שם משפחה משתמשים בשם האב ("רב אדא בר אהבה") — כך מבחינים בין
+      // חכמים רבים שנקראים באותו שם פרטי.
+      final father = doc['father'];
+      final fatherName = father is Map<String, dynamic>
+          ? _he(father['name'])
+          : null;
+      final last = _he(doc['nameLast']);
       name = [
         resolved['titlePre'] as String?,
         _he(doc['nameFirst']),
-        _he(doc['nameLast']),
+        last ?? (fatherName == null ? null : 'בר $fatherName'),
         resolved['titlePost'] as String?,
       ].whereType<String>().join(' ');
     }
