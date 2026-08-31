@@ -188,6 +188,9 @@ jobs:
             ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "build-tools;36.0.0"
           fi
 
+      - name: Fetch biographies data
+        uses: ./.github/actions/fetch-biographies
+
       - name: Install Flutter dependencies
         run: flutter pub get
 

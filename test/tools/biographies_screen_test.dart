@@ -27,7 +27,7 @@ void main() {
 
   testWidgets('מציג ערכים אמיתיים ומסנן בחיפוש', (tester) async {
     final repository = BiographiesRepository(
-      pathProvider: () async => path,
+      updatedPathProvider: () async => path,
     );
 
     await tester.pumpWidget(host(repository));

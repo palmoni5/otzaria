@@ -123,3 +123,6 @@ seforim.db-shm
 .gitignore
 seforim.db-wal
 .gstack/
+
+# נתוני הביוגרפיות מוזרקים בזמן בנייה מה-release של ta-shma-to-otzaria
+assets/bio/biographies.tsb

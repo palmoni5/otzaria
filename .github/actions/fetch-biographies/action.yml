@@ -1,0 +1,23 @@
+name: Fetch biographies data
+description: >
+  מוריד את biographies.tsb מה-release האחרון של Otzaria/ta-shma-to-otzaria
+  אל assets/bio/, כך שהוא נארז בתוך האפליקציה ומגיע עם כל מתקין.
+  ‏best-effort: בכשל הבנייה ממשיכה בלי הקובץ, והאזור מציג "אין נתונים"
+  עד שמערכת העדכונים תוריד אותו בזמן ריצה.
+
+runs:
+  using: composite
+  steps:
+    - name: Download biographies.tsb
+      shell: bash
+      run: |
+        mkdir -p assets/bio
+        if curl -fsSL --retry 3 \
+            -o assets/bio/biographies.tsb.part \
+            "https://github.com/Otzaria/ta-shma-to-otzaria/releases/latest/download/biographies.tsb"; then
+          mv -f assets/bio/biographies.tsb.part assets/bio/biographies.tsb
+          echo "Bundled biographies data ($(wc -c < assets/bio/biographies.tsb) bytes)."
+        else
+          rm -f assets/bio/biographies.tsb.part
+          echo "::warning::Could not download biographies data — building without it."
+        fi

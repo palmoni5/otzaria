@@ -154,6 +154,9 @@ jobs:
           "ISCC=$iscc" | Out-File -FilePath $env:GITHUB_ENV -Append
           Write-Host "ISCC resolved to: $iscc"
 
+      - name: Fetch biographies data
+        uses: ./.github/actions/fetch-biographies
+
       - name: Prepare Flutter dependencies for Windows release
         shell: pwsh
         run: |
@@ -594,6 +597,9 @@ jobs:
           "ISCC=$iscc" | Out-File -FilePath $env:GITHUB_ENV -Append
           Write-Host "ISCC resolved to: $iscc"
 
+      - name: Fetch biographies data
+        uses: ./.github/actions/fetch-biographies
+
       - name: Prepare Flutter dependencies for Windows release
         shell: pwsh
         run: |
@@ -960,6 +966,9 @@ jobs:
       - name: Install flutter_distributor
         if: matrix.target == 'deb' || matrix.target == 'rpm'
         run: dart pub global activate flutter_distributor
+
+      - name: Fetch biographies data
+        uses: ./.github/actions/fetch-biographies
 
       - name: Prepare Flutter dependencies for Linux release
         shell: bash
@@ -1618,6 +1627,9 @@ jobs:
           curl -L --fail https://github.com/Otzaria/otzaria-library/releases/latest/download/talmud_bavli_latest.tar.zst -o full_installer/library_db/talmud_bavli_latest.tar.zst
           curl -L --fail https://github.com/Otzaria/SeforimMagicIndexer/releases/latest/download/lexical.db -o full_installer/library_db/lexical.db
       
+      - name: Fetch biographies data
+        uses: ./.github/actions/fetch-biographies
+
       - name: Build Android APK
         env:
           ANDROID_KEYSTORE_PATH: ${{ github.workspace }}/android/app/keystore/otzaria-keystore.jks
@@ -1752,6 +1764,9 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
+
+      - name: Fetch biographies data
+        uses: ./.github/actions/fetch-biographies
 
       - name: Prepare Flutter dependencies for macOS release
         run: |

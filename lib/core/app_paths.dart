@@ -481,10 +481,10 @@ class AppPaths {
     );
   }
 
-  /// נתיב קובץ הביוגרפיות (`biographies.tsb`), שמורד מ-GitHub Releases
-  /// בזמן ריצה כמו מילון המורפולוגיה. יושב בתיקיית מסדי הנתונים האישיים.
+  /// נתיב העותק המעודכן של קובץ הביוגרפיות, שמערכת העדכונים מורידה בזמן
+  /// ריצה. גובר על הקובץ הארוז באפליקציה, שאינו בר-כתיבה.
   static Future<String> getBiographiesPath() async {
-    return p.join(await getDatabasesPath(), 'biographies.tsb');
+    return p.join(await getDataRootPath(), 'biographies.tsb');
   }
 
   /// מחזיר רשימת נתיבי ברירת מחדל לאינדקס שאינם הנתיב הפעיל כעת.
