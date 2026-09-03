@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path/path.dart' as p;
+import 'package:win32_registry/win32_registry.dart';
 
 /// היכן ליצור את קיצור הדרך.
 enum ShortcutLocation {
@@ -51,8 +52,8 @@ class PluginShortcutService {
 
     if (Platform.isWindows) {
       dir = location == ShortcutLocation.startMenu
-          ? await _windowsStartMenuDir()
-          : await _windowsDesktopDir();
+          ? _windowsStartMenuDir()
+          : _windowsDesktopDir();
       extension = '.url';
       content = buildWindowsUrl(deepLink);
     } else if (Platform.isMacOS) {
@@ -127,34 +128,31 @@ class PluginShortcutService {
 
   // ── זיהוי תיקיית היעד (מכבד הפניות Known-Folder / XDG) ──
 
-  Future<String> _windowsDesktopDir() async =>
-      await _windowsShellFolder('Desktop') ??
-      _envJoin('USERPROFILE', ['Desktop']);
+  String _windowsDesktopDir() =>
+      _windowsShellFolder('Desktop') ?? _envJoin('USERPROFILE', ['Desktop']);
 
-  Future<String> _windowsStartMenuDir() async =>
-      await _windowsShellFolder('Programs') ??
+  String _windowsStartMenuDir() =>
+      _windowsShellFolder('Programs') ??
       _envJoin('APPDATA', ['Microsoft', 'Windows', 'Start Menu', 'Programs']);
 
   /// קורא נתיב תיקיית-מערכת מה-registry (מכבד הפניית OneDrive / Known Folder).
   /// מחזיר `null` אם הקריאה נכשלה — אז נופלים חזרה למשתנה הסביבה.
-  Future<String?> _windowsShellFolder(String name) async {
+  ///
+  /// נקרא ישירות מה-registry ולא דרך `reg.exe`: פלט של תהליך מפוענח לפי דף
+  /// הקוד של ANSI ומשבש נתיב שאינו ASCII (למשל שולחן עבודה מנותב ל-OneDrive).
+  String? _windowsShellFolder(String name) {
+    RegistryKey? key;
     try {
-      final result = await Process.run('reg', [
-        'query',
-        r'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders',
-        '/v',
-        name,
-      ]);
-      if (result.exitCode != 0) return null;
-      final match = RegExp(
-        '$name'
-        r'\s+REG_\w+\s+(.+)',
-      ).firstMatch(result.stdout.toString());
-      final raw = match?.group(1)?.trim();
+      key = CURRENT_USER.open(
+        r'Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders',
+      );
+      final raw = key.getString(name)?.trim();
       if (raw == null || raw.isEmpty) return null;
       return _expandWindowsEnv(raw);
     } catch (_) {
       return null;
+    } finally {
+      key?.close();
     }
   }
 

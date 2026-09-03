@@ -85,6 +85,21 @@ void main() {
       );
     });
 
+    test('יוצר קיצור בשולחן העבודה האמיתי ב-Windows', () async {
+      if (!Platform.isWindows) return;
+      const service = PluginShortcutService();
+      final label = 'otz test ${DateTime.now().microsecondsSinceEpoch}';
+      final path = await service.createShortcut(
+        deepLink: 'otzaria://open/plugin/com.x',
+        label: label,
+      );
+      try {
+        expect(File(path).existsSync(), isTrue);
+      } finally {
+        File(path).deleteSync();
+      }
+    });
+
     test('startMenu אינו נתמך מחוץ ל-Windows', () async {
       if (Platform.isWindows) return;
       const service = PluginShortcutService();
