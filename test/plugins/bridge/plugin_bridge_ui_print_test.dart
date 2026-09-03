@@ -76,7 +76,15 @@ InstalledPlugin _buildInstalledPlugin() {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late List<({String pluginId, String instanceId, String jobName})> printed;
+  late List<
+    ({
+      String pluginId,
+      String instanceId,
+      String jobName,
+      PluginPdfLayout? layout,
+    })
+  >
+  printed;
   late bool printResult;
   late bool userActivated;
   late List<String> savedNames;
@@ -110,14 +118,16 @@ void main() {
         showWarningDialog:
             ({required title, required content, required subtitle}) async =>
                 true,
-        printPluginPage: (pluginId, instanceId, {required jobName}) async {
-          printed.add((
-            pluginId: pluginId,
-            instanceId: instanceId,
-            jobName: jobName,
-          ));
-          return printResult;
-        },
+        printPluginPage:
+            (pluginId, instanceId, {required jobName, layout}) async {
+              printed.add((
+                pluginId: pluginId,
+                instanceId: instanceId,
+                jobName: jobName,
+                layout: layout,
+              ));
+              return printResult;
+            },
         capturePluginPagePdf: (pluginId, instanceId, {layout}) async {
           capturedLayouts.add(layout);
           return Uint8List.fromList(const [37, 80, 68, 70]);
@@ -246,6 +256,36 @@ void main() {
     expect(layout.marginsMm!.right, 0);
   });
 
+  test('ui.print בלי ארגומנטי עימוד — ברירות המחדל של המנוע', () async {
+    await adapter.execute('ui', 'print', {});
+    expect(printed.single.layout, isNull);
+  });
+
+  test('ui.print מקבל את אותם ארגומנטי עימוד כמו הייצוא', () async {
+    await adapter.execute('ui', 'print', {
+      'pageSize': 'a4',
+      'orientation': 'landscape',
+      'marginMm': {'top': 5},
+      'printBackgrounds': true,
+    });
+
+    final layout = printed.single.layout!;
+    expect(layout.pageWidthMm, 210);
+    expect(layout.pageHeightMm, 297);
+    expect(layout.landscape, isTrue);
+    expect(layout.marginsMm!.top, 5);
+    expect(layout.marginsMm!.right, 0);
+    expect(layout.printBackgrounds, isTrue);
+  });
+
+  test('ערך עימוד פסול ב-ui.print נדחה בלי לשלוח להדפסה', () async {
+    await expectLater(
+      adapter.execute('ui', 'print', {'pageSize': 'a3'}),
+      throwsA(predicate((e) => e.toString().contains('error.invalid_params'))),
+    );
+    expect(printed, isEmpty);
+  });
+
   test('ערכי עימוד פסולים נדחים בלי לפתוח דיאלוג', () async {
     for (final args in [
       {'pageSize': 'a3'},
@@ -336,10 +376,11 @@ void main() {
             ({required title, required content, required subtitle}) async =>
                 true,
         hasUserActivation: (pluginId, instanceId) async => true,
-        printPluginPage: (pluginId, instanceId, {required jobName}) async {
-          await gate.future;
-          return true;
-        },
+        printPluginPage:
+            (pluginId, instanceId, {required jobName, layout}) async {
+              await gate.future;
+              return true;
+            },
       ),
       pluginRepository: _MockPluginRegistryRepository(),
     );

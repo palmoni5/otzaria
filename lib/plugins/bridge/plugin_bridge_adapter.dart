@@ -491,6 +491,7 @@ class PluginBridgeDependencies {
     String pluginId,
     String instanceId, {
     required String jobName,
+    PluginPdfLayout? layout,
   })?
   printPluginPage;
 
@@ -3260,6 +3261,7 @@ class PluginBridgeAdapter {
         }
         final printer = _dependencies.printPluginPage ?? _defaultPrintPage;
         final jobName = (args['jobName'] as String?)?.trim();
+        final printLayout = _parsePdfLayout(args);
         return await _runUserGatedDialog(() async {
           final printed = await printer(
             plugin.pluginId,
@@ -3267,6 +3269,7 @@ class PluginBridgeAdapter {
             jobName: jobName == null || jobName.isEmpty
                 ? plugin.manifest.toolTabTitle
                 : jobName,
+            layout: printLayout,
           );
           return {'printed': printed};
         });
@@ -3419,9 +3422,11 @@ class PluginBridgeAdapter {
     String pluginId,
     String instanceId, {
     required String jobName,
+    PluginPdfLayout? layout,
   }) => const PluginPrintService().printWebView(
     _requireController(pluginId, instanceId),
     jobName: jobName,
+    layout: layout,
   );
 
   Future<Uint8List> _defaultCapturePagePdf(
@@ -3433,7 +3438,7 @@ class PluginBridgeAdapter {
     layout: layout,
   );
 
-  /// גדלי דף נתמכים ב-`ui.exportPdf`, במילימטרים (רוחב, גובה) לאורך.
+  /// גדלי דף נתמכים ב-`ui.exportPdf` וב-`ui.print`, במילימטרים (רוחב, גובה) לאורך.
   static const _pdfPageSizesMm = <String, (double, double)>{
     'a4': (210, 297),
     'a5': (148, 210),
@@ -3447,7 +3452,7 @@ class PluginBridgeAdapter {
   static const _minPageMm = 10.0;
   static const _maxPageMm = 5080.0;
 
-  /// מפרש את ארגומנטי העימוד של `ui.exportPdf`: `pageSize` (שם קבוע או מפה
+  /// מפרש את ארגומנטי העימוד של `ui.exportPdf` ו-`ui.print`: `pageSize` (שם קבוע או מפה
   /// `{widthMm, heightMm}` למידות חופשיות), `orientation`, `marginMm` (מספר
   /// או מפה לפי צד) ו-`printBackgrounds`. null כשלא סופק דבר.
   PluginPdfLayout? _parsePdfLayout(Map<String, dynamic> args) {
