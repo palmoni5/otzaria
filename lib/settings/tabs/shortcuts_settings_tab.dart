@@ -732,6 +732,15 @@ class ShortcutsSettingsTab extends StatelessWidget {
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
+              settingKey: ShortcutValidator.reportErrorKey,
+              label: context.settingsText('דווח על טעות בספר'),
+              subtitle: context.settingsText(
+                'פועל כשיש טקסט מסומן או קטע נבחר',
+              ),
+              icon: FluentIcons.error_circle_24_regular,
+              allShortcuts: _shortcutsList,
+            ),
+            _ShortcutTile(
               settingKey: 'key-shortcut-close-tab',
               label: context.settingsText('סגור ספר נוכחי'),
               icon: FluentIcons.dismiss_circle_24_regular,

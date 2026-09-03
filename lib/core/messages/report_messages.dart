@@ -44,6 +44,8 @@ abstract class ReportMessages {
 
   static const String phoneSentThanks =
       'הדיווח נשלח בהצלחה לצוות אוצריא. תודה על הדיווח!';
+  static const String selectTextToReport =
+      'יש לסמן טקסט או לבחור קטע לפני דיווח על טעות.';
   static const String cannotOpenMailApp = 'לא ניתן לפתוח את תוכנת הדואר';
   static const String cannotOpenEditPage = 'לא ניתן לפתוח את עמוד העריכה.';
   static const String cannotIdentifyReportedBook =

@@ -13,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/search/models/search_configuration.dart';
 import 'package:otzaria/settings/settings_exports.dart';
 import 'package:otzaria/shortcuts/shortcut_helper.dart';
+import 'package:otzaria/shortcuts/shortcut_validator.dart';
 import 'package:otzaria/text_book/bloc/text_book_bloc.dart';
 import 'package:otzaria/text_book/bloc/text_book_state.dart';
 import 'package:otzaria/text_book/utils/reader_build_policy.dart';
@@ -134,7 +135,7 @@ Map<String, dynamic> buildPageShapePluginSelectionPayload({
 }
 
 /// הפעולה שיש לבצע על אירוע מקלדת בחלונית מפרש (בצורת הדף).
-enum CommentaryKeyAction { none, copy, addNote }
+enum CommentaryKeyAction { none, copy, addNote, reportError }
 
 /// מחליטה איזו פעולה לבצע על אירוע מקלדת בחלונית מפרש, ללא תופעות לוואי.
 ///
@@ -151,6 +152,7 @@ CommentaryKeyAction resolveCommentaryKeyAction({
   required bool hasSelection,
   required bool hasSelectedIndex,
   required String addNoteShortcut,
+  String reportErrorShortcut = '',
   bool? isControlPressed,
   bool? isShiftPressed,
   bool? isAltPressed,
@@ -177,6 +179,18 @@ CommentaryKeyAction resolveCommentaryKeyAction({
   );
   if (matchesAddNote && hasSelectedIndex) {
     return CommentaryKeyAction.addNote;
+  }
+
+  if (reportErrorShortcut.isNotEmpty &&
+      ShortcutHelper.matchesShortcut(
+        event,
+        reportErrorShortcut,
+        isControlPressed: isControlPressed,
+        isShiftPressed: isShiftPressed,
+        isAltPressed: isAltPressed,
+        isMetaPressed: isMetaPressed,
+      )) {
+    return CommentaryKeyAction.reportError;
   }
 
   return CommentaryKeyAction.none;
@@ -414,6 +428,10 @@ class SimpleTextViewer extends StatefulWidget {
   static bool get commentaryNoteHandledRecently =>
       _SimpleTextViewerState._commentaryNoteHandled;
 
+  /// כמו [commentaryNoteHandledRecently], עבור קיצור "דווח על טעות בספר".
+  static bool get commentaryReportHandledRecently =>
+      _SimpleTextViewerState._commentaryReportHandled;
+
   @override
   State<SimpleTextViewer> createState() => _SimpleTextViewerState();
 }
@@ -423,6 +441,8 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
   static bool _commentaryCopyHandled = false;
   // דגל סטטי: מונע מהטקסט הראשי לפתוח הערה כפולה אחרי שמפרש טיפל בקיצור
   static bool _commentaryNoteHandled = false;
+  // דגל סטטי: מונע מהטקסט הראשי לפתוח דיווח כפול אחרי שמפרש טיפל בקיצור
+  static bool _commentaryReportHandled = false;
   // מצביע סטטי: רק הפרשן האחרון שנבחר בו טקסט מטפל ב-Ctrl+C
   static _SimpleTextViewerState? _lastActiveCommentary;
 
@@ -961,6 +981,9 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
   bool _handleCommentaryKeyEvent(KeyEvent event) {
     final addNoteShortcut =
         Settings.getValue<String>('key-shortcut-add-note') ?? 'ctrl+n';
+    final reportErrorShortcut =
+        ShortcutValidator.getShortcutValue(ShortcutValidator.reportErrorKey) ??
+        '';
     final action = resolveCommentaryKeyAction(
       event: event,
       isActiveCommentary: _lastActiveCommentary == this,
@@ -968,6 +991,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
           _savedSelectedText != null && _savedSelectedText!.trim().isNotEmpty,
       hasSelectedIndex: _savedSelectedIndex != null,
       addNoteShortcut: addNoteShortcut,
+      reportErrorShortcut: reportErrorShortcut,
     );
 
     switch (action) {
@@ -991,6 +1015,13 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
           _commentaryNoteHandled = false;
         });
         _createNoteForCurrentLine(_savedSelectedIndex!);
+        return true;
+      case CommentaryKeyAction.reportError:
+        _commentaryReportHandled = true;
+        Future.delayed(const Duration(milliseconds: 100), () {
+          _commentaryReportHandled = false;
+        });
+        _openErrorReportDialog(_savedSelectedText ?? '');
         return true;
       case CommentaryKeyAction.none:
         return false;

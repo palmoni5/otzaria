@@ -6,6 +6,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:collection/collection.dart' show IterableExtension;
 import 'package:otzaria/core/messages/text_book_messages.dart';
+import 'package:otzaria/core/messages/report_messages.dart';
+import 'package:otzaria/text_book/view/error_report_dialog.dart';
 import 'package:otzaria/core/ui_snack.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -3102,6 +3104,9 @@ bool _handleGlobalKeyEvent(
       Settings.getValue<String>('key-shortcut-add-bookmark') ?? 'ctrl+b';
   final addNoteShortcut =
       Settings.getValue<String>('key-shortcut-add-note') ?? 'ctrl+n';
+  final reportErrorShortcut =
+      ShortcutValidator.getShortcutValue(ShortcutValidator.reportErrorKey) ??
+      '';
   final togglePdfShortcut =
       Settings.getValue<String>('key-shortcut-toggle-pdf-view') ??
       ShortcutValidator.defaultShortcuts['key-shortcut-toggle-pdf-view'] ??
@@ -3191,6 +3196,32 @@ bool _handleGlobalKeyEvent(
       selectedText: selectedTextForNote,
       selectedLineIndex: selectedLineForNote,
       selectionColumn: selectedColumnForNote,
+    );
+    return true;
+  }
+
+  // דיווח על טעות בספר — רק כשיש טקסט מסומן או קטע נבחר, בדיוק כמו הפריט
+  // בתפריט ההקשר (שאינו מוצג בספרי המשתמש).
+  if (reportErrorShortcut.isNotEmpty &&
+      !state.book.isUserBook &&
+      ShortcutHelper.matchesShortcut(event, reportErrorShortcut)) {
+    // בצורת הדף, כשהבחירה במפרש, חלונית המפרש כבר פתחה דיווח על ספר המפרש.
+    if (SimpleTextViewer.commentaryReportHandledRecently) {
+      return true;
+    }
+    final reportLineIndex = selectedLineForNote ?? state.selectedIndex;
+    final reportText = selectedTextForNote ?? '';
+    if (reportText.trim().isEmpty && reportLineIndex == null) {
+      UiSnack.show(ReportMessages.selectTextToReport);
+      return true;
+    }
+    ErrorReportHelper.showErrorReportDialog(
+      context: context,
+      selectedText: reportText,
+      state: state,
+      fontSize: state.fontSize,
+      bookTitle: state.book.title,
+      savedSelectedIndex: reportLineIndex,
     );
     return true;
   }

@@ -21,6 +21,9 @@ class ShortcutValidator {
   static const String openAdvancedSearchKey =
       'key-shortcut-open-advanced-search';
 
+  /// דיווח על טעות בספר — פועל רק כשיש בחירה בטקסט או קטע נבחר.
+  static const String reportErrorKey = 'key-shortcut-report-error';
+
   static const Set<Set<String>> _compatibleShortcutGroups = {
     {'key-shortcut-add-note', 'key-shortcut-calendar-toggle-events'},
     {
@@ -201,6 +204,7 @@ class ShortcutValidator {
     'key-shortcut-next-segment',
     'key-shortcut-prev-toc',
     'key-shortcut-next-toc',
+    reportErrorKey,
     // פתיחת כלים — אופציונלי, ללא ברירת מחדל (ראה openToolShortcutKeys).
     'key-shortcut-open-tool-calendar',
     'key-shortcut-open-tool-shamor-zachor',
@@ -254,6 +258,7 @@ class ShortcutValidator {
     'key-shortcut-next-segment': 'alt+arrowdown',
     'key-shortcut-prev-toc': 'alt+pageup',
     'key-shortcut-next-toc': 'alt+pagedown',
+    reportErrorKey: 'ctrl+shift+r',
     'key-shortcut-open-tool-calendar': '',
     'key-shortcut-open-tool-shamor-zachor': '',
     'key-shortcut-open-tool-measurements': '',
@@ -312,6 +317,7 @@ class ShortcutValidator {
     'key-shortcut-next-segment': 'הקטע הבא',
     'key-shortcut-prev-toc': 'הדף/פרק הקודם',
     'key-shortcut-next-toc': 'הדף/פרק הבא',
+    reportErrorKey: 'דווח על טעות בספר',
     'key-shortcut-open-tool-calendar': 'פתיחת לוח שנה',
     'key-shortcut-open-tool-shamor-zachor': 'פתיחת שמור וזכור',
     'key-shortcut-open-tool-measurements': 'פתיחת מדות ושיעורים',

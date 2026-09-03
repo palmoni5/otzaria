@@ -1122,6 +1122,53 @@ void main() {
       );
     });
 
+    test('קיצור דיווח-טעות במפרש הפעיל עם בחירה → reportError', () {
+      expect(
+        resolveCommentaryKeyAction(
+          event: keyDown(PhysicalKeyboardKey.keyR, LogicalKeyboardKey.keyR),
+          isActiveCommentary: true,
+          hasSelection: true,
+          hasSelectedIndex: true,
+          addNoteShortcut: 'ctrl+n',
+          reportErrorShortcut: 'ctrl+shift+r',
+          isControlPressed: true,
+          isShiftPressed: true,
+        ),
+        CommentaryKeyAction.reportError,
+      );
+    });
+
+    test('דיווח-טעות בלי טקסט מסומן → none', () {
+      expect(
+        resolveCommentaryKeyAction(
+          event: keyDown(PhysicalKeyboardKey.keyR, LogicalKeyboardKey.keyR),
+          isActiveCommentary: true,
+          hasSelection: false,
+          hasSelectedIndex: true,
+          addNoteShortcut: 'ctrl+n',
+          reportErrorShortcut: 'ctrl+shift+r',
+          isControlPressed: true,
+          isShiftPressed: true,
+        ),
+        CommentaryKeyAction.none,
+      );
+    });
+
+    test('דיווח-טעות כשהקיצור לא הוגדר → none', () {
+      expect(
+        resolveCommentaryKeyAction(
+          event: keyDown(PhysicalKeyboardKey.keyR, LogicalKeyboardKey.keyR),
+          isActiveCommentary: true,
+          hasSelection: true,
+          hasSelectedIndex: true,
+          addNoteShortcut: 'ctrl+n',
+          isControlPressed: true,
+          isShiftPressed: true,
+        ),
+        CommentaryKeyAction.none,
+      );
+    });
+
     test('מקש ללא modifier מתאים → none (לא מיירטים מקלדת רגילה)', () {
       expect(
         resolveCommentaryKeyAction(
