@@ -577,6 +577,9 @@ FlutterWindow::FlutterWindow(const flutter::DartProject& project,
 }
 
 FlutterWindow::~FlutterWindow() {
+  // ⚠️ reset() מאפס את המצביע לפני ההריסה: הריסת חלון-הילד שולחת WM_PARENTNOTIFY
+  // לחלון הראשי החי, ו-MessageHandler היה מפנה אותה ל-controller שבאמצע פירוק.
+  flutter_controller_.reset();
   auto& all = AllWindowsInProcess();
   all.erase(std::remove(all.begin(), all.end(), this), all.end());
   // ⚠️ ה-Job **אינו** נסגר כאן. הוא משאב של התהליך, ולא של החלון: סגירתו
