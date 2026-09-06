@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:otzaria/theme/theme_exports.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:otzaria/core/startup_timeline.dart';
 import 'package:otzaria/core/ui_snack.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:otzaria/navigation/view/main_window_screen.dart';
@@ -28,6 +29,7 @@ class App extends StatelessWidget {
             previous.isDarkMode != current.isDarkMode;
       },
       builder: (context, settingsState) {
+        StartupTimeline.instance.markOnce('appBuild');
         final state = settingsState;
         final lightColorScheme = AppThemeData.createColorScheme(
           state.seedColor,

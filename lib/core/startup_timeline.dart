@@ -40,8 +40,24 @@ class StartupTimeline {
     }
   }
 
+  /// שלב סינכרוני — בנאי כבד שרץ בתוך build ואי אפשר להמתין לו.
+  T phaseSync<T>(String name, T Function() body) {
+    final startedAt = elapsedMs;
+    try {
+      return body();
+    } finally {
+      _phases.add(_Phase(name, startedAt, elapsedMs - startedAt));
+    }
+  }
+
   /// נקודת ציון ללא משך — למשל "הבוטסטרפ הסתיים" או "חשיפה דרך רשת הביטחון".
   void mark(String name) => _marks.add(_Mark(name, elapsedMs));
+
+  /// כמו [mark], אך רק בפעם הראשונה — לנקודות שחוזרות בכל build.
+  void markOnce(String name) {
+    if (_marks.any((mark) => mark.name == name)) return;
+    mark(name);
+  }
 
   /// נקרא בחשיפת החלון הראשי. רושם ללוג רק אם העלייה חרגה מ-[slowThreshold].
   /// הקריאה הראשונה בלבד נחשבת — הפעלה מחדש של העץ אינה רושמת שוב.

@@ -579,6 +579,7 @@ class MainWindowScreenState extends State<MainWindowScreen>
   @override
   void initState() {
     super.initState();
+    StartupTimeline.instance.markOnce('mainScreenInit');
     _calendarCubit = CalendarCubit();
     _settingsScreenController = SettingsScreenController();
     _tourCubit = TourCubit();
@@ -706,6 +707,7 @@ class MainWindowScreenState extends State<MainWindowScreen>
     // WorkspaceBloc.ReplaceAllTabs), כך שב-post-frame הראשון currentTab עדיין
     // null. לא חושפים עדיין — ה-listener של TabsBloc יקרא לנו שוב.
     if (navigationState.currentScreen == Screen.reading && currentTab == null) {
+      StartupTimeline.instance.markOnce('reveal:tabsPending');
       return;
     }
 
@@ -721,6 +723,7 @@ class MainWindowScreenState extends State<MainWindowScreen>
         pendingPane.bloc.state is! TextBookError;
 
     if (!shouldWaitForBook) {
+      StartupTimeline.instance.mark('reveal:immediate');
       _revealMainWindowOnce();
       return;
     }

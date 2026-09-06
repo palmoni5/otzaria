@@ -552,6 +552,9 @@ Future<void> _closeNativeSplash() async {
 /// מופיע בבת אחת עם תוכן והסמל הצף מתפוגג, ללא קפיצה וללא פער. נקרא אחרי שהתוכן
 /// נחשף ונצבע.
 Future<void> presentMainWindow() async {
+  if (!WindowRole.isSecondary) {
+    StartupTimeline.instance.markOnce('presentMainWindow');
+  }
   if (kIsWeb || !(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
     _markMainWindowRevealed();
     return;
@@ -929,17 +932,21 @@ Future<void> _runDeferredCacheWarmups() async {
     );
   } on TimeoutException {
     // ממשיכים בכל זאת — עדיף חימום מאוחר מאשר אף פעם.
+    StartupTimeline.instance.mark('warmupsStartedBeforeReveal');
   }
   // כיווץ cache.db — ה-prune-ים של מטמוני ה-docx/PDF משחררים דפים במהלך
   // הסשן אך לא מקטינים את הקובץ. רץ *לפני* החימומים ולא במקביל להם, כי
   // ה-warmUp של ReferenceBooksCache מנקה את מטמון ה-PDF מול אותו קובץ —
   // וכתיבה שנתקלת ב-VACUUM נחסמת סינכרונית עד ל-busy_timeout.
-  await CacheDatabaseHolder.instance.compactIfFragmented().catchError((
-    Object e,
-  ) {
-    if (kDebugMode) debugPrint('Failed to compact cache.db: $e');
-    return false;
-  });
+  await StartupTimeline.instance.phase(
+    'compactCacheDb',
+    () => CacheDatabaseHolder.instance.compactIfFragmented().catchError((
+      Object e,
+    ) {
+      if (kDebugMode) debugPrint('Failed to compact cache.db: $e');
+      return false;
+    }),
+  );
   unawaited(
     DictionaryLookupRepository.instance.ensureLoaded().catchError((e) {
       if (kDebugMode) debugPrint('Failed to warm up dictionary: $e');
@@ -1199,6 +1206,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
             _settingsRepository = SettingsRepository();
             _ready = true;
           });
+          StartupTimeline.instance.mark('bootstrapReady');
           unawaited(_runDeferredCacheWarmups());
         })
         .catchError((Object error, StackTrace stackTrace) {
@@ -1248,9 +1256,12 @@ class _AppBootstrapState extends State<AppBootstrap> {
       child: MultiBlocProvider(
         providers: [
           BlocProvider<SettingsBloc>(
-            create: (_) => SettingsBloc(
-              repository: settingsRepository,
-            )..add(LoadSettings()),
+            create: (_) => StartupTimeline.instance.phaseSync(
+              'settingsBloc',
+              () =>
+                  SettingsBloc(repository: settingsRepository)
+                    ..add(LoadSettings()),
+            ),
           ),
           BlocProvider<LibraryBloc>(
             // ה-LoadLibrary אינו נשלח כאן יותר: בניית הקטלוג (~300ms CPU על
@@ -1273,8 +1284,10 @@ class _AppBootstrapState extends State<AppBootstrap> {
           ),
           BlocProvider<TabsBloc>(
             create: (_) {
-              final bloc = TabsBloc(repository: TabsRepository())
-                ..add(LoadTabs());
+              final bloc = StartupTimeline.instance.phaseSync(
+                'tabsBloc',
+                () => TabsBloc(repository: TabsRepository())..add(LoadTabs()),
+              );
               // חלון שנפתח עם מטען מקבל את הכרטיסיה שהועברה אליו. `LoadTabs`
               // נשלח קודם כדי שסדר האירועים יהיה זהה לחלון רגיל — הכרטיסיה
               // המועברת נכנסת אחריו, ולכן היא זו שתהיה פעילה.
@@ -1315,17 +1328,26 @@ class _AppBootstrapState extends State<AppBootstrap> {
           ),
           BlocProvider<NavigationBloc>(
             create: (context) {
-              final nav = NavigationBloc(
-                repository: NavigationRepository(),
-                tabsRepository: TabsRepository(),
-                // "חיפוש" ו"עיון" הם אותו עמוד טאבים; היישור לפי החלונית
-                // הפעילה שומר שהאייקון המודגש בסרגל יתאים למה שמוצג בפועל.
-                activePaneStream: context
-                    .read<TabsBloc>()
-                    .stream
-                    .map((tabsState) => tabsState.activePane)
-                    .distinct(),
-              )..add(const CheckLibrary());
+              // הבנאי משחזר את כל הכרטיסיות השמורות סינכרונית (loadTabs) —
+              // נמדד כי זה רץ בתוך build, לפני שהמסך הראשי קיים.
+              final nav = StartupTimeline.instance.phaseSync(
+                'navigationBloc',
+                () =>
+                    NavigationBloc(
+                      repository: NavigationRepository(),
+                      tabsRepository: TabsRepository(),
+                      // "חיפוש" ו"עיון" הם אותו עמוד טאבים; היישור לפי
+                      // החלונית הפעילה שומר שהאייקון המודגש בסרגל יתאים
+                      // למה שמוצג בפועל.
+                      activePaneStream: context
+                          .read<TabsBloc>()
+                          .stream
+                          .map((tabsState) => tabsState.activePane)
+                          .distinct(),
+                    )..add(
+                      const CheckLibrary(),
+                    ),
+              );
               // ⚠️ אחרי `CheckLibrary` ולא במקומו. `CheckLibrary` מחליט
               // לאן לנווט לפי מצב הספרייה, ובחלון שנפתח עם כרטיסיה מועברת
               // ההחלטה שגויה: הוא היה נשאר במסך הספרייה בעוד הכרטיסיה
@@ -1428,43 +1450,10 @@ class _AppBootstrapState extends State<AppBootstrap> {
             create: (_) => PluginUpdatesCubit(),
           ),
           BlocProvider<PluginSystemBloc>(
-            create: (context) {
-              final repository = PluginRegistryRepository();
-              final tabsBloc = context.read<TabsBloc>();
-              final coordinator = BookOpenCoordinator(
-                tabsBloc: tabsBloc,
-                historyBloc: context.read<HistoryBloc>(),
-                navigationBloc: context.read<NavigationBloc>(),
-              );
-              final bookAccess = DeclarativeLibraryBookAccess.otzaria(
-                coordinator,
-              );
-              final host = DeclarativePluginHostService(
-                loadPlugin: repository.getPlugin,
-                loadPermissions: (pluginId) async =>
-                    (await repository.getGrantedPermissionNames(
-                      pluginId,
-                    )).toSet(),
-                bookResolver: bookAccess,
-                bookOpener: bookAccess,
-                parallelEditionsFinder: bookAccess.parallelEditionsForIdentity,
-                readerScroller: PluginDeclarativeReaderScroller(
-                  tabsBloc: tabsBloc,
-                ),
-                searchOpener: PluginDeclarativeSearchOpener(coordinator),
-                onError: (pluginId, error, stackTrace) => debugPrint(
-                  'Declarative plugin host [$pluginId]: $error\n$stackTrace',
-                ),
-              );
-              return PluginSystemBloc(
-                  repository: repository,
-                  declarativeHost: host,
-                  readerStates: tabsBloc.stream,
-                  initialReaderState: tabsBloc.state,
-                )
-                ..add(const SeedBundledPlugins())
-                ..add(LoadPlugins());
-            },
+            create: (context) => StartupTimeline.instance.phaseSync(
+              'pluginSystemBloc',
+              () => _createPluginSystemBloc(context),
+            ),
           ),
         ],
         // מתחת לכל ה-blocs: האפיק עונה על בקשות מחלונות אחרים, ושתי
@@ -1474,6 +1463,44 @@ class _AppBootstrapState extends State<AppBootstrap> {
       ),
     );
   }
+}
+
+PluginSystemBloc _createPluginSystemBloc(BuildContext context) {
+  final repository = PluginRegistryRepository();
+  final tabsBloc = context.read<TabsBloc>();
+  final coordinator = BookOpenCoordinator(
+    tabsBloc: tabsBloc,
+    historyBloc: context.read<HistoryBloc>(),
+    navigationBloc: context.read<NavigationBloc>(),
+  );
+  final bookAccess = DeclarativeLibraryBookAccess.otzaria(
+    coordinator,
+  );
+  final host = DeclarativePluginHostService(
+    loadPlugin: repository.getPlugin,
+    loadPermissions: (pluginId) async =>
+        (await repository.getGrantedPermissionNames(
+          pluginId,
+        )).toSet(),
+    bookResolver: bookAccess,
+    bookOpener: bookAccess,
+    parallelEditionsFinder: bookAccess.parallelEditionsForIdentity,
+    readerScroller: PluginDeclarativeReaderScroller(
+      tabsBloc: tabsBloc,
+    ),
+    searchOpener: PluginDeclarativeSearchOpener(coordinator),
+    onError: (pluginId, error, stackTrace) => debugPrint(
+      'Declarative plugin host [$pluginId]: $error\n$stackTrace',
+    ),
+  );
+  return PluginSystemBloc(
+      repository: repository,
+      declarativeHost: host,
+      readerStates: tabsBloc.stream,
+      initialReaderState: tabsBloc.state,
+    )
+    ..add(const SeedBundledPlugins())
+    ..add(LoadPlugins());
 }
 
 Future<void> initHive() async {

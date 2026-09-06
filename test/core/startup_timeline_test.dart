@@ -41,5 +41,18 @@ void main() {
   test('הפאזה מחזירה את תוצאת הגוף', () async {
     final timeline = StartupTimeline(sink: (_) {})..start();
     expect(await timeline.phase('x', () async => 42), 42);
+    expect(timeline.phaseSync('y', () => 'sync'), 'sync');
+  });
+
+  test('markOnce רושם ציון חוזר פעם אחת בלבד', () {
+    final written = <String>[];
+    final timeline = StartupTimeline(
+      sink: written.add,
+      slowThreshold: Duration.zero,
+    )..start();
+    timeline.markOnce('appBuild');
+    timeline.markOnce('appBuild');
+    timeline.finishAtReveal();
+    expect(RegExp(r'appBuild:').allMatches(written.single), hasLength(1));
   });
 }
