@@ -55,10 +55,10 @@ import 'package:otzaria/data/constants/database_constants.dart';
 import 'package:otzaria/empty_library/bloc/empty_library_bloc.dart';
 import 'package:otzaria/library_update/bloc/library_update_bloc.dart';
 import 'package:otzaria/library_update/repository/library_update_repository.dart';
+import 'package:otzaria/library_update/services/streaming_patch_downloader.dart';
 import 'package:otzaria/library_update/services/companion_assets_service.dart';
 import 'package:otzaria/library_update/services/startup_recovery_check.dart';
 import 'package:seforim_library_updater/seforim_library_updater.dart';
-import 'package:zstandard/zstandard.dart';
 import 'package:otzaria/work_status/work_status_cubit.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_bloc.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_event.dart';
@@ -1419,9 +1419,8 @@ class _AppBootstrapState extends State<AppBootstrap> {
                 discovery: LibraryUpdateDiscovery(
                   client: GithubLibraryReleaseClient(),
                 ),
-                downloader: PatchDownloader(
-                  decompress: (bytes) => Zstandard().decompress(bytes),
-                ),
+                // זורם לדיסק: patch גדול נפרס בלי לשבת ב-RAM (ראו את המחלקה).
+                downloader: StreamingPatchDownloader(),
               ),
               companionAssets: CompanionAssetsService(),
               isOfflineMode: () =>
