@@ -78,10 +78,15 @@ void main() {
     expect(find.byType(Scrollable), findsOneWidget);
   });
 
-  testWidgets('תוכן קצר אינו מציג לחצן פרישה', (tester) async {
+  /// מרימה את תוכן החלונית לקישור שמחזיר [content] כמות שהוא.
+  Future<void> pumpPreviewWithContent(
+    WidgetTester tester,
+    String content, {
+    required String path2,
+  }) async {
     LibraryProviderManager.instance.seedMappingsForTesting(
       mapping: const {},
-      providers: [_FakeContentProvider('שורה קצרה')],
+      providers: [_FakeContentProvider(content)],
     );
     await tester.pumpWidget(
       MaterialApp(
@@ -93,9 +98,9 @@ void main() {
                 width: 240,
                 child: LinkHoverPreviewContent(
                   link: Link(
-                    heRef: 'מפרש ב, א',
+                    heRef: '$path2, א',
                     index1: 1,
-                    path2: 'מפרש ב',
+                    path2: path2,
                     index2: 1,
                     connectionType: 'commentary',
                   ),
@@ -109,9 +114,36 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    // HtmlWidget נבנה אסינכרונית; pumpAndSettle עלול להיתקע כשהקובץ רץ ברצף.
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+  }
+
+  testWidgets('תוכן קצר אינו מציג לחצן פרישה', (tester) async {
+    await pumpPreviewWithContent(tester, 'שורה קצרה', path2: 'מפרש ב');
 
     expect(find.text('…'), findsNothing);
+  });
+
+  testWidgets('גוף הערה מוטמעת אינו מופיע בתצוגה המקדימה, כמו בגוף הספר', (
+    tester,
+  ) async {
+    await pumpPreviewWithContent(
+      tester,
+      'טקסט הספר<sup class="footnote-marker">א</sup>'
+      '<i class="footnote">גוף ההערה הנסתר</i> המשך הטקסט',
+      // Link.content שומר מטמון סטטי לפי הנתיב — נתיב ייחודי לבדיקה זו.
+      path2: 'מפרש ג',
+    );
+
+    final rendered = tester
+        .widgetList<RichText>(find.byType(RichText))
+        .map((w) => w.text.toPlainText())
+        .join('\n');
+    expect(rendered, contains('טקסט הספר'));
+    expect(rendered, contains('המשך הטקסט'));
+    expect(rendered, isNot(contains('גוף ההערה הנסתר')));
   });
 }
 

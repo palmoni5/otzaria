@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/models/links.dart';
 import 'package:otzaria/settings/settings_exports.dart';
+import 'package:otzaria/text_book/utils/inline_notes_utils.dart';
 import 'package:otzaria/text_display/text_display_exports.dart';
 import 'package:otzaria/utils/text/text_manipulation.dart' as utils;
 import 'package:otzaria/widgets/misc/app_popup_menu.dart';
@@ -207,9 +208,12 @@ class _LinkHoverPreviewContentState extends State<LinkHoverPreviewContent> {
                   );
                 }
 
+                // ה-HTML הגולמי עובר ל-SmartTextWidget כדי שגוף ההערות המוטמעות
+                // יוסר ומעברי השורה יישמרו; הטקסט הנקי משמש רק לבדיקה ולמדידה.
+                final rawContent = snapshot.data!;
                 final cleanContent =
                     TextRendererService.stripHtml(
-                          snapshot.data!,
+                          stripInlineNotes(rawContent),
                         )
                         .replaceAll('&nbsp;', ' ')
                         .replaceAll(RegExp(r'[^\S\r\n]+'), ' ')
@@ -225,7 +229,7 @@ class _LinkHoverPreviewContentState extends State<LinkHoverPreviewContent> {
                 }
 
                 final content = SmartTextWidget(
-                  text: cleanContent,
+                  text: rawContent,
                   settings: RenderSettings.fromProfile(
                     profile,
                     fontSize: settingsState.commentatorsFontSize,
