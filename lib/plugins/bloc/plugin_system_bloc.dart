@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_event.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_state.dart';
 import 'package:otzaria/plugins/models/installed_plugin.dart';
+import 'package:otzaria/plugins/models/plugin_manifest.dart';
 import 'package:otzaria/plugins/models/plugin_valid_permissions.dart';
 import 'package:otzaria/plugins/repository/plugin_registry_repository.dart';
 import 'package:otzaria/plugins/services/bundled_plugin_seed_service.dart';
@@ -512,6 +513,19 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
         success: true,
         updated: event.isUpdate,
       );
+      final duplicates = await _findSameNameDuplicates(event.manifest);
+      if (duplicates.isNotEmpty) {
+        // הממשק מציג דיאלוג ומוסיף בעצמו UninstallPluginRequested / LoadPlugins.
+        emit(
+          PluginSystemDuplicateNameDetected(
+            installedPluginId: event.manifest.id,
+            pluginName: event.manifest.name,
+            installedVersion: event.manifest.version,
+            duplicates: duplicates,
+          ),
+        );
+        return;
+      }
       add(LoadPlugins());
     } catch (e) {
       await _installerService.cancelInstall(event.tempDirPath);
@@ -523,6 +537,25 @@ class PluginSystemBloc extends Bloc<PluginSystemEvent, PluginSystemState> {
       );
       add(LoadPlugins());
     }
+  }
+
+  /// תוספים מותקנים (ארוזים, לא פיתוח) שנקראים כמו [manifest] אך בעלי id אחר.
+  /// הזהות במערכת היא ה-id בלבד, ולכן שינוי id אצל המפתח משאיר את הגרסה
+  /// הישנה מותקנת לצד החדשה בלי שום מנגנון שינקה אותה.
+  Future<List<InstalledPlugin>> _findSameNameDuplicates(
+    PluginManifest manifest,
+  ) async {
+    final name = manifest.name.trim();
+    if (name.isEmpty) return const [];
+    final all = await repository.getAllPlugins();
+    return all
+        .where(
+          (p) =>
+              p.pluginId != manifest.id &&
+              p.name.trim() == name &&
+              p.sourceType == 'packaged',
+        )
+        .toList();
   }
 
   Future<void> _onCancelPluginInstall(

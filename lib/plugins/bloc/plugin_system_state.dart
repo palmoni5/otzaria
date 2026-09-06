@@ -61,6 +61,34 @@ class PluginSystemOverwriteRequired extends PluginSystemState {
   List<Object?> get props => [archivePath, pluginName, version];
 }
 
+/// אחרי התקנה שהושלמה: נמצאו תוספים מותקנים אחרים בעלי אותו שם אך מזהה שונה
+/// (למשל גרסה ישנה שהמפתח שינה לה את ה-id). הממשק שואל אם להסיר אותם —
+/// אחרת המשתמש נשאר עם שני "אותם" תוספים, והישן מוצג לו כעדכון לנצח.
+class PluginSystemDuplicateNameDetected extends PluginSystemState {
+  /// התוסף שהותקן זה עתה.
+  final String installedPluginId;
+  final String pluginName;
+  final String installedVersion;
+
+  /// התוספים הישנים באותו שם — המועמדים להסרה.
+  final List<InstalledPlugin> duplicates;
+
+  const PluginSystemDuplicateNameDetected({
+    required this.installedPluginId,
+    required this.pluginName,
+    required this.installedVersion,
+    required this.duplicates,
+  });
+
+  @override
+  List<Object?> get props => [
+    installedPluginId,
+    pluginName,
+    installedVersion,
+    duplicates.map((p) => '${p.pluginId}@${p.version}').toList(),
+  ];
+}
+
 /// מצב המופעל כאשר תוסף פיתוח (תיקייה או localhost) מותקן לראשונה —
 /// מציג דיאלוג הרשאות זהה לתוסף ארוז, ללא tempDir.
 class PluginSystemDevInstallRequiresPermissions extends PluginSystemState {

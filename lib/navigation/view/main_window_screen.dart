@@ -1254,6 +1254,28 @@ class MainWindowScreenState extends State<MainWindowScreen>
       } else {
         bloc.add(LoadPlugins());
       }
+    } else if (state is PluginSystemDuplicateNameDetected) {
+      final versions = state.duplicates.map((p) => p.version).join(', ');
+      final value = await showWarningDialog(
+        context: context,
+        title: 'נמצא תוסף ישן באותו שם',
+        content: state.duplicates.length == 1
+            ? 'מותקן אצלך תוסף נוסף בשם "${state.pluginName}" (גרסה $versions) '
+                  'שאינו קשור לגרסה ${state.installedVersion} שהותקנה כעת.'
+            : 'מותקנים אצלך ${state.duplicates.length} תוספים נוספים בשם '
+                  '"${state.pluginName}" (גרסאות $versions) שאינם קשורים '
+                  'לגרסה ${state.installedVersion} שהותקנה כעת.',
+        subtitle: 'האם להסיר את הישן? כך יישאר תוסף אחד בלבד בשם זה.',
+        cancelText: 'השאר',
+        confirmText: 'הסר את הישן',
+      );
+      if (value == true) {
+        for (final p in state.duplicates) {
+          bloc.add(UninstallPluginRequested(p.pluginId));
+        }
+      } else {
+        bloc.add(LoadPlugins());
+      }
     }
   }
 
@@ -3042,7 +3064,8 @@ class MainWindowScreenState extends State<MainWindowScreen>
             listenWhen: (_, current) =>
                 current is PluginSystemInstallRequiresPermissions ||
                 current is PluginSystemDevInstallRequiresPermissions ||
-                current is PluginSystemOverwriteRequired,
+                current is PluginSystemOverwriteRequired ||
+                current is PluginSystemDuplicateNameDetected,
             listener: (context, state) =>
                 _pluginInstallDialogQueue.enqueue(state),
           ),
