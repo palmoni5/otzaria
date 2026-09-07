@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
@@ -93,6 +94,22 @@ class LibraryDeltaApplyResult {
             requiresFullIndexRefresh || step.hasChangesOutsideBooksTouched,
         appliedSteps: appliedSteps + 1,
       );
+}
+
+/// העדכון הוחל בהצלחה, אך בבדיקה שאחרי ה-commit נמצאו טבלאות שאף צעד לא נגע
+/// בהן ותוכנן סוטה מהצפוי — הספרייה המקומית אינה זהה לגרסה הרשמית.
+class LibraryDeltaContentDriftException implements Exception {
+  final List<String> driftedTables;
+  final LibraryDeltaApplyResult appliedResult;
+
+  const LibraryDeltaContentDriftException({
+    required this.driftedTables,
+    required this.appliedResult,
+  });
+
+  @override
+  String toString() =>
+      'LibraryDeltaContentDriftException(${driftedTables.join(', ')})';
 }
 
 /// כשל אחרי שלפחות צעד דלתא אחד כבר הושלם ונכתב ל-DB.
@@ -222,6 +239,17 @@ class LibraryUpdateRepository implements LibraryUpdateService {
     var verifyTotalHint = _readIntQuietly(hintFile);
     var lastVerifyDone = 0;
 
+    // רמז בתים לכל טבלה — נדרש כשהמניפסט מאפשר אימות חלקי, שאז ה-total הוא
+    // סכום הטבלאות המאומתות בלבד ולא גודל הקובץ.
+    final tableBytesFile = File(
+      p.join(cacheDir.path, 'verify_table_bytes.json'),
+    );
+    var verifyTableBytes = _readTableBytesQuietly(tableBytesFile);
+
+    // הטבלאות שאף צעד לא אימת — מועמדות לבדיקת סטייה אחרי סיום השרשרת.
+    Set<String>? deferredIntersection;
+    DeltaManifest? lastAppliedManifest;
+
     var result = const LibraryDeltaApplyResult();
     final steps = plan.deltaSteps;
     try {
@@ -271,6 +299,7 @@ class LibraryUpdateRepository implements LibraryUpdateService {
             patchPath: patchPath,
             step: step,
             verifyTotalBytesHint: verifyTotalHint,
+            verifyTableBytesHint: verifyTableBytes,
             onStage: (stage) => onProgress?.call(
               LibraryUpdateProgress(
                 phase: LibraryUpdatePhase.applying,
@@ -295,6 +324,20 @@ class LibraryUpdateRepository implements LibraryUpdateService {
             },
           );
           result = result.addStep(stepResult);
+          lastAppliedManifest = step.manifest;
+          final deferred = stepResult.deferredTables.toSet();
+          final previousDeferred = deferredIntersection;
+          deferredIntersection = previousDeferred == null
+              ? deferred
+              : previousDeferred.intersection(deferred);
+          if (stepResult.verifyTableBytes.isNotEmpty) {
+            final mergedTableBytes = {
+              ...?verifyTableBytes,
+              ...stepResult.verifyTableBytes,
+            };
+            verifyTableBytes = mergedTableBytes;
+            _writeTableBytesQuietly(tableBytesFile, mergedTableBytes);
+          }
           // הדיווח האחרון מ-compute הוא הסך המדויק — total לריצות הבאות.
           if (lastVerifyDone > 0) {
             verifyTotalHint = lastVerifyDone;
@@ -335,10 +378,79 @@ class LibraryUpdateRepository implements LibraryUpdateService {
     );
     await refreshService.refreshAfterDbUpdate();
 
+    // אחרי שחיבור ה-RO נפתח מחדש והריענון הסתיים — מעבר קריאה
+    // בלבד, בלי תור פעולות, כך שניתן להמשיך לקרוא בזמן הבדיקה.
+    final drifted = await _verifyDeferredTables(
+      dbPath: dbPath,
+      manifest: lastAppliedManifest,
+      deferred: deferredIntersection,
+      tableBytesHint: verifyTableBytes,
+      onProgress: onProgress,
+    );
+
+    if (drifted.isNotEmpty) {
+      try {
+        ErrorLogFile.append(
+          title: 'Library Update: content drift in untouched tables',
+          error: 'tables: ${drifted.join(', ')}',
+        );
+      } catch (_) {}
+      throw LibraryDeltaContentDriftException(
+        driftedTables: drifted,
+        appliedResult: result,
+      );
+    }
+
     onProgress?.call(
       const LibraryUpdateProgress(phase: LibraryUpdatePhase.done),
     );
     return result;
+  }
+
+  /// בודק את הטבלאות שאף צעד לא נגע בהן מול ה-hash של הצעד האחרון, ומחזיר
+  /// את אלה שסטו. כשל בבדיקה עצמה אינו הופך עדכון תקין לשגיאה.
+  Future<List<String>> _verifyDeferredTables({
+    required String dbPath,
+    required DeltaManifest? manifest,
+    required Set<String>? deferred,
+    required Map<String, int>? tableBytesHint,
+    LibraryUpdateProgressCallback? onProgress,
+  }) async {
+    final expected = manifest?.toTableContentHashes;
+    if (manifest == null || expected == null) return const [];
+    if (deferred == null || deferred.isEmpty) return const [];
+    onProgress?.call(
+      const LibraryUpdateProgress(
+        phase: LibraryUpdatePhase.applying,
+        stage: 'verifyDeferred',
+      ),
+    );
+    try {
+      return await _verifyTablesInIsolateWithProgress(
+        dbPath: dbPath,
+        schemaVersion: manifest.toSchemaVersion,
+        expected: expected,
+        tables: deferred.toList(),
+        tableBytesHint: tableBytesHint,
+        onVerifyProgress: (done, total) => onProgress?.call(
+          LibraryUpdateProgress(
+            phase: LibraryUpdatePhase.applying,
+            stage: 'verifyDeferred',
+            applyProgress: total > 0 ? (done / total).clamp(0.0, 1.0) : null,
+          ),
+        ),
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Deferred table verification failed: $error\n$stackTrace');
+      try {
+        ErrorLogFile.append(
+          title: 'Library Update: deferred verification failed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      } catch (_) {}
+      return const [];
+    }
   }
 
   /// מבצע הורדה מלאה: מוריד את `seforim.db.zst`, מחלץ בזרימה ליד ה-DB,
@@ -593,6 +705,7 @@ class LibraryUpdateRepository implements LibraryUpdateService {
     required String patchPath,
     required PatchEdge step,
     int? verifyTotalBytesHint,
+    Map<String, int>? verifyTableBytesHint,
     void Function(String stage)? onStage,
     void Function(int done, int total)? onVerifyProgress,
   }) {
@@ -621,6 +734,7 @@ class LibraryUpdateRepository implements LibraryUpdateService {
           patchPath: patchPath,
           manifest: step.manifest,
           verifyTotalBytesHint: verifyTotalBytesHint,
+          verifyTableBytesHint: verifyTableBytesHint,
           onStage: onStage,
           onVerifyProgress: onVerifyProgress,
         );
@@ -687,6 +801,7 @@ class LibraryUpdateRepository implements LibraryUpdateService {
     required String patchPath,
     required DeltaManifest manifest,
     int? verifyTotalBytesHint,
+    Map<String, int>? verifyTableBytesHint,
     void Function(String stage)? onStage,
     void Function(int done, int total)? onVerifyProgress,
   }) async {
@@ -705,6 +820,7 @@ class LibraryUpdateRepository implements LibraryUpdateService {
         patchPath: patchPath,
         manifest: manifest,
         verifyTotalBytesHint: verifyTotalBytesHint,
+        verifyTableBytesHint: verifyTableBytesHint,
         sendPort: port.sendPort,
       );
     } finally {
@@ -722,6 +838,7 @@ class LibraryUpdateRepository implements LibraryUpdateService {
     required DeltaManifest manifest,
     required SendPort sendPort,
     int? verifyTotalBytesHint,
+    Map<String, int>? verifyTableBytesHint,
   }) {
     return Isolate.run(
       () => const PatchApplier().apply(
@@ -729,6 +846,7 @@ class LibraryUpdateRepository implements LibraryUpdateService {
         patchPath: patchPath,
         manifest: manifest,
         verifyTotalBytesHint: verifyTotalBytesHint,
+        verifyTableBytesHint: verifyTableBytesHint,
         // verifyFromHash=false: verifyToHash אחרי ה-apply הוא הערובה האמיתית —
         // אם המקור שונה, ה-toHash ייכשל וה-transaction יתגלגל אחורה. הבדיקה
         // המקדימה רק כפילה קריאה של כל ה-DB (5.5GB) לחינם.
@@ -738,6 +856,55 @@ class LibraryUpdateRepository implements LibraryUpdateService {
         checkForeignKeys: false,
         onStage: (stage) => sendPort.send(stage),
         onVerifyProgress: (done, total) => sendPort.send((done, total)),
+      ),
+    );
+  }
+
+  // כמו [_applyPatchInIsolate]: ה-callback נשאר ב-caller, ל-isolate נכנסים
+  // ערכים sendable בלבד.
+  static Future<List<String>> _verifyTablesInIsolateWithProgress({
+    required String dbPath,
+    required int schemaVersion,
+    required Map<String, String> expected,
+    required List<String> tables,
+    Map<String, int>? tableBytesHint,
+    void Function(int done, int total)? onVerifyProgress,
+  }) async {
+    final port = ReceivePort();
+    final sub = port.listen((msg) {
+      if (msg is (int, int)) onVerifyProgress?.call(msg.$1, msg.$2);
+    });
+    try {
+      return await _runVerifyTablesIsolate(
+        dbPath: dbPath,
+        schemaVersion: schemaVersion,
+        expected: expected,
+        tables: tables,
+        tableBytesHint: tableBytesHint,
+        sendPort: port.sendPort,
+      );
+    } finally {
+      await sub.cancel();
+      port.close();
+    }
+  }
+
+  static Future<List<String>> _runVerifyTablesIsolate({
+    required String dbPath,
+    required int schemaVersion,
+    required Map<String, String> expected,
+    required List<String> tables,
+    required SendPort sendPort,
+    Map<String, int>? tableBytesHint,
+  }) {
+    return Isolate.run(
+      () => const PatchApplier().verifyTableHashes(
+        dbPath: dbPath,
+        schemaVersion: schemaVersion,
+        expected: expected,
+        tables: tables,
+        tableBytesHint: tableBytesHint,
+        onProgress: (done, total) => sendPort.send((done, total)),
       ),
     );
   }
@@ -771,6 +938,28 @@ class LibraryUpdateRepository implements LibraryUpdateService {
     try {
       file.parent.createSync(recursive: true);
       file.writeAsStringSync('$value');
+    } catch (_) {}
+  }
+
+  static Map<String, int>? _readTableBytesQuietly(File file) {
+    try {
+      if (!file.existsSync()) return null;
+      final decoded = jsonDecode(file.readAsStringSync());
+      if (decoded is! Map) return null;
+      final result = <String, int>{};
+      decoded.forEach((key, value) {
+        if (key is String && value is int && value > 0) result[key] = value;
+      });
+      return result.isEmpty ? null : result;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static void _writeTableBytesQuietly(File file, Map<String, int> value) {
+    try {
+      file.parent.createSync(recursive: true);
+      file.writeAsStringSync(jsonEncode(value));
     } catch (_) {}
   }
 }

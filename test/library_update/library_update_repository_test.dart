@@ -665,6 +665,264 @@ void main() {
   );
 
   test(
+    'מניפסט עם hash לכל טבלה: אימות חלקי, שלב verifyDeferred, בלי סטייה',
+    () async {
+      final dbPath = p.join(tmp.path, DatabaseConstants.databaseFileName);
+      _writeSchema4SourceDb(dbPath, version: 1, sourceName: 'old');
+      final expectedPath = p.join(tmp.path, 'expected.db');
+      _writeSchema4SourceDb(expectedPath, version: 2, sourceName: 'new');
+      final patchPath = p.join(tmp.path, 'patch-1-2.db');
+      _writeSourcePatch(
+        patchPath,
+        fromVersion: 1,
+        toVersion: 2,
+        sourceName: 'new',
+      );
+      final repository = LibraryUpdateRepository(
+        discovery: _unusedDiscovery(),
+        downloader: _PatchMapDownloader({'patch-1-2.db': patchPath}),
+        refreshService: _NoopRefreshService(),
+        dbPathProvider: () => dbPath,
+        dataRootProvider: () async => tmp.path,
+        nowTimestamp: () => '2026-09-07T00:00:00Z',
+      );
+      final stages = <String>[];
+
+      final result = await repository.applyDeltaPlan(
+        _schema4DeltaPlan([
+          _schema4Edge(
+            fromVersion: 1,
+            toVersion: 2,
+            patchName: 'patch-1-2.db',
+            toHash: _logicalHash(expectedPath),
+            fromTableHashes: _tableHashes(dbPath),
+            toTableHashes: _tableHashes(expectedPath),
+          ),
+        ]),
+        onProgress: (progress) {
+          final stage = progress.stage;
+          if (stage != null) stages.add(stage);
+        },
+      );
+
+      expect(result.appliedSteps, 1);
+      expect(stages, contains('verifyDeferred'));
+      expect(_readSourceName(dbPath), 'new');
+      // רמז הבתים לכל טבלה נשמר לריצה הבאה.
+      final hintFile = File(
+        p.join(tmp.path, 'library_update_cache', 'verify_table_bytes.json'),
+      );
+      expect(hintFile.existsSync(), isTrue);
+      expect(
+        (jsonDecode(hintFile.readAsStringSync()) as Map).keys,
+        contains('source'),
+      );
+    },
+    timeout: const Timeout(Duration(seconds: 60)),
+  );
+
+  test(
+    'סטייה בטבלה שאף צעד לא נגע בה מדווחת אחרי ה-commit ונרשמת ל-errors.txt',
+    () async {
+      final dbPath = p.join(tmp.path, DatabaseConstants.databaseFileName);
+      final pristinePath = p.join(tmp.path, 'pristine.db');
+      final expectedPath = p.join(tmp.path, 'expected.db');
+      // ה-manifest נבנה מ-DB תקין; המקומי זהה לו פרט ל-author שסטה.
+      _writeSchema4SourceDb(
+        pristinePath,
+        version: 1,
+        sourceName: 'old',
+        authorName: 'תקין',
+      );
+      _writeSchema4SourceDb(
+        expectedPath,
+        version: 2,
+        sourceName: 'new',
+        authorName: 'תקין',
+      );
+      _writeSchema4SourceDb(
+        dbPath,
+        version: 1,
+        sourceName: 'old',
+        authorName: 'סוטה',
+      );
+      final patchPath = p.join(tmp.path, 'patch-1-2.db');
+      _writeSourcePatch(
+        patchPath,
+        fromVersion: 1,
+        toVersion: 2,
+        sourceName: 'new',
+      );
+      AppPaths.debugOverrideDataRootPath(tmp.path);
+      final refresh = _NoopRefreshService();
+      final repository = LibraryUpdateRepository(
+        discovery: _unusedDiscovery(),
+        downloader: _PatchMapDownloader({'patch-1-2.db': patchPath}),
+        refreshService: refresh,
+        dbPathProvider: () => dbPath,
+        dataRootProvider: () async => tmp.path,
+        nowTimestamp: () => '2026-09-07T00:00:00Z',
+      );
+
+      try {
+        await expectLater(
+          repository.applyDeltaPlan(
+            _schema4DeltaPlan([
+              _schema4Edge(
+                fromVersion: 1,
+                toVersion: 2,
+                patchName: 'patch-1-2.db',
+                toHash: _logicalHash(expectedPath),
+                fromTableHashes: _tableHashes(pristinePath),
+                toTableHashes: _tableHashes(expectedPath),
+              ),
+            ]),
+          ),
+          throwsA(
+            isA<LibraryDeltaContentDriftException>()
+                .having(
+                  (e) => e.driftedTables,
+                  'driftedTables',
+                  contains('author'),
+                )
+                .having((e) => e.appliedResult.appliedSteps, 'appliedSteps', 1),
+          ),
+        );
+
+        // העדכון עצמו הוחל ורוענן — הסטייה אינה rollback.
+        expect(_readSourceName(dbPath), 'new');
+        expect(refresh.called, isTrue);
+        expect(
+          ErrorLogFile.resolveFile().readAsStringSync(),
+          contains('Library Update: content drift in untouched tables'),
+        );
+      } finally {
+        AppPaths.debugOverrideDataRootPath(null);
+      }
+    },
+    timeout: const Timeout(Duration(seconds: 60)),
+  );
+
+  test(
+    'שרשרת שבה צעד אחד בלי hash לכל טבלה: אין שלב verifyDeferred',
+    () async {
+      final dbPath = p.join(tmp.path, DatabaseConstants.databaseFileName);
+      _writeSchema4SourceDb(dbPath, version: 1, sourceName: 'old');
+      final expected2 = p.join(tmp.path, 'expected2.db');
+      _writeSchema4SourceDb(expected2, version: 2, sourceName: 'new');
+      final expected3 = p.join(tmp.path, 'expected3.db');
+      _writeSchema4SourceDb(expected3, version: 3, sourceName: 'newer');
+      final firstPatch = p.join(tmp.path, 'patch-1-2.db');
+      final secondPatch = p.join(tmp.path, 'patch-2-3.db');
+      _writeSourcePatch(
+        firstPatch,
+        fromVersion: 1,
+        toVersion: 2,
+        sourceName: 'new',
+      );
+      _writeSourcePatch(
+        secondPatch,
+        fromVersion: 2,
+        toVersion: 3,
+        sourceName: 'newer',
+      );
+      final repository = LibraryUpdateRepository(
+        discovery: _unusedDiscovery(),
+        downloader: _PatchMapDownloader({
+          'patch-1-2.db': firstPatch,
+          'patch-2-3.db': secondPatch,
+        }),
+        refreshService: _NoopRefreshService(),
+        dbPathProvider: () => dbPath,
+        dataRootProvider: () async => tmp.path,
+        nowTimestamp: () => '2026-09-07T00:00:00Z',
+      );
+      final stages = <String>[];
+
+      final result = await repository.applyDeltaPlan(
+        _schema4DeltaPlan([
+          _schema4Edge(
+            fromVersion: 1,
+            toVersion: 2,
+            patchName: 'patch-1-2.db',
+            toHash: _logicalHash(expected2),
+            fromTableHashes: _tableHashes(dbPath),
+            toTableHashes: _tableHashes(expected2),
+          ),
+          _schema4Edge(
+            fromVersion: 2,
+            toVersion: 3,
+            patchName: 'patch-2-3.db',
+            toHash: _logicalHash(expected3),
+          ),
+        ]),
+        onProgress: (progress) {
+          final stage = progress.stage;
+          if (stage != null) stages.add(stage);
+        },
+      );
+
+      // הצעד הישן אימת את כל ה-DB, ולכן אין טבלה שנותרה לא-מאומתת.
+      expect(result.appliedSteps, 2);
+      expect(_readSourceName(dbPath), 'newer');
+      expect(stages, isNot(contains('verifyDeferred')));
+    },
+    timeout: const Timeout(Duration(seconds: 60)),
+  );
+
+  test(
+    'מניפסט בלי hash לכל טבלה: אימות DB מלא, בלי שלב verifyDeferred',
+    () async {
+      final dbPath = p.join(tmp.path, DatabaseConstants.databaseFileName);
+      _writeSchema4SourceDb(dbPath, version: 1, sourceName: 'old');
+      final expectedPath = p.join(tmp.path, 'expected.db');
+      _writeSchema4SourceDb(expectedPath, version: 2, sourceName: 'new');
+      final patchPath = p.join(tmp.path, 'patch-1-2.db');
+      _writeSourcePatch(
+        patchPath,
+        fromVersion: 1,
+        toVersion: 2,
+        sourceName: 'new',
+      );
+      final repository = LibraryUpdateRepository(
+        discovery: _unusedDiscovery(),
+        downloader: _PatchMapDownloader({'patch-1-2.db': patchPath}),
+        refreshService: _NoopRefreshService(),
+        dbPathProvider: () => dbPath,
+        dataRootProvider: () async => tmp.path,
+        nowTimestamp: () => '2026-09-07T00:00:00Z',
+      );
+      final stages = <String>[];
+
+      final result = await repository.applyDeltaPlan(
+        _schema4DeltaPlan([
+          _schema4Edge(
+            fromVersion: 1,
+            toVersion: 2,
+            patchName: 'patch-1-2.db',
+            toHash: _logicalHash(expectedPath),
+          ),
+        ]),
+        onProgress: (progress) {
+          final stage = progress.stage;
+          if (stage != null) stages.add(stage);
+        },
+      );
+
+      expect(result.appliedSteps, 1);
+      expect(stages, contains('verifyToHash'));
+      expect(stages, isNot(contains('verifyDeferred')));
+      expect(
+        File(
+          p.join(tmp.path, 'library_update_cache', 'verify_table_bytes.json'),
+        ).existsSync(),
+        isFalse,
+      );
+    },
+    timeout: const Timeout(Duration(seconds: 60)),
+  );
+
+  test(
     'קורא RO ממשיך לקרוא בזמן כתיבת WAL (הנחת היסוד של עדכון ללא חסימה)',
     () async {
       final dbPath = p.join(tmp.path, DatabaseConstants.databaseFileName);
@@ -907,6 +1165,21 @@ class _PatchMapDownloader extends PatchDownloader {
   }) async => patchPaths[patchFile.file]!;
 }
 
+/// ה-hash לכל טבלה בסדר של סכמה 4 — הבסיס למפות שבמניפסט.
+Map<String, String> _tableHashes(String dbPath, {int schemaVersion = 4}) {
+  final db = sqlite3.sqlite3.open(dbPath, mode: sqlite3.OpenMode.readOnly);
+  try {
+    return const LogicalContentHasher()
+        .computeReport(
+          db,
+          tableOrder: hashTableOrderForSchemaVersion(schemaVersion),
+        )
+        .tableHashes;
+  } finally {
+    db.close();
+  }
+}
+
 String _logicalHash(String dbPath) {
   final db = sqlite3.sqlite3.open(dbPath, mode: sqlite3.OpenMode.readOnly);
   try {
@@ -920,6 +1193,7 @@ void _writeSchema4SourceDb(
   String dbPath, {
   required int version,
   required String sourceName,
+  String? authorName,
 }) {
   final db = sqlite3.sqlite3.open(dbPath);
   try {
@@ -931,6 +1205,10 @@ void _writeSchema4SourceDb(
     );
     db.execute('CREATE TABLE source (id INTEGER PRIMARY KEY, name TEXT)');
     db.execute('INSERT INTO source VALUES (1, ?)', [sourceName]);
+    if (authorName != null) {
+      db.execute('CREATE TABLE author (id INTEGER PRIMARY KEY, name TEXT)');
+      db.execute('INSERT INTO author VALUES (1, ?)', [authorName]);
+    }
     db.execute('PRAGMA journal_mode=DELETE');
   } finally {
     db.close();
@@ -976,6 +1254,8 @@ PatchEdge _schema4Edge({
   required int toVersion,
   required String patchName,
   required String toHash,
+  Map<String, String>? fromTableHashes,
+  Map<String, String>? toTableHashes,
 }) {
   final manifest = DeltaManifest.fromJson({
     'fromVersion': fromVersion,
@@ -985,6 +1265,8 @@ PatchEdge _schema4Edge({
     'patchFormatVersion': 4,
     'fromContentHash': 'unused',
     'toContentHash': toHash,
+    'fromTableContentHashes': ?fromTableHashes,
+    'toTableContentHashes': ?toTableHashes,
     'patchFiles': [
       {
         'file': patchName,

@@ -94,6 +94,9 @@ abstract class LibraryMessages {
   static const String localLibraryContentMismatch =
       'תוכן הספרייה המקומית שונה מהצפוי';
 
+  static const String libraryContentDriftAfterUpdate =
+      'העדכון הוחל, אך תוכן הספרייה המקומית סוטה מהגרסה הרשמית';
+
   static String fullLibraryDownloadRequired(String reason, String size) =>
       '$reason — נדרשת הורדה מלאה ($size)';
 }

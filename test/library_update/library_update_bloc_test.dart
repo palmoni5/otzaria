@@ -1565,6 +1565,49 @@ void main() {
     );
 
     blocTest<LibraryUpdateBloc, LibraryUpdateState>(
+      'סטייה בטבלאות שלא נגעו בהן אחרי commit → fallback עם שינויי הצעדים',
+      build: () => _bloc(
+        _FakeService(
+          deltaWithFallbackPlan,
+          applyError: const LibraryDeltaContentDriftException(
+            driftedTables: ['author', 'topic'],
+            appliedResult: LibraryDeltaApplyResult(
+              changedBookIds: {3, 9},
+              requiresFullIndexRefresh: true,
+              appliedSteps: 1,
+            ),
+          ),
+        ),
+      ),
+      act: (b) => b.add(const StartLibraryUpdate()),
+      expect: () => [
+        isA<LibraryUpdateState>().having(
+          (s) => s.status,
+          'status',
+          LibraryUpdateStatus.checking,
+        ),
+        isA<LibraryUpdateState>()
+            .having(
+              (s) => s.status,
+              'status',
+              LibraryUpdateStatus.needsFullConfirmation,
+            )
+            .having(
+              (s) => s.message,
+              'message',
+              contains(LibraryMessages.libraryContentDriftAfterUpdate),
+            )
+            .having((s) => s.hasUpdate, 'hasUpdate', true)
+            .having((s) => s.changedBookIds, 'changedBookIds', const {3, 9})
+            .having(
+              (s) => s.requiresFullIndexRefresh,
+              'requiresFullIndexRefresh',
+              true,
+            ),
+      ],
+    );
+
+    blocTest<LibraryUpdateBloc, LibraryUpdateState>(
       'סטיית תוכן בלי DB מלא בתוכנית → error',
       build: () => _bloc(
         _FakeService(
