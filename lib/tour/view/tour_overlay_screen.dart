@@ -6,6 +6,7 @@ import 'package:otzaria/theme/app_tokens.dart';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otzaria/tour/bloc/tour_cubit.dart';
 import 'package:otzaria/tour/bloc/tour_state.dart';
@@ -79,6 +80,58 @@ class _TourOverlayScreenState extends State<TourOverlayScreen> {
   bool _targetMonitorRetryScheduled = false;
   int _targetMonitorFramesLeft = 0;
   int _targetMonitorStableFrameCount = 0;
+  final FocusNode _cardFocusNode = FocusNode(
+    canRequestFocus: false,
+    skipTraversal: true,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_handleEnterKey);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleEnterKey);
+    _cardFocusNode.dispose();
+    super.dispose();
+  }
+
+  /// Enter מתקדם לשלב הבא בלי לגעת בפוקוס של התוכנה: המאזין גלובלי, כך
+  /// שהוא פועל גם כשהפוקוס בדיאלוג של שלב, ובולע את Enter כדי שלא יפעיל אותו.
+  bool _handleEnterKey(KeyEvent event) {
+    if (event.logicalKey != LogicalKeyboardKey.enter &&
+        event.logicalKey != LogicalKeyboardKey.numpadEnter) {
+      return false;
+    }
+    if (!mounted) return false;
+    final state = context.read<TourCubit>().state;
+    final step = state.currentStep;
+    if (!state.isActive || step == null || state.hasActiveLiveTip) {
+      return false;
+    }
+    // כפתור בכרטיס שקיבל פוקוס במקלדת (Tab) מפעיל את עצמו.
+    if (_cardFocusNode.hasFocus) return false;
+    final keyboard = HardwareKeyboard.instance;
+    if (keyboard.isControlPressed ||
+        keyboard.isAltPressed ||
+        keyboard.isMetaPressed ||
+        keyboard.isShiftPressed) {
+      return false;
+    }
+    if (event is KeyDownEvent) _advance(step);
+    return true;
+  }
+
+  void _advance(TourStep step) {
+    final onNext = widget.onNext;
+    if (onNext != null) {
+      onNext(step);
+    } else {
+      context.read<TourCubit>().next();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -166,14 +219,7 @@ class _TourOverlayScreenState extends State<TourOverlayScreen> {
                 isRestartEntry: isRestartEntry,
                 isAutoPlaying: state.isAutoPlaying,
                 isDialog: step.isDialog,
-                onNext: () {
-                  final onNext = widget.onNext;
-                  if (onNext != null) {
-                    onNext(step);
-                  } else {
-                    context.read<TourCubit>().next();
-                  }
-                },
+                onNext: () => _advance(step),
                 onSkip: () => context.read<TourCubit>().skip(),
                 onToggleAutoPlay: () =>
                     context.read<TourCubit>().toggleAutoPlay(),
@@ -206,37 +252,43 @@ class _TourOverlayScreenState extends State<TourOverlayScreen> {
                     alignment: cardAlignment,
                     child: Padding(
                       padding: const EdgeInsets.all(20),
-                      child: _skipCardTransition
-                          ? tooltipCard
-                          : AnimatedSwitcher(
-                              duration: tourCardSwitchDuration,
-                              layoutBuilder: tourCardSwitcherLayoutBuilder,
-                              transitionBuilder: (child, animation) {
-                                final blur = Tween<double>(begin: 8.0, end: 0.0)
-                                    .animate(
-                                      CurvedAnimation(
-                                        parent: animation,
-                                        curve: Curves.easeOut,
+                      child: Focus(
+                        focusNode: _cardFocusNode,
+                        child: _skipCardTransition
+                            ? tooltipCard
+                            : AnimatedSwitcher(
+                                duration: tourCardSwitchDuration,
+                                layoutBuilder: tourCardSwitcherLayoutBuilder,
+                                transitionBuilder: (child, animation) {
+                                  final blur =
+                                      Tween<double>(
+                                        begin: 8.0,
+                                        end: 0.0,
+                                      ).animate(
+                                        CurvedAnimation(
+                                          parent: animation,
+                                          curve: Curves.easeOut,
+                                        ),
+                                      );
+                                  return AnimatedBuilder(
+                                    animation: blur,
+                                    builder: (context, inner) => ImageFiltered(
+                                      imageFilter: ui.ImageFilter.blur(
+                                        sigmaX: blur.value,
+                                        sigmaY: blur.value,
+                                        tileMode: TileMode.decal,
                                       ),
-                                    );
-                                return AnimatedBuilder(
-                                  animation: blur,
-                                  builder: (context, inner) => ImageFiltered(
-                                    imageFilter: ui.ImageFilter.blur(
-                                      sigmaX: blur.value,
-                                      sigmaY: blur.value,
-                                      tileMode: TileMode.decal,
+                                      child: FadeTransition(
+                                        opacity: animation,
+                                        child: inner,
+                                      ),
                                     ),
-                                    child: FadeTransition(
-                                      opacity: animation,
-                                      child: inner,
-                                    ),
-                                  ),
-                                  child: child,
-                                );
-                              },
-                              child: tooltipCard,
-                            ),
+                                    child: child,
+                                  );
+                                },
+                                child: tooltipCard,
+                              ),
+                      ),
                     ),
                   ),
                 ],

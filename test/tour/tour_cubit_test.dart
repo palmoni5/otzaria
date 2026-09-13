@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,6 +12,7 @@ import 'package:otzaria/tour/models/tour_shortcuts.dart';
 import 'package:otzaria/tour/models/tour_step.dart';
 import 'package:otzaria/tour/models/tour_steps.dart';
 import 'package:otzaria/tour/view/tour_overlay_screen.dart';
+import 'package:otzaria/widgets/text/rtl_text_field.dart';
 
 import '../helpers/memory_settings_cache.dart';
 
@@ -1107,6 +1109,110 @@ void main() {
     expect(find.textContaining('{shortcut}'), findsNothing);
 
     await cubit.close();
+  });
+
+  group('Enter בסיור', () {
+    Future<(TourCubit, FocusNode, List<String>)> pumpTour(
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(1400, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final cubit = TourCubit()..start(libraryLoaded: true);
+      final fieldFocus = FocusNode();
+      addTearDown(fieldFocus.dispose);
+      final submitted = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(0.5)),
+            child: BlocProvider.value(
+              value: cubit,
+              child: Material(
+                child: Stack(
+                  children: [
+                    RtlTextField(
+                      focusNode: fieldFocus,
+                      onSubmitted: submitted.add,
+                    ),
+                    TourOverlayScreen(
+                      onStepChanged: (_) {},
+                      targetRectResolver: (_) =>
+                          const Rect.fromLTWH(24, 40, 120, 48),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      return (cubit, fieldFocus, submitted);
+    }
+
+    testWidgets('מתקדם מהפתיחה, בשלבי הביניים וסוגר בסיום', (tester) async {
+      final (cubit, _, _) = await pumpTour(tester);
+      expect(cubit.state.currentStep!.id, 'welcome');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(cubit.state.currentIndex, 1);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.numpadEnter);
+      await tester.pump();
+      expect(cubit.state.currentIndex, 2);
+
+      cubit.goToStep(cubit.state.steps.length - 1);
+      await tester.pump();
+      expect(cubit.state.currentStep!.id, 'finish');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(cubit.state.isActive, isFalse);
+
+      await cubit.close();
+    });
+
+    testWidgets('לא גונב פוקוס ולא מעביר את Enter לשדה הממוקד', (
+      tester,
+    ) async {
+      final (cubit, fieldFocus, submitted) = await pumpTour(tester);
+      fieldFocus.requestFocus();
+      await tester.pump();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+
+      expect(cubit.state.currentIndex, 1);
+      expect(fieldFocus.hasFocus, isTrue);
+      expect(submitted, isEmpty);
+
+      await cubit.close();
+    });
+
+    testWidgets('כפתור ממוקד בכרטיס מפעיל את עצמו', (tester) async {
+      final (cubit, _, _) = await pumpTour(tester);
+      final skipButton = find.ancestor(
+        of: find.text('דלג — אגלה לבד'),
+        matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+      );
+      Focus.of(tester.element(find.text('דלג — אגלה לבד'))).requestFocus();
+      await tester.pump();
+      expect(skipButton, findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(cubit.state.isActive, isFalse);
+      expect(
+        Settings.getValue<String>(TourSteps.statusKey),
+        TourSteps.skipped,
+      );
+
+      await cubit.close();
+    });
   });
 
   test('טיפ חי מוצג מעל היעד כאשר אין מקום מתחתיו', () {
