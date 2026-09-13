@@ -133,6 +133,9 @@ class WindowPersistence {
   static Future<void> applyRestoredBounds() async {
     _isRestoring = true;
     try {
+      // חלון גלוי = main רץ שוב על חלון חי (hot restart). setBounds על חלון
+      // ממוקסם מקטין אותו ומשאיר WS_MAXIMIZE, ו-maximize() כבר לא מתקן.
+      if (await _window.isVisible()) return;
       final physicalBounds = _restoredPhysicalBounds;
       // setBounds מכפיל את הערכים ב-DPR הנוכחי — חלוקה בו נותנת הצבה פיזית
       // מדויקת גם כשהחלון נשמר על מסך עם קנה מידה שונה מהמסך הראשי.
