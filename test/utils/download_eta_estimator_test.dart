@@ -16,7 +16,7 @@ void main() {
     });
 
     test('מחשב זמן נותר לפי המהירות שנמדדה', () {
-      final estimator = DownloadEtaEstimator();
+      final estimator = DownloadEtaEstimator(refreshInterval: Duration.zero);
       // דגימה ראשונה: 0 בייטים בזמן 0
       estimator.update(downloadedBytes: 0, totalBytes: 1000, now: start);
       // דגימה שנייה: 100 בייטים אחרי שנייה אחת => 100 בייט/שנייה
@@ -81,29 +81,51 @@ void main() {
         refreshInterval: const Duration(seconds: 3),
       );
       estimator.update(downloadedBytes: 0, totalBytes: 10000, now: start);
-      // t+1s: 100 בייט/שנייה => נותרו 9900 => ~99 שניות. דיווח ראשון.
+      // t+3s: 100 בייט/שנייה => נותרו 9700 => ~97 שניות. דיווח ראשון.
       final first = estimator.update(
-        downloadedBytes: 100,
+        downloadedBytes: 300,
         totalBytes: 10000,
-        now: start.add(const Duration(seconds: 1)),
+        now: start.add(const Duration(seconds: 3)),
       );
-      expect(first!.inSeconds, 99);
+      expect(first!.inSeconds, 97);
 
-      // t+2s: זינוק במהירות, אבל עברה רק שנייה מהדיווח => מוחזר הערך הקודם.
+      // t+4s: זינוק במהירות, אבל עברה רק שנייה מהדיווח => מוחזר הערך הקודם.
       final throttled = estimator.update(
         downloadedBytes: 5000,
         totalBytes: 10000,
-        now: start.add(const Duration(seconds: 2)),
+        now: start.add(const Duration(seconds: 4)),
       );
-      expect(throttled!.inSeconds, 99);
+      expect(throttled!.inSeconds, 97);
 
-      // t+4s: עברו 3 שניות מהדיווח האחרון => מתעדכן לערך חדש.
+      // t+6s: עברו 3 שניות מהדיווח האחרון => מתעדכן לערך חדש.
       final refreshed = estimator.update(
         downloadedBytes: 9000,
         totalBytes: 10000,
-        now: start.add(const Duration(seconds: 4)),
+        now: start.add(const Duration(seconds: 6)),
       );
-      expect(refreshed!.inSeconds, isNot(99));
+      expect(refreshed!.inSeconds, isNot(97));
+    });
+
+    test('לא מקפיא הערכה ראשונה שנמדדה בתחילת החיבור האיטית', () {
+      final estimator = DownloadEtaEstimator(
+        refreshInterval: const Duration(seconds: 3),
+      );
+      estimator.update(downloadedBytes: 0, totalBytes: 100000, now: start);
+      // 100ms ראשונות איטיות — הערכה של ~שעתיים לא מוצגת.
+      final early = estimator.update(
+        downloadedBytes: 1,
+        totalBytes: 100000,
+        now: start.add(const Duration(milliseconds: 100)),
+      );
+      expect(early, isNull);
+
+      // אחרי 3 שניות המהירות האמיתית (~10000 בייט/שנייה) מוצגת.
+      final real = estimator.update(
+        downloadedBytes: 30000,
+        totalBytes: 100000,
+        now: start.add(const Duration(seconds: 3)),
+      );
+      expect(real!.inSeconds, 7);
     });
   });
 

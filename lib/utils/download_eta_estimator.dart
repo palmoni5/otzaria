@@ -55,6 +55,14 @@ class DownloadEtaEstimator {
     // אין עדיין חישוב מהימן — שומרים על הערך הקודם (אם קיים).
     if (candidate == null) return _lastReportedEta;
 
+    // הערך הראשון מוקפא ל-refreshInterval, ולכן חייב להתבסס על מרווח כזה של
+    // נתונים — אחרת האטת תחילת החיבור מציגה זמן נותר מופרז.
+    if (_lastReportTime == null &&
+        candidate != Duration.zero &&
+        now.difference(_samples.first.time) < refreshInterval) {
+      return null;
+    }
+
     // מרעננים את הערך המוצג רק אחת ל-refreshInterval. סיום ההורדה
     // (Duration.zero) מדווח מיד כדי לא להציג זמן נותר לאחר שהסתיים.
     final due =
