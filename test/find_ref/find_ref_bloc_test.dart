@@ -4,6 +4,7 @@ import 'package:otzaria/find_ref/bloc/find_ref_bloc.dart';
 import 'package:otzaria/find_ref/bloc/find_ref_event.dart';
 import 'package:otzaria/find_ref/bloc/find_ref_state.dart';
 import 'package:otzaria/find_ref/repository/db_reference_result.dart';
+import 'package:otzaria/find_ref/repository/find_ref_db_isolate.dart';
 import 'package:otzaria/find_ref/repository/find_ref_repository.dart';
 
 // ─── Fake repository ──────────────────────────────────────────────────────────
@@ -58,6 +59,9 @@ FindRefBloc _bloc({
 // השהיה שמספיקה בנדיבות כדי לעבור את ה-debounce של 250ms בתוך ה-handler.
 const _kPastDebounce = Duration(milliseconds: 400);
 
+/// שני מחזורי debounce — למסלול שמריץ ניסיון חוזר אחרי ביטול זר.
+const _kTwoDebounces = Duration(milliseconds: 900);
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -106,6 +110,36 @@ void main() {
           contains('DB error'),
         ),
       ],
+    );
+  });
+
+  group('FindRefBloc — ביטול זר (לא מהקלדה חדשה)', () {
+    blocTest<FindRefBloc, FindRefState>(
+      'ביטול בלי בקשה חדשה אחריו מריץ ניסיון חוזר ולא נתקע ב-Loading',
+      build: () {
+        var calls = 0;
+        return _bloc(
+          fn: (_) async {
+            if (calls++ == 0) throw const FindRefQueryCancelled();
+            return [_result()];
+          },
+        );
+      },
+      act: (b) => b.add(const SearchRefRequested('בראשית')),
+      wait: _kTwoDebounces,
+      // ה-Loading השני זהה לראשון ולכן bloc אינו פולט אותו שוב.
+      expect: () => [
+        isA<FindRefLoading>(),
+        isA<FindRefSuccess>().having((s) => s.refs, 'refs', hasLength(1)),
+      ],
+    );
+
+    blocTest<FindRefBloc, FindRefState>(
+      'ביטול חוזר על אותה שאילתה נעצר בשגיאה ולא בלולאת ניסיונות',
+      build: () => _bloc(error: const FindRefQueryCancelled()),
+      act: (b) => b.add(const SearchRefRequested('בראשית')),
+      wait: _kTwoDebounces,
+      expect: () => [isA<FindRefLoading>(), isA<FindRefError>()],
     );
   });
 

@@ -24,6 +24,10 @@ class FindRefBloc extends Bloc<FindRefEvent, FindRefState> {
   bool? _shownIncludePersonalBooks;
   int _requestGeneration = 0;
 
+  /// השאילתה שכבר קיבלה ניסיון חוזר אחרי ביטול זר. מונעת לולאת ניסיונות
+  /// כשהביטול חוזר על עצמו.
+  String? _retriedQuery;
+
   FindRefBloc({required this.findRefRepository}) : super(FindRefInitial()) {
     // restartable: כל SearchRefRequested חדש מבטל handler קודם שעדיין רץ.
     // הביטול חל בנקודת ה-await הבאה — בין אם זו השהיית ה-debounce, ובין
@@ -57,6 +61,7 @@ class FindRefBloc extends Bloc<FindRefEvent, FindRefState> {
     if (event.refText.length < 2) {
       _shownNormalizedQuery = null;
       _shownIncludePersonalBooks = null;
+      _retriedQuery = null;
       emit(const FindRefSuccess([]));
       return;
     }
@@ -79,6 +84,7 @@ class FindRefBloc extends Bloc<FindRefEvent, FindRefState> {
       if (emit.isDone || requestGeneration != _requestGeneration) return;
       _shownNormalizedQuery = normalized;
       _shownIncludePersonalBooks = event.includePersonalBooks;
+      _retriedQuery = null;
       emit(FindRefSuccess(refs, query: event.refText));
     } on ReferenceLibraryNotReadyException {
       if (emit.isDone || requestGeneration != _requestGeneration) return;
@@ -86,7 +92,20 @@ class FindRefBloc extends Bloc<FindRefEvent, FindRefState> {
     } on FindRefQueryCancelled {
       // הקלדה חדשה זרקה את השאילתה מתור ה-worker. ה-handler של אותה הקלדה
       // יעדכן את המצב — אין להציג כאן שגיאה ואין לכתוב תוצאות חלקיות.
-      return;
+      if (emit.isDone || requestGeneration != _requestGeneration) return;
+      // אף בקשה חדשה לא באה אחרינו, ולכן הביטול הגיע ממקור אחר (מרוץ epoch
+      // מול ה-worker). בלי ניסיון חוזר ה-state נשאר Loading לנצח.
+      if (_retriedQuery != event.refText) {
+        _retriedQuery = event.refText;
+        add(
+          SearchRefRequested(
+            event.refText,
+            includePersonalBooks: event.includePersonalBooks,
+          ),
+        );
+        return;
+      }
+      emit(const FindRefError('החיפוש בוטל לפני שהסתיים'));
     } catch (e) {
       if (emit.isDone || requestGeneration != _requestGeneration) return;
       emit(FindRefError(e.toString()));
@@ -101,6 +120,7 @@ class FindRefBloc extends Bloc<FindRefEvent, FindRefState> {
     findRefRepository.cancelPendingSearch();
     _shownNormalizedQuery = null;
     _shownIncludePersonalBooks = null;
+    _retriedQuery = null;
     emit(FindRefInitial());
   }
 
