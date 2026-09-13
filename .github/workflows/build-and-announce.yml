@@ -2665,7 +2665,7 @@ jobs:
           python-version: '3.13'
 
       - name: Install dependencies for webhook script
-        run: pip install bs4 requests pyluach yemot-api
+        run: pip install bs4 requests pyluach astral yemot-api
 
       - name: Load release assets for a manual run
         if: github.event_name == 'workflow_dispatch'

@@ -3,8 +3,12 @@
 import json
 import os
 import re
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
+from astral import LocationInfo
+from astral.sun import sunset
 from pyluach import dates
 from yemot_api.yemot_api import Yemot
 from yemot_api.input_types import RunTzintukMethod
@@ -16,10 +20,17 @@ from forum import NodeBBClient
 CHANGELOG_PATH = Path("assets/יומן שינויים.md")
 FORUM_BASE_URL = "https://otzaria.org/forum"
 FORUM_TOPIC_ID = 1373
+ISRAEL_TZ = ZoneInfo("Asia/Jerusalem")
+JERUSALEM = LocationInfo("Jerusalem", "Israel", "Asia/Jerusalem", 31.778, 35.235)
 
 
-def heb_date() -> str:
-    return dates.HebrewDate.today().hebrew_date_string()
+def heb_date(now: datetime | None = None) -> str:
+    """התאריך העברי לפי שעון ישראל; אחרי השקיעה בירושלים — "אור ל" היום הבא."""
+    now = now or datetime.now(ISRAEL_TZ)
+    day = dates.GregorianDate.from_pydate(now.date()).to_heb()
+    if now >= sunset(JERUSALEM.observer, now.date(), tzinfo=ISRAEL_TZ):
+        return f"אור ל{(day + 1).hebrew_date_string()}"
+    return day.hebrew_date_string()
 
 
 def require_env(name: str) -> str:
