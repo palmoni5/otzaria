@@ -20,7 +20,7 @@ env:
 jobs:
   capture:
     runs-on: windows-2022
-    timeout-minutes: 360
+    timeout-minutes: 90
     steps:
       - name: Clone repository
         uses: actions/checkout@v7.0.1
@@ -74,7 +74,8 @@ jobs:
           & $zstd -d --long=31 --memory=2048MB "$dl\talmud_bavli_latest.tar.zst" -o "$dl\talmud.tar"
           if ($LASTEXITCODE -ne 0) { throw 'Talmud decompression failed' }
           # ה-tar של Git ולא של System32: bsdtar מפענח שמות עבריים לפי דף הקוד של המערכת.
-          & 'C:\Program Files\Git\usr\bin\tar.exe' -xf ($dl.Replace('\', '/') + '/talmud.tar') -C $books.Replace('\', '/')
+          # --force-local: בלעדיו GNU tar קורא את "D:/..." כמחשב מרוחק בשם D.
+          & 'C:\Program Files\Git\usr\bin\tar.exe' --force-local -xf ($dl.Replace('\', '/') + '/talmud.tar') -C $books.Replace('\', '/')
           if ($LASTEXITCODE -ne 0) { throw 'Talmud extraction failed' }
           Copy-Item "$dl\lexical.db" "$books\lexical.db"
 
