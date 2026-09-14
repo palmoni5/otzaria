@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
@@ -19,6 +20,7 @@ import 'package:otzaria/navigation/bloc/navigation_bloc.dart';
 import 'package:otzaria/navigation/bloc/navigation_event.dart';
 import 'package:otzaria/navigation/bloc/navigation_state.dart';
 import 'package:otzaria/settings/engine/settings_repository.dart';
+import 'package:otzaria/settings/l10n/settings_language.dart';
 import 'package:otzaria/tabs/bloc/tabs_bloc.dart';
 import 'package:otzaria/tabs/bloc/tabs_event.dart';
 import 'package:otzaria/tabs/models/pdf_tab.dart';
@@ -71,6 +73,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     AppCursors.skipForTesting = true;
+    WidgetsApp.debugAllowBannerOverride = false;
     app.main(const <String>[]);
     await _waitUntil(
       tester,
@@ -108,6 +111,8 @@ void main() {
     final available =
         (textTab.bloc.state as TextBookLoaded).availableCommentators;
     textTab.bloc.add(UpdateCommentators(_pickCommentators(available)));
+    await _pumpFor(tester, const Duration(seconds: 1));
+    textTab.toggleCommentatorsPaneNotifier.value++;
     await _pumpFor(tester, const Duration(seconds: 6));
     await _capture(outDir, 'feature1');
 
@@ -174,6 +179,8 @@ Future<void> _seedPreferences(String dataRoot, String libraryRoot) async {
     SettingsRepository.keyAutoUpdateIndex: false,
     SettingsRepository.keyFollowSystemTheme: false,
     SettingsRepository.keyDarkMode: false,
+    // ברירת המחדל עוקבת אחרי שפת המערכת, וב-runner היא אנגלית.
+    SettingsRepository.keySettingsLanguage: SettingsLanguage.hebrew.code,
     TourSteps.statusKey: TourSteps.completed,
   });
   await box.close();

@@ -1,7 +1,7 @@
 name: "צילום תמונות המתקין"
 
-# מצלם את מסכי התכונות שבמתקין (installer/feature1-4.bmp) מתוך התוכנה, על הספרייה
-# העדכנית ועם אינדקס שנבנה כאן, ופותח PR עם התמונות והשוואת לפני/אחרי.
+# מצלם את מסכי התכונות שבמתקין (installer/feature1-4.bmp) מתוך התוכנה ב-macOS, על
+# הספרייה העדכנית ועם אינדקס שנבנה כאן, ופותח PR עם התמונות והשוואת לפני/אחרי.
 
 on:
   workflow_dispatch:
@@ -19,8 +19,8 @@ env:
 
 jobs:
   capture:
-    runs-on: windows-2022
-    timeout-minutes: 90
+    runs-on: macos-latest
+    timeout-minutes: 120
     steps:
       - name: Clone repository
         uses: actions/checkout@v7.0.1
@@ -32,99 +32,78 @@ jobs:
           flutter-version: 3.47.2
           cache: true
 
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Prepare Flutter dependencies
-        shell: pwsh
         run: |
           flutter pub get
           dart run tool/generate_search_index.dart
           dart run tool/generate_settings_l10n.dart
 
       - name: Download latest library
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
-          $ErrorActionPreference = 'Stop'
-          $ProgressPreference = 'SilentlyContinue'
-          $root = Join-Path $env:RUNNER_TEMP 'library'
-          $books = Join-Path $root 'books'
-          $dl = Join-Path $env:RUNNER_TEMP 'downloads'
-          New-Item -ItemType Directory -Force -Path $books, $dl | Out-Null
+          set -euo pipefail
+          root="$RUNNER_TEMP/library"
+          books="$root/books"
+          dl="$RUNNER_TEMP/downloads"
+          mkdir -p "$books" "$dl"
+          command -v zstd >/dev/null || brew install zstd
 
           # אותם מקורות כמו חבילות ה-FULL ב-build-and-announce.yml.
-          $assets = @{
-            'seforim.db.zst'              = 'https://github.com/Otzaria/SeforimLibrary/releases/latest/download/seforim.db.zst'
-            'otzar-HB_catalog.db.zst'     = 'https://github.com/Otzaria/otzar-HB_catalog/releases/latest/download/otzar-HB_catalog.db.zst'
-            'talmud_bavli_latest.tar.zst' = 'https://github.com/Otzaria/otzaria-library/releases/latest/download/talmud_bavli_latest.tar.zst'
-            'lexical.db'                  = 'https://github.com/Otzaria/SeforimMagicIndexer/releases/latest/download/lexical.db'
-          }
-          foreach ($name in $assets.Keys) {
-            Write-Host "Downloading $name"
-            Invoke-WebRequest -Uri $assets[$name] -OutFile (Join-Path $dl $name) -UseBasicParsing
-          }
+          fetch() { curl -L --fail --retry 3 -o "$dl/$2" "https://github.com/Otzaria/$1/releases/latest/download/$2"; }
+          fetch SeforimLibrary seforim.db.zst
+          fetch otzar-HB_catalog otzar-HB_catalog.db.zst
+          fetch otzaria-library talmud_bavli_latest.tar.zst
+          fetch SeforimMagicIndexer lexical.db
 
-          gh release download --repo facebook/zstd --pattern 'zstd-*-win64.zip' --dir $dl
-          Expand-Archive -Path (Get-ChildItem $dl -Filter 'zstd-*-win64.zip').FullName -DestinationPath "$dl\zstd"
-          $zstd = (Get-ChildItem "$dl\zstd" -Filter zstd.exe -Recurse | Select-Object -First 1).FullName
-
-          & $zstd -d --long=31 --memory=2048MB "$dl\seforim.db.zst" -o "$books\seforim.db"
-          if ($LASTEXITCODE -ne 0) { throw 'seforim.db decompression failed' }
-          & $zstd -d --long=31 --memory=2048MB "$dl\otzar-HB_catalog.db.zst" -o "$books\otzar-HB_catalog.db"
-          if ($LASTEXITCODE -ne 0) { throw 'catalog decompression failed' }
-          & $zstd -d --long=31 --memory=2048MB "$dl\talmud_bavli_latest.tar.zst" -o "$dl\talmud.tar"
-          if ($LASTEXITCODE -ne 0) { throw 'Talmud decompression failed' }
-          # ה-tar של Git ולא של System32: bsdtar מפענח שמות עבריים לפי דף הקוד של המערכת.
-          # --force-local: בלעדיו GNU tar קורא את "D:/..." כמחשב מרוחק בשם D.
-          & 'C:\Program Files\Git\usr\bin\tar.exe' --force-local -xf ($dl.Replace('\', '/') + '/talmud.tar') -C $books.Replace('\', '/')
-          if ($LASTEXITCODE -ne 0) { throw 'Talmud extraction failed' }
-          Copy-Item "$dl\lexical.db" "$books\lexical.db"
+          zstd -d --long=31 --memory=2048MB "$dl/seforim.db.zst" -o "$books/seforim.db"
+          zstd -d --long=31 --memory=2048MB "$dl/otzar-HB_catalog.db.zst" -o "$books/otzar-HB_catalog.db"
+          zstd -dc --long=31 --memory=2048MB "$dl/talmud_bavli_latest.tar.zst" | tar -xf - -C "$books"
+          cp "$dl/lexical.db" "$books/lexical.db"
 
           # כמו בחבילת ה-FULL: בלי סימון גרסה התלמוד והמילון יורדים שוב בהפעלה.
-          $talmudHash = (Get-FileHash "$dl\talmud_bavli_latest.tar.zst" -Algorithm SHA256).Hash.ToLowerInvariant()
-          [IO.File]::WriteAllText((Join-Path $books 'תלמוד בבלי\.version'), "$talmudHash`n")
-          $lexicalHash = (Get-FileHash "$dl\lexical.db" -Algorithm SHA256).Hash.ToLowerInvariant()
-          [IO.File]::WriteAllText((Join-Path $books 'lexical.db.version'), "$lexicalHash`n")
+          shasum -a 256 "$dl/talmud_bavli_latest.tar.zst" | cut -d' ' -f1 > "$books/תלמוד בבלי/.version"
+          shasum -a 256 "$dl/lexical.db" | cut -d' ' -f1 > "$books/lexical.db.version"
 
-          Remove-Item $dl -Recurse -Force
-          "OTZARIA_SHOTS_LIBRARY=$root" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "OTZARIA_SHOTS_OUT=$(Join-Path $env:RUNNER_TEMP 'shots')" | Out-File -FilePath $env:GITHUB_ENV -Append
-
-      - name: Build release app
-        shell: pwsh
-        run: flutter build windows --release
+          rm -rf "$dl"
+          echo "OTZARIA_SHOTS_LIBRARY=$root" >> "$GITHUB_ENV"
+          echo "OTZARIA_SHOTS_OUT=$RUNNER_TEMP/shots" >> "$GITHUB_ENV"
 
       - name: Build search index
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $root = $env:OTZARIA_SHOTS_LIBRARY
-          $log = Join-Path $env:RUNNER_TEMP 'index'
-          $proc = Start-Process -FilePath 'build\windows\x64\runner\Release\otzaria.exe' `
-            -ArgumentList 'build-release-index', '--library', "$root\books", '--index', "$root\index", '--data', "$env:RUNNER_TEMP\index-data" `
-            -Wait -PassThru -NoNewWindow -RedirectStandardOutput "$log.out.txt" -RedirectStandardError "$log.err.txt"
-          Get-Content "$log.out.txt" -Tail 20
-          Get-Content "$log.err.txt"
-          if ($proc.ExitCode -ne 0) { throw "build-release-index failed with exit code $($proc.ExitCode)" }
+        run: flutter test integration_test/installer_index_test.dart -d macos
 
       - name: Capture screenshots
-        shell: pwsh
-        run: flutter test integration_test/installer_screenshots_test.dart -d windows
-
-      - name: Update installer images
-        shell: pwsh
-        run: |
-          ./tool/installer_screenshots/update_installer_images.ps1 `
-            -ShotsDir $env:OTZARIA_SHOTS_OUT `
-            -PreviewDir (Join-Path $env:RUNNER_TEMP 'preview')
+        run: flutter test integration_test/installer_screenshots_test.dart -d macos
 
       - name: Upload screenshots
         uses: actions/upload-artifact@v4
         with:
           name: installer-screenshots
-          path: |
-            ${{ runner.temp }}/shots/*.png
-            ${{ runner.temp }}/preview/*.png
+          path: ${{ runner.temp }}/shots/*.png
           retention-days: 30
+
+  pull-request:
+    needs: capture
+    # ההמרה ל-BMP נשענת על System.Drawing, שקיים רק ב-Windows.
+    runs-on: windows-2022
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Download screenshots
+        uses: actions/download-artifact@v4
+        with:
+          name: installer-screenshots
+          path: ${{ runner.temp }}/shots
+
+      - name: Update installer images
+        shell: pwsh
+        run: |
+          ./tool/installer_screenshots/update_installer_images.ps1 `
+            -ShotsDir (Join-Path $env:RUNNER_TEMP 'shots') `
+            -PreviewDir (Join-Path $env:RUNNER_TEMP 'preview')
 
       - name: Open pull request
         shell: bash
