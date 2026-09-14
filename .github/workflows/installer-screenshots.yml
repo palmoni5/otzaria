@@ -1,0 +1,187 @@
+name: "צילום תמונות המתקין"
+
+# מצלם את מסכי התכונות שבמתקין (installer/feature1-4.bmp) מתוך התוכנה, על הספרייה
+# העדכנית ועם אינדקס שנבנה כאן, ופותח PR עם התמונות והשוואת לפני/אחרי.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: installer-screenshots
+  cancel-in-progress: false
+
+env:
+  PREVIEW_BRANCH: installer-screenshots-preview
+
+jobs:
+  capture:
+    runs-on: windows-2022
+    timeout-minutes: 360
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.2
+          cache: true
+
+      - name: Prepare Flutter dependencies
+        shell: pwsh
+        run: |
+          flutter pub get
+          dart run tool/generate_search_index.dart
+          dart run tool/generate_settings_l10n.dart
+
+      - name: Download latest library
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+          $root = Join-Path $env:RUNNER_TEMP 'library'
+          $books = Join-Path $root 'books'
+          $dl = Join-Path $env:RUNNER_TEMP 'downloads'
+          New-Item -ItemType Directory -Force -Path $books, $dl | Out-Null
+
+          # אותם מקורות כמו חבילות ה-FULL ב-build-and-announce.yml.
+          $assets = @{
+            'seforim.db.zst'              = 'https://github.com/Otzaria/SeforimLibrary/releases/latest/download/seforim.db.zst'
+            'otzar-HB_catalog.db.zst'     = 'https://github.com/Otzaria/otzar-HB_catalog/releases/latest/download/otzar-HB_catalog.db.zst'
+            'talmud_bavli_latest.tar.zst' = 'https://github.com/Otzaria/otzaria-library/releases/latest/download/talmud_bavli_latest.tar.zst'
+            'lexical.db'                  = 'https://github.com/Otzaria/SeforimMagicIndexer/releases/latest/download/lexical.db'
+          }
+          foreach ($name in $assets.Keys) {
+            Write-Host "Downloading $name"
+            Invoke-WebRequest -Uri $assets[$name] -OutFile (Join-Path $dl $name) -UseBasicParsing
+          }
+
+          gh release download --repo facebook/zstd --pattern 'zstd-*-win64.zip' --dir $dl
+          Expand-Archive -Path (Get-ChildItem $dl -Filter 'zstd-*-win64.zip').FullName -DestinationPath "$dl\zstd"
+          $zstd = (Get-ChildItem "$dl\zstd" -Filter zstd.exe -Recurse | Select-Object -First 1).FullName
+
+          & $zstd -d --long=31 --memory=2048MB "$dl\seforim.db.zst" -o "$books\seforim.db"
+          if ($LASTEXITCODE -ne 0) { throw 'seforim.db decompression failed' }
+          & $zstd -d --long=31 --memory=2048MB "$dl\otzar-HB_catalog.db.zst" -o "$books\otzar-HB_catalog.db"
+          if ($LASTEXITCODE -ne 0) { throw 'catalog decompression failed' }
+          & $zstd -d --long=31 --memory=2048MB "$dl\talmud_bavli_latest.tar.zst" -o "$dl\talmud.tar"
+          if ($LASTEXITCODE -ne 0) { throw 'Talmud decompression failed' }
+          # ה-tar של Git ולא של System32: bsdtar מפענח שמות עבריים לפי דף הקוד של המערכת.
+          & 'C:\Program Files\Git\usr\bin\tar.exe' -xf ($dl.Replace('\', '/') + '/talmud.tar') -C $books.Replace('\', '/')
+          if ($LASTEXITCODE -ne 0) { throw 'Talmud extraction failed' }
+          Copy-Item "$dl\lexical.db" "$books\lexical.db"
+
+          # כמו בחבילת ה-FULL: בלי סימון גרסה התלמוד והמילון יורדים שוב בהפעלה.
+          $talmudHash = (Get-FileHash "$dl\talmud_bavli_latest.tar.zst" -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText((Join-Path $books 'תלמוד בבלי\.version'), "$talmudHash`n")
+          $lexicalHash = (Get-FileHash "$dl\lexical.db" -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText((Join-Path $books 'lexical.db.version'), "$lexicalHash`n")
+
+          Remove-Item $dl -Recurse -Force
+          "OTZARIA_SHOTS_LIBRARY=$root" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "OTZARIA_SHOTS_OUT=$(Join-Path $env:RUNNER_TEMP 'shots')" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Build release app
+        shell: pwsh
+        run: flutter build windows --release
+
+      - name: Build search index
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = $env:OTZARIA_SHOTS_LIBRARY
+          $log = Join-Path $env:RUNNER_TEMP 'index'
+          $proc = Start-Process -FilePath 'build\windows\x64\runner\Release\otzaria.exe' `
+            -ArgumentList 'build-release-index', '--library', "$root\books", '--index', "$root\index", '--data', "$env:RUNNER_TEMP\index-data" `
+            -Wait -PassThru -NoNewWindow -RedirectStandardOutput "$log.out.txt" -RedirectStandardError "$log.err.txt"
+          Get-Content "$log.out.txt" -Tail 20
+          Get-Content "$log.err.txt"
+          if ($proc.ExitCode -ne 0) { throw "build-release-index failed with exit code $($proc.ExitCode)" }
+
+      - name: Capture screenshots
+        shell: pwsh
+        run: flutter test integration_test/installer_screenshots_test.dart -d windows
+
+      - name: Update installer images
+        shell: pwsh
+        run: |
+          ./tool/installer_screenshots/update_installer_images.ps1 `
+            -ShotsDir $env:OTZARIA_SHOTS_OUT `
+            -PreviewDir (Join-Path $env:RUNNER_TEMP 'preview')
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-screenshots
+          path: |
+            ${{ runner.temp }}/shots/*.png
+            ${{ runner.temp }}/preview/*.png
+          retention-days: 30
+
+      - name: Open pull request
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet -- installer/; then
+            echo "התמונות זהות לקיימות — אין מה לעדכן." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # תמונות ההשוואה יושבות בענף נפרד כדי שה-PR יוכל להציג אותן בלי להכניס PNG ל-dev.
+          preview_dir="$RUNNER_TEMP/preview-branch"
+          if git fetch --depth=1 origin "$PREVIEW_BRANCH"; then
+            git worktree add -B "$PREVIEW_BRANCH" "$preview_dir" FETCH_HEAD
+          else
+            git worktree add --orphan -b "$PREVIEW_BRANCH" "$preview_dir"
+          fi
+          mkdir -p "$preview_dir/$GITHUB_RUN_ID"
+          cp "$RUNNER_TEMP"/preview/*.png "$preview_dir/$GITHUB_RUN_ID/"
+          git -C "$preview_dir" add "$GITHUB_RUN_ID"
+          git -C "$preview_dir" commit -q -m "תמונות השוואה לריצה $GITHUB_RUN_ID"
+          git -C "$preview_dir" push -q origin "$PREVIEW_BRANCH"
+          raw="https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$(git -C "$preview_dir" rev-parse HEAD)/$GITHUB_RUN_ID"
+
+          branch="installer-screenshots/$GITHUB_RUN_ID"
+          git switch -c "$branch"
+          git add installer/feature1.bmp installer/feature2.bmp installer/feature3.bmp installer/feature4.bmp
+          git commit -q -m "מתקין: עדכון צילומי המסכים מתוך התוכנה" \
+            -m "צולם אוטומטית ב-$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          git push -q origin "$branch"
+
+          captions=("ספר עם מפרשים" "לוח שנה" "ספרי PDF" "חיפוש מתקדם")
+          {
+            echo "צילומי מסכי התכונות שבמתקין, מתוך התוכנה עצמה על הספרייה העדכנית."
+            echo
+            echo "| | לפני | אחרי |"
+            echo "|---|---|---|"
+            for n in 1 2 3 4; do
+              echo "| ${captions[$((n-1))]} | <img src=\"$raw/before-$n.png\" width=\"400\"> | <a href=\"$raw/full-$n.png\"><img src=\"$raw/after-$n.png\" width=\"400\"></a> |"
+            done
+            echo
+            echo "לחיצה על תמונת \"אחרי\" פותחת את הצילום ברזולוציה מלאה."
+            echo "הריצה: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/pr-body.md"
+
+          # מדיניות הארגון עלולה לחסום יצירת PR מ-Actions; אז הענף כבר דחוף ונשאר קישור.
+          if ! gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
+            --title "מתקין: עדכון צילומי המסכים מתוך התוכנה" \
+            --body-file "$RUNNER_TEMP/pr-body.md"; then
+            {
+              echo "## לא ניתן לפתוח PR אוטומטית"
+              echo "[פתיחת ה-PR]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/$GITHUB_REF_NAME...$branch?expand=1) — העתק לתיאור את הטבלה שלמטה."
+              echo
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          cat "$RUNNER_TEMP/pr-body.md" >> "$GITHUB_STEP_SUMMARY"

@@ -162,7 +162,8 @@ static bool IsCliInvocation(const std::vector<std::string>& args) {
   for (auto& c : cmd) {
     if (c == '_') c = '-';
   }
-  return EqualsIgnoreCase(cmd, "pack-plugin") || EqualsIgnoreCase(cmd, "info");
+  return EqualsIgnoreCase(cmd, "pack-plugin") || EqualsIgnoreCase(cmd, "info") ||
+         EqualsIgnoreCase(cmd, "build-release-index");
 }
 
 // Case-insensitive check whether `s` ends with `suffix` (ASCII only).
