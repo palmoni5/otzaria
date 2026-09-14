@@ -61,6 +61,14 @@ void main() {
     final libraryRoot = _requireEnv(_libraryRootEnv);
     final outDir = Directory(_requireEnv(_outDirEnv))
       ..createSync(recursive: true);
+    // פלט flutter test מודפס רק בסוף ואובד כשהשלב נקטע; הקובץ שורד ומועלה.
+    final progress = File(p.join(outDir.path, 'progress.txt'));
+    void mark(String step) => progress.writeAsStringSync(
+      '${DateTime.now().toIso8601String()} $step\n',
+      mode: FileMode.append,
+      flush: true,
+    );
+    mark('start');
 
     // שורש נתונים נקי: בלי טאבים משוחזרים ובלי לגעת בהגדרות של המשתמש.
     final dataRoot = Directory(p.join(outDir.path, '_app_data'));
@@ -68,6 +76,7 @@ void main() {
     dataRoot.createSync(recursive: true);
     await _seedPreferences(dataRoot.path, libraryRoot);
     AppPaths.configureDataRootPathForProcess(dataRoot.path);
+    mark('seeded');
 
     tester.view.physicalSize = _logicalSize * _pixelRatio;
     tester.view.devicePixelRatio = _pixelRatio;
@@ -75,15 +84,20 @@ void main() {
 
     AppCursors.skipForTesting = true;
     WidgetsApp.debugAllowBannerOverride = false;
+    mark('app.main');
     app.main(const <String>[]);
     // ב-macOS החלון שקוף עד החשיפה, וחלון שאינו נראה לא מקבל vsync — pump נתקע.
     await const MethodChannel('otzaria/splash').invokeMethod<void>('close');
+    mark('splash closed');
+    await tester.pump();
+    mark('first pump');
     await _waitUntil(
       tester,
       'עליית האפליקציה',
       () => find.byType(App).evaluate().isNotEmpty,
       const Duration(minutes: 3),
     );
+    mark('App mounted');
     final context = tester.element(find.byType(App));
     final tabsBloc = context.read<TabsBloc>();
     final navigation = context.read<NavigationBloc>();
@@ -118,6 +132,7 @@ void main() {
     textTab.toggleCommentatorsPaneNotifier.value++;
     await _pumpFor(tester, const Duration(seconds: 6));
     await _capture(outDir, 'feature1');
+    mark('feature1');
 
     // 2. לוח שנה
     await open(
@@ -129,6 +144,7 @@ void main() {
     );
     await _pumpFor(tester, const Duration(seconds: 6));
     await _capture(outDir, 'feature2');
+    mark('feature2');
 
     // 3. ספר PDF
     final pdfBook = library
@@ -152,6 +168,7 @@ void main() {
     pdfTab.toggleNavPaneNotifier.value++;
     await _pumpFor(tester, const Duration(seconds: 8));
     await _capture(outDir, 'feature3');
+    mark('feature3');
 
     // 4. חיפוש
     final searchTab = SearchingTab('חיפוש', _searchQuery);

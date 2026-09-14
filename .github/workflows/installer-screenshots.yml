@@ -80,6 +80,12 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/diag"
           ( while true; do screencapture -x "$RUNNER_TEMP/diag/screen-$(date +%H%M%S).png"; sleep 60; done ) &
+          # מחסנית הנייטיב של האפליקציה אם היא עדיין רצה — מראה על מה ה-main thread עומד.
+          ( for t in 480 360; do
+              sleep $t
+              pid=$(pgrep -f 'Debug/.*\.app/Contents/MacOS/' | head -1) || true
+              [ -n "$pid" ] && sample "$pid" 5 -file "$RUNNER_TEMP/diag/sample-$(date +%H%M%S).txt"
+            done ) &
           flutter test integration_test/installer_screenshots_test.dart -d macos
 
       - name: Upload diagnostics
@@ -88,7 +94,8 @@ jobs:
         with:
           name: installer-screenshots-diagnostics
           path: |
-            ${{ runner.temp }}/diag/*.png
+            ${{ runner.temp }}/diag/*
+            ${{ runner.temp }}/shots/*.txt
             ${{ runner.temp }}/shots/_app_data/**/*.txt
           retention-days: 7
 
