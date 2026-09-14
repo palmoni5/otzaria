@@ -17,9 +17,11 @@ import 'package:otzaria/data/data_providers/hive_data_provider.dart';
 import 'package:otzaria/data/repository/data_repository.dart';
 import 'package:otzaria/main.dart' as app;
 import 'package:otzaria/models/books.dart';
+import 'package:otzaria/models/link_types.dart';
 import 'package:otzaria/navigation/bloc/navigation_bloc.dart';
 import 'package:otzaria/navigation/bloc/navigation_event.dart';
 import 'package:otzaria/navigation/bloc/navigation_state.dart';
+import 'package:otzaria/pdf_book/view/pdf_commentary_panel.dart';
 import 'package:otzaria/settings/engine/settings_repository.dart';
 import 'package:otzaria/settings/l10n/settings_language.dart';
 import 'package:otzaria/tabs/bloc/tabs_bloc.dart';
@@ -31,7 +33,9 @@ import 'package:otzaria/tabs/models/text_tab.dart';
 import 'package:otzaria/tabs/models/tool_tab.dart';
 import 'package:otzaria/text_book/bloc/text_book_event.dart';
 import 'package:otzaria/text_book/bloc/text_book_state.dart';
+import 'package:otzaria/text_book/view/commentary_list_base.dart';
 import 'package:otzaria/tour/models/tour_steps.dart';
+import 'package:otzaria/utils/text/text_manipulation.dart' as utils;
 import 'package:otzaria/widgets/misc/app_cursors.dart';
 import 'package:path/path.dart' as p;
 import 'package:pdfrx/pdfrx.dart';
@@ -43,7 +47,7 @@ const _libraryRootEnv = 'OTZARIA_SHOTS_LIBRARY';
 const _outDirEnv = 'OTZARIA_SHOTS_OUT';
 
 // יחס 400:210 של תמונות המתקין.
-const _logicalSize = Size(1280, 672);
+const _logicalSize = Size(1920, 1008);
 const _pixelRatio = 1.5;
 
 const _textBookTitle = 'בראשית';
@@ -127,10 +131,16 @@ void main() {
     }, const Duration(minutes: 2));
     final available =
         (textTab.bloc.state as TextBookLoaded).availableCommentators;
-    textTab.bloc.add(UpdateCommentators(_pickCommentators(available)));
+    textTab.bloc.add(UpdateCommentators(available));
     await _pumpFor(tester, const Duration(seconds: 1));
     textTab.toggleCommentatorsPaneNotifier.value++;
     await _pumpFor(tester, const Duration(seconds: 6));
+    // מכווצים כדי שיוצג מגוון המפרשים, ולא הטקסט של הראשון בלבד.
+    final commentary = tester.state<CommentaryListBaseState>(
+      find.byType(CommentaryListBase).first,
+    );
+    if (commentary.allExpandedListenable.value) commentary.toggleAllExpanded();
+    await _pumpFor(tester, const Duration(seconds: 2));
     await _capture(outDir, 'feature1');
     mark('feature1');
 
@@ -169,8 +179,29 @@ void main() {
         duration: Duration.zero,
       );
     }
-    pdfTab.toggleNavPaneNotifier.value++;
-    await _pumpFor(tester, const Duration(seconds: 8));
+    await _waitUntil(
+      tester,
+      'קישורי ה-PDF',
+      () => !pdfTab.linksLoadingNotifier.value && pdfTab.links.isNotEmpty,
+      const Duration(minutes: 2),
+    );
+    // אותה בחירה כמו רשימת המפרשים הזמינים שהמסך בונה מהקישורים.
+    pdfTab.activeCommentators = {
+      for (final link in pdfTab.links)
+        if (LinkTypes.isDependentTextLink(link.connectionType))
+          utils.getTitleFromPath(link.path2),
+    };
+    // חלונית שנפתחה לבד נבנתה עם מפרשי ברירת המחדל; סוגרים ופותחים מחדש.
+    if (find.byType(PdfCommentaryPanel).evaluate().isNotEmpty) {
+      pdfTab.toggleCommentatorsPaneNotifier.value++;
+      await _pumpFor(tester, const Duration(seconds: 1));
+    }
+    pdfTab.toggleCommentatorsPaneNotifier.value++;
+    await _pumpFor(tester, const Duration(seconds: 6));
+    tester
+        .state<PdfCommentaryPanelState>(find.byType(PdfCommentaryPanel).first)
+        .toggleAllExpanded();
+    await _pumpFor(tester, const Duration(seconds: 3));
     await _capture(outDir, 'feature3');
     mark('feature3');
 
@@ -208,18 +239,6 @@ Future<void> _seedPreferences(String dataRoot, String libraryRoot) async {
     TourSteps.statusKey: TourSteps.completed,
   });
   await box.close();
-}
-
-// שמות המפרשים ב-DB בגרשיים עבריים (״), לכן מנרמלים לפני ההשוואה.
-List<String> _pickCommentators(List<String> available) {
-  const preferred = ['רש״י', 'רמב״ן', 'אבן עזרא'];
-  final picked = [
-    for (final name in preferred)
-      ...available
-          .where((c) => c.replaceAll('"', '״').startsWith(name))
-          .take(1),
-  ];
-  return picked.isEmpty ? available.take(3).toList() : picked;
 }
 
 int? _firstLeafPage(List<PdfOutlineNode> nodes) {
