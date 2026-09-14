@@ -163,7 +163,11 @@ void main() {
     );
     final firstEntryPage = _firstLeafPage(pdfTab.outline.value!);
     if (firstEntryPage != null) {
-      await pdfTab.pdfViewerController.goToPage(pageNumber: firstEntryPage);
+      // בלי אנימציה: ההמתנה לסיומה תלויה בפריימים שאף אחד לא דוחף בזמן ה-await.
+      await pdfTab.pdfViewerController.goToPage(
+        pageNumber: firstEntryPage,
+        duration: Duration.zero,
+      );
     }
     pdfTab.toggleNavPaneNotifier.value++;
     await _pumpFor(tester, const Duration(seconds: 8));
