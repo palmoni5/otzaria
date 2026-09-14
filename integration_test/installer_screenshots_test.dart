@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -75,6 +76,8 @@ void main() {
     AppCursors.skipForTesting = true;
     WidgetsApp.debugAllowBannerOverride = false;
     app.main(const <String>[]);
+    // ב-macOS החלון שקוף עד החשיפה, וחלון שאינו נראה לא מקבל vsync — pump נתקע.
+    await const MethodChannel('otzaria/splash').invokeMethod<void>('close');
     await _waitUntil(
       tester,
       'עליית האפליקציה',

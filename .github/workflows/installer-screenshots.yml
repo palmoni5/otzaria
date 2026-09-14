@@ -75,7 +75,22 @@ jobs:
         run: flutter test integration_test/installer_index_test.dart -d macos
 
       - name: Capture screenshots
-        run: flutter test integration_test/installer_screenshots_test.dart -d macos
+        # פלט הבדיקה מודפס רק בסופה; תקיעה נראית כשקט מוחלט עד ה-timeout של ה-job.
+        timeout-minutes: 25
+        run: |
+          mkdir -p "$RUNNER_TEMP/diag"
+          ( while true; do screencapture -x "$RUNNER_TEMP/diag/screen-$(date +%H%M%S).png"; sleep 60; done ) &
+          flutter test integration_test/installer_screenshots_test.dart -d macos
+
+      - name: Upload diagnostics
+        if: ${{ !success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-screenshots-diagnostics
+          path: |
+            ${{ runner.temp }}/diag/*.png
+            ${{ runner.temp }}/shots/_app_data/**/*.txt
+          retention-days: 7
 
       - name: Upload screenshots
         uses: actions/upload-artifact@v4
