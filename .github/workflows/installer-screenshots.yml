@@ -60,7 +60,9 @@ jobs:
 
           zstd -d --long=31 --memory=2048MB "$dl/seforim.db.zst" -o "$books/seforim.db"
           zstd -d --long=31 --memory=2048MB "$dl/otzar-HB_catalog.db.zst" -o "$books/otzar-HB_catalog.db"
-          zstd -dc --long=31 --memory=2048MB "$dl/talmud_bavli_latest.tar.zst" | tar -xf - -C "$books"
+          # לא בצינור: bsdtar סוגר את הקלט בסמן סוף-הארכיון, ו-zstd נכשל ב-Broken pipe על הריפוד.
+          zstd -d --long=31 --memory=2048MB "$dl/talmud_bavli_latest.tar.zst" -o "$dl/talmud.tar"
+          tar -xf "$dl/talmud.tar" -C "$books"
           cp "$dl/lexical.db" "$books/lexical.db"
 
           # כמו בחבילת ה-FULL: בלי סימון גרסה התלמוד והמילון יורדים שוב בהפעלה.
