@@ -86,6 +86,16 @@ Widget _buildDialogHarness({
   );
 }
 
+final _moreOptionsButton = find.byKey(
+  const ValueKey('search-dialog-more-options'),
+);
+
+Future<void> _openMoreOptions(WidgetTester tester) async {
+  await tester.ensureVisible(_moreOptionsButton);
+  await tester.tap(_moreOptionsButton);
+  await tester.pumpAndSettle();
+}
+
 Future<void> main() async {
   // הווידג'טים הנבדקים קוראים ל-sanitizeQuery/splitQueryWords שמאצילים למנוע
   // ה-Rust; הטסטים המסומנים מדולגים כשאין build נייטיבי זמין.
@@ -168,11 +178,13 @@ Future<void> main() async {
       final contribution = find.byKey(
         const ValueKey('plugin-search-dialog-test.plugin-include-external'),
       );
+      await _openMoreOptions(tester);
       expect(contribution, findsOneWidget);
       expect(tester.widget<CheckboxListTile>(contribution).value, isTrue);
 
       await tester.tap(find.text('מתקדם').first);
       await tester.pumpAndSettle();
+      await _openMoreOptions(tester);
       expect(contribution, findsOneWidget);
 
       final partialChip = find.byWidgetPredicate(
@@ -191,6 +203,7 @@ Future<void> main() async {
       await tester.tap(fuzzyMode);
       await tester.pumpAndSettle();
       expect(contribution, findsNothing);
+      expect(_moreOptionsButton, findsNothing);
 
       await tester.pumpWidget(
         _buildDialogHarness(
@@ -210,7 +223,7 @@ Future<void> main() async {
     },
   );
 
-  testWidgets('שורת תוסף נצמדת לכרטיס האפשרויות במצב מדויק', (
+  testWidgets('שורת תוסף מקופלת תחת "אפשרויות נוספות" כשהיא בברירת המחדל', (
     WidgetTester tester,
   ) async {
     final historyBloc = MockHistoryBloc();
@@ -263,21 +276,13 @@ Future<void> main() async {
     );
     await tester.pumpAndSettle();
 
-    final optionsCard = tester.getRect(
-      find
-          .ancestor(
-            of: find.text('אפשרויות מילה'),
-            matching: find.byType(Container),
-          )
-          .first,
+    final contribution = find.byKey(
+      const ValueKey('plugin-search-dialog-test.plugin-include-external'),
     );
-    final contribution = tester.getRect(
-      find.byKey(
-        const ValueKey('plugin-search-dialog-test.plugin-include-external'),
-      ),
-    );
+    expect(contribution, findsNothing);
 
-    expect(contribution.top - optionsCard.bottom, lessThan(24));
+    await _openMoreOptions(tester);
+    expect(contribution, findsOneWidget);
   });
 
   testWidgets('בחירת שורת תוסף נזכרת בדיאלוג הבא', (
@@ -342,6 +347,7 @@ Future<void> main() async {
     final contribution = find.byKey(
       const ValueKey('plugin-search-dialog-test.plugin-include-external'),
     );
+    await _openMoreOptions(tester);
     expect(tester.widget<CheckboxListTile>(contribution).value, isTrue);
 
     await tester.ensureVisible(contribution);
@@ -349,6 +355,7 @@ Future<void> main() async {
     await tester.pumpAndSettle();
     expect(tester.widget<CheckboxListTile>(contribution).value, isFalse);
 
+    // בחירה ששונה מברירת המחדל פותחת את "אפשרויות נוספות" מעצמה.
     await pumpDialog(const ValueKey('second'));
     expect(tester.widget<CheckboxListTile>(contribution).value, isFalse);
   });
@@ -1154,6 +1161,7 @@ Future<void> main() async {
     );
     await tester.pumpAndSettle();
 
+    await _openMoreOptions(tester);
     expect(typoChip().selected, isFalse);
     await tester.ensureVisible(typoChipFinder);
     await tester.tap(typoChipFinder);
@@ -1188,6 +1196,140 @@ Future<void> main() async {
       isTrue,
       reason: 'אפשרות שסומנה בסשן הנוכחי צריכה להישאר מסומנת בדיאלוג חדש',
     );
+  });
+
+  testWidgets('במסך קטן כל החיפוש הרגיל נכנס בלי גלילה', (
+    WidgetTester tester,
+  ) async {
+    final historyBloc = MockHistoryBloc();
+    final indexingBloc = MockIndexingBloc();
+    final navigationBloc = MockNavigationBloc();
+
+    whenListen(
+      historyBloc,
+      const Stream<HistoryState>.empty(),
+      initialState: HistoryLoaded([]),
+    );
+    whenListen(
+      indexingBloc,
+      const Stream<IndexingState>.empty(),
+      initialState: IndexingInitial(),
+    );
+    whenListen(
+      navigationBloc,
+      const Stream<NavigationState>.empty(),
+      initialState: const NavigationState(currentScreen: Screen.search),
+    );
+
+    // טסט קודם זוכר לסשן אפשרות נסתרת פעילה, שהייתה פותחת את "אפשרויות נוספות".
+    SearchDefaults.rememberSessionExactOptions(const {});
+    tester.view.physicalSize = const Size(800, 560);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() async {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+      await historyBloc.close();
+      await indexingBloc.close();
+      await navigationBloc.close();
+    });
+
+    await tester.pumpWidget(
+      _buildDialogHarness(
+        theme: ThemeData(useMaterial3: true),
+        historyBloc: historyBloc,
+        indexingBloc: indexingBloc,
+        navigationBloc: navigationBloc,
+        dialog: const SearchDialog(initialSearchMode: SearchMode.exact),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    final scrollable = tester.state<ScrollableState>(
+      find
+          .descendant(
+            of: find.byType(SearchDialog),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    expect(scrollable.position.maxScrollExtent, 0);
+    expect(_moreOptionsButton.hitTestable(), findsOneWidget);
+    expect(find.byTooltip('חפש').hitTestable(), findsOneWidget);
+  });
+
+  testWidgets('קביעת מצב ברירת המחדל נשמרת רק אחרי אישור', (
+    WidgetTester tester,
+  ) async {
+    final historyBloc = MockHistoryBloc();
+    final indexingBloc = MockIndexingBloc();
+    final navigationBloc = MockNavigationBloc();
+
+    whenListen(
+      historyBloc,
+      const Stream<HistoryState>.empty(),
+      initialState: HistoryLoaded([]),
+    );
+    whenListen(
+      indexingBloc,
+      const Stream<IndexingState>.empty(),
+      initialState: IndexingInitial(),
+    );
+    whenListen(
+      navigationBloc,
+      const Stream<NavigationState>.empty(),
+      initialState: const NavigationState(currentScreen: Screen.search),
+    );
+
+    addTearDown(() async {
+      await tester.binding.setSurfaceSize(null);
+      // השמירה מעדכנת גם את מצב הסשן — בלי איפוס הוא מזליג לטסטים הבאים.
+      SearchDefaults.rememberSessionMode(SearchMode.exact);
+      await historyBloc.close();
+      await indexingBloc.close();
+      await navigationBloc.close();
+    });
+
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    await tester.pumpWidget(
+      _buildDialogHarness(
+        theme: ThemeData(useMaterial3: true),
+        historyBloc: historyBloc,
+        indexingBloc: indexingBloc,
+        navigationBloc: navigationBloc,
+        dialog: const SearchDialog(initialSearchMode: SearchMode.advanced),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    Future<void> openDefaultMode() async {
+      await tester.tap(
+        find.byKey(const ValueKey('search-dialog-defaults-menu')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('search-dialog-default-mode')),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    // ביטול — שום דבר לא נשמר.
+    await openDefaultMode();
+    expect(
+      find.text(
+        'כל חיפוש חדש ייפתח מעכשיו במצב "מתקדם". ניתן לשנות זאת שוב בכל עת.',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('ביטול'));
+    await tester.pumpAndSettle();
+    expect(SearchDefaults.loadModeDefault(), SearchMode.exact);
+
+    // אישור — נשמר.
+    await openDefaultMode();
+    await tester.tap(find.text('קבע כברירת מחדל'));
+    await tester.pumpAndSettle();
+    expect(SearchDefaults.loadModeDefault(), SearchMode.advanced);
   });
 
   testWidgets('חיפוש רגיל מציג רק קידומות/סיומות דקדוקיות', (

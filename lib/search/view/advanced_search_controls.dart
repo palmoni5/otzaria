@@ -5,11 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:otzaria/search/saved_alternatives_store.dart';
 import 'package:otzaria/search/utils/category_query_parser.dart';
-import 'package:otzaria/search/search_defaults.dart';
 import 'package:otzaria/search/search_query_builder.dart';
 import 'package:otzaria/tabs/models/searching_tab.dart';
 import 'package:otzaria/theme/app_surfaces.dart';
-import 'package:otzaria/widgets/controls/action_buttons.dart';
 import 'package:otzaria/widgets/text/rtl_text_field.dart';
 
 /// ווידג'ט לניהול אפשרויות חיפוש מתקדמות לכל מילה בנפרד.
@@ -342,8 +340,6 @@ class _AdvancedSearchControlsState extends State<AdvancedSearchControls> {
           const SizedBox(height: 12),
           _buildInputColumn(perWordInputsEnabled),
         ],
-        const SizedBox(height: 4),
-        _buildSaveDefaultsRow(),
       ],
     );
   }
@@ -393,78 +389,6 @@ class _AdvancedSearchControlsState extends State<AdvancedSearchControls> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  /// תפריט נפתח לסימון אילו אפשרויות מופעלות כברירת מחדל בחיפוש חדש,
-  /// ולצדו לחצן שמאפס את האפשרויות הנוכחיות לברירת המחדל השמורה.
-  Widget _buildSaveDefaultsRow() {
-    final defaults = SearchDefaults.loadDefaults();
-    return Align(
-      alignment: AlignmentDirectional.centerStart,
-      child: Wrap(
-        spacing: 4,
-        children: [
-          MenuAnchor(
-            menuChildren: [
-              // "ניקוד"/"טעמים" מוצעות רק במסלולים שתומכים בחיפוש מנוקד —
-              // כברירת מחדל הן מגבילות כל חיפוש חדש לטקסטים מנוקדים בלבד.
-              for (final key in [
-                ...SearchQueryBuilder.availableWordOptionKeys,
-                ...SearchQueryBuilder.advancedOnlyWordOptionKeys,
-                if (widget.supportsVocalized)
-                  ...SearchQueryBuilder.vocalizedWordOptionKeys,
-              ])
-                CheckboxMenuButton(
-                  value: defaults[key] ?? false,
-                  closeOnActivate: false,
-                  onChanged:
-                      widget.disabledWordOptionIds.contains(
-                        SearchQueryBuilder.pluginOptionIdByWordOptionKey[key],
-                      )
-                      ? null
-                      : (checked) {
-                          setState(() {
-                            SearchDefaults.saveDefaults({
-                              ...defaults,
-                              key: checked ?? false,
-                            });
-                            // שינוי ברירת מחדל מוחל מיד גם על הריבוע בחלונית הפתוחה
-                            _globalSearchOptions[key] = checked ?? false;
-                          });
-                          _searchOptionsChanged.value++;
-                        },
-                  child: Text(key),
-                ),
-            ],
-            // ה-tooltip דרך הכפתור ולא כעטיפה: בתוך MenuAnchor.builder עטיפה
-            // חיצונית מתמזגת לצומת הסמנטיקה של עוגן התפריט (issue #1399).
-            builder: (context, controller, _) => ActionButton.ghost(
-              text: 'ברירת מחדל לחיפוש חדש',
-              icon: FluentIcons.options_24_regular,
-              tooltip: 'סמן אילו אפשרויות יופעלו אוטומטית בכל חיפוש חדש',
-              onPressed: () =>
-                  controller.isOpen ? controller.close() : controller.open(),
-            ),
-          ),
-          Tooltip(
-            message: 'החזרת האפשרויות המסומנות למצב ברירת המחדל השמורה',
-            child: ActionButton.ghost(
-              text: 'חזרה לברירת מחדל',
-              icon: FluentIcons.arrow_reset_24_regular,
-              onPressed: () {
-                setState(() {
-                  _globalSearchOptions
-                    ..clear()
-                    ..addAll(SearchDefaults.loadDefaults());
-                  _searchOptions.clear();
-                });
-                _searchOptionsChanged.value++;
-              },
-            ),
-          ),
-        ],
       ),
     );
   }

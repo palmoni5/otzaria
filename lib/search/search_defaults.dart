@@ -18,6 +18,7 @@ class SearchDefaults {
   static const _settingsKey = 'key-search-default-options';
   static const _exactSettingsKey = 'key-search-default-options-exact';
   static const _distanceKey = 'key-search-default-distance';
+  static const _modeKey = 'key-search-default-mode';
 
   // מטמון הסשן: מצב האפשרויות כפי שהמשתמש השאיר אותן בדיאלוג האחרון,
   // לכל מצב חיפוש בנפרד.
@@ -112,10 +113,19 @@ class SearchDefaults {
   // ── מצב החיפוש ──────────────────────────────────────────────────────
 
   /// מצב החיפוש שבו נפתח חיפוש חדש: מצב הסשן אם קיים (מעבר ידני למצב
-  /// אחר נשמר עד הפעלה מחדש), אחרת חיפוש רגיל (מדויק) — ברירת המחדל
-  /// של פתיחת החיפוש בכל הפעלה טרייה.
+  /// אחר נשמר עד הפעלה מחדש), אחרת ברירת המחדל השמורה.
   static SearchMode initialModeForNewSearch() {
-    return _sessionMode ?? SearchMode.exact;
+    return _sessionMode ?? loadModeDefault();
+  }
+
+  /// מצב החיפוש השמור (בין הפעלות) לפתיחת חיפוש חדש.
+  static SearchMode loadModeDefault() =>
+      _loadEnum(_modeKey, SearchMode.values, SearchMode.exact);
+
+  /// שומר את [mode] כמצב שבו ייפתח כל חיפוש חדש.
+  static void saveModeDefault(SearchMode mode) {
+    _saveEnum(_modeKey, mode.name);
+    _sessionMode = mode;
   }
 
   /// משמר את מצב החיפוש להמשך הסשן (עד הפעלה מחדש של התוכנה).

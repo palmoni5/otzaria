@@ -29,6 +29,9 @@ abstract class LibraryMessages {
   static String distanceSetAsDefault(int distance) =>
       'מרווח $distance נקבע כברירת מחדל לחיפוש רגיל';
 
+  static String searchModeSetAsDefault(String mode) =>
+      'חיפוש חדש ייפתח מעכשיו במצב $mode';
+
   static const String searchIndexMissing =
       'אינדקס לא קיים, לא ניתן לבצע חיפוש זה ללא אינדקס.';
 
