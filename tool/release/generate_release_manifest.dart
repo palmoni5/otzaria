@@ -12,9 +12,9 @@ const int kReleaseManifestSchemaVersion = 1;
 const int kGithubAssetLimit = 2147483648;
 
 /// מאגר ברירת המחדל שממנו מגיעים הנכסים הבנויים.
-const String kOtzariaRepository = 'Otzaria/otzaria';
+const String kOtzariaRepository = 'palmoni5/otzaria';
 
-final RegExp _repositoryPattern = RegExp(r'^Otzaria/[A-Za-z0-9._-]+$');
+final RegExp _repositoryPattern = RegExp(r'^(Otzaria|palmoni5)/[A-Za-z0-9._-]+$');
 final RegExp _sha256Pattern = RegExp(r'^[0-9a-f]{64}$');
 
 /// שגיאת קלט בבניית המניפסט. תמיד עוצרת את הבנייה — מניפסט חלקי גרוע

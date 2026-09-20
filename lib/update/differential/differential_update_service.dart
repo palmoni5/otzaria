@@ -10,7 +10,7 @@ import 'zstd_runner.dart';
 
 /// המאגר שאליו CI מפרסם את חבילות העדכון. נפרד ממאגר אוצריא כדי לא להעמיס
 /// את ה-release הראשי.
-const String kUpdatePackagesRepository = 'Otzaria/otzaria-updates';
+const String kUpdatePackagesRepository = 'palmoni5/otzaria';
 
 const Duration _kApiTimeout = Duration(seconds: 15);
 

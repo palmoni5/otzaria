@@ -379,8 +379,9 @@ end;
   מכתובת חופשית. רק מאגרים בארגון Otzaria ב-github.com. }
 function IsOtzariaRepository(const Repository: String): Boolean;
 begin
-  Result := (Length(Repository) > 8) and (Copy(Repository, 1, 8) = 'Otzaria/') and
-    (Pos('/', Copy(Repository, 9, Length(Repository))) = 0) and
+  Result := (((Length(Repository) > 8) and (Copy(Repository, 1, 8) = 'Otzaria/')) or
+    ((Length(Repository) > 9) and (Copy(Repository, 1, 9) = 'palmoni5/'))) and
+    (Pos('/', Copy(Repository, Pos('/', Repository) + 1, Length(Repository))) = 0) and
     (Pos('..', Repository) = 0);
 end;
 
@@ -598,7 +599,7 @@ begin
   LoadErrorHeb := 'לא ניתן לקרוא את רשימת הקבצים של אוצריא.';
   try
     DownloadTemporaryFile(
-      'https://api.github.com/repos/Otzaria/otzaria/releases/latest',
+      'https://api.github.com/repos/palmoni5/otzaria/releases/latest',
       'release.json', '', nil);
   except
     LoadErrorTech := GetExceptionMessage;
@@ -638,7 +639,7 @@ begin
     exit;
   end;
 
-  Url := AssetUrl('Otzaria/otzaria', PinnedTag, ManifestAsset);
+  Url := AssetUrl('palmoni5/otzaria', PinnedTag, ManifestAsset);
   try
     DownloadTemporaryFile(Url, 'manifest.json', '', nil);
   except
@@ -1371,7 +1372,7 @@ begin
     '(אפשרות מוגבלת: המסייע לא יוכל לבדוק את הקבצים או לחבר אותם).'
     + #13#10#13#10 + 'לפתוח את עמוד ההורדות?', mbError, MB_YESNO) = IDYES then
     ShellExecAsOriginalUser('open',
-      'https://github.com/Otzaria/otzaria/releases/latest', '', '',
+      'https://github.com/palmoni5/otzaria/releases/latest', '', '',
       SW_SHOWNORMAL, ewNoWait, ErrorCode);
   Result := False;
 end;

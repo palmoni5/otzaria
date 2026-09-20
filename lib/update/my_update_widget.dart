@@ -41,7 +41,7 @@ const _kInstallKind = String.fromEnvironment(
   defaultValue: 'auto',
 );
 
-const _githubOwner = 'Otzaria';
+const _githubOwner = 'palmoni5';
 const _githubRepository = 'otzaria';
 const _changelogAssetPath = 'assets/יומן שינויים.md';
 const _kGithubTimeout = Duration(seconds: 15);

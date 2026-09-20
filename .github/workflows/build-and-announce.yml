@@ -2958,8 +2958,8 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         continue-on-error: true
         env:
-          UPDATE_PACKAGES_REPO: Otzaria/otzaria-updates
-          UPDATE_PACKAGES_TOKEN: ${{ secrets.UPDATE_PACKAGES_TOKEN }}
+          UPDATE_PACKAGES_REPO: ${{ github.repository }}
+          UPDATE_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
