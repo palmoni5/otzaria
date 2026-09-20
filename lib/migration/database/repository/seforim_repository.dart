@@ -11,6 +11,7 @@ import '../../models/book.dart';
 import '../../models/category.dart';
 import '../../models/docx_text_cache_entry.dart';
 import '../../models/line.dart';
+import '../daos/line_dh_dao.dart';
 import '../daos/line_ref_dao.dart';
 import '../../models/link.dart';
 import '../../models/pdf_anchor_cache_entry.dart';
@@ -1370,6 +1371,27 @@ class SeforimRepository {
       (resolved[candidate.bookId] ??= []).add(candidate);
     }
     return resolved;
+  }
+
+  /// דיבורי-המתחיל שתחילתם [prefix] בכל אחד מ-[bookIds] (`line_dh`).
+  ///
+  /// כשהתחילית לא החזירה כלום נעשה ניסיון שני של "מכיל" על [containsBookIds]
+  /// בלבד — סריקה יקרה יותר, ולכן על קבוצת ספרים מצומצמת.
+  Future<List<DibburCandidate>> resolveDibburimInBooks(
+    List<int> bookIds,
+    String prefix, {
+    List<int> containsBookIds = const [],
+    int limit = 40,
+  }) async {
+    final dao = _database.lineDhDao;
+    final byPrefix = await dao.dibburimForBooks(bookIds, prefix, limit: limit);
+    if (byPrefix.isNotEmpty || containsBookIds.isEmpty) return byPrefix;
+    return dao.dibburimForBooks(
+      containsBookIds,
+      prefix,
+      contains: true,
+      limit: limit,
+    );
   }
 
   /// גרסת ספר יחיד של [resolveRefKeyInBooks].

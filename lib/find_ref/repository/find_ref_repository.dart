@@ -194,6 +194,16 @@ class FindRefRepository {
   Function(List<int> bookIds, String partialKey)?
   resolvePartialLineRefs;
 
+  /// Injection for testing: מחזיר את דיבורי-המתחיל (`line_dh`) שתחילתם
+  /// [prefix] בספרים המועמדים. In production calls
+  /// [FindRefDbIsolate.resolveDibburim]; מסד בלי הטבלה מחזיר רשימה ריקה.
+  final Future<List<Map<String, dynamic>>> Function(
+    List<int> bookIds,
+    String prefix, {
+    List<int> containsBookIds,
+  })?
+  resolveDibburim;
+
   /// Injection for testing: מחזירה את הדור של מפרש לפי שם.
   /// In production calls [CommentaryService.getBookEra].
   final Future<CommentaryEra> Function(String bookTitle)? getBookEra;
@@ -232,6 +242,13 @@ class FindRefRepository {
   /// תקרת-ביטחון מוחלטת על מספר התוצאות — רשת מפני קבוצת-רלוונטיות פתולוגית
   /// (למשל נושא רחב במצב era). הסט הלגיטימי הגדול בפועל קטן בהרבה.
   static const int _maxResultCap = 100;
+
+  /// תקרת הספרים שבהם מחפשים דיבור-מתחיל. שאילתה אחת מאוגדת, מוגשת
+  /// מהאינדקס — התקרה היא רשת ביטחון מול טוקן-ספר רחב שתפס מאות ספרים.
+  static const int _maxDibburBooks = 50;
+
+  /// מסלול "מכיל" סורק את שורות הספר ולכן מוגבל לראש הרשימה בלבד.
+  static const int _maxDibburContainsBooks = 10;
 
   /// issue #839: מכסת התאמות תת-מחרוזת המובטחת בזנב תוצאות של שאילתת
   /// מילה-אחת — בלעדיה ה-cap מחק אותן כליל ("מא" לא הציג את יומא).
@@ -281,6 +298,7 @@ class FindRefRepository {
     this.fetchCommentatorRows,
     this.resolveLineRefs,
     this.resolvePartialLineRefs,
+    this.resolveDibburim,
     this.getBookEra,
     this.getCategoryPathSync,
     this.beginSearchEpoch,
@@ -656,10 +674,15 @@ class FindRefRepository {
       return const [];
     }
 
-    final queryTokens = _tokenize(cleanedQuery);
+    var queryTokens = _tokenize(cleanedQuery);
     if (queryTokens.isEmpty) {
       return const [];
     }
+
+    // "תוספות ברכות ד"ה מאימתי": הזנב שאחרי הסמן נפתר מול `line_dh`, והראש
+    // ממשיך במסלול הרגיל — כאילו הוקלד שם הספר לבדו.
+    final dibburQuery = _detectDibburQuery(queryTokens);
+    if (dibburQuery != null) queryTokens = dibburQuery.headTokens;
 
     final SeforimRepository? repository =
         SqliteDataProvider.instance.repository;
@@ -866,8 +889,30 @@ class FindRefRepository {
       }
     }
 
+    final dibburim = dibburQuery == null
+        ? const <int, List<_Dibbur>>{}
+        : await _awaitCurrent(_resolveDibburim(bookHits, dibburQuery.prefix));
+
     final results = <DbReferenceResult>[];
     final directMatches = <DbReferenceResult>{};
+
+    void addDibburim(ReferenceBookHit hit) {
+      for (final dibbur in dibburim[hit.bookId] ?? const <_Dibbur>[]) {
+        results.add(
+          DbReferenceResult(
+            title: hit.title,
+            reference: '${hit.title} ד"ה ${dibbur.display}',
+            segment: dibbur.lineIndex,
+            filePath: hit.filePath,
+            orderIndex: hit.orderIndex,
+            tocLevel: 3,
+            bookId: hit.bookId,
+            sourceLineId: dibbur.lineId,
+            isSourceLine: true,
+          ),
+        );
+      }
+    }
 
     // Single-word query: skip per-book TOC search, but still match short
     // AltToc headings globally ("נח" / "פרשת האזינו") — issue #983.
@@ -875,6 +920,7 @@ class FindRefRepository {
       for (final hit in bookHits) {
         final isPdf = hit.fileType == 'pdf';
 
+        addDibburim(hit);
         results.add(
           DbReferenceResult(
             title: hit.title,
@@ -957,7 +1003,11 @@ class FindRefRepository {
       _resolveExactLines(
         bookHits,
         remainingByHit,
-        tokensAfterRange: _tokensAfterRange(ref, queryTokens),
+        // זנב הדיבור כבר נחתך מהטוקנים, וספירת טווח מול השאילתה הגולמית
+        // הייתה מודדת אותו.
+        tokensAfterRange: dibburQuery != null
+            ? 0
+            : _tokensAfterRange(ref, queryTokens),
       ),
     );
 
@@ -1052,6 +1102,8 @@ class FindRefRepository {
         // FS PDFs have no DB category path — bookPath stays ''.
         continue;
       }
+
+      addDibburim(hit);
 
       for (final exact in exactLines[bookId] ?? const <_ExactLine>[]) {
         results.add(
@@ -1334,6 +1386,9 @@ class FindRefRepository {
     if (entries.length < 2) return entries;
 
     return entries.where((entry) {
+      // שורת מקור היא התוצאה הספציפית ביותר — לעולם אינה "וריאנט עמוק" של
+      // כותרת. בלי הסייג, תוצאת ספר ("תוספות על ברכות") בלעה את הדיבור שתחתיה.
+      if (entry.isSourceLine) return true;
       for (final other in entries) {
         if (identical(other, entry)) continue;
         if (other.bookId != entry.bookId) continue;
@@ -1645,6 +1700,76 @@ class FindRefRepository {
   ///
   /// שאילתה מאוגדת אחת לכל מפתח קנוני — לא פנייה לכל ספר מועמד. ריק כשאין
   /// הזרקה (בדיקות) או כשהמסד נבנה לפני האינדקס, ואז נשאר מסלול ה-TOC.
+  /// מזהה שאילתת דיבור-המתחיל: סמן ד"ה אחרי שם הספר, ואחריו לפחות מילה אחת.
+  /// מחזיר את ראש השאילתה (שם הספר וציון פנימי) ואת טקסט הדיבור.
+  @visibleForTesting
+  static ({List<String> headTokens, String prefix})?
+  detectDibburQueryForTesting(
+    List<String> tokens,
+  ) => _detectDibburQuery(tokens);
+
+  static ({List<String> headTokens, String prefix})? _detectDibburQuery(
+    List<String> tokens,
+  ) {
+    for (var i = 1; i < tokens.length - 1; i++) {
+      final markerLength = _dibburMarkerLength(tokens, i);
+      if (markerLength == 0) continue;
+      final tail = tokens.sublist(i + markerLength);
+      if (tail.isEmpty) return null;
+      return (headTokens: tokens.sublist(0, i), prefix: tail.join(' '));
+    }
+    return null;
+  }
+
+  /// אורך הסמן שמתחיל ב-[index], או 0 אם אין שם סמן. הגרשיים כבר הוסרו
+  /// בנרמול, ולכן ד"ה הוא הטוקן "דה".
+  static int _dibburMarkerLength(List<String> tokens, int index) {
+    final token = tokens[index];
+    if (token == 'דה' || token == 'דהמתחיל') return 1;
+    if (token != 'דיבור' && token != 'דבור') return 0;
+    if (index + 1 >= tokens.length) return 0;
+    final next = tokens[index + 1];
+    return (next == 'המתחיל' || next == 'מתחיל') ? 2 : 0;
+  }
+
+  /// דיבורי-המתחיל שתחילתם [prefix] בספרים שזוהו, ממופתחים לפי bookId.
+  Future<Map<int, List<_Dibbur>>> _resolveDibburim(
+    List<ReferenceBookHit> bookHits,
+    String prefix,
+  ) async {
+    final resolve = resolveDibburim;
+    if (resolve == null || prefix.isEmpty) return const {};
+
+    final bookIds = <int>[
+      for (final hit in bookHits)
+        if (hit.bookId > 0 && hit.fileType != 'pdf') hit.bookId,
+    ];
+    if (bookIds.isEmpty) return const {};
+
+    final searched = bookIds.take(_maxDibburBooks).toList();
+    final rows = await _awaitCurrent(
+      resolve(
+        searched,
+        prefix,
+        containsBookIds: searched.take(_maxDibburContainsBooks).toList(),
+      ),
+    );
+
+    final resolved = <int, List<_Dibbur>>{};
+    for (final row in rows) {
+      final display = (row['display'] as String?) ?? '';
+      if (display.isEmpty) continue;
+      (resolved[row['bookId'] as int] ??= []).add(
+        (
+          lineIndex: row['lineIndex'] as int,
+          lineId: row['lineId'] as int? ?? 0,
+          display: display,
+        ),
+      );
+    }
+    return resolved;
+  }
+
   Future<Map<int, List<_ExactLine>>> _resolveExactLines(
     List<ReferenceBookHit> bookHits,
     Map<ReferenceBookHit, List<String>> remainingByHit, {
@@ -2167,3 +2292,5 @@ class _RankKey {
 }
 
 typedef _ExactLine = ({int lineIndex, int lineId, String? heRef});
+
+typedef _Dibbur = ({int lineIndex, int lineId, String display});

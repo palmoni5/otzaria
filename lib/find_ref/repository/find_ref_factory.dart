@@ -96,6 +96,17 @@ FindRefRepository buildFindRefRepository() {
         searchEpoch: request.epoch,
       );
     },
+    resolveDibburim: (bookIds, prefix, {containsBookIds = const []}) async {
+      final request = await searchWorker();
+      repository.throwIfSearchGenerationCancelled(request.epoch);
+      return request.worker.resolveDibburim(
+        bookIds,
+        prefix,
+        containsBookIds: containsBookIds,
+        searchScope: scope,
+        searchEpoch: request.epoch,
+      );
+    },
     getBookEra: (bookTitle) async {
       final request = await searchWorker();
       repository.throwIfSearchGenerationCancelled(request.epoch);

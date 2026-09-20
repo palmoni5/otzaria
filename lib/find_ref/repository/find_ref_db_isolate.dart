@@ -272,6 +272,30 @@ class FindRefDbIsolate {
     };
   }
 
+  /// דיבורי-המתחיל שתחילתם [prefix] בספרים המועמדים (`line_dh`).
+  /// [containsBookIds] הוא מסלול הנסיגה של "מכיל", ראה
+  /// [SeforimRepository.resolveDibburimInBooks].
+  Future<List<Map<String, dynamic>>> resolveDibburim(
+    List<int> bookIds,
+    String prefix, {
+    List<int> containsBookIds = const [],
+    int searchScope = 0,
+    int? searchEpoch,
+  }) async {
+    final res = await _request(
+      'dibburim',
+      {
+        'bookIds': bookIds,
+        'prefix': prefix,
+        'containsBookIds': containsBookIds,
+      },
+      cancellable: true,
+      searchScope: searchScope,
+      searchEpoch: searchEpoch,
+    );
+    return _castRows(res);
+  }
+
   /// פותר מפתח חלקי ([buildPartialRefKey]) — כמה מועמדים לספר, אחד לכל חלק.
   Future<Map<int, List<({int lineIndex, int lineId, String? heRef})>>>
   resolvePartialLineRefs(
@@ -786,6 +810,23 @@ void _workerMain(_Bootstrap bootstrap) {
               'lineIndex': entry.value.lineIndex,
               'lineId': entry.value.lineId,
               'heRef': entry.value.heRef,
+            },
+        ];
+      case 'dibburim':
+        final repo = await ensureRepo();
+        if (repo == null) return const <Map<String, dynamic>>[];
+        final found = await repo.resolveDibburimInBooks(
+          (args['bookIds'] as List).cast<int>(),
+          args['prefix'] as String,
+          containsBookIds: (args['containsBookIds'] as List).cast<int>(),
+        );
+        return [
+          for (final dibbur in found)
+            {
+              'bookId': dibbur.bookId,
+              'lineIndex': dibbur.lineIndex,
+              'lineId': dibbur.lineId,
+              'display': dibbur.display,
             },
         ];
       case 'partialLineRefs':
