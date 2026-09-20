@@ -1095,20 +1095,35 @@ SEVERE: PathExistsException: Cannot copy file to
   (OS Error: Cannot create a file when that file already exists, errno = 183)
 ```
 
-This is **not** a Rust or toolchain problem. cargokit fetches a precompiled
-`search_engine.dll` and copies it into place with a copy that is not
-overwrite-safe, so it fails when a stale copy from an earlier build is already
-there. Anything that invalidates the cargokit stamp — `flutter pub get`, a
-plugin re-resolve — triggers a re-fetch and hits the stale file.
+This is **not** a Rust or toolchain problem, and **the message lies**: Dart
+reports a *locked* destination as "already exists" (errno 183). `copySync`
+overwrites an ordinary existing file without complaint — it fails only when
+another process holds the destination open. The copy step itself is fine; the
+question is always *who is holding `search_engine.dll`*.
 
-Fix by deleting just the stale destination, not the whole build tree:
+Find the holder before doing anything else:
 
 ```bash
-rm build/windows/x64/plugins/otzaria_search_engine/Debug/search_engine.dll
-flutter build windows --debug
+powershell -NoProfile -Command "Get-Process | %{ \$p=\$_; try { \$p.Modules | ? { \$_.ModuleName -eq 'search_engine.dll' } | %{ \"\$(\$p.ProcessName) \$(\$p.Id) \$(\$_.FileName)\" } } catch {} }"
 ```
 
-`flutter clean` also works but re-downloads and rebuilds everything.
+A row under `runner\Debug` is the running app's own copy and is harmless — only a
+`plugins\...` row blocks the build. The usual culprit is an **orphaned
+`flutter_tester.exe`** left behind by an
+interrupted `flutter test` run — it waits forever on a websocket to a driver
+that is gone, and Flutter's listener has no self-timeout. Kill it:
+
+```bash
+powershell -NoProfile -Command "Get-Process flutter_tester | Stop-Process -Force"
+```
+
+Tests no longer map the build output itself: `test/support/search_engine_test_init.dart`
+loads a per-build copy under `build/test_engine/`, a path no build writes to, so a
+stray tester can no longer block a build. Never point the test loader back at
+`build/windows/.../plugins/` — that is the whole regression.
+
+Deleting the destination "works" only by accident (the holder allows delete-share),
+leaves the lock in place, and the next build fails again.
 
 ## Platform Support
 **Supported:** Windows, Linux, Android, iOS, macOS

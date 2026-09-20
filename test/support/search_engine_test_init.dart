@@ -61,6 +61,61 @@ List<String> searchEngineLibraryCandidates() {
   return [for (final file in candidates) file.path];
 }
 
+/// תיקיית העותקים שהטסטים טוענים ממנה. הבנייה לעולם אינה כותבת לכאן.
+const String _testLoadDir = 'build/test_engine';
+
+String _fileName(String path) {
+  final separator = path.lastIndexOf(RegExp(r'[/\\]'));
+  return separator < 0 ? path : path.substring(separator + 1);
+}
+
+/// מעתיק את הספרייה לנתיב פרטי לטסטים ומחזיר אותו. tester שנשאר תלוי אחרי
+/// ריצה מחזיק נעול את הקובץ שטען, ועל פלט הבנייה זה מפיל כל בנייה הבאה.
+String? _testLoadCopy(String source) {
+  try {
+    final file = File(source);
+    final stat = file.statSync();
+    final fileName = _fileName(source);
+    final dot = fileName.lastIndexOf('.');
+    final base = dot < 0 ? fileName : fileName.substring(0, dot);
+    final extension = dot < 0 ? '' : fileName.substring(dot);
+    // גרסת הבנייה בשם הקובץ: עותק חדש נוצר לצד הישן במקום לדרוס אותו נעול.
+    final stamp = '${stat.modified.millisecondsSinceEpoch}_${stat.size}';
+    final targetName = '${base}_$stamp$extension';
+    final target = File('$_testLoadDir/$targetName');
+    if (target.existsSync()) return target.path;
+
+    Directory(_testLoadDir).createSync(recursive: true);
+    final temp = File('$_testLoadDir/$base.$pid$extension.tmp');
+    file.copySync(temp.path);
+    try {
+      temp.renameSync(target.path);
+      _pruneStaleCopies(base, extension, targetName);
+    } catch (_) {
+      // tester מקביל הקדים אותנו — העותק שלו זהה בתוכנו.
+      try {
+        temp.deleteSync();
+      } catch (_) {}
+    }
+    return target.existsSync() ? target.path : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/// מוחק עותקים של בניות קודמות. קובץ שטוען אותו כרגע tester אחר אינו נמחק.
+void _pruneStaleCopies(String base, String extension, String keepName) {
+  for (final entity in Directory(_testLoadDir).listSync()) {
+    if (entity is! File) continue;
+    final name = _fileName(entity.path);
+    if (name == keepName) continue;
+    if (!name.startsWith('${base}_') || !name.endsWith(extension)) continue;
+    try {
+      entity.deleteSync();
+    } catch (_) {}
+  }
+}
+
 bool? _initResult;
 
 /// טוען את ספריית מנוע החיפוש הנייטיבית ומאתחל את [RustLib]. פונקציות כמו
@@ -74,7 +129,8 @@ Future<bool> tryInitSearchEngine() async {
   if (_initResult != null) return _initResult!;
   for (final path in searchEngineLibraryCandidates()) {
     try {
-      await RustLib.init(externalLibrary: ExternalLibrary.open(path));
+      final loadPath = _testLoadCopy(path) ?? path;
+      await RustLib.init(externalLibrary: ExternalLibrary.open(loadPath));
       return _initResult = true;
     } catch (_) {
       // אתחול כושל עלול להשאיר instance חלקי שחוסם ניסיון נוסף.
