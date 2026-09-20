@@ -335,6 +335,32 @@ jobs:
         run: |
           flutter build windows --release --verbose --dart-define=BIO_OBF_KEY=${{ secrets.BIO_OBF_KEY }}
 
+      # המעדכן העצמאי נכנס לתיקיית הבנייה לפני האריזה, ולכן הוא נארז ל-ZIP,
+      # למתקין ולמניפסט קובצי ההתקנה בלי שינוי ב-otzaria.iss.
+      # אופטימיזציה בלבד: בלעדיו העדכון נשאר המתקין המלא.
+      - name: Build differential updater helper (x64)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          dart compile exe tool/updater/otzaria_updater.dart `
+            -o "build\windows\x64\runner\Release\otzaria_updater.exe"
+          if ($LASTEXITCODE -ne 0) { throw "updater helper build failed" }
+
+      # חותם השחרור נכנס לתיקיית הבנייה לפני האריזה, ולכן הוא נארז ל-ZIP,
+      # למתקין ולמניפסט קובצי ההתקנה בלי שינוי ב-otzaria.iss. בלעדיו
+      # ההתקנה אינה יודעת את תגה (`<version>+<run_number>`) ונשארת על
+      # המתקין המלא.
+      - name: Stamp installed release (x64)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path pubspec.yaml -Pattern '^version:').Line.Split(' ')[1].Split('+')[0]
+          $tag = if ('${{ github.ref }}' -eq 'refs/heads/main') { $version } else { "$version+${{ github.run_number }}" }
+          dart run tool/release/generate_app_file_manifest.dart --stamp `
+            --tag "$tag" --version "$version" `
+            --dir "build\windows\x64\runner\Release" --architecture x64
+          if ($LASTEXITCODE -ne 0) { throw "release stamp failed" }
+
       - name: Zip Windows build
         shell: pwsh
         run: |
@@ -530,6 +556,21 @@ jobs:
           $size = [math]::Round((Get-Item "installer\MicrosoftEdgeWebview2Setup.exe").Length / 1MB, 2)
           Write-Host "MicrosoftEdgeWebview2Setup.exe downloaded successfully ($size MB)"
 
+      # zstd הוא מה שמאפשר את העדכון המצומצם אצל המשתמש: הוא פורס את חבילת
+      # העדכון ומחיל את ה-patch. מועתק הבינארי שכבר ירד לצורך המתקין המלא —
+      # אין כאן הורדה שנייה. הוא נכנס לתיקיית הבנייה, ולכן נארז למתקין
+      # (otzaria.iss אורז Release\*), ל-ZIP ולמניפסט קובצי ההתקנה בלי שינוי
+      # בשום סקריפט. אופטימיזציה בלבד: בלעדיו העדכון נשאר המתקין המלא.
+      - name: Stage zstd for small updates (x64)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Copy-Item installer\zstd.exe build\windows\x64\runner\Release\zstd.exe -Force
+          # ה-ZIP נארז לפני ש-zstd הוכן, ולכן הוא מתווסף אליו כאן: המניפסט
+          # נגזר מתיקיית הבנייה, והשניים חייבים לתאר אותה קבוצת קבצים.
+          Compress-Archive -Path build\windows\x64\runner\Release\zstd.exe -Update -DestinationPath otzaria-windows.zip
+          Write-Host "zstd.exe staged for differential updates"
+
       - name: Build Inno Setup installer
         shell: pwsh
         run: |
@@ -577,6 +618,27 @@ jobs:
             throw "Regular installer build failed"
           }
 
+      # כלי עזר, לא רכיב של הגרסה: כישלון כאן לא יפיל את שחרור אוצריא.
+      - name: Build Download Assistant (non-fatal helper tool)
+        id: download_assistant
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Write-Host "Building the Download Assistant helper..."
+          & "$env:ISCC" installer\download_assistant.iss
+          if ($LASTEXITCODE -ne 0) {
+            throw "Download Assistant build failed"
+          }
+
+      - name: Upload Download Assistant
+        if: steps.download_assistant.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: otzaria-download-assistant
+          path: installer/Otzaria-Download-Assistant-win.exe
+          if-no-files-found: warn
+
       - name: Upload Windows installer (regular)
         uses: actions/upload-artifact@v7.0.1
         with:
@@ -600,6 +662,30 @@ jobs:
         with:
           name: otzaria-windows-zip
           path: otzaria-windows.zip
+
+      # מניפסט קובצי ההתקנה — הקלט של העדכון הדיפרנציאלי בשחרור הבא.
+      # נסרקת תיקיית הבנייה ולא ה-ZIP, ולכן portable.marker אינו נכנס.
+      # אופטימיזציה בלבד: בלעדיו העדכון הבא נופל למתקין המלא.
+      - name: Generate application file manifest (x64)
+        id: app_file_manifest
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path pubspec.yaml -Pattern '^version:').Line.Split(' ')[1].Split('+')[0]
+          $tag = if ('${{ github.ref }}' -eq 'refs/heads/main') { $version } else { "$version+${{ github.run_number }}" }
+          dart run tool/release/generate_app_file_manifest.dart `
+            --tag "$tag" --version "$version" `
+            --dir "build\windows\x64\runner\Release" --architecture x64
+          if ($LASTEXITCODE -ne 0) { throw "app file manifest failed" }
+
+      - name: Upload application file manifest (x64)
+        if: steps.app_file_manifest.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: otzaria-app-file-manifest-x64
+          path: otzaria-app-files-windows-x64.json
+          if-no-files-found: warn
 
   # בניית Windows ARM64 נייטיבית — הפתרון לתוספים המתים באמולציית x64 על
   # מכשירי Snapdragon (issue #1014): WebView2 מסרב ליצור controller במסלול
@@ -735,6 +821,49 @@ jobs:
             throw 'Expected an arm64 build output — the tool built a different architecture'
           }
 
+      # ראה ההסבר בשלב המקביל ב-build_windows.
+      - name: Build differential updater helper (ARM64)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          dart compile exe tool/updater/otzaria_updater.dart `
+            -o "build\windows\arm64\runner\Release\otzaria_updater.exe"
+          if ($LASTEXITCODE -ne 0) { throw "updater helper build failed" }
+
+      # ראה ההסבר בשלב המקביל ב-build_windows.
+      - name: Stamp installed release (ARM64)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path pubspec.yaml -Pattern '^version:').Line.Split(' ')[1].Split('+')[0]
+          $tag = if ('${{ github.ref }}' -eq 'refs/heads/main') { $version } else { "$version+${{ github.run_number }}" }
+          dart run tool/release/generate_app_file_manifest.dart --stamp `
+            --tag "$tag" --version "$version" `
+            --dir "build\windows\arm64\runner\Release" --architecture arm64
+          if ($LASTEXITCODE -ne 0) { throw "release stamp failed" }
+
+      # אותו zstd.exe של x64 בדיוק: facebook/zstd אינו מפרסם בינארי
+      # Windows-ARM64, ו-Windows on ARM מריץ x64 באמולציה. הוא פורס כמה
+      # מגה-בתים בעדכון, ולכן האטת האמולציה חסרת משמעות. בלעדיו הבדיקה
+      # `differentialUpdateSupported` נכשלת וכל עדכון ARM64 הוא המתקין המלא.
+      - name: Stage zstd for small updates (ARM64)
+        continue-on-error: true
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $apiHeaders = @{ Authorization = "Bearer $env:GH_TOKEN" }
+          $zstdRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/facebook/zstd/releases/latest" -Headers $apiHeaders
+          $zstdAsset = $zstdRelease.assets | Where-Object { $_.name -like "zstd-*-win64.zip" } | Select-Object -First 1
+          if (-not $zstdAsset) { throw "Could not find win64 zstd asset in latest release" }
+          Invoke-WebRequest -Uri $zstdAsset.browser_download_url -OutFile "$env:RUNNER_TEMP\zstd-win64.zip" -UseBasicParsing
+          Expand-Archive -Path "$env:RUNNER_TEMP\zstd-win64.zip" -DestinationPath "$env:RUNNER_TEMP\zstd_tmp" -Force
+          $zstdExe = Get-ChildItem -Path "$env:RUNNER_TEMP\zstd_tmp" -Filter "zstd.exe" -Recurse | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $zstdExe) { throw "zstd.exe was not found inside downloaded archive" }
+          Copy-Item -Path $zstdExe -Destination "build\windows\arm64\runner\Release\zstd.exe" -Force
+          Write-Host "zstd.exe (x64, emulated) staged for differential updates"
+
       - name: Zip Windows ARM64 build
         shell: pwsh
         run: |
@@ -768,6 +897,29 @@ jobs:
         with:
           name: otzaria-windows-arm64-zip
           path: otzaria-windows_arm64.zip
+
+      # ראה ההסבר בשלב המקביל ב-build_windows. ארכיטקטורה נפרדת = מניפסט
+      # נפרד: בינארי ARM64 אינו רץ על x64 ולהפך.
+      - name: Generate application file manifest (ARM64)
+        id: app_file_manifest_arm64
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path pubspec.yaml -Pattern '^version:').Line.Split(' ')[1].Split('+')[0]
+          $tag = if ('${{ github.ref }}' -eq 'refs/heads/main') { $version } else { "$version+${{ github.run_number }}" }
+          dart run tool/release/generate_app_file_manifest.dart `
+            --tag "$tag" --version "$version" `
+            --dir "build\windows\arm64\runner\Release" --architecture arm64
+          if ($LASTEXITCODE -ne 0) { throw "app file manifest failed" }
+
+      - name: Upload application file manifest (ARM64)
+        if: steps.app_file_manifest_arm64.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: otzaria-app-file-manifest-arm64
+          path: otzaria-app-files-windows-arm64.json
+          if-no-files-found: warn
 
   build_linux:
     name: Linux ${{ matrix.target }} ${{ matrix.arch }}
@@ -2439,6 +2591,89 @@ jobs:
           echo "Release files:"
           ls -la release-files/
 
+      # כלי עזר בלבד — היעדרו לא מונע שחרור, ולכן השלב אינו נכשל בלעדיו.
+      - name: Stage Download Assistant
+        run: |
+          set -euo pipefail
+          if [ -d "artifacts/otzaria-download-assistant" ]; then
+            cp artifacts/otzaria-download-assistant/Otzaria-Download-Assistant-win.exe release-files/
+          else
+            echo "::warning::Download Assistant artifact is missing - releasing without it"
+          fi
+
+      # מניפסטי קובצי ההתקנה עולים עם השחרור כי השחרור *הבא* קורא אותם כדי
+      # לחשב patch. היעדרם אינו חוסם — הוא רק מבטל את העדכון הדיפרנציאלי הבא.
+      - name: Stage application file manifests
+        run: |
+          set -euo pipefail
+          for arch in x64 arm64; do
+            src="artifacts/otzaria-app-file-manifest-$arch/otzaria-app-files-windows-$arch.json"
+            if [ -f "$src" ]; then
+              cp "$src" release-files/
+            else
+              echo "::warning::application file manifest for $arch is missing - the next release will have no differential update for it"
+            fi
+          done
+
+      # מתקין ה-FULL מתקרב למגבלת ה-2 GiB לנכס בודד ב-GitHub. כשיחצה אותה
+      # הוא יפוצל לחלקים, ומסייע ההורדה מרכיב אותם חזרה לקובץ הפעלה אחד.
+      - name: Split the Windows FULL installer if it reaches GitHub's asset limit
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          GITHUB_ASSET_LIMIT=2147483648
+          PART_SIZE=1992294400
+
+          for installer in release-files/otzaria-*-windows-full.exe; do
+            name=$(basename "$installer")
+            size=$(stat -c '%s' "$installer")
+            if [ "$size" -lt "$GITHUB_ASSET_LIMIT" ]; then
+              echo "$name is $size bytes, below the $GITHUB_ASSET_LIMIT limit - uploading as a single asset"
+              continue
+            fi
+            echo "::warning::$name is $size bytes, at or above GitHub's per-asset limit - splitting it"
+            rm -rf windows-full-parts
+            mkdir -p windows-full-parts
+            tool/release/split_release_asset.sh "$installer" windows-full-parts "$PART_SIZE"
+            mv windows-full-parts/* release-files/
+            rm -f -- "$installer"
+            rm -rf windows-full-parts
+          done
+
+      # הכנה להרצת גנרטור המניפסט (הריפו הוא פרויקט Flutter; crypto נפתר מ-pub).
+      - name: Set up Flutter for the release manifest
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.2
+          cache: true
+
+      # מניפסט שבור גרוע ממניפסט חסר, ולכן הגנרטור נכשל ברעש ואינו כותב
+      # קובץ חלקי. כישלונו אינו עוצר את השחרור: מסייע ההורדה מתפקד גם בלי
+      # הנכס הזה, ואין שום סיבה שנכס פגום יבטל release שלם.
+      - name: Generate release manifest
+        id: release_manifest
+        continue-on-error: true
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          flutter pub get
+          dart run tool/release/generate_release_manifest.dart \
+            --tag "$RELEASE_TAG" \
+            --version "$RELEASE_VERSION" \
+            --dir release-files \
+            --out release-files/otzaria-release-manifest.json
+          cat release-files/otzaria-release-manifest.json
+
+      - name: Warn when the release manifest is missing
+        if: steps.release_manifest.outcome != 'success'
+        run: |
+          rm -f release-files/otzaria-release-manifest.json
+          echo "::warning::הגנרטור של מניפסט ה-release נכשל - השחרור יוצא בלעדיו, ומסייע ההורדה יציג שגיאה ידידותית במקום רשימת רכיבים"
+
       - name: Generate release notes
         env:
           RELEASE_TITLE: ${{ steps.version.outputs.title }}
@@ -2454,7 +2689,10 @@ jobs:
           windows_installers=()
           windows_arm64_installers=()
           windows_full=()
+          windows_full_parts=()
+          windows_full_support=()
           windows_indexed_full=()
+          download_assistant=()
           android_apk=()
           android_full=()
           linux_deb=()
@@ -2481,6 +2719,17 @@ jobs:
             lower=$(printf '%s' "$file" | tr '[:upper:]' '[:lower:]')
 
             case "$lower" in
+              # ראשון בכוונה: שם הכלי אינו מכיל "windows", אבל הוא חייב להישאר
+              # מסווג ככלי עזר גם אם תבנית כלשהי מתחתיו תשתנה.
+              otzaria-download-assistant-win.exe)
+                download_assistant+=("$file")
+                ;;
+              *windows-full.exe.part-*)
+                windows_full_parts+=("$file")
+                ;;
+              *windows-full.exe.manifest.json)
+                windows_full_support+=("$file")
+                ;;
               *windows-full-indexed*.exe)
                 windows_indexed_full+=("$file")
                 ;;
@@ -2587,7 +2836,7 @@ jobs:
           EOF
           fi
 
-          if [ ${#windows_installers[@]} -gt 0 ] || [ ${#windows_arm64_installers[@]} -gt 0 ] || [ ${#windows_full[@]} -gt 0 ] || [ ${#windows_indexed_full[@]} -gt 0 ]; then
+          if [ ${#windows_installers[@]} -gt 0 ] || [ ${#windows_arm64_installers[@]} -gt 0 ] || [ ${#windows_full[@]} -gt 0 ] || [ ${#windows_full_parts[@]} -gt 0 ] || [ ${#windows_indexed_full[@]} -gt 0 ]; then
             printf "## ווינדוס\n\n" >> release-body.md
 
             if [ ${#windows_installers[@]} -gt 0 ]; then
@@ -2597,9 +2846,14 @@ jobs:
               printf "\n" >> release-body.md
             fi
 
-            if [ ${#windows_full[@]} -gt 0 ]; then
+            if [ ${#windows_full[@]} -gt 0 ] || [ ${#windows_full_parts[@]} -gt 0 ]; then
               printf "### גרסת ספרייה מלאה\n\n" >> release-body.md
               emit_link_group "חבילה מלאה לווינדוס" "${windows_full[@]}"
+              emit_link_group "חלק מהחבילה המלאה לווינדוס" "${windows_full_parts[@]}"
+              emit_link_group "קובץ אימות לחבילה המלאה" "${windows_full_support[@]}"
+              if [ ${#windows_full_parts[@]} -gt 0 ]; then
+                printf "\n> **החבילה המלאה גדולה ממגבלת הקובץ הבודד של GitHub ולכן חולקה לחלקים.** הדרך הפשוטה להוריד אותה היא באמצעות מסייע ההורדה שבסוף העמוד: הוא מוריד את כל החלקים, מאמת אותם ומחבר אותם בחזרה לקובץ התקנה אחד.\n" >> release-body.md
+              fi
               printf "\n" >> release-body.md
             fi
           fi
@@ -2658,6 +2912,12 @@ jobs:
             fi
           fi
 
+          if [ ${#download_assistant[@]} -gt 0 ]; then
+            printf "## כלי עזר\n\n" >> release-body.md
+            emit_link_group "מסייע הורדה — כלי עזר להורדת אוצריא ולהכנת התקנה למחשב ללא אינטרנט. זהו אינו קובץ ההתקנה עצמו" "${download_assistant[@]}"
+            printf "\n" >> release-body.md
+          fi
+
           cat >> release-body.md <<EOF
           <details>
           <summary>מידע טכני</summary>
@@ -2686,6 +2946,47 @@ jobs:
           body_path: release-body.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # עדכון דיפרנציאלי — אופטימיזציה בלבד, ולכן השלב רץ *אחרי* יצירת
+      # השחרור ונושא continue-on-error: כישלון כאן אינו יכול לגעת בשחרור,
+      # והמשתמשים פשוט מקבלים את המתקין המלא כמו היום.
+      #
+      # החבילות מתפרסמות במאגר ייעודי (UPDATE_PACKAGES_REPO) כדי לא להעמיס
+      # את עמוד השחרורים הראשי ולאפשר פרסום רטרואקטיבי. המאגר טרם נוצר —
+      # עד אז השלב מזהיר ויוצא, ומעבר אליו הוא שינוי של שורת ה-env הזאת.
+      - name: Publish differential update packages
+        if: github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        env:
+          UPDATE_PACKAGES_REPO: Otzaria/otzaria-updates
+          UPDATE_PACKAGES_TOKEN: ${{ secrets.UPDATE_PACKAGES_TOKEN }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${UPDATE_PACKAGES_TOKEN:-}" ]; then
+            echo "::warning::UPDATE_PACKAGES_TOKEN is not configured - skipping differential update packages"
+            exit 0
+          fi
+          flutter pub get
+          mkdir -p update-packages
+          for arch in x64 arm64; do
+            manifest="release-files/otzaria-app-files-windows-$arch.json"
+            zip="release-files/otzaria-windows.zip"
+            [ "$arch" = "x64" ] || zip="release-files/otzaria-windows_$arch.zip"
+            bash tool/release/build_update_packages.sh \
+              "$arch" "$RELEASE_TAG" "$manifest" "$zip" update-packages 2
+          done
+          if [ -z "$(ls -A update-packages)" ]; then
+            echo "::warning::no differential update packages were produced"
+            exit 0
+          fi
+          GH_TOKEN="$UPDATE_PACKAGES_TOKEN" gh release create "$RELEASE_TAG" \
+            --repo "$UPDATE_PACKAGES_REPO" --title "$RELEASE_TAG" \
+            --notes "Differential update packages for $RELEASE_TAG." \
+            update-packages/* ||
+          GH_TOKEN="$UPDATE_PACKAGES_TOKEN" gh release upload "$RELEASE_TAG" \
+            --repo "$UPDATE_PACKAGES_REPO" --clobber update-packages/*
 
   trigger_google_play_deploy:
     if: "!cancelled() && needs.check_version.outputs.is_version == 'true' && needs.build_android.result == 'success' && github.event_name != 'release' && github.event_name != 'pull_request'"

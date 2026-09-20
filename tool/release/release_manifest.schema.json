@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Otzaria/otzaria/tool/release/release_manifest.schema.json",
+  "title": "Otzaria release manifest",
+  "description": "מתאר את רכיבי ההורדה של release אחד של אוצריא. הסמכות בפועל היא validateReleaseManifest ב-tool/release/generate_release_manifest.dart; הסכמה הזאת היא תיעוד בר-אימות של אותו חוזה. שדות לא מוכרים מותרים בכל רמה — צרכן ישן חייב להמשיך לעבוד מול מניפסט חדש.",
+  "type": "object",
+  "required": ["schemaVersion", "releaseTag", "releaseVersion", "components"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "releaseTag": { "type": "string", "minLength": 1 },
+    "releaseVersion": { "type": "string", "minLength": 1 },
+    "components": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/component" }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "assetName": { "type": "string", "pattern": "^[^\\\\/]+$", "minLength": 1 },
+    "component": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "description",
+        "type",
+        "required",
+        "origin",
+        "installOrder",
+        "dependsOn",
+        "downloadSize",
+        "assets"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "טקסט חופשי בכוונה (application / library / search-index / dependency / semantic-model ...). סוג לא מוכר אינו שגיאה."
+        },
+        "required": { "type": "boolean" },
+        "origin": {
+          "enum": ["built", "imported"],
+          "description": "תיעוד מקור לרישוי בלבד; אינו משפיע על נתיב ההורדה."
+        },
+        "platform": { "type": "string" },
+        "architecture": { "type": "string" },
+        "installOrder": { "type": "integer" },
+        "dependsOn": { "type": "array", "items": { "type": "string" } },
+        "downloadSize": { "type": "integer", "exclusiveMinimum": 0 },
+        "installedSize": { "type": "integer", "exclusiveMinimum": 0 },
+        "compatibility": {
+          "type": "object",
+          "description": "מטא-דאטת התאמה גנרית (מפתחות כמו seforimDbZstSha256, searchEngineVersion, talmudVolumesDigest, libraryReleaseTag) שמאפשרת לצרכן לסרב לצמד לא תואם."
+        },
+        "assets": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/asset" }
+        }
+      }
+    },
+    "asset": {
+      "type": "object",
+      "required": ["kind", "repository", "releaseTag", "name", "size", "sha256"],
+      "properties": {
+        "kind": { "enum": ["single", "split"] },
+        "repository": {
+          "type": "string",
+          "pattern": "^Otzaria/[A-Za-z0-9._-]+$",
+          "description": "כתובת הנכס היא תמיד מאגר בארגון Otzaria + תג + שם קובץ. אין URL חופשי."
+        },
+        "releaseTag": { "type": "string", "minLength": 1 },
+        "name": { "$ref": "#/$defs/assetName" },
+        "size": { "type": "integer", "exclusiveMinimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "manifestAsset": { "$ref": "#/$defs/assetName" },
+        "partSizeLimit": { "type": "integer", "exclusiveMinimum": 0 },
+        "githubAssetLimit": { "type": "integer", "exclusiveMinimum": 0 },
+        "parts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "size", "sha256"],
+            "properties": {
+              "name": { "$ref": "#/$defs/assetName" },
+              "size": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 2147483648
+              },
+              "sha256": { "$ref": "#/$defs/sha256" }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "split" } } },
+          "then": { "required": ["parts", "manifestAsset"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "single" } } },
+          "then": {
+            "not": { "required": ["parts"] },
+            "properties": {
+              "size": { "exclusiveMaximum": 2147483648 }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

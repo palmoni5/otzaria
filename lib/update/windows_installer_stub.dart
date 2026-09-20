@@ -5,4 +5,7 @@ bool launchWindowsSilentInstaller({
 }) => false;
 
 /// משגר קובץ הרצה של Windows. אינו נתמך מחוץ ל-Windows.
-bool launchWindowsDetachedProcess(String executablePath) => false;
+bool launchWindowsDetachedProcess(
+  String executablePath, {
+  List<String> arguments = const [],
+}) => false;

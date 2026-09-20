@@ -14,6 +14,8 @@ zstd_tmp/
 
 # Ignore built installers (but not icon file)
 otzaria-*.exe
+# שם קבוע באות גדולה — על מערכת קבצים רגישת-רישיות הכלל שמעל אינו תופס אותו
+Otzaria-Download-Assistant-win.exe
 
 # Ignore Inno Setup output directory if it exists
 Output/

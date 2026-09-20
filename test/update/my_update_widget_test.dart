@@ -458,6 +458,67 @@ void main() {
         'https://example.com/otzaria-0.9.96-windows.exe',
       );
     });
+
+    test('never selects the download assistant', () {
+      final withAssistant = [
+        ...fullReleaseAssets,
+        asset('Otzaria-Download-Assistant-win.exe'),
+      ];
+      expect(
+        pickWindowsAssetUrl(
+          withAssistant,
+          preferredFormat: 'exe',
+          isArmMachine: false,
+        ),
+        'https://example.com/otzaria-0.9.96-windows.exe',
+      );
+      expect(
+        pickWindowsAssetUrl(
+          withAssistant,
+          preferredFormat: 'exe',
+          isArmMachine: true,
+        ),
+        'https://example.com/otzaria-0.9.96-windows_arm64.exe',
+      );
+    });
+
+    test('the download assistant is not chosen even as the only exe', () {
+      for (final name in const [
+        'Otzaria-Download-Assistant-win.exe',
+        'otzaria_download_assistant_win.exe',
+      ]) {
+        expect(
+          pickWindowsAssetUrl(
+            [asset(name)],
+            preferredFormat: 'exe',
+            isArmMachine: false,
+          ),
+          isNull,
+          reason: name,
+        );
+        expect(
+          pickWindowsAssetUrl(
+            [asset(name)],
+            preferredFormat: 'zip',
+            isArmMachine: true,
+          ),
+          isNull,
+          reason: name,
+        );
+      }
+    });
+
+    test('isDownloadAssistantAsset matches only the assistant', () {
+      expect(
+        isDownloadAssistantAsset('Otzaria-Download-Assistant-win.exe'),
+        isTrue,
+      );
+      expect(isDownloadAssistantAsset('otzaria-0.9.97-windows.exe'), isFalse);
+      expect(
+        isDownloadAssistantAsset('otzaria-0.9.97-windows-full-indexed.exe'),
+        isFalse,
+      );
+    });
   });
 
   group('pickMacAssetUrl', () {

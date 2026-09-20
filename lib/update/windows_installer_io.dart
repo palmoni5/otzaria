@@ -42,10 +42,14 @@ bool _createBreakawayProcess(String commandLine) => _createProcess(
   DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_BREAKAWAY_FROM_JOB,
 );
 
-/// משגר קובץ הרצה של Windows מנותק מה-Job, בלי ארגומנטים של מתקין.
-/// מחזיר true אם היצירה הצליחה.
-bool launchWindowsDetachedProcess(String executablePath) =>
-    _createBreakawayProcess('"$executablePath"');
+/// משגר קובץ הרצה של Windows מנותק מה-Job (החבילה הניידת, והמעדכן העצמאי
+/// עם תוכנית ההחלפה). מחזיר true אם היצירה הצליחה.
+bool launchWindowsDetachedProcess(
+  String executablePath, {
+  List<String> arguments = const [],
+}) => _createBreakawayProcess(
+  windowsCommandLine(executablePath, arguments),
+);
 
 /// עוטף CreateProcess עם מאגרים טריים. כל קריאה מקבלת מאגר commandLine משלה
 /// כי CreateProcessW עלול לשנות את תוכנו (ולא לשחזרו אם הקריאה נכשלת),

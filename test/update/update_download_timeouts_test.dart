@@ -138,4 +138,80 @@ void main() {
       completes,
     );
   });
+
+  group('הורדה אטומית', () {
+    test('גודל שאינו תואם ל-release נדחה, והיעד אינו נוצר', () async {
+      final payload = List<int>.filled(100, 3);
+      serveOnce((socket) async {
+        socket.write(headers(payload.length));
+        socket.add(payload);
+        await socket.flush();
+        await socket.close();
+      });
+
+      final file = File(p.join(tempDir.path, 'otzaria-short.bin'));
+      await expectLater(
+        downloadReleaseFile(
+          file,
+          url(),
+          'otzaria',
+          connectTimeout: const Duration(seconds: 5),
+          stallTimeout: const Duration(seconds: 5),
+          expectedSize: 200,
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(file.existsSync(), isFalse);
+      expect(File('${file.path}.part').existsSync(), isFalse);
+    });
+
+    test('הורדה שנתקעה אינה דורסת קובץ קיים', () async {
+      final file = File(p.join(tempDir.path, 'otzaria-existing.bin'))
+        ..writeAsStringSync('the previous download');
+
+      serveOnce((socket) async {
+        socket.write(headers(4096));
+        socket.add(List<int>.filled(16, 1));
+        await socket.flush();
+      });
+
+      await expectLater(
+        downloadReleaseFile(
+          file,
+          url(),
+          'otzaria',
+          connectTimeout: const Duration(seconds: 5),
+          stallTimeout: const Duration(milliseconds: 300),
+        ),
+        throwsA(isA<TimeoutException>()),
+      );
+
+      expect(file.readAsStringSync(), 'the previous download');
+      expect(File('${file.path}.part').existsSync(), isFalse);
+    });
+
+    test('גודל תואם — הקובץ מוחלף בשמו הסופי', () async {
+      final payload = List<int>.filled(512, 9);
+      serveOnce((socket) async {
+        socket.write(headers(payload.length));
+        socket.add(payload);
+        await socket.flush();
+        await socket.close();
+      });
+
+      final file = File(p.join(tempDir.path, 'otzaria-ok.bin'));
+      await downloadReleaseFile(
+        file,
+        url(),
+        'otzaria',
+        connectTimeout: const Duration(seconds: 5),
+        stallTimeout: const Duration(seconds: 5),
+        expectedSize: payload.length,
+      );
+
+      expect(file.lengthSync(), payload.length);
+      expect(File('${file.path}.part').existsSync(), isFalse);
+    });
+  });
 }

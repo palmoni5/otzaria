@@ -130,6 +130,19 @@ abstract class LibraryMessages {
       '$deltaApplySize והחלה ארוכה — עשרות דקות ומעלה. מתאים לרשת איטית.\n'
       'הורדה מלאה: הורדה גדולה ($fullDownloadSize) והחלה מהירה — דקות.';
 
+  /// עדכון מצומצם: מוצג לפני ההורדה כדי שהמשתמש יראה מה נחסך לו.
+  static String smallUpdateSaving(String updateSize, String fullSize) =>
+      'העדכון יוריד $updateSize במקום $fullSize';
+
+  static const String smallUpdateDialogTitle = 'העדכון מוכן להתקנה';
+
+  static const String smallUpdateDialogContent =
+      'אוצריא תיסגר לרגע ותיפתח מחדש עם הגרסה החדשה.';
+
+  static const String smallUpdateDialogCancel = 'לא עכשיו';
+
+  static const String smallUpdateDialogConfirm = 'סגור והתקן';
+
   /// נלווה להודעת שלב ההחלה כשמסלול הדלתא כבד ואין הורדה מלאה חלופית.
   static String applyStageWithHeavyDeltaNotice(String stageMessage) =>
       '$stageMessage — ההחלה עשויה להימשך זמן רב';

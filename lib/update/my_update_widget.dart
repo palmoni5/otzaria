@@ -24,6 +24,10 @@ import 'package:window_manager/window_manager.dart';
 import 'package:otzaria/core/windowing/app_window_controller.dart';
 import 'package:otzaria/core/windowing/app_window_scope.dart';
 import 'package:otzaria/core/windowing/window_role.dart';
+import 'package:otzaria/widgets/widgets_exports.dart';
+import 'differential/differential_update_service.dart';
+import 'differential/installed_release.dart';
+import 'differential/zstd_runner.dart';
 import 'hebrew_update_widgets.dart';
 import 'linux_installer.dart';
 import 'macos_installer.dart';
@@ -77,6 +81,39 @@ bool managesUpdatesInThisWindow({
   );
 }
 
+/// תיקיית העבודה של העדכון המצומצם. חייבת להיות מחוץ לתיקיית ההתקנה —
+/// הגיבוי שבתוכה הוא מה שמשחזר התקנה שההחלפה נקטעה באמצעה.
+@visibleForTesting
+Directory differentialWorkDirectory() =>
+    Directory(p.join(Directory.systemTemp.path, 'otzaria_small_update'));
+
+/// מנסה את מסלול העדכון המצומצם ומחזיר `null` בכל כשל או חוסר זמינות.
+///
+/// הבליעה היא העיקר: המסלול הזה הוא אופטימיזציה, וכל כשל בו חייב להחזיר
+/// את המשתמש למתקין המלא בדיוק כפי שפעל עד כה.
+@visibleForTesting
+Future<PreparedDifferentialUpdate?> tryPrepareDifferentialUpdate(
+  Future<PreparedDifferentialUpdate?> Function() prepare,
+) async {
+  try {
+    return await prepare();
+  } catch (error, stackTrace) {
+    debugPrint('[Update] small update unavailable: $error\n$stackTrace');
+    return null;
+  }
+}
+
+/// גודל הנכס שנבחר להורדה, לפי ה-URL שלו. `null` כשאינו ידוע.
+@visibleForTesting
+int? assetSizeForUrl(List<Map<String, dynamic>> assets, String url) {
+  for (final asset in assets) {
+    if (asset['browser_download_url'] == url && asset['size'] is int) {
+      return asset['size'] as int;
+    }
+  }
+  return null;
+}
+
 @visibleForTesting
 bool shouldLaunchInstallerOnExit({
   required UpdatStatus status,
@@ -92,6 +129,17 @@ bool shouldLaunchInstallerOnExit({
 @visibleForTesting
 bool shouldDestroyWindowAfterInstallNow({required bool installerLaunched}) =>
     installerLaunched;
+
+/// האם הנכס הוא אשף ההורדות (`Otzaria-Download-Assistant-win.exe`).
+///
+/// הוא exe שאינו מתקין, ושיגורו עם מתגי Inno השקטים היה מריץ אשף אקראי
+/// במקום לעדכן — ולכן הוא מוחרג מבחירת נכס העדכון.
+@visibleForTesting
+bool isDownloadAssistantAsset(String assetName) {
+  final name = assetName.toLowerCase();
+  return name.contains('download-assistant') ||
+      name.contains('download_assistant');
+}
 
 /// בוחר את קובץ העדכון המתאים ל-Windows מתוך נכסי ה-release.
 ///
@@ -124,6 +172,7 @@ String? pickWindowsAssetUrl(
         name.endsWith('.exe');
     if (!isWindowsAsset) continue;
     if (name.contains('full')) continue;
+    if (isDownloadAssistantAsset(name)) continue;
 
     final isArmAsset = name.contains('arm64') || name.contains('aarch64');
     if (name.endsWith('.exe')) {
@@ -585,6 +634,10 @@ class _ManagedUpdatWidgetState extends State<_ManagedUpdatWidget> {
   bool _installerIsSilent = false;
   bool _windowCloseHookInstalled = false;
 
+  /// עדכון מצומצם שכבר נבנה ואומת ב-staging. קיומו מסיט את ההתקנה
+  /// למעדכן העצמאי במקום למתקין המלא.
+  PreparedDifferentialUpdate? _differentialUpdate;
+
   /// מנוי על מצב הסיור המודרך, פעיל רק כל עוד אנו ממתינים לסיומו לפני
   /// בדיקת העדכון הראשונית.
   StreamSubscription<TourState>? _tourSubscription;
@@ -722,14 +775,17 @@ class _ManagedUpdatWidgetState extends State<_ManagedUpdatWidget> {
     if (!await confirmAppCloseWithUnsavedChanges()) return;
     if (!shouldLaunchInstallerOnExit(
       status: _status,
-      hasInstallerFile: _installerFile != null,
+      hasInstallerFile: _installerFile != null || _differentialUpdate != null,
     )) {
       return;
     }
     // המשתמש סוגר את התוכנה — העדכון מותקן ברקע, אך אין להפעיל את
     // אוצריא מחדש בסיום בניגוד לכוונתו.
     final launched = await _launchInstaller(relaunchApp: false);
-    if (launched) _installerFile = null;
+    if (launched) {
+      _installerFile = null;
+      _differentialUpdate = null;
+    }
   }
 
   /// מפעיל את ההתקנה ביוזמת המשתמש (כפתור "מוכן להתקנה"): משגר את המתקין
@@ -740,11 +796,12 @@ class _ManagedUpdatWidgetState extends State<_ManagedUpdatWidget> {
   /// אם השיגור נכשל החלון נשאר פתוח כדי שהמשתמש יראה את מצב השגיאה ויוכל
   /// לנסות שוב.
   Future<void> _installNow() async {
-    if (_installerFile == null) return;
+    if (_installerFile == null && _differentialUpdate == null) return;
     final launched = await _launchInstaller(relaunchApp: true);
     if (shouldDestroyWindowAfterInstallNow(installerLaunched: launched)) {
-      // איפוס הקובץ מונע שיגור מתקין כפול כשאירוע הסגירה יגיע ל-hook.
+      // איפוס המקורות מונע שיגור כפול כשאירוע הסגירה יגיע ל-hook.
       _installerFile = null;
+      _differentialUpdate = null;
       // ⚠️ סגירה מנומסת ולא `quitApplication()`: האחרון הוא `PostQuitMessage`
       // ומפיל את המנוע תחת Dart רץ. ראו התיעוד ב-`AppWindowController`.
       await _appWindow.close();
@@ -998,6 +1055,19 @@ class _ManagedUpdatWidgetState extends State<_ManagedUpdatWidget> {
       _status = UpdatStatus.downloading;
     });
 
+    // המסלול המצומצם קודם; כל כשל בו נבלע וממשיכים למתקין המלא כרגיל.
+    final differential = await tryPrepareDifferentialUpdate(
+      _prepareDifferentialUpdate,
+    );
+    if (differential != null) {
+      if (!mounted) return;
+      setState(() {
+        _differentialUpdate = differential;
+        _status = UpdatStatus.readyToInstall;
+      });
+      return;
+    }
+
     try {
       final url = await _getBinaryUrl(_latestVersion!).timeout(_kGithubTimeout);
       final installerFile = await prepareUpdateInstallerFile(
@@ -1018,6 +1088,122 @@ class _ManagedUpdatWidgetState extends State<_ManagedUpdatWidget> {
     }
   }
 
+  /// בונה את העדכון המצומצם: איתור החבילה, הורדתה ובנייה מאומתת ב-staging.
+  /// מחזיר `null` כשהמסלול אינו זמין בהתקנה הזאת.
+  Future<PreparedDifferentialUpdate?> _prepareDifferentialUpdate() async {
+    if (!Platform.isWindows || _latestVersion == null) return null;
+
+    final installRoot = Directory(p.dirname(Platform.resolvedExecutable));
+    final architecture = installedWindowsArchitecture(
+      isWindowsOnArm: WindowsArchInfo.isWindowsOnArm,
+      isEmulatedOnArm: WindowsArchInfo.isEmulatedOnArm,
+    );
+    // תג השחרור המותקן נקרא מהחותם שבתיקיית ההתקנה: PackageInfo מחזיר
+    // `0.9.97` בעוד התג האמיתי הוא `0.9.97+789`, ואין חבילה בשם כזה.
+    final installedReleaseTag = readInstalledReleaseTag(
+      installRoot,
+      platform: 'windows',
+      architecture: architecture,
+    );
+    if (installedReleaseTag == null) return null;
+
+    final helper = File(p.join(installRoot.path, 'otzaria_updater.exe'));
+    if (!differentialUpdateSupported(
+      isWindows: Platform.isWindows,
+      installRootWritable: isDirectoryWritable(installRoot),
+      zstdAvailable: await const ZstdRunner.bundled().isAvailable,
+      hasUpdaterHelper: helper.existsSync(),
+    )) {
+      return null;
+    }
+
+    final release = await _fetchRelease(_latestVersion!).timeout(
+      _kGithubTimeout,
+    );
+    final toReleaseTag = release['tag_name'] as String;
+
+    final work = differentialWorkDirectory();
+    if (work.existsSync()) work.deleteSync(recursive: true);
+
+    final service = DifferentialUpdateService(
+      installRoot: installRoot,
+      workRoot: work,
+      architecture: architecture,
+      installedReleaseTag: installedReleaseTag,
+      download: (url, target, {int? expectedSize}) async {
+        await downloadReleaseFile(
+          target,
+          url,
+          'otzaria-small-update',
+          expectedSize: expectedSize,
+        );
+        return target;
+      },
+    );
+    final prepared = await service.prepare(toReleaseTag);
+
+    final assets = (release['assets'] as List).cast<Map<String, dynamic>>();
+    final installerUrl = pickWindowsAssetUrl(
+      assets,
+      preferredFormat: _preferredWindowsFormat(),
+      isArmMachine: WindowsArchInfo.isWindowsOnArm,
+    );
+    final installerSize = installerUrl == null
+        ? null
+        : assetSizeForUrl(assets, installerUrl);
+    if (installerSize != null && installerSize > prepared.downloadedBytes) {
+      UiSnack.show(
+        LibraryMessages.smallUpdateSaving(
+          formatDownloadSizeHebrew(prepared.downloadedBytes),
+          formatDownloadSizeHebrew(installerSize),
+        ),
+      );
+    }
+    return prepared;
+  }
+
+  /// משגר את המעדכן העצמאי עם תוכנית ההחלפה, אחרי שהמשתמש אישר את סגירת
+  /// אוצריא. מחזיר `true` רק אם התהליך נוצר בפועל.
+  Future<bool> _launchDifferentialSwap({required bool relaunchApp}) async {
+    final prepared = _differentialUpdate;
+    if (prepared == null) return false;
+
+    // בסגירת התוכנה המשתמש כבר הכריע לצאת — שאלה נוספת שם היא קפיצה
+    // מיותרת בדרך החוצה.
+    if (relaunchApp) {
+      if (!mounted) return false;
+      final confirmed = await showTwoActionsDialog(
+        context: context,
+        title: LibraryMessages.smallUpdateDialogTitle,
+        content: LibraryMessages.smallUpdateDialogContent,
+        cancelText: LibraryMessages.smallUpdateDialogCancel,
+        confirmText: LibraryMessages.smallUpdateDialogConfirm,
+      );
+      if (confirmed != true) return false;
+    }
+
+    try {
+      final plan = await prepared.staged.writeSwapPlan(
+        relaunchExecutable: relaunchApp ? Platform.resolvedExecutable : null,
+        waitForPid: pid,
+      );
+      final helper = File(
+        p.join(p.dirname(Platform.resolvedExecutable), 'otzaria_updater.exe'),
+      );
+      if (!launchWindowsDetachedProcess(
+        helper.absolute.path,
+        arguments: ['--plan', plan.absolute.path],
+      )) {
+        throw Exception('Failed to launch the updater helper');
+      }
+      return true;
+    } catch (error, stackTrace) {
+      debugPrint('[Update] small update launch failed: $error\n$stackTrace');
+      _showUpdateError(LibraryMessages.updateInstallerLaunchError);
+      return false;
+    }
+  }
+
   /// משגר את המתקין ומחזיר `true` אם השיגור הצליח. כשל בשיגור נבלע,
   /// מציג הודעת שגיאה רגילה ומחזיר `false`.
   ///
@@ -1025,6 +1211,9 @@ class _ManagedUpdatWidgetState extends State<_ManagedUpdatWidget> {
   /// השקט ב-Windows): `true` בעדכון יזום ("התקן כעת"), `false` בעדכון
   /// בעת סגירת התוכנה.
   Future<bool> _launchInstaller({required bool relaunchApp}) async {
+    if (_differentialUpdate != null) {
+      return _launchDifferentialSwap(relaunchApp: relaunchApp);
+    }
     if (_installerFile == null) return false;
 
     try {
@@ -1218,6 +1407,9 @@ class _ManagedUpdateWindowListener extends WindowListener {
 /// אין חסם על משך ההורדה הכולל — הורדה איטית שמתקדמת אינה נכשלת. הכשל הוא
 /// רק על חיבור שלא נענה תוך [connectTimeout] או על זרם שלא הזרים בייטים
 /// במשך [stallTimeout]; בשני המקרים החיבור נסגר ולא נשאר תלוי.
+///
+/// הכתיבה היא לקובץ זמני ששמו מוחלף רק אחרי שהגודל אומת מול [expectedSize]:
+/// הורדה שנקטעה לא תיראה כקובץ שלם בניסיון הבא.
 @visibleForTesting
 Future<File> downloadReleaseFile(
   File file,
@@ -1225,8 +1417,10 @@ Future<File> downloadReleaseFile(
   String appName, {
   Duration connectTimeout = _kDownloadConnectTimeout,
   Duration stallTimeout = _kDownloadStallTimeout,
+  int? expectedSize,
 }) async {
   final client = http.Client();
+  final partial = File('${file.path}.part');
   IOSink? sink;
   try {
     final request = http.Request('GET', Uri.parse(url));
@@ -1236,7 +1430,7 @@ Future<File> downloadReleaseFile(
     }
 
     await file.parent.create(recursive: true);
-    sink = file.openWrite();
+    sink = partial.openWrite();
 
     await for (final chunk in response.stream.timeout(stallTimeout)) {
       sink.add(chunk);
@@ -1244,6 +1438,17 @@ Future<File> downloadReleaseFile(
     await sink.flush();
     await sink.close();
     sink = null;
+
+    final downloaded = await partial.length();
+    if (expectedSize != null &&
+        expectedSize > 0 &&
+        downloaded != expectedSize) {
+      throw Exception(
+        'Download is $downloaded bytes but $expectedSize were expected',
+      );
+    }
+    if (await file.exists()) await file.delete();
+    await partial.rename(file.path);
 
     // ב-macOS אין לחלץ את ה-zip ב-Dart: חבילת archive אינה משמרת symlinks
     // והרשאות הפעלה שבתוך ה-bundle. סקריפט העדכון מחלץ בעצמו עם ditto.
@@ -1263,5 +1468,12 @@ Future<File> downloadReleaseFile(
   } finally {
     await sink?.close();
     client.close();
+    if (partial.existsSync()) {
+      try {
+        partial.deleteSync();
+      } catch (_) {
+        // שארית ב-temp אינה מצדיקה כישלון נוסף על זה שכבר נזרק.
+      }
+    }
   }
 }
