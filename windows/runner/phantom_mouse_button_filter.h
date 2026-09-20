@@ -6,6 +6,8 @@
 // מסיר מ-WM_MOUSEMOVE כפתורים שהעכבר עצמו לא לחץ, לפני שה-engine רואה אותם.
 // מגע מייצר לעיתים תנועה סינתטית בלי חתימת מגע, וה-engine הופך אותה ללחיצת
 // עכבר שלא משתחררת — וכל מגע אחריה נקרא כצביטה (issue #1441).
+// TODO: למחוק את הקובץ, את comctl32 ב-CMakeLists ואת חריגות ה-.gitignore
+// כשמשדרגים ל-Flutter 3.48 — התיקון שם ב-engine (flutter/flutter#190029).
 void InstallPhantomMouseButtonFilter(HWND flutter_view);
 
 #endif  // RUNNER_PHANTOM_MOUSE_BUTTON_FILTER_H_
