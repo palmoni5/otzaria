@@ -22,9 +22,14 @@ class TargetLineLinks {
   /// קישורי הפניה/עיון היוצאים מאותו קטע.
   final List<Link> references;
 
+  /// קישורים מעוגנים בטקסט הקטע עצמו (ציטוטי הלינקר) — לא פריטי תפריט אלא
+  /// מקור להזרקת הסימון לגוף הטקסט. בלי דדופ: כל עוגן הוא מיקום משלו.
+  final List<Link> anchored;
+
   const TargetLineLinks({
     required this.commentaries,
     required this.references,
+    this.anchored = const [],
   });
 
   /// קטע שנטען ואין בו לא מפרשים ולא קישורים.
@@ -250,6 +255,7 @@ class TargetLineLinksService {
   static TargetLineLinks _partition(List<Link> links) {
     final commentaries = <Link>[];
     final references = <Link>[];
+    final anchored = <Link>[];
     final seenCommentaries = <String>{};
     final seenReferences = <String>{};
 
@@ -259,6 +265,10 @@ class TargetLineLinksService {
       final targetKey =
           '${link.path2}|${link.index2}|${link.targetIsUserBook ? 'u' : 'o'}';
 
+      if (link.anchorStart != null || link.anchorSpans.isNotEmpty) {
+        anchored.add(link);
+      }
+
       if (LinkTypes.isDependentTextLink(link.connectionType)) {
         if (seenCommentaries.add(targetKey)) commentaries.add(link);
       } else if (link.start == null && link.end == null) {
@@ -267,12 +277,13 @@ class TargetLineLinksService {
       }
     }
 
-    if (commentaries.isEmpty && references.isEmpty) {
+    if (commentaries.isEmpty && references.isEmpty && anchored.isEmpty) {
       return TargetLineLinks.empty;
     }
     return TargetLineLinks(
       commentaries: commentaries,
       references: references,
+      anchored: anchored,
     );
   }
 

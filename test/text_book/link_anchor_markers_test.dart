@@ -550,4 +550,50 @@ void main() {
       );
     });
   });
+
+  group('injectLinkAnchorMarkers rangesOnly', () {
+    Link rangeLink() => Link(
+      heRef: 'בראשית א, א',
+      index1: 1,
+      path2: 'בראשית',
+      index2: 1,
+      connectionType: 'linker',
+      anchorStart: 2,
+      anchorEnd: 6,
+    );
+
+    Link pointLink() => Link(
+      heRef: 'רש"י על בראשית א, א',
+      index1: 1,
+      path2: 'רש"י על בראשית',
+      index2: 1,
+      connectionType: 'commentary',
+      anchorStart: 8,
+      anchorLabel: 'א',
+    );
+
+    test('משאיר את ציטוט הלינקר ומדלג על סמן האות', () {
+      final html = injectLinkAnchorMarkers(
+        rawLine: 'אבגדהוזחטי',
+        anchorLinks: [rangeLink(), pointLink()],
+        styleIndexByCommentator: const {},
+        lineIndex: 0,
+        rangesOnly: true,
+      );
+      expect(html, contains('link-anchor-range'));
+      expect(html, contains('otzaria://anchor?ref=0_0&range=1'));
+      expect(html, isNot(contains('(א)')));
+    });
+
+    test('בלי rangesOnly שני הסימונים מוזרקים', () {
+      final html = injectLinkAnchorMarkers(
+        rawLine: 'אבגדהוזחטי',
+        anchorLinks: [rangeLink(), pointLink()],
+        styleIndexByCommentator: const {},
+        lineIndex: 0,
+      );
+      expect(html, contains('link-anchor-range'));
+      expect(html, contains('(א)'));
+    });
+  });
 }

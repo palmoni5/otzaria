@@ -70,12 +70,15 @@ int _stableStyleIndex(String title) {
 /// `otzaria://anchor?ref=<line>_<i>` (i = מיקום הקישור ב-[anchorLinks]), כדי
 /// שריחוף/לחיצה יזהו את הקישור; עוגן-טווח מקבל גם `&range=1` — לחיצה עליו
 /// מנווטת ישירות ליעד (ולא רק מקפיצה תצוגה). בלעדיו הכול `<span>` לא-אינטראקטיבי.
+/// [rangesOnly] — רק ציטוטי הלינקר (עוגן-טווח); סמני-האות מדולגים. משמש
+/// בחלוניות המפרשים והקישורים, שאינן מציגות סמני מפרש-על.
 String injectLinkAnchorMarkers({
   required String rawLine,
   required List<Link> anchorLinks,
   required Map<String, int> styleIndexByCommentator,
   int? lineIndex,
   int? activeIndex,
+  bool rangesOnly = false,
 }) {
   final points = <({int at, int order, String html})>[];
   final ranges = <HtmlWrapRange>[];
@@ -118,6 +121,7 @@ String injectLinkAnchorMarkers({
           );
         }
       } else {
+        if (rangesOnly) continue;
         final letter = _letterFor(link, span.label);
         if (letter == null) continue;
         // a/span ולא sup: HtmlWidget מממש sup כ-WidgetSpan, ושניים+ בפסקת RTL

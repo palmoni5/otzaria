@@ -7,6 +7,7 @@ import 'package:otzaria/models/links.dart';
 import 'package:otzaria/personal_notes/models/personal_note.dart';
 import 'package:otzaria/personal_notes/widgets/personal_note_content_view.dart';
 import 'package:otzaria/settings/settings_exports.dart';
+import 'package:otzaria/tabs/models/tab.dart';
 import 'package:otzaria/tabs/models/text_tab.dart';
 import 'package:otzaria/text_display/models/text_display_profile.dart';
 import 'package:otzaria/utils/text/text_manipulation.dart' as utils;
@@ -19,6 +20,8 @@ import 'package:otzaria/text_book/utils/link_anchor_markers.dart';
 import 'package:otzaria/text_book/utils/note_inline_render.dart';
 import 'package:otzaria/text_book/view/selection/selected_text_restore.dart';
 import 'package:otzaria/tools/dictionary/widgets/laaz_commentary_subblock.dart';
+import 'package:otzaria/utils/navigation/talmud_bavli_open_format.dart';
+import 'package:otzaria/widgets/commentary/panel_anchor_links.dart';
 
 @visibleForTesting
 List<PersonalNote> commentaryNotesForLine(
@@ -70,7 +73,7 @@ class CommentaryContent extends StatefulWidget {
   final TextDisplayProfile displayProfile;
   final Link link;
   final double fontSize;
-  final Function(TextBookTab) openBookCallback;
+  final Function(OpenedTab) openBookCallback;
   final String searchQuery;
   final int currentSearchIndex;
   final Function(int)? onSearchResultsCountChanged;
@@ -88,13 +91,33 @@ class CommentaryContent extends StatefulWidget {
   State<CommentaryContent> createState() => _CommentaryContentState();
 }
 
-class _CommentaryContentState extends State<CommentaryContent> {
+class _CommentaryContentState extends State<CommentaryContent>
+    with PanelAnchorLinksMixin<CommentaryContent> {
   late Future<String> content;
+
+  @override
+  Link get anchorSourceLink => widget.link;
+
+  @override
+  bool get anchorLinksEnabled => widget.displayProfile.showAnchorMarkers;
 
   @override
   void initState() {
     super.initState();
     _loadContent();
+    startAnchorLinks();
+  }
+
+  @override
+  void dispose() {
+    stopAnchorLinks();
+    super.dispose();
+  }
+
+  Future<void> _openAnchorTarget(Link link) async {
+    final tab = await buildLinkTargetTab(link);
+    if (!mounted) return;
+    widget.openBookCallback(tab);
   }
 
   void _loadContent() {
@@ -119,6 +142,7 @@ class _CommentaryContentState extends State<CommentaryContent> {
       setState(() {
         _loadContent();
       });
+      restartAnchorLinks();
     }
   }
 
@@ -207,7 +231,7 @@ class _CommentaryContentState extends State<CommentaryContent> {
                     widget.link.index2,
                   );
                   var displayData = buildAnnotatedLineHtml(
-                    rawLine: data,
+                    rawLine: injectAnchorLinks(data),
                     notesForLine: notesForLine,
                     lineIndex0: widget.link.index2 - 1,
                     underlineColor: Theme.of(context).colorScheme.primary,
@@ -233,6 +257,12 @@ class _CommentaryContentState extends State<CommentaryContent> {
                       SmartTextWidget(
                         text: displayData,
                         settings: renderSettings,
+                        onAnchorTap: anchorLinks.isEmpty
+                            ? null
+                            : (url) {
+                                final link = anchorLinkFromUrl(url);
+                                if (link != null) _openAnchorTarget(link);
+                              },
                         onNoteTap: notesForLine.isEmpty
                             ? null
                             : (_) => openCommentaryPersonalNote(

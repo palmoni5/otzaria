@@ -63,6 +63,32 @@ void main() {
       expect(data.references, hasLength(2));
     });
 
+    test('קישורים מעוגנים נחשפים ב-anchored בלי דדופ', () async {
+      Link anchored(int charStart) => Link(
+        heRef: 'בראשית א, א',
+        index1: 3,
+        path2: 'בראשית',
+        index2: 1,
+        connectionType: LinkTypes.linker,
+        targetCategoryId: 7,
+        anchorStart: charStart,
+        anchorEnd: charStart + 3,
+      );
+
+      final service = TargetLineLinksService(
+        loader: (_, _, _) async => [anchored(2), anchored(9)],
+      );
+
+      service.prefetch(_link(path2: 'רש"י'));
+      await pumpEventQueue();
+
+      final data = service.cached(_link(path2: 'רש"י'))!;
+      // אותו ספר-יעד ואותה שורה — הדדופ של references היה משאיר אחד בלבד.
+      expect(data.anchored, hasLength(2));
+      expect(data.anchored.map((l) => l.anchorStart), [2, 9]);
+      expect(data.references, hasLength(1));
+    });
+
     test('סוג באותיות קטנות מזוהה כמפרש (נרמול)', () async {
       final service = TargetLineLinksService(
         loader: (_, _, _) async => [

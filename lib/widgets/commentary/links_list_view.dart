@@ -25,6 +25,7 @@ import 'package:otzaria/utils/ui/context_menu_utils.dart';
 import 'package:otzaria/widgets/text/otzaria_search_field.dart';
 import 'package:otzaria/widgets/text/rtl_selection_shortcuts.dart';
 import 'package:otzaria/widgets/text/selection_copy_shortcuts.dart';
+import 'package:otzaria/widgets/commentary/panel_anchor_links.dart';
 import 'package:otzaria/widgets/smart_text/smart_text.dart';
 import 'package:otzaria/text_book/view/selection/selection_sync_controller.dart';
 import 'package:otzaria/text_book/view/selection/selection_hit_test.dart';
@@ -286,6 +287,7 @@ class _LinksListViewState extends State<LinksListView> {
   String _lastSearchKey = '';
   final Set<String> _linksWithSearchResults = {}; // קישורים עם תוצאות חיפוש
   String? _savedSelectedText; // טקסט נבחר לתפריט הקשר
+  bool _anchorHandledTap = false;
   Link? _savedSelectedLink; // ה-link שממנו נבחר הטקסט
   final Object _selectionOwner = Object();
   int _selectionRevision = 0;
@@ -954,7 +956,14 @@ class _LinksListViewState extends State<LinksListView> {
               onMiddleClick: () =>
                   ContextMenuUtils.openLinkTargetInBackground(context, link),
               child: GestureDetector(
-                onTap: () => _navigateToLink(link),
+                // הקשה על קישור פנימי מנווטת ליעד שלו, לא ליעד הקטע.
+                onTap: () {
+                  if (_anchorHandledTap) {
+                    _anchorHandledTap = false;
+                    return;
+                  }
+                  _navigateToLink(link);
+                },
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12.0),
@@ -985,13 +994,17 @@ class _LinksListViewState extends State<LinksListView> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SmartTextWidget(
-              text: utils.normalizeHtmlWhitespaceEntities(content),
+            PanelAnchoredText(
+              link: link,
+              html: utils.normalizeHtmlWhitespaceEntities(content),
               settings: buildSelectedLinkRenderSettings(
                 settingsState: settingsState,
                 displayProfile: widget.displayProfile,
                 searchText: searchText,
               ),
+              enabled: widget.displayProfile.showAnchorMarkers,
+              openBookCallback: widget.openBookCallback,
+              onAnchorActivated: () => _anchorHandledTap = true,
             ),
             LaazCommentarySubBlock(link: link),
           ],
