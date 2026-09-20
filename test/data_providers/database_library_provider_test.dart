@@ -828,6 +828,72 @@ void main() {
       }
     });
 
+    test(
+      'getLinksForBookRange מחזיר רק קישורים ששורת המקור שלהם בחלון',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'otzaria_db_window',
+        );
+        final dbPath = path.join(tempDir.path, 'db.sqlite');
+        final db = sqlite3.sqlite3.open(dbPath);
+
+        try {
+          db.execute(
+            'CREATE TABLE book (id INTEGER PRIMARY KEY, title TEXT, categoryId INTEGER, fileType TEXT, orderIndex INTEGER)',
+          );
+          db.execute(
+            'CREATE TABLE line (id INTEGER PRIMARY KEY, bookId INTEGER, lineIndex INTEGER, heRef TEXT)',
+          );
+          db.execute(
+            'CREATE TABLE connection_type (id INTEGER PRIMARY KEY, name TEXT)',
+          );
+          db.execute(
+            'CREATE TABLE link (id INTEGER PRIMARY KEY, sourceBookId INTEGER, sourceLineId INTEGER, targetLineId INTEGER, targetBookId INTEGER, connectionTypeId INTEGER)',
+          );
+
+          db.execute(
+            "INSERT INTO book (id, title, categoryId, fileType, orderIndex) VALUES (1, 'בראשית', 7, 'txt', 1)",
+          );
+          db.execute(
+            "INSERT INTO book (id, title, categoryId, fileType, orderIndex) VALUES (2, 'ילקוט', 8, 'txt', 1)",
+          );
+          db.execute(
+            "INSERT INTO connection_type (id, name) VALUES (5, 'reference')",
+          );
+          db.execute(
+            "INSERT INTO line (id, bookId, lineIndex, heRef) VALUES (20, 2, 0, 'ילקוט א')",
+          );
+          // עשר שורות בספר המקור, קישור על כל אחת.
+          for (var i = 0; i < 10; i++) {
+            db.execute(
+              'INSERT INTO line (id, bookId, lineIndex) VALUES (${100 + i}, 1, $i)',
+            );
+            db.execute(
+              'INSERT INTO link (id, sourceBookId, sourceLineId, targetLineId, targetBookId, connectionTypeId) '
+              'VALUES (${200 + i}, 1, ${100 + i}, 20, 2, 5)',
+            );
+          }
+
+          final window =
+              DatabaseLibraryProvider.loadBookLinksRowsInRangeForTesting(
+                dbPath: dbPath,
+                title: 'בראשית',
+                categoryId: 7,
+                fileType: 'txt',
+                startLineIndex: 3,
+                endLineIndex: 5,
+              );
+          expect(
+            window.map((r) => r['sourceLineIndex']).toList()..sort(),
+            [3, 4, 5],
+          );
+        } finally {
+          db.close();
+          await tempDir.delete(recursive: true);
+        }
+      },
+    );
+
     test('קישורי-טווח: צד הפאנל חושף את קצה הטווח של היעד', () async {
       final tempDir = await Directory.systemTemp.createTemp(
         'otzaria_db_ranged_end',

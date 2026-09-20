@@ -821,12 +821,7 @@ List<Map<String, dynamic>> _loadBookLinksRowsInRangeInIsolate({
       displayedSide: 0,
     );
 
-    final parameters = <Object?>[
-      bookId,
-      if (hasLinkRanges) ...[bookId, startLineIndex, endLineIndex],
-      startLineIndex,
-      endLineIndex,
-    ];
+    final parameters = <Object?>[bookId, startLineIndex, endLineIndex];
     // כשהפילטר ריק (אין מפרשים נבחרים) — עדיין מחזירים קישורי REFERENCE
     final hasCommentaryFilter =
         targetBookTitles != null && targetBookTitles.isNotEmpty;
@@ -851,22 +846,25 @@ List<Map<String, dynamic>> _loadBookLinksRowsInRangeInIsolate({
         ? 'AND (ct.name IS NULL OR ct.name NOT IN ($depTypesIn) OR tb.title IN ($targetBookPlaceholders))'
         : 'AND (ct.name IS NULL OR ct.name NOT IN ($depTypesIn))';
 
-    // שורות ה-anchors כוללות גם שורות מכוסות של קישורי-טווח (side=0). הזרוע
-    // מסוננת לחלון כבר כאן דרך ה-PK של link_coverage (lineId ראשון) — שורות
-    // coverage של side=0 הן תמיד שורות ספר-המקור עצמו, כך שסינון לפי שורות
-    // הספר בחלון מייתר JOIN ל-link (ספרי בסיס גדולים נושאים מאות אלפי שורות
-    // coverage, וסריקה מלאה שלהן בכל חלון גלילה יקרה מדי).
+    // שורות ה-anchors כוללות גם שורות מכוסות של קישורי-טווח (side=0); הן תמיד
+    // שורות ספר-המקור עצמו, ולכן די בסינון מול win.
     final coverageArm = hasLinkRanges
         ? '''
           UNION ALL
           SELECT lc.linkId, lc.lineId FROM link_coverage lc
-          WHERE lc.side = 0 AND lc.lineId IN (
-            SELECT id FROM line WHERE bookId = ? AND lineIndex BETWEEN ? AND ?
-          )'''
+          WHERE lc.side = 0 AND lc.lineId IN (SELECT id FROM win)'''
         : '';
+    // כמו בזרוע ההפוכה: קודם שורות החלון דרך idx_line_book_index, ואז הקישורים
+    // לפיהן דרך idx_link_source_line. משיכת כל קישורי הספר עלתה 500ms לחלון.
+    // אסור להוסיף כאן `AND l.sourceBookId = ?` — הוא מיותר (שורת המקור כבר
+    // בחלון) ומחזיר את המתכנן ל-idx_link_source_book, כלומר לאיטיות המקורית.
     final rows = db.select('''
-        WITH anchors(linkId, anchorLineId) AS (
-          SELECT id, sourceLineId FROM link WHERE sourceBookId = ?
+        WITH win(id) AS (
+          SELECT id FROM line WHERE bookId = ? AND lineIndex BETWEEN ? AND ?
+        ),
+        anchors(linkId, anchorLineId) AS (
+          SELECT l.id, l.sourceLineId FROM link l
+          WHERE l.sourceLineId IN (SELECT id FROM win)
           $coverageArm
         )
         SELECT
@@ -888,7 +886,7 @@ List<Map<String, dynamic>> _loadBookLinksRowsInRangeInIsolate({
         LEFT JOIN connection_type ct ON l.connectionTypeId = ct.id
         ${_rangeEndJoinClause(hasLinkRanges, panelSide: 1)}
         ${_anchorJoinClause(hasLinkAnchor, displayedSide: 0)}
-        WHERE sl.lineIndex BETWEEN ? AND ?
+        WHERE 1=1
           $commentaryFilterClause
           $suppressedFilter
         ORDER BY sl.lineIndex, tb.orderIndex
