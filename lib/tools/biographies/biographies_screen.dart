@@ -72,37 +72,9 @@ class _BiographiesScreenState extends State<BiographiesScreen> {
   }
 
   void _performSearch(String query) {
-    query = query.trim();
     setState(() {
-      if (query.isEmpty) {
-        _filteredResults = _allBiographies;
-        return;
-      }
-      _filteredResults =
-          _allBiographies.where((bio) {
-            return bio.name.contains(query) ||
-                bio.appelations.any((a) => a.contains(query));
-          }).toList()..sort((a, b) {
-            final rankCompare = _matchRank(
-              a.name,
-              query,
-            ).compareTo(_matchRank(b.name, query));
-            if (rankCompare != 0) return rankCompare;
-            return a.name.compareTo(b.name);
-          });
+      _filteredResults = BiographiesRepository.filter(_allBiographies, query);
     });
-  }
-
-  /// דירוג התאמת שם לשאילתה: נמוך = דומה יותר.
-  /// מדויק < מתחיל ב- < מילה שלמה < מכיל < רק בכינוי.
-  int _matchRank(String name, String query) {
-    if (name == query) return 0;
-    if (name.startsWith(query)) return 1;
-    if (RegExp('(^|\\s)${RegExp.escape(query)}(\$|\\s)').hasMatch(name)) {
-      return 2;
-    }
-    if (name.contains(query)) return 3;
-    return 4;
   }
 
   @override

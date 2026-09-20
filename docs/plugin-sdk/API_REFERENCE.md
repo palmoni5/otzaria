@@ -35,6 +35,7 @@
 | `library.findBooks` | ✓ | ✓ | ✓ | ✓ |
 | `library.resolveRef` | ✓* | ✓* | ✓ | ✓* |
 | `library.getBookMetadata` | ✓ | ✓ | ✓ | ✓ |
+| `library.getBookDetails` | ✓ | ✓ | ✓ | ✓ |
 | `library.listRecentBooks` | ✓ | ✓ | ✓ | ✓ |
 | `library.getTree` | ✓ | ✓ | ✓ | ✓ |
 | `reader.openBook` | קלט | קלט | קלט | קלט |
@@ -142,6 +143,7 @@ if (response.success) {
 | `library.findBooks` | 0.9.89 |
 | `library.resolveRef` | 0.9.97 |
 | `library.getBookMetadata` | 0.9.89 |
+| `library.getBookDetails` | 0.9.98 |
 | `library.resolveBooks` | 0.9.97 |
 | `library.resolveCategoryPaths` | 0.9.97 |
 | `library.listRecentBooks` | 0.9.89 |
@@ -243,6 +245,7 @@ if (response.success) {
 | `bookmarks.remove` | 0.9.97 |
 | `tools.gematria` | 0.9.97 |
 | `tools.dictionary` | 0.9.97 |
+| `tools.biographies` | 0.9.98 |
 | `notifications.showInApp` | 0.9.89 |
 | `notifications.sendSystem` | 0.9.89 |
 | `notifications.scheduleSystem` | 0.9.89 |
@@ -676,6 +679,41 @@ const { data } = await Otzaria.call('library.getBookMetadata', {
 });
 // { id: 1, bookId: "בראשית", title: "בראשית", categoryPath: "/תנך/תורה", topics: [...] }
 ```
+
+### `library.getBookDetails`
+**הרשאה:** `library.books.read` · **מגרסה:** 0.9.98
+
+נתוני חלון "אודות הספר" של אוצריא — מחברים, דור, תקופה, מקום
+ותאריך חיבור ופרסום, נושאים, תיאורים ומקור הטקסט. אותו מקור נתונים
+שהדיאלוג עצמו קורא ממנו, כך שהערכים זהים למה שהמשתמש רואה.
+
+קלט: אותם שדות זהות כמו `library.getBookMetadata` — `bookUid` (מומלץ), `id` או
+`bookId`. ספר שלא נמצא → `null`.
+
+```javascript
+const { data } = await Otzaria.call('library.getBookDetails', {
+  bookUid: 'id:183'
+});
+// {
+//   id: 183, type: 'text', source: 'library', bookUid: 'id:183',
+//   bookId: 'שולחן ערוך אורח חיים', title: 'שולחן ערוך אורח חיים',
+//   authors: ['רבי יוסף קארו'], generation: 'אחרונים', era: 'אחרונים',
+//   categories: 'הלכה', categoryPath: '/הלכה',
+//   compositionDate: null, compositionPlace: 'צפת',
+//   publicationDates: ['שס"ו'], publicationPlaces: ['וונציה'],
+//   topics: ['הלכה'], shortDescription: '...', fullDescription: '...',
+//   textSource: { key: 'Sefaria', name: 'ספריא', url: 'https://www.sefaria.org/texts' },
+//   reference: '...', lineCount: 4210, libraryPath: 'הלכה/שולחן ערוך'
+// }
+```
+
+שדה שאין לו ערך מוחזר כ-`null` (או כמערך ריק). שתי הערות:
+
+- `textSource` הוא מקור הטקסט (ספריא, דיקטה וכדומה) — לא לבלבל עם שדה
+  הזהות `source`, שהוא `library`/`user`/`external`. מקור שאינו מוכר מוחזר
+  עם `name` זהה ל-`key` וללא `url`.
+- `libraryPath` הוא הנתיב היחסי בספרייה בלבד. לספר אישי הוא `null` — נתיב
+  הקובץ שלו אינו נחשף לתוספים.
 
 ### `library.resolveBooks`
 **הרשאה:** `library.books.read`
@@ -3070,6 +3108,34 @@ const { data } = await Otzaria.call('tools.dictionary', { term: 'רמב״ם' });
 
 > לעזי רש"י אינם נכללים: הם נקראים ממסד הנתונים של הספרייה ומטבלת
 > הקישורים, ולא ממילון מצורף.
+
+### `tools.biographies`
+**הרשאה:** `tools.read` · **מגרסה:** 0.9.98
+
+קריאה במאגר הביוגרפיות המצורף לתוכנה — אותם ערכים שבמסך
+"ביוגרפיות", באותו סדר התאמה. החיפוש הוא על השם ועל הכינויים.
+
+| פרמטר | תיאור |
+|--------|-------|
+| `query` | מחרוזת חיפוש, עד 200 תווים. חסרה או ריקה = כל הערכים |
+| `id` | מזהה ערך יחיד. גובר על `query` |
+| `limit` | מספר התוצאות המוחזרות, 1–50. ברירת מחדל: 20 |
+
+```javascript
+const { data } = await Otzaria.call('tools.biographies', { query: 'החתם סופר' });
+// { total: 1,
+//   results: [{
+//     id: 1234, name: 'רבי משה סופר', generation: 'אחרונים',
+//     appelations: ['החתם סופר'], communities: [...], countries: ['הונגריה'],
+//     birth: "ז' תשרי תקל"א", death: "כ"ה תשרי תקצ"ד",
+//     summary: '...', biographyShort: '...'
+//   }] }
+```
+
+`total` הוא מספר ההתאמות לפני ה-`limit`. שדות חסרים במאגר מוחזרים כ-`null`.
+
+> המאגר ארוז באפליקציה ומתעדכן מהרשת. בהתקנה שבה הנתונים אינם
+> זמינים הקריאה נכשלת ב-`error.not_supported`.
 
 ---
 

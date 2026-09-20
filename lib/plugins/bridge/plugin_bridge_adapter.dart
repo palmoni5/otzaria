@@ -54,6 +54,11 @@ import 'package:otzaria/plugins/services/plugin_external_search_service.dart';
 import 'package:otzaria/plugins/services/plugin_in_book_search_service.dart';
 import 'package:otzaria/plugins/services/plugin_reader_actions.dart';
 import 'package:otzaria/bookmarks/bloc/bookmark_bloc.dart';
+import 'package:otzaria/services/book_details_service.dart';
+import 'package:otzaria/text_book/view/book_source_dialog.dart'
+    show getSourceDisplayInfo, libraryDisplayPath;
+import 'package:otzaria/tools/biographies/models/biography.dart';
+import 'package:otzaria/tools/biographies/repository/biographies_repository.dart';
 import 'package:otzaria/tools/dictionary/repository/dictionary_lookup_repository.dart';
 import 'package:otzaria/tools/gematria/gematria_search.dart';
 import 'package:otzaria/utils/text/ref_helper.dart';
@@ -1107,6 +1112,53 @@ class PluginBridgeAdapter {
             'title': book.title,
             'topics': book.topics,
             'categoryPath': FacetHelper.resolveCategoryPath(book),
+          };
+        }
+      case 'getBookDetails':
+        // spec: אותם שדות זהות כמו getBookMetadata, ומחזיר את נתוני
+        // חלון "אודות הספר" — אותו מקור נתונים, כדי שהתצוגות לא ייפרדו.
+        {
+          final bookId = (args['bookId'] ?? args['title']) as String?;
+          if (PluginBookIdentity.parseId(args['id']) == null &&
+              bookId == null &&
+              (args['bookUid'] as String?)?.trim().isNotEmpty != true) {
+            throw Exception(
+              'error.invalid_params: id, bookUid or bookId required',
+            );
+          }
+          final book = _findPluginBook(library, args);
+          if (book == null) return null;
+          final info = await BookDetailsService().getBookInformation(book);
+          final sourceName = info.source?.trim();
+          final sourceDisplay = sourceName == null || sourceName.isEmpty
+              ? null
+              : getSourceDisplayInfo(sourceName);
+          return {
+            ...PluginBookIdentity.toJsonWithUid(book),
+            'title': book.title,
+            'authors': info.authors,
+            'generation': info.generation,
+            'era': book.heEra,
+            'categories': info.categories,
+            'categoryPath': FacetHelper.resolveCategoryPath(book),
+            'compositionDate': book.compDateStringHe,
+            'compositionPlace': book.compPlaceStringHe,
+            'publicationDates': info.publicationDates,
+            'publicationPlaces': info.publicationPlaces,
+            'topics': info.topics,
+            'shortDescription': info.shortDescription,
+            'fullDescription': info.fullDescription,
+            'textSource': sourceDisplay == null
+                ? null
+                : {
+                    'key': sourceName,
+                    'name': sourceDisplay.text,
+                    if (sourceDisplay.url.isNotEmpty) 'url': sourceDisplay.url,
+                  },
+            'reference': info.reference,
+            'lineCount': info.lineCount,
+            // רק הנתיב היחסי בספרייה: נתיב מוחלט מסגיר את שם המשתמש.
+            'libraryPath': libraryDisplayPath(book.filePath ?? ''),
           };
         }
       case 'resolveBooks':
@@ -5052,12 +5104,58 @@ class PluginBridgeAdapter {
           };
         }
 
+      case 'biographies':
+        {
+          final rawQuery = args['query'];
+          if (rawQuery != null &&
+              (rawQuery is! String || rawQuery.length > 200)) {
+            throw Exception('error.invalid_params: query must be a string');
+          }
+          final id = args['id'];
+          if (id != null && id is! int) {
+            throw Exception('error.invalid_params: id must be a number');
+          }
+          final limit = args['limit'];
+          if (limit != null && (limit is! int || limit < 1 || limit > 50)) {
+            throw Exception('error.invalid_params: limit must be 1..50');
+          }
+          final List<Biography> all;
+          try {
+            all = await BiographiesRepository.instance.loadAll();
+          } catch (_) {
+            throw Exception('error.not_supported: biographies unavailable');
+          }
+          final matched = id is int
+              ? all.where((bio) => bio.id == id).toList()
+              : BiographiesRepository.filter(all, (rawQuery as String?) ?? '');
+          return {
+            'total': matched.length,
+            'results': matched
+                .take((limit as int?) ?? 20)
+                .map(_biographyToJson)
+                .toList(),
+          };
+        }
+
       default:
         throw Exception(
           'error.unknown_method: Unknown action in tools: $action',
         );
     }
   }
+
+  Map<String, dynamic> _biographyToJson(Biography bio) => {
+    'id': bio.id,
+    'name': bio.name,
+    'generation': bio.generation,
+    'appelations': bio.appelations,
+    'communities': bio.communities,
+    'countries': bio.countries,
+    'birth': bio.birthHebrew?.display,
+    'death': bio.deathHebrew?.display,
+    'summary': bio.summary,
+    'biographyShort': bio.biographyShort,
+  };
 
   // ----------------------------------------------------------------
   // notifications.*

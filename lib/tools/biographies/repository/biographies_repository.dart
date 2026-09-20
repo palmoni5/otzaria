@@ -60,6 +60,40 @@ class BiographiesRepository {
     }
   }
 
+  /// מסננת וממיינת ערכים לפי שם או כינוי. מקור יחיד למסך הביוגרפיות
+  /// ול-API של התוספים, כדי ששניהם יציגו את אותה תוצאה באותו סדר.
+  static List<Biography> filter(List<Biography> entries, String query) {
+    query = query.trim();
+    if (query.isEmpty) return entries;
+    return entries
+        .where(
+          (bio) =>
+              bio.name.contains(query) ||
+              bio.appelations.any((a) => a.contains(query)),
+        )
+        .toList()
+      ..sort((a, b) {
+        final rankCompare = _matchRank(
+          a.name,
+          query,
+        ).compareTo(_matchRank(b.name, query));
+        if (rankCompare != 0) return rankCompare;
+        return a.name.compareTo(b.name);
+      });
+  }
+
+  /// דירוג התאמת שם לשאילתה: נמוך = דומה יותר.
+  /// מדויק < מתחיל ב- < מילה שלמה < מכיל < רק בכינוי.
+  static int _matchRank(String name, String query) {
+    if (name == query) return 0;
+    if (name.startsWith(query)) return 1;
+    if (RegExp('(^|\\s)${RegExp.escape(query)}(\$|\\s)').hasMatch(name)) {
+      return 2;
+    }
+    if (name.contains(query)) return 3;
+    return 4;
+  }
+
   static List<Biography> _decodeAndParse(Uint8List bytes) {
     final payload = BiographiesCodec.decode(bytes);
     return ((payload['entries'] as List?) ?? const [])

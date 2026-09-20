@@ -10,6 +10,7 @@ const Map<String, String> apiCallToPermissionHint = {
   'library.findBooks': 'library.books.read',
   'library.resolveRef': 'library.books.read',
   'library.getBookMetadata': 'library.books.read',
+  'library.getBookDetails': 'library.books.read',
   'library.resolveBooks': 'library.books.read',
   'library.listRecentBooks': 'library.books.read',
   'library.getTree': 'library.books.read',
@@ -70,6 +71,7 @@ const Map<String, String> apiCallToPermissionHint = {
   // tools.*
   'tools.gematria': pluginToolsReadPermission,
   'tools.dictionary': pluginToolsReadPermission,
+  'tools.biographies': pluginToolsReadPermission,
 
   // notifications.*
   'notifications.showInApp': 'notifications.send',
