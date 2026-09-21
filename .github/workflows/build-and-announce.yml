@@ -2958,6 +2958,7 @@ jobs:
         continue-on-error: true
         env:
           UPDATE_PACKAGES_REPO: ${{ github.repository }}
+          UPDATE_PACKAGES_SOURCE_REPO: ${{ github.repository }}
           UPDATE_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
