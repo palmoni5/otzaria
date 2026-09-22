@@ -130,6 +130,25 @@ void main() {
       expect(asset.containsKey('parts'), isFalse);
     });
 
+    test('the portable zip carries a type of its own', () {
+      writeRealisticRelease();
+      final manifest = build();
+
+      final installer = componentById(manifest, 'otzaria-windows-x64');
+      for (final id in const [
+        'otzaria-windows-portable-x64',
+        'otzaria-windows-portable-arm64',
+      ]) {
+        // צורה חלופית של אותה תוכנה — סוג משותף עם המתקין היה מצרף אותה
+        // להצעות של מסייע ההורדה, שנגזרות מ-type.
+        expect(componentById(manifest, id)['type'], 'application-portable');
+        expect(
+          componentById(manifest, id)['type'],
+          isNot(installer['type']),
+        );
+      }
+    });
+
     test('the full installer survives being split into parts', () {
       writeRealisticRelease(withFullInstaller: false);
       writeFile('otzaria-0.9.97-windows-full.exe.part-000', 'a' * 20);

@@ -105,7 +105,9 @@ const List<ComponentSpec> kKnownComponents = [
     id: 'otzaria-windows-portable-x64',
     name: 'אוצריא ל-Windows — גרסה ניידת',
     description: 'ארכיון ZIP שאינו דורש התקנה, למעבדי x64.',
-    type: 'application',
+    // צורה חלופית של אותה תוכנה ולא רכיב נוסף — סוג משלה מונע מההצעות
+    // לצרף אותה יחד עם המתקין.
+    type: 'application-portable',
     required: false,
     platform: 'windows',
     architecture: 'x64',
@@ -116,7 +118,7 @@ const List<ComponentSpec> kKnownComponents = [
     id: 'otzaria-windows-portable-arm64',
     name: 'אוצריא ל-Windows — גרסה ניידת (ARM64)',
     description: 'ארכיון ZIP שאינו דורש התקנה, למחשבי ARM64.',
-    type: 'application',
+    type: 'application-portable',
     required: false,
     platform: 'windows',
     architecture: 'arm64',
