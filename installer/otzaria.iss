@@ -12,7 +12,7 @@
 ; בשקט ללא אשף).
 
 #define MyAppName "אוצריא"
-#define MyAppVersion "0.9.99"
+#define MyAppVersion "0.10.0"
 #define MyAppPublisher "sivan22"
 #define MyAppURL "https://github.com/otzaria/otzaria"
 #define MyAppExeName "otzaria.exe"
