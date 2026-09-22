@@ -232,4 +232,23 @@ void main() {
       expect(script, isNot(contains('http://')));
     });
   });
+
+  group('בחירת שחרורי הבסיס', () {
+    // createdAt נגזר מהקומיט וחוזר בין שחרורים; נצפה בפועל שבחר את הישן
+    // מבין שלושה שחרורים בעלי תאריך זהה, במקום את הקודם המיידי.
+    test('ממוינים לפי גרסה ולא לפי createdAt', () {
+      expect(script, isNot(contains('sort_by(.createdAt)')));
+      expect(script, isNot(contains('tagName,isDraft,createdAt')));
+      expect(script, contains('sort_by(.key) | reverse'));
+    });
+
+    test('ההשוואה מספרית, כך ש-0.10.0 גובר על 0.9.99', () {
+      expect(script, contains('map(try tonumber catch 0)'));
+    });
+
+    test('ה-build של ערוץ הפיתוח שובר שוויון בין אותה גרסה', () {
+      expect(script, contains(r'split("+") as $p'));
+      expect(script, contains(r'($p[1] // "0") | try tonumber catch 0'));
+    });
+  });
 }

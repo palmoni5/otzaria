@@ -33,9 +33,15 @@ unzip -q -o "$new_zip" -d "$new_root"
 
 # השחרורים הקודמים, החדש ביותר תחילה, בלי טיוטות ובלי השחרור הנוכחי.
 mapfile -t candidates < <(
+  # לפי גרסה ולא לפי createdAt: הוא נגזר מהקומיט וחוזר על עצמו בין שחרורים,
+  # ובשוויון הסדר שרירותי. ההשוואה מספרית, כדי ש-0.10.0 יגבר על 0.9.99.
   gh release list --repo "$source_repo" --limit 40 \
-    --json tagName,isDraft,createdAt \
-    --jq 'map(select(.isDraft | not)) | sort_by(.createdAt) | reverse | .[].tagName' |
+    --json tagName,isDraft \
+    --jq 'map(select(.isDraft | not))
+      | map(. + {key: (.tagName | sub("^v"; "") | split("+") as $p
+          | ($p[0] | split(".") | map(try tonumber catch 0))
+            + [($p[1] // "0") | try tonumber catch 0])})
+      | sort_by(.key) | reverse | .[].tagName' |
     grep -v -x -- "$new_tag" || true
 )
 
