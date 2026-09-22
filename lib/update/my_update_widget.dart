@@ -625,6 +625,10 @@ class _ManagedUpdatWidgetState extends State<_ManagedUpdatWidget> {
   /// למעדכן העצמאי במקום למתקין המלא.
   PreparedDifferentialUpdate? _differentialUpdate;
 
+  /// המתקין כבר שוגר אך התהליך עוד חי (שומר סגירה סירב, או שחלון אחר פתוח) —
+  /// רק במצב הזה סגירת החלונות שנותרו היא שמשלימה את העדכון.
+  bool _awaitingCloseForUpdate = false;
+
   /// מנוי על מצב הסיור המודרך, פעיל רק כל עוד אנו ממתינים לסיומו לפני
   /// בדיקת העדכון הראשונית.
   StreamSubscription<TourState>? _tourSubscription;
@@ -789,6 +793,7 @@ class _ManagedUpdatWidgetState extends State<_ManagedUpdatWidget> {
       // איפוס המקורות מונע שיגור כפול כשאירוע הסגירה יגיע ל-hook.
       _installerFile = null;
       _differentialUpdate = null;
+      if (mounted) setState(() => _awaitingCloseForUpdate = true);
       // ⚠️ המעדכן מחליף קבצים רק אחרי שהתהליך יצא, וכל חלון הוא isolate
       // נפרד. חלון שיסרב להיסגר פשוט משאיר את המעדכן ממתין — אי-אירוע.
       MultiWindowService.closePeers();
@@ -1280,6 +1285,7 @@ class _ManagedUpdatWidgetState extends State<_ManagedUpdatWidget> {
       appVersion: _currentVersion ?? 'unknown',
       status: _status,
       changelog: _changelog,
+      awaitingClose: _awaitingCloseForUpdate,
       checkForUpdate: _checkForUpdate,
       startUpdate: _startUpdate,
       launchInstaller: _installNow,
@@ -1296,6 +1302,7 @@ class ManagedUpdateScope extends InheritedWidget {
     required this.appVersion,
     required this.status,
     required this.changelog,
+    this.awaitingClose = false,
     required this.checkForUpdate,
     required this.startUpdate,
     required this.launchInstaller,
@@ -1307,6 +1314,9 @@ class ManagedUpdateScope extends InheritedWidget {
   final String appVersion;
   final UpdatStatus status;
   final String? changelog;
+
+  /// המתקין שוגר והתהליך עוד חי — ראה `_awaitingCloseForUpdate`.
+  final bool awaitingClose;
   final VoidCallback checkForUpdate;
   final VoidCallback startUpdate;
   final Future<void> Function() launchInstaller;
@@ -1321,7 +1331,8 @@ class ManagedUpdateScope extends InheritedWidget {
     return latestVersion != oldWidget.latestVersion ||
         appVersion != oldWidget.appVersion ||
         status != oldWidget.status ||
-        changelog != oldWidget.changelog;
+        changelog != oldWidget.changelog ||
+        awaitingClose != oldWidget.awaitingClose;
   }
 }
 
@@ -1350,6 +1361,7 @@ class ManagedUpdateTitleBarIndicator extends StatelessWidget {
 
     return hebrewFlatChip(
       context: context,
+      awaitingClose: update.awaitingClose,
       latestVersion: update.latestVersion,
       appVersion: update.appVersion,
       status: update.status,

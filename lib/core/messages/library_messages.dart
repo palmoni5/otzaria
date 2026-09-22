@@ -132,15 +132,23 @@ abstract class LibraryMessages {
 
   static const String smallUpdateDialogTitle = 'העדכון מוכן';
 
-  /// מה בפועל משלים את העדכון. חלון נוסף פתוח מחזיק את התהליך חי, והמעדכן
-  /// ממתין לו בשקט — בלי המשפט הזה נראה שהאישור לא עשה דבר.
+  /// לפני האישור: המעדכן החיצוני משוגר רק בלחיצה על הכפתור, ולכן אסור
+  /// להבטיח כאן שסגירה ידנית של אוצריא תשלים את העדכון.
   static const String smallUpdateDialogContent =
-      'סגור את אוצריא לגמרי — כולל חלונות נוספים — והעדכון יושלם מעצמו '
-      'ואוצריא תיפתח מחדש.';
+      'לחיצה על "סגור והתקן" היא שמתחילה את ההתקנה: אוצריא תיסגר — כולל '
+      'חלונות נוספים — ותיפתח מחדש בגרסה החדשה.';
 
   static const String smallUpdateDialogCancel = 'לא עכשיו';
 
   static const String smallUpdateDialogConfirm = 'סגור והתקן';
+
+  /// אחרי האישור, כשחלון כלשהו עוד פתוח: רק כאן המעדכן כבר רץ וממתין
+  /// ליציאת התהליך, ולכן רק כאן סגירה ידנית באמת משלימה את העדכון.
+  static const String smallUpdateAwaitingCloseChip = 'סגור את החלונות שנותרו';
+
+  static const String smallUpdateAwaitingCloseMessage =
+      'העדכון יושלם כשאוצריא תיסגר לגמרי. סגור את החלונות שנותרו פתוחים — '
+      'והעדכון יושלם מעצמו ואוצריא תיפתח מחדש בגרסה החדשה.';
 
   /// נלווה להודעת שלב ההחלה כשמסלול הדלתא כבד ואין הורדה מלאה חלופית.
   static String applyStageWithHeavyDeltaNotice(String stageMessage) =>

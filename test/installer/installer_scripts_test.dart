@@ -1830,6 +1830,64 @@ void main() {
       );
     });
   });
+
+  group('תג ה-release של המתקין המאונדקס', () {
+    // ‎/D‎ עם ערך במרכאות מגיע ל-ISPP עטוף בלוכסנים דרך pwsh, והכתובת
+    // שנבנית ממנו שבורה. נמדד מול ISCC אמיתי: ‎[\0.10.0+139\]‎.
+    test('$_full: התג מגיע ממשתנה סביבה, עם נפילה אחורה', () {
+      final script = _script(_full);
+      final flat = script.replaceAll(RegExp(r'\s+'), ' ');
+
+      expect(
+        flat,
+        contains(
+          '#ifndef IndexedReleaseTag '
+          '#define IndexedReleaseTag GetEnv("OTZARIA_INDEXED_RELEASE_TAG") '
+          '#endif',
+        ),
+        reason: '‎#ifndef‎ משאיר ל-‎/D‎ מפורש לנצח בבנייה מקומית',
+      );
+      expect(
+        flat,
+        contains(
+          '#if IndexedReleaseTag == "" '
+          '#define IndexedReleaseTag MyAppVersion '
+          '#endif',
+        ),
+        reason: 'בנייה בלי תג ובלי משתנה סביבה חייבת עדיין להתקמפל',
+      );
+      expect(
+        flat,
+        contains(
+          '#define IndexedReleaseBaseUrl '
+          '"https://github.com/Otzaria/otzaria/releases/download/" '
+          '+ IndexedReleaseTag',
+        ),
+      );
+    });
+
+    test('ה-workflow מעביר את התג בסביבה ולא ב-‎/D‎', () {
+      final step = _workflowStep('Build indexed FULL bootstrap installer');
+
+      expect(
+        step,
+        contains(r'$env:OTZARIA_INDEXED_RELEASE_TAG = $releaseTag'),
+      );
+      expect(
+        step,
+        contains(
+          '& "\$env:ISCC" \'/DIndexedSplitFull=1\' installer\\otzaria_full.iss',
+        ),
+      );
+      expect(
+        step,
+        isNot(contains('/DIndexedReleaseTag')),
+        reason: 'ערך שעובר ב-‎/D‎ דרך pwsh מגיע עטוף בלוכסנים',
+      );
+      // דגל בלי ערך — לא מושפע מהעיוות ונשאר כפי שהוא.
+      expect(step, contains("'/DIndexedSplitFull=1'"));
+    });
+  });
 }
 
 /// גוף שלב [name] ב-workflow הראשי, עד השלב הבא.

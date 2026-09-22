@@ -47,7 +47,24 @@ Widget hebrewFlatChip({
   required void Function() startUpdate,
   required Future<void> Function() launchInstaller,
   required void Function() dismissUpdate,
+  bool awaitingClose = false,
 }) {
+  // אחרי האישור התהליך עוד חי כי חלון כלשהו לא נסגר — המעדכן כבר ממתין לו.
+  if (awaitingClose) {
+    return Tooltip(
+      message: LibraryMessages.smallUpdateAwaitingCloseMessage,
+      child: _updateChipSurface(
+        context,
+        TextButton.icon(
+          onPressed: null,
+          style: _updateChipButtonStyle(context),
+          icon: const Icon(FluentIcons.hourglass_24_regular),
+          label: const Text(LibraryMessages.smallUpdateAwaitingCloseChip),
+        ),
+      ),
+    );
+  }
+
   if (UpdatStatus.available == status ||
       UpdatStatus.availableWithChangelog == status) {
     // בדוק אם הדיאלוג כבר הוצג לגרסה זו
@@ -316,11 +333,13 @@ Widget hebrewFlatChipAutoHideError({
   required void Function() startUpdate,
   required Future<void> Function() launchInstaller,
   required void Function() dismissUpdate,
+  bool awaitingClose = false,
 }) {
   if (status == UpdatStatus.error) {
     Future.delayed(const Duration(seconds: 3), dismissUpdate);
   }
   return hebrewFlatChip(
+    awaitingClose: awaitingClose,
     context: context,
     latestVersion: latestVersion,
     appVersion: appVersion,

@@ -19,7 +19,12 @@
 #define BundledPluginsDirName "bundled_plugins"
 
 #ifdef IndexedSplitFull
+  ; דרך משתנה סביבה: PowerShell מוסיף לוכסנים לפני מרכאות בשורת פקודה
+  ; נייטיב, ו-‎/D‎ מגיע מעוות (‎\0.10.0\‎) — הכתובת שנבנית ממנו שבורה.
   #ifndef IndexedReleaseTag
+    #define IndexedReleaseTag GetEnv("OTZARIA_INDEXED_RELEASE_TAG")
+  #endif
+  #if IndexedReleaseTag == ""
     #define IndexedReleaseTag MyAppVersion
   #endif
   #define IndexedArchiveName "otzaria-" + MyAppVersion + "-library-full-indexed.tar.zst"

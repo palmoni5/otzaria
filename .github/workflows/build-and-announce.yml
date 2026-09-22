@@ -2409,8 +2409,8 @@ jobs:
           } else {
             $releaseTag = "$version+$env:GITHUB_RUN_NUMBER"
           }
-          $tagDefine = '/DIndexedReleaseTag="' + $releaseTag + '"'
-          & "$env:ISCC" '/DIndexedSplitFull=1' $tagDefine installer\otzaria_full.iss
+          $env:OTZARIA_INDEXED_RELEASE_TAG = $releaseTag
+          & "$env:ISCC" '/DIndexedSplitFull=1' installer\otzaria_full.iss
           if ($LASTEXITCODE -ne 0) {
             throw 'Indexed FULL bootstrap installer build failed'
           }
