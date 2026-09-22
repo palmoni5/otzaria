@@ -12,10 +12,10 @@
 ;   * הרכבת נכס מפוצל לקובץ אחד היא שרשור בתים טהור דרך TFileStream, בלי
 ;     PowerShell ובלי כלים חיצוניים. נמדד: 2.4GB ב-6.5 שניות.
 
-; תג ה-release שממנו נבנה הכלי. ה-workflow מעביר אותו ב-‎/DAssistantReleaseTag‎.
-; בלעדיו (בנייה מקומית) הכלי נופל חזרה ל-‎/releases/latest‎ בלבד.
+; תג ה-release שממנו נבנה הכלי, דרך משתנה סביבה: PowerShell מוסיף לוכסנים
+; לפני מרכאות בשורת פקודה נייטיב, והערך הגיע מעוות. בלעדיו — נפילה ל-latest.
 #ifndef AssistantReleaseTag
-  #define AssistantReleaseTag ""
+  #define AssistantReleaseTag GetEnv("OTZARIA_ASSISTANT_RELEASE_TAG")
 #endif
 
 ; החלק ‎X.Y.Z‎ של התג, לתצוגה במאפייני הקובץ. בלי תג מוטבע אין מה להציג.

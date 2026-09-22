@@ -1783,13 +1783,14 @@ void main() {
       expect(offenders, isEmpty, reason: offenders.join('\n'));
     });
 
-    test('$_assistant: התג מגיע מהגדרת ISCC, עם נסיגה בהיעדרה', () {
+    test('$_assistant: התג מגיע ממשתנה סביבה, עם נסיגה בהיעדרו', () {
       final script = _script(_assistant);
       // התג המוטבע הוא ברירת המחדל; בלעדיו הכלי חוזר ל-/releases/latest.
       expect(script, contains('#ifndef AssistantReleaseTag'));
+      // ‎/D‎ עם מרכאות מגיע ל-ISPP עטוף בלוכסנים; נמדד: ‎\0.10.0+139\‎.
       expect(
         script,
-        contains(RegExp(r'#define\s+AssistantReleaseTag\s+""')),
+        contains('GetEnv("OTZARIA_ASSISTANT_RELEASE_TAG")'),
       );
       expect(script, contains("Trim('{#AssistantReleaseTag}')"));
       expect(script, contains("PinnedTag := LatestTag"));
@@ -1816,8 +1817,9 @@ void main() {
       final step = _workflowStep(
         'Build Download Assistant (non-fatal helper tool)',
       );
-      expect(step, contains('/DAssistantReleaseTag='));
-      expect(step, contains(r'$tagDefine installer\download_assistant.iss'));
+      expect(step, contains(r'$env:OTZARIA_ASSISTANT_RELEASE_TAG = $tag'));
+      expect(step, contains(r'& "$env:ISCC" installer\download_assistant.iss'));
+      expect(step, isNot(contains('/DAssistantReleaseTag=')));
       // אותו כלל תג שבו create_release משתמש.
       expect(
         step,

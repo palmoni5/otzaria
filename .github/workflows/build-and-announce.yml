@@ -627,8 +627,8 @@ jobs:
           Write-Host "Building the Download Assistant helper..."
           $version = (Select-String -Path pubspec.yaml -Pattern '^version:').Line.Split(' ')[1].Split('+')[0]
           $tag = if ('${{ github.ref }}' -eq 'refs/heads/main') { $version } else { "$version+${{ github.run_number }}" }
-          $tagDefine = '/DAssistantReleaseTag="' + $tag + '"'
-          & "$env:ISCC" $tagDefine installer\download_assistant.iss
+          $env:OTZARIA_ASSISTANT_RELEASE_TAG = $tag
+          & "$env:ISCC" installer\download_assistant.iss
           if ($LASTEXITCODE -ne 0) {
             throw "Download Assistant build failed"
           }

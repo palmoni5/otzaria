@@ -301,14 +301,15 @@ packages:
     expect(workflow, contains(r'"$NEW_VERSION" "$HOTFIX"'));
   });
   group('מסייע ההורדה ומניפסט ה-release ב-workflow', () {
+    // סופי השורות תלויים בהגדרת ה-checkout, ולכן מנורמלים לפני ההשוואה.
     final workflow = File(
       '.github/workflows/build-and-announce.yml',
-    ).readAsStringSync();
+    ).readAsStringSync().replaceAll('\r\n', '\n');
 
     test('האשף נבנה עם ה-ISCC הקיים ואינו מפיל את שחרור אוצריא', () {
       expect(
         workflow,
-        contains(r'$tagDefine installer\download_assistant.iss'),
+        contains(r'& "$env:ISCC" installer\download_assistant.iss'),
       );
       expect(
         workflow,
