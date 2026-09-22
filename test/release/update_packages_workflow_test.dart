@@ -127,8 +127,8 @@ void main() {
       expect(workflow, contains(r'tag=$VERSION+${{ github.run_number }}'));
       expect(
         r'"$version+${{ github.run_number }}"'.allMatches(workflow).length,
-        4,
-        reason: 'חותם ומניפסט, בשתי הארכיטקטורות',
+        5,
+        reason: 'חותם ומניפסט בשתי הארכיטקטורות, ומסייע ההורדה',
       );
     });
 

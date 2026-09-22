@@ -137,8 +137,10 @@ class DifferentialUpdateEngine {
   final String installedReleaseTag;
   final ZstdRunner zstd;
 
-  Directory get stagingRoot => Directory(p.join(workRoot.path, 'staging'));
-  Directory get backupRoot => Directory(p.join(workRoot.path, 'backup'));
+  Directory get stagingRoot =>
+      Directory(p.join(workRoot.path, kSwapStagingDirName));
+  Directory get backupRoot =>
+      Directory(p.join(workRoot.path, kSwapBackupDirName));
 
   /// המסלול המלא. [fallbackPackage] מביא את חבילת הקבצים המלאים, ונקרא
   /// רק אם ערך כלשהו בחבילת ה-patch לא ניתן להחלה.

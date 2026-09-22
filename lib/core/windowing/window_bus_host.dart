@@ -181,6 +181,8 @@ class _WindowBusHostState extends State<WindowBusHost> {
         return SettingsSync.instance.handleRequest(request);
       case MultiWindowService.requestRestart:
         return _restartSelf();
+      case MultiWindowService.requestCloseWindow:
+        return _closeSelfPolitely();
       default:
         return null;
     }
@@ -200,6 +202,21 @@ class _WindowBusHostState extends State<WindowBusHost> {
       context,
       afterRestart: WebViewEnvironmentHolder.disposeForAppRestart,
     );
+    return true;
+  }
+
+  /// חלון אחר מבקש שהחלון הזה ייסגר (עדכון שממתין להחלפת קבצים).
+  ///
+  /// ⚠️ `close()` ולא כיבוי כפוי: זהו בדיוק המסלול של לחיצה על X, ולכן כל
+  /// שומרי הסגירה רצים והחלון רשאי לסרב — סירוב אינו כשל אלא אי-אירוע.
+  ///
+  /// חלון מוסתר (נסגר וממתין ל-Ctrl+Shift+T) אינו נסגר שוב: אין לו חלון
+  /// לסגור, וסגירה חוזרת הייתה מוחקת סשן שכבר נמחק.
+  Future<bool> _closeSelfPolitely() async {
+    if (!mounted) return false;
+    final window = AppWindowScope.controllerOf(context);
+    if (!await window.isVisible()) return false;
+    await window.close();
     return true;
   }
 

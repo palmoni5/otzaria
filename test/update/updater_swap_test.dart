@@ -31,6 +31,17 @@ class _UnrecoverableFileSystem extends _LockedFileSystem {
       throw const FileSystemException('the file cannot be removed');
 }
 
+/// קובץ יעד שתהליך אחר מחזיק — בלי לנעול קובץ אמיתי במערכת ההפעלה.
+class _HeldFileSystem extends SwapFileSystem {
+  _HeldFileSystem(this.held);
+
+  final Set<String> held;
+
+  @override
+  bool isHeldByAnotherProcess(String path) =>
+      held.any((name) => p.basename(path) == p.basename(name));
+}
+
 String _hash(String path) =>
     sha256.convert(File(path).readAsBytesSync()).toString();
 
@@ -211,6 +222,178 @@ void main() {
       applySwapPlan(inside).outcome,
       SwapOutcome.abortedBeforeAnyChange,
     );
+  });
+
+  group('קובץ נעול', () {
+    test('החלפה נדחית לפני כל שינוי כשקובץ יעד מוחזק', () {
+      final before = _hashTree(install);
+
+      final result = applySwapPlan(plan(), fs: _HeldFileSystem({'data/a.dat'}));
+
+      expect(result.outcome, SwapOutcome.abortedBeforeAnyChange);
+      expect(result.error, contains('held by another process'));
+      expect(_hashTree(install), before);
+      // ההחלפה נדחתה, ולכן גם אין ממה להתאושש.
+      expect(backup.existsSync(), isFalse);
+    });
+
+    test('קובץ שנועד להסרה ומוחזק דוחה אף הוא', () {
+      final result = applySwapPlan(plan(), fs: _HeldFileSystem({'legacy.dll'}));
+      expect(result.outcome, SwapOutcome.abortedBeforeAnyChange);
+    });
+  });
+
+  group('שחזור החלפה שנקטעה', () {
+    /// מדמה מעדכן שנהרג אחרי שהחליף את `otzaria.exe` בלבד.
+    SwapPlan halfApplied() {
+      final built = plan();
+      backup.createSync(recursive: true);
+      File(
+        p.join(install.path, 'otzaria.exe'),
+      ).renameSync(p.join(backup.path, 'otzaria.exe'));
+      File(
+        p.join(staging.path, 'otzaria.exe'),
+      ).renameSync(p.join(install.path, 'otzaria.exe'));
+      return built;
+    }
+
+    test('ללא עדות להחלפה שנקטעה לא נוגעים בדבר', () {
+      final before = _hashTree(install);
+      final result = recoverInterruptedSwap(plan());
+
+      expect(result.outcome, SwapRecovery.nothingToDo);
+      expect(_hashTree(install), before);
+    });
+
+    test('כל הקבצים זמינים — ההתקנה מושלמת לגרסה החדשה', () {
+      final result = recoverInterruptedSwap(halfApplied());
+
+      expect(result.outcome, SwapRecovery.completed);
+      expect(
+        File(p.join(install.path, 'otzaria.exe')).readAsStringSync(),
+        'new binary',
+      );
+      expect(
+        File(p.join(install.path, 'data', 'a.dat')).readAsStringSync(),
+        'new a',
+      );
+      expect(
+        File(p.join(install.path, 'data', 'b.dat')).readAsStringSync(),
+        'new b',
+      );
+      expect(File(p.join(install.path, 'legacy.dll')).existsSync(), isFalse);
+      expect(
+        File(
+          p.join(install.path, 'otzaria_data', 'settings.hive'),
+        ).readAsStringSync(),
+        'mine',
+      );
+    });
+
+    test('קובץ staging חסר — ההתקנה חוזרת כולה לגרסה הישנה', () {
+      final built = halfApplied();
+      File(p.join(staging.path, 'data', 'b.dat')).deleteSync();
+
+      final result = recoverInterruptedSwap(built);
+
+      expect(result.outcome, SwapRecovery.restored);
+      expect(
+        File(p.join(install.path, 'otzaria.exe')).readAsStringSync(),
+        'old binary',
+      );
+      expect(
+        File(p.join(install.path, 'data', 'a.dat')).readAsStringSync(),
+        'old a',
+      );
+      expect(File(p.join(install.path, 'legacy.dll')).existsSync(), isTrue);
+    });
+
+    test('קובץ חדש שאין לו גיבוי מוסר בביטול', () {
+      _write(p.join(staging.path, 'brandnew.dll'), 'brand new');
+      final built = SwapPlan(
+        platform: 'windows',
+        architecture: 'x64',
+        fromReleaseTag: '0.9.97+100',
+        toReleaseTag: '0.9.97+101',
+        installRoot: install.path,
+        stagingRoot: staging.path,
+        backupRoot: backup.path,
+        files: [
+          for (final path in const ['brandnew.dll', 'data/b.dat'])
+            SwapFile(
+              path: path,
+              sha256: _hash(p.join(staging.path, path)),
+              size: File(p.join(staging.path, path)).lengthSync(),
+            ),
+        ],
+        removals: const [],
+      );
+      backup.createSync(recursive: true);
+      File(
+        p.join(staging.path, 'brandnew.dll'),
+      ).renameSync(p.join(install.path, 'brandnew.dll'));
+      File(p.join(staging.path, 'data', 'b.dat')).deleteSync();
+
+      final result = recoverInterruptedSwap(built);
+
+      expect(result.outcome, SwapRecovery.restored);
+      expect(File(p.join(install.path, 'brandnew.dll')).existsSync(), isFalse);
+      expect(
+        File(p.join(install.path, 'data', 'b.dat')).readAsStringSync(),
+        'old b',
+      );
+    });
+
+    test('נתוני המשתמש אינם נוגעים בביטול ההחלפה', () {
+      final built = halfApplied();
+      File(p.join(staging.path, 'data', 'b.dat')).deleteSync();
+
+      recoverInterruptedSwap(built);
+
+      expect(
+        File(
+          p.join(install.path, 'otzaria_data', 'settings.hive'),
+        ).readAsStringSync(),
+        'mine',
+      );
+    });
+
+    test('כשל בשחזור אינו מוחק את הגיבוי', () {
+      final built = halfApplied();
+      File(p.join(staging.path, 'data', 'b.dat')).deleteSync();
+
+      final result = recoverInterruptedSwap(
+        built,
+        fs: _LockedFileSystem('otzaria.exe'),
+      );
+
+      expect(result.outcome, SwapRecovery.failed);
+      expect(File(p.join(backup.path, 'otzaria.exe')).existsSync(), isTrue);
+    });
+  });
+
+  group('חלון ההפעלה מחדש', () {
+    test('פתוח מיד אחרי היציאה, סגור אחרי שחלף', () {
+      final exitedAt = DateTime(2026, 1, 1, 12);
+      const window = Duration(minutes: 2);
+
+      expect(
+        relaunchWindowStillOpen(
+          exitedAt: exitedAt,
+          now: exitedAt.add(const Duration(seconds: 30)),
+          window: window,
+        ),
+        isTrue,
+      );
+      expect(
+        relaunchWindowStillOpen(
+          exitedAt: exitedAt,
+          now: exitedAt.add(const Duration(minutes: 20)),
+          window: window,
+        ),
+        isFalse,
+      );
+    });
   });
 
   group('תוכנית ההחלפה', () {

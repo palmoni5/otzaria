@@ -40,6 +40,7 @@ import 'package:otzaria/navigation/navigation_repository.dart';
 import 'package:otzaria/settings/engine/settings_bloc.dart';
 import 'package:otzaria/settings/engine/settings_event.dart';
 import 'package:otzaria/settings/engine/settings_repository.dart';
+import 'package:otzaria/update/differential/swap_recovery.dart';
 import 'package:otzaria/tabs/bloc/tabs_bloc.dart';
 import 'package:otzaria/tabs/bloc/tabs_event.dart';
 import 'package:otzaria/tabs/models/tab.dart';
@@ -864,6 +865,7 @@ Future<void> _initializeRestartableRuntime() async {
   unawaited(_runDeferredAutoBackup());
   unawaited(_runDeferredRestoreWindows());
   unawaited(_runDeferredProtocolRegistration());
+  unawaited(_runDeferredSwapRecovery());
   unawaited(_logJobObjectContainmentFailure());
   unawaited(_runDeferredDataRootWritabilityWarning());
   unawaited(_runDeferredCrashCheck());
@@ -1048,6 +1050,32 @@ Future<void> _runDeferredCrashCheck() async {
     ).handle(candidate);
   } catch (error, stackTrace) {
     _logNonFatalInitializationError('Crash report check', error, stackTrace);
+  }
+}
+
+/// החלפת עדכון שהמעדכן נהרג באמצעה משאירה התקנה מעורבת שאיש אינו משלים ואינו
+/// מבטל. הבדיקה כאן היא שתי בדיקות קיום במקרה הרגיל, והעבודה עצמה רצה במעדכן
+/// אחרי יציאת אוצריא — ההתקנה החיה נעולה כל עוד היא רצה.
+Future<void> _runDeferredSwapRecovery() async {
+  // פר-תהליך: ההתקנה אחת, וחלון נוסף היה משגר מעדכן שני על אותם קבצים.
+  if (WindowRole.isSecondary || !Platform.isWindows) return;
+  final planFile = pendingInterruptedSwapPlan(differentialWorkDirectory());
+  if (planFile == null) return;
+  try {
+    await _mainWindowRevealedCompleter.future.timeout(
+      const Duration(seconds: 20),
+    );
+  } on TimeoutException {
+    // ממשיכים בכל זאת — אחרת ההתקנה תישאר מעורבת.
+  }
+  try {
+    requestInterruptedSwapRecovery(
+      planFile: planFile,
+      installRoot: Directory(p.dirname(Platform.resolvedExecutable)),
+      waitForPid: pid,
+    );
+  } catch (error, stackTrace) {
+    _logNonFatalInitializationError('Update swap recovery', error, stackTrace);
   }
 }
 

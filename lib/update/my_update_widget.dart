@@ -23,9 +23,11 @@ import 'package:updat/utils/file_handler.dart' show openInstaller;
 import 'package:window_manager/window_manager.dart';
 import 'package:otzaria/core/windowing/app_window_controller.dart';
 import 'package:otzaria/core/windowing/app_window_scope.dart';
+import 'package:otzaria/core/windowing/multi_window_service.dart';
 import 'package:otzaria/core/windowing/window_role.dart';
 import 'package:otzaria/widgets/widgets_exports.dart';
 import 'differential/differential_update_service.dart';
+import 'differential/swap_recovery.dart';
 import 'differential/installed_release.dart';
 import 'differential/zstd_runner.dart';
 import 'hebrew_update_widgets.dart';
@@ -33,6 +35,8 @@ import 'linux_installer.dart';
 import 'macos_installer.dart';
 import 'windows_installer.dart';
 import 'package:otzaria/settings/settings_exports.dart';
+
+export 'differential/swap_recovery.dart' show differentialWorkDirectory;
 
 /// סוג ההתקנה המוגדר בזמן build (אופציונלי)
 /// להגדרה: --dart-define=INSTALL_KIND=exe/zip
@@ -81,12 +85,6 @@ bool managesUpdatesInThisWindow({
   );
 }
 
-/// תיקיית העבודה של העדכון המצומצם. חייבת להיות מחוץ לתיקיית ההתקנה —
-/// הגיבוי שבתוכה הוא מה שמשחזר התקנה שההחלפה נקטעה באמצעה.
-@visibleForTesting
-Directory differentialWorkDirectory() =>
-    Directory(p.join(Directory.systemTemp.path, 'otzaria_small_update'));
-
 /// מנסה את מסלול העדכון המצומצם ומחזיר `null` בכל כשל או חוסר זמינות.
 ///
 /// הבליעה היא העיקר: המסלול הזה הוא אופטימיזציה, וכל כשל בו חייב להחזיר
@@ -101,17 +99,6 @@ Future<PreparedDifferentialUpdate?> tryPrepareDifferentialUpdate(
     debugPrint('[Update] small update unavailable: $error\n$stackTrace');
     return null;
   }
-}
-
-/// גודל הנכס שנבחר להורדה, לפי ה-URL שלו. `null` כשאינו ידוע.
-@visibleForTesting
-int? assetSizeForUrl(List<Map<String, dynamic>> assets, String url) {
-  for (final asset in assets) {
-    if (asset['browser_download_url'] == url && asset['size'] is int) {
-      return asset['size'] as int;
-    }
-  }
-  return null;
 }
 
 @visibleForTesting
@@ -130,7 +117,7 @@ bool shouldLaunchInstallerOnExit({
 bool shouldDestroyWindowAfterInstallNow({required bool installerLaunched}) =>
     installerLaunched;
 
-/// האם הנכס הוא אשף ההורדות (`Otzaria-Download-Assistant-win.exe`).
+/// האם הנכס הוא אשף ההורדות (`Otzaria-Download-Assistant-windows.exe`).
 ///
 /// הוא exe שאינו מתקין, ושיגורו עם מתגי Inno השקטים היה מריץ אשף אקראי
 /// במקום לעדכן — ולכן הוא מוחרג מבחירת נכס העדכון.
@@ -802,6 +789,9 @@ class _ManagedUpdatWidgetState extends State<_ManagedUpdatWidget> {
       // איפוס המקורות מונע שיגור כפול כשאירוע הסגירה יגיע ל-hook.
       _installerFile = null;
       _differentialUpdate = null;
+      // ⚠️ המעדכן מחליף קבצים רק אחרי שהתהליך יצא, וכל חלון הוא isolate
+      // נפרד. חלון שיסרב להיסגר פשוט משאיר את המעדכן ממתין — אי-אירוע.
+      MultiWindowService.closePeers();
       // ⚠️ סגירה מנומסת ולא `quitApplication()`: האחרון הוא `PostQuitMessage`
       // ומפיל את המנוע תחת Dart רץ. ראו התיעוד ב-`AppWindowController`.
       await _appWindow.close();
@@ -1140,26 +1130,7 @@ class _ManagedUpdatWidgetState extends State<_ManagedUpdatWidget> {
         return target;
       },
     );
-    final prepared = await service.prepare(toReleaseTag);
-
-    final assets = (release['assets'] as List).cast<Map<String, dynamic>>();
-    final installerUrl = pickWindowsAssetUrl(
-      assets,
-      preferredFormat: _preferredWindowsFormat(),
-      isArmMachine: WindowsArchInfo.isWindowsOnArm,
-    );
-    final installerSize = installerUrl == null
-        ? null
-        : assetSizeForUrl(assets, installerUrl);
-    if (installerSize != null && installerSize > prepared.downloadedBytes) {
-      UiSnack.show(
-        LibraryMessages.smallUpdateSaving(
-          formatDownloadSizeHebrew(prepared.downloadedBytes),
-          formatDownloadSizeHebrew(installerSize),
-        ),
-      );
-    }
-    return prepared;
+    return await service.prepare(toReleaseTag);
   }
 
   /// משגר את המעדכן העצמאי עם תוכנית ההחלפה, אחרי שהמשתמש אישר את סגירת

@@ -81,7 +81,7 @@ class ComponentSpec {
 const List<ComponentSpec> kKnownComponents = [
   ComponentSpec(
     id: 'otzaria-windows-x64',
-    name: 'אוצריא לחלונות',
+    name: 'אוצריא ל-Windows',
     description: 'התוכנה עצמה, ללא ספרייה. מתקין רגיל למעבדי x64.',
     type: 'application',
     required: true,
@@ -92,7 +92,7 @@ const List<ComponentSpec> kKnownComponents = [
   ),
   ComponentSpec(
     id: 'otzaria-windows-arm64',
-    name: 'אוצריא לחלונות (ARM64)',
+    name: 'אוצריא ל-Windows (ARM64)',
     description: 'התוכנה עצמה למחשבי ARM64, ללא ספרייה.',
     type: 'application',
     required: false,
@@ -103,7 +103,7 @@ const List<ComponentSpec> kKnownComponents = [
   ),
   ComponentSpec(
     id: 'otzaria-windows-portable-x64',
-    name: 'אוצריא לחלונות — גרסה ניידת',
+    name: 'אוצריא ל-Windows — גרסה ניידת',
     description: 'ארכיון ZIP שאינו דורש התקנה, למעבדי x64.',
     type: 'application',
     required: false,
@@ -114,7 +114,7 @@ const List<ComponentSpec> kKnownComponents = [
   ),
   ComponentSpec(
     id: 'otzaria-windows-portable-arm64',
-    name: 'אוצריא לחלונות — גרסה ניידת (ARM64)',
+    name: 'אוצריא ל-Windows — גרסה ניידת (ARM64)',
     description: 'ארכיון ZIP שאינו דורש התקנה, למחשבי ARM64.',
     type: 'application',
     required: false,
@@ -125,7 +125,7 @@ const List<ComponentSpec> kKnownComponents = [
   ),
   ComponentSpec(
     id: 'otzaria-windows-full',
-    name: 'אוצריא לחלונות עם ספרייה מלאה',
+    name: 'אוצריא ל-Windows עם ספרייה מלאה',
     description:
         'מתקין הכולל את התוכנה ואת הספרייה המלאה, בלי אינדקס חיפוש בנוי מראש.',
     type: 'application-bundle',
@@ -144,7 +144,7 @@ const List<ComponentSpec> kKnownComponents = [
   ),
   ComponentSpec(
     id: 'otzaria-windows-full-indexed',
-    name: 'אוצריא לחלונות עם ספרייה מאונדקסת',
+    name: 'אוצריא ל-Windows עם ספרייה מאונדקסת',
     description:
         'מתקין קטן שמוריד בעת ההתקנה את הספרייה המלאה עם אינדקס החיפוש הבנוי מראש.',
     type: 'application-bundle',

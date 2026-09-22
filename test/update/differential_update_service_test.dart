@@ -352,14 +352,5 @@ void main() {
         isFalse,
       );
     });
-
-    test('גודל המתקין המלא נקרא מהנכס שנבחר', () {
-      final assets = <Map<String, dynamic>>[
-        {'browser_download_url': 'https://x/a.exe', 'size': 41287680},
-        {'browser_download_url': 'https://x/b.zip', 'size': 10},
-      ];
-      expect(assetSizeForUrl(assets, 'https://x/a.exe'), 41287680);
-      expect(assetSizeForUrl(assets, 'https://x/missing'), isNull);
-    });
   });
 }

@@ -308,7 +308,7 @@ packages:
     test('האשף נבנה עם ה-ISCC הקיים ואינו מפיל את שחרור אוצריא', () {
       expect(
         workflow,
-        contains(r'& "$env:ISCC" installer\download_assistant.iss'),
+        contains(r'$tagDefine installer\download_assistant.iss'),
       );
       expect(
         workflow,
@@ -395,7 +395,8 @@ packages:
     });
 
     test('הערות השחרור מציגות את האשף ככלי עזר ואת החלקים אם יופיעו', () {
-      expect(workflow, contains('otzaria-download-assistant-win.exe)'));
+      // המסווג ממיר לאותיות קטנות לפני ההשוואה, ולכן הענף נשאר קטן.
+      expect(workflow, contains('otzaria-download-assistant-windows.exe)'));
       expect(
         workflow,
         contains(

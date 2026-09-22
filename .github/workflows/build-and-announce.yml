@@ -625,7 +625,10 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Building the Download Assistant helper..."
-          & "$env:ISCC" installer\download_assistant.iss
+          $version = (Select-String -Path pubspec.yaml -Pattern '^version:').Line.Split(' ')[1].Split('+')[0]
+          $tag = if ('${{ github.ref }}' -eq 'refs/heads/main') { $version } else { "$version+${{ github.run_number }}" }
+          $tagDefine = '/DAssistantReleaseTag="' + $tag + '"'
+          & "$env:ISCC" $tagDefine installer\download_assistant.iss
           if ($LASTEXITCODE -ne 0) {
             throw "Download Assistant build failed"
           }
@@ -636,7 +639,7 @@ jobs:
         uses: actions/upload-artifact@v7.0.1
         with:
           name: otzaria-download-assistant
-          path: installer/Otzaria-Download-Assistant-win.exe
+          path: installer/Otzaria-Download-Assistant-windows.exe
           if-no-files-found: warn
 
       - name: Upload Windows installer (regular)
@@ -2595,7 +2598,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -d "artifacts/otzaria-download-assistant" ]; then
-            cp artifacts/otzaria-download-assistant/Otzaria-Download-Assistant-win.exe release-files/
+            cp artifacts/otzaria-download-assistant/Otzaria-Download-Assistant-windows.exe release-files/
           else
             echo "::warning::Download Assistant artifact is missing - releasing without it"
           fi
@@ -2718,9 +2721,9 @@ jobs:
             lower=$(printf '%s' "$file" | tr '[:upper:]' '[:lower:]')
 
             case "$lower" in
-              # ראשון בכוונה: שם הכלי אינו מכיל "windows", אבל הוא חייב להישאר
-              # מסווג ככלי עזר גם אם תבנית כלשהי מתחתיו תשתנה.
-              otzaria-download-assistant-win.exe)
+              # ראשון בכוונה: שם הכלי מכיל "windows", ובלי הסדר הזה תבנית של
+              # מתקין חלונות הייתה בולעת אותו.
+              otzaria-download-assistant-windows.exe)
                 download_assistant+=("$file")
                 ;;
               *windows-full.exe.part-*)

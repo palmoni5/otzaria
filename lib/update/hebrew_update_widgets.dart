@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
+import 'package:otzaria/core/messages/library_messages.dart';
 import 'package:updat/updat.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -97,9 +98,12 @@ Widget hebrewFlatChip({
   }
 
   if (UpdatStatus.readyToInstall == status) {
-    // ב-Windows העדכון מותקן ברקע (מתקין שקט) והתוכנה נפתחת מחדש לבד —
+    // ההסבר המלא יושב כאן ולא בחלון קופץ: ברגע ה"מוכן" אין מה להפריע
+    // למשתמש, והלחיצה ממילא פותחת את אותו נוסח בדיאלוג.
     return Tooltip(
-      message: Platform.isWindows ? 'לחץ לעדכון' : 'לחץ להתקנה',
+      message: Platform.isWindows
+          ? LibraryMessages.smallUpdateDialogContent
+          : 'לחץ להתקנה',
       child: _updateChipSurface(
         context,
         TextButton.icon(

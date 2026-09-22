@@ -23,7 +23,8 @@ void main(List<String> args) {
   final planPath = _option(args, '--plan');
   if (planPath == null) {
     stderr.writeln(
-      'usage: otzaria_updater --plan <swap-plan.json> [--no-relaunch]',
+      'usage: otzaria_updater --plan <swap-plan.json> [--no-relaunch] '
+      '[--recover] [--wait-pid <pid>]',
     );
     exitCode = kExitUsage;
     return;
@@ -50,7 +51,9 @@ void main(List<String> args) {
     return;
   }
 
-  final pid = plan.waitForPid;
+  // המשגר רשאי לדרוס את ה-pid שבתוכנית: בשחזור בעלייה התהליך שבתוכנית מת
+  // מזמן, ומי שמחזיק את ההתקנה הוא המופע החדש של אוצריא.
+  final pid = _intOption(args, '--wait-pid') ?? plan.waitForPid;
   if (pid != null && !_waitForProcessExit(pid, plan.waitTimeout)) {
     log.write(
       'otzaria (pid $pid) is still running after '
@@ -58,6 +61,12 @@ void main(List<String> args) {
     );
     _relaunch(plan, args, log);
     exitCode = kExitAborted;
+    return;
+  }
+  final exitedAt = DateTime.now();
+
+  if (args.contains('--recover')) {
+    exitCode = _recover(plan, planFile, log);
     return;
   }
 
@@ -83,8 +92,27 @@ void main(List<String> args) {
     exitCode = kExitCorrupted;
     return;
   }
-  _relaunch(plan, args, log);
+  _relaunch(plan, args, log, exitedAt: exitedAt);
   exitCode = result.succeeded ? kExitSuccess : kExitAborted;
+}
+
+/// משלים או מבטל החלפה שנקטעה, ומנקה אחריה. אינו מפעיל את אוצריא מחדש:
+/// הוא רץ כי המשתמש סגר אותה, ולא כי ביקש עדכון עכשיו.
+int _recover(SwapPlan plan, File planFile, _Log log) {
+  final result = recoverInterruptedSwap(plan);
+  log.write(
+    'recovery ${result.outcome.name}: ${result.changedFiles} file(s) changed'
+    '${result.error == null ? '' : ' - ${result.error}'}',
+  );
+  if (result.outcome == SwapRecovery.failed) {
+    final message = corruptedInstallMessage(plan.backupRoot);
+    _showErrorBox(message);
+    return kExitCorrupted;
+  }
+  _deleteQuietly(Directory(plan.backupRoot));
+  _deleteQuietly(Directory(plan.stagingRoot));
+  _deleteQuietly(planFile.parent);
+  return kExitSuccess;
 }
 
 /// תיבת הודעה של המערכת. למעדכן אין ממשק משלו, וזו הדרך היחידה שלו
@@ -124,9 +152,31 @@ bool _relaunchFromTemp(List<String> args) {
   }
 }
 
-void _relaunch(SwapPlan plan, List<String> args, _Log log) {
+/// מפעיל את אוצריא מחדש — אבל רק אם ההחלפה הסתיימה סמוך ליציאתה.
+///
+/// [exitedAt] הוא הרגע שבו התהליך יצא; החלון הוא `plan.waitTimeout`, אותו
+/// גבול שכבר מגדיר כמה זמן העדכון הזה רשאי לקחת. מעבר לו החלון היה נפתח
+/// מול משתמש שכבר עבר הלאה — או מול מכונה שנכבית.
+void _relaunch(
+  SwapPlan plan,
+  List<String> args,
+  _Log log, {
+  DateTime? exitedAt,
+}) {
   final executable = plan.relaunchExecutable;
   if (executable == null || args.contains('--no-relaunch')) return;
+  if (exitedAt != null &&
+      !relaunchWindowStillOpen(
+        exitedAt: exitedAt,
+        now: DateTime.now(),
+        window: plan.waitTimeout,
+      )) {
+    log.write(
+      'the swap finished more than ${plan.waitTimeout.inSeconds}s after '
+      'otzaria exited - not relaunching it',
+    );
+    return;
+  }
   try {
     Process.start(executable, const [], mode: ProcessStartMode.detached);
   } catch (error) {
@@ -159,6 +209,11 @@ String? _option(List<String> args, String name) {
   final index = args.indexOf(name);
   if (index < 0 || index + 1 >= args.length) return null;
   return args[index + 1];
+}
+
+int? _intOption(List<String> args, String name) {
+  final value = _option(args, name);
+  return value == null ? null : int.tryParse(value);
 }
 
 class _Log {

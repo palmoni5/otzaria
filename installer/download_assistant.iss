@@ -1,4 +1,4 @@
-; מסייע ההורדה של אוצריא — Otzaria-Download-Assistant-win.exe
+; מסייע ההורדה של אוצריא — Otzaria-Download-Assistant-windows.exe
 ;
 ; הכלי הזה אינו מתקין את אוצריא ואינו מתקין שום דבר: הוא אינו כותב לרישום,
 ; אינו יוצר קיצורי דרך ואין לו מסיר. כל תפקידו להוריד את הקבצים הדרושים
@@ -12,11 +12,23 @@
 ;   * הרכבת נכס מפוצל לקובץ אחד היא שרשור בתים טהור דרך TFileStream, בלי
 ;     PowerShell ובלי כלים חיצוניים. נמדד: 2.4GB ב-6.5 שניות.
 
+; תג ה-release שממנו נבנה הכלי. ה-workflow מעביר אותו ב-‎/DAssistantReleaseTag‎.
+; בלעדיו (בנייה מקומית) הכלי נופל חזרה ל-‎/releases/latest‎ בלבד.
+#ifndef AssistantReleaseTag
+  #define AssistantReleaseTag ""
+#endif
+
+; החלק ‎X.Y.Z‎ של התג, לתצוגה במאפייני הקובץ. בלי תג מוטבע אין מה להציג.
+#define TagVersionPart AssistantReleaseTag
+#if Pos("+", TagVersionPart) > 0
+  #define TagVersionPart Copy(TagVersionPart, 1, Pos("+", TagVersionPart) - 1)
+#endif
+
 [Setup]
 AppId={{9A6B5F2E-7C31-4E18-9D44-1F0B8C3A5D72}
 AppName=אוצריא — מסייע הורדה
-; גרסת הכלי עצמו. היא אינה גרסת אוצריא: הכלי חסר-גרסה בכוונה וקורא את תג
-; ה-release בזמן ריצה, ולכן tool/version/update_version אינו נוגע בקובץ הזה.
+; גרסת הכלי עצמו. היא אינה גרסת אוצריא: תג אוצריא מוטבע ב-AssistantReleaseTag
+; בזמן הבנייה, ולכן tool/version/update_version אינו נוגע בקובץ הזה.
 AppVersion=1.0
 AppPublisher=sivan22
 AppPublisherURL=https://github.com/otzaria/otzaria
@@ -29,10 +41,20 @@ DisableProgramGroupPage=yes
 DisableReadyPage=no
 PrivilegesRequired=lowest
 OutputDir=.\
-OutputBaseFilename=Otzaria-Download-Assistant-win
+; שם הנכס חייב להישאר ASCII: GitHub מוחק תווים שאינם ‎[A-Za-z0-9._-]‎ משם נכס
+; שמועלה. הזיהוי העברי מגיע ממאפייני הקובץ שלמטה.
+OutputBaseFilename=Otzaria-Download-Assistant-windows
+VersionInfoProductName=מסייע הורדה לאוצריא
+VersionInfoDescription=מוריד את קובצי אוצריא ומכין מהם התקנה. אינו מתקין את אוצריא.
+VersionInfoCompany=sivan22
+#if TagVersionPart != ""
+VersionInfoProductTextVersion={#TagVersionPart}
+#endif
 SetupIconFile=white_sketch128x128.ico
 WizardImageFile=wizard_large.bmp,wizard_large@2x.bmp,wizard_large@3x.bmp
-WizardSmallImageFile=wizard_small.bmp,wizard_small@2x.bmp,wizard_small@3x.bmp
+; Inno טוען BMP בלי אלפא: אייקון שקוף שנשמר כך מקבל רקע שחור. הקבצים האלה
+; נשטחו מראש על לבן, ולכן הם נפרדים מאלה של המתקינים.
+WizardSmallImageFile=wizard_small_white.bmp,wizard_small_white@2x.bmp,wizard_small_white@3x.bmp
 WizardStyle=modern
 Compression=lzma
 SolidCompression=yes
@@ -43,12 +65,30 @@ ArchitecturesAllowed=x64compatible or arm64
 [Languages]
 Name: "hebrew"; MessagesFile: "compiler:Languages\Hebrew.isl"
 
+; ברירות המחדל של Inno מנוסחות כמתקין ("מתקין את...", "תוכנת ההתקנה"), והכלי
+; הזה אינו מתקין דבר. כל מחרוזת כזאת שמופיעה במסך כלשהו מוחלפת כאן.
 [Messages]
 SetupAppTitle=אוצריא — מסייע הורדה
 SetupWindowTitle=אוצריא — מסייע הורדה
-ReadyLabel1=הכול מוכן. לחץ "התקן" כדי להתחיל בהורדה.
-ReadyLabel2a=
+SetupLdrStartupMessage=הכלי יוריד את קובצי אוצריא ויכין מהם התקנה. להמשיך?
+ButtonInstall=&התחל
+WizardReady=הכול מוכן
+ReadyLabel1=הכול מוכן להורדה.
+ReadyLabel2a=לחץ "התחל" כדי להוריד את הקבצים ולהכין מהם התקנה, או "הקודם" כדי לשנות את הבחירה.
+ReadyLabel2b=לחץ "התחל" כדי להוריד את הקבצים ולהכין מהם התקנה.
+WizardPreparing=רגע לפני ההתחלה
+PreparingDesc=המסייע נערך להורדה.
+WizardInstalling=הורדה והכנה
+InstallingLabel=הקבצים יורדים מאתר אוצריא ונבדקים. אפשר לעצור בכל רגע.
+StatusCreateDirs=מכין את התיקייה...
+StatusExtractFiles=מעתיק קבצים...
+StatusSavingUninstall=שומר נתונים...
+StatusRunProgram=מסיים...
 FinishedHeadingLabel=הפעולה הסתיימה
+FinishedLabel=הפעולה הסתיימה.
+FinishedLabelNoIcons=הפעולה הסתיימה.
+ClickFinish=לחץ "סיים" לסגירת המסייע.
+SetupAborted=הפעולה לא הושלמה.%n%nאפשר להפעיל את המסייע שוב; מה שכבר ירד יישמר.
 ExitSetupTitle=יציאה מהמסייע
 ExitSetupMessage=ההורדה לא הושלמה. קבצים שכבר ירדו יישמרו, והפעלה חוזרת תמשיך מהמקום שבו הפסקת.%n%nלצאת עכשיו?
 
@@ -66,6 +106,9 @@ const
 
   ModeThisComputer = 0;
   ModeOtherComputer = 1;
+
+  { תוצאה של כמה קבצים מקבלת תיקייה משלה, כדי שלא תתערבב במה שכבר נמצא שם. }
+  OutputSubFolderName = 'אוצריא להתקנה';
 
 type
   TInt64Array = array of Int64;
@@ -106,6 +149,9 @@ var
   CustomPresetIndex: Integer;
   ResultText: String;
   RunAfterExe: String;
+  RevealPath: String;
+  RevealIsFile: Boolean;
+  RevealCheck: TNewCheckBox;
 
   { --- תור ההורדה של הריצה הנוכחית --- }
   QueueUrl, QueueFile, QueueSha, QueueLabel: TArrayOfString;
@@ -394,6 +440,64 @@ begin
     '/' + Name;
 end;
 
+function ReleaseApiUrl(const Path: String): String;
+begin
+  Result := 'https://api.github.com/repos/palmoni5/otzaria/releases/' + Path;
+end;
+
+{ החלק ה-X.Y.Z של תג. סיומת ‎+build‎ אינה משתתפת בהשוואה: שני תגים של אותה
+  גרסה הם אותה גרסה, וסדר מספרי ה-run אינו סדר גרסאות. }
+function VersionPart(const Tag: String): String;
+var
+  P: Integer;
+begin
+  Result := Trim(Tag);
+  P := Pos('+', Result);
+  if P > 0 then
+    Result := Copy(Result, 1, P - 1);
+  if (Result <> '') and ((Result[1] = 'v') or (Result[1] = 'V')) then
+    Result := Copy(Result, 2, Length(Result));
+end;
+
+{ 1 אם A גדול מ-B, ‎-1‎ אם קטן, 0 אם שווה. }
+function CompareVersionText(const A, B: String): Integer;
+var
+  PA, PB: TArrayOfString;
+  I, N, NA, NB: Integer;
+  VA, VB: Int64;
+begin
+  Result := 0;
+  PA := StringSplitEx(VersionPart(A), ['.'], #0, stExcludeEmpty);
+  PB := StringSplitEx(VersionPart(B), ['.'], #0, stExcludeEmpty);
+  NA := GetArrayLength(PA);
+  NB := GetArrayLength(PB);
+  if NA > NB then
+    N := NA
+  else
+    N := NB;
+  for I := 0 to N - 1 do
+  begin
+    if I < NA then
+      VA := StrToInt64Def(PA[I], 0)
+    else
+      VA := 0;
+    if I < NB then
+      VB := StrToInt64Def(PB[I], 0)
+    else
+      VB := 0;
+    if VA > VB then
+    begin
+      Result := 1;
+      exit;
+    end;
+    if VA < VB then
+    begin
+      Result := -1;
+      exit;
+    end;
+  end;
+end;
+
 function CacheDir(): String;
 begin
   Result := ExpandConstant('{localappdata}\Otzaria\DownloadAssistant\cache');
@@ -402,6 +506,37 @@ end;
 function CachePath(const Name: String): String;
 begin
   Result := CacheDir() + '\' + Name;
+end;
+
+{ התיקייה שממנה הופעל המסייע — ברירת המחדל לשמירה. }
+function AssistantDir(): String;
+begin
+  Result := RemoveBackslashUnlessRoot(
+    ExtractFileDir(ExpandConstant('{srcexe}')));
+end;
+
+function FallbackOutputBase(): String;
+begin
+  Result := ExpandConstant('{userdocs}\אוצריא-להתקנה');
+end;
+
+{ כתיבה ממשית ולא ניחוש מהנתיב: דיסק-און-קי לקריאה בלבד, שיתוף רשת ותיקייה
+  מוגנת נראים תקינים עד לניסיון הכתיבה הראשון. }
+function DirIsWritable(const Dir: String): Boolean;
+var
+  Probe: String;
+begin
+  Result := False;
+  if Dir = '' then
+    exit;
+  if not ForceDirectories(Dir) then
+    exit;
+  Probe := AddBackslash(Dir) + 'otzaria_write_test.tmp';
+  DeleteFile(Probe);
+  if not SaveStringToFile(Probe, 'otzaria', False) then
+    exit;
+  Result := FileExists(Probe);
+  DeleteFile(Probe);
 end;
 
 { קובץ במטמון נחשב מוכן רק כששני הגודל וה-sha256 תואמים למניפסט. }
@@ -586,38 +721,75 @@ begin
     LoadErrorTech := 'manifest has no components';
 end;
 
+{ JSON של release, או '' בכישלון הורדה/קריאה. }
+function FetchReleaseJson(const Url, FileName: String): AnsiString;
+var
+  Raw: AnsiString;
+begin
+  Result := '';
+  try
+    DownloadTemporaryFile(Url, FileName, '', nil);
+  except
+    LoadErrorTech := GetExceptionMessage;
+    exit;
+  end;
+  if LoadStringFromFile(ExpandConstant('{tmp}\') + FileName, Raw) then
+    Result := Raw
+  else
+    LoadErrorTech := 'cannot read ' + FileName;
+end;
+
 { תג ה-release נקבע כאן פעם אחת ונשמר לכל הריצה: release שמתעדכן באמצע
-  הורדה היה מערבב קבצים משתי גרסאות. }
+  הורדה היה מערבב קבצים משתי גרסאות.
+
+  ברירת המחדל היא התג שממנו נבנה הכלי — release כזה בוודאי נושא מניפסט.
+  ‎/releases/latest‎ מדלג על prerelease, ולכן הוא משמש רק כשהוא מצביע על
+  גרסה גבוהה יותר; כשהוא נכשל או שווה/נמוך, התג המוטבע נשאר. }
 function LoadReleaseManifest(): Boolean;
 var
   ApiRaw, ManifestRaw: AnsiString;
-  ApiPath, ManifestPath, ManifestAsset, Url: String;
+  ManifestPath, ManifestAsset, Url: String;
+  EmbeddedTag, LatestTag: String;
   AssetsPos, ElemPos: Integer;
   Name: String;
 begin
   Result := False;
   LoadErrorHeb := 'לא ניתן לקרוא את רשימת הקבצים של אוצריא.';
-  try
-    DownloadTemporaryFile(
-      'https://api.github.com/repos/palmoni5/otzaria/releases/latest',
-      'release.json', '', nil);
-  except
-    LoadErrorTech := GetExceptionMessage;
-    LoadErrorHeb := 'לא ניתן להתחבר לאתר ההורדות של אוצריא.';
-    exit;
-  end;
-  ApiPath := ExpandConstant('{tmp}\release.json');
-  if not LoadStringFromFile(ApiPath, ApiRaw) then
+
+  EmbeddedTag := Trim('{#AssistantReleaseTag}');
+  ApiRaw := FetchReleaseJson(ReleaseApiUrl('latest'), 'release.json');
+  if ApiRaw <> '' then
+    LatestTag := JStr(ApiRaw, 1, 'tag_name')
+  else
+    LatestTag := '';
+
+  if EmbeddedTag = '' then
+    PinnedTag := LatestTag
+  else if (LatestTag <> '') and
+          (CompareVersionText(LatestTag, EmbeddedTag) > 0) then
+    PinnedTag := LatestTag
+  else
+    PinnedTag := EmbeddedTag;
+
+  Log('DownloadAssistant: embedded=' + EmbeddedTag + ' latest=' + LatestTag +
+    ' pinned=' + PinnedTag);
+  if PinnedTag = '' then
   begin
-    LoadErrorTech := 'cannot read release.json';
+    LoadErrorHeb := 'לא ניתן להתחבר לאתר ההורדות של אוצריא.';
+    if LoadErrorTech = '' then
+      LoadErrorTech := 'release has no tag_name';
     exit;
   end;
 
-  PinnedTag := JStr(ApiRaw, 1, 'tag_name');
-  if PinnedTag = '' then
+  if PinnedTag <> LatestTag then
   begin
-    LoadErrorTech := 'release has no tag_name';
-    exit;
+    ApiRaw := FetchReleaseJson(ReleaseApiUrl('tags/' + PinnedTag),
+      'release_pinned.json');
+    if ApiRaw = '' then
+    begin
+      LoadErrorHeb := 'לא ניתן להתחבר לאתר ההורדות של אוצריא.';
+      exit;
+    end;
   end;
 
   ManifestAsset := '';
@@ -899,6 +1071,8 @@ begin
 end;
 
 procedure InitializeWizard();
+var
+  DefaultBase, FolderNote: String;
 begin
   ModePage := CreateInputOptionPage(wpWelcome,
     'אוצריא — מסייע הורדה',
@@ -931,14 +1105,23 @@ begin
     'ליד כל רכיב מופיע גודל ההורדה שלו.',
     False, True);
 
+  DefaultBase := AssistantDir();
+  FolderNote := '';
+  if not DirIsWritable(DefaultBase) then
+  begin
+    DefaultBase := FallbackOutputBase();
+    FolderNote := #13#10#13#10 + 'אי אפשר לשמור בתיקייה שממנה הופעל המסייע ' +
+      '(למשל דיסק-און-קי לקריאה בלבד), ולכן הוצעה כאן תיקייה אחרת.';
+  end;
+
   FolderPage := CreateInputDirPage(CustomPage.ID,
     'לאן לשמור',
-    'בחר תיקייה שבה תוכן ההתקנה יישמר.',
-    'בסיום אפשר יהיה להעתיק את התיקייה הזאת לדיסק-און-קי ולהעביר אותה ' +
-    'למחשב המנותק.',
+    'כברירת מחדל התוצאה נשמרת ליד המסייע עצמו.',
+    'אפשר לבחור תיקייה אחרת. בסיום אפשר יהיה להעתיק את התוצאה לדיסק-און-קי ' +
+    'ולהעביר אותה למחשב המנותק.' + FolderNote,
     False, '');
   FolderPage.Add('');
-  FolderPage.Values[0] := ExpandConstant('{userdocs}\אוצריא-להתקנה');
+  FolderPage.Values[0] := DefaultBase;
 
   DownloadPage := CreateDownloadPage('הורדת הקבצים',
     'הקבצים יורדים מאתר אוצריא. אפשר לעצור בכל רגע — מה שכבר ירד יישמר.',
@@ -977,7 +1160,33 @@ begin
   QueueSize[N] := Size;
 end;
 
-function OutputDir(): String;
+{ נכס מפוצל מורכב לקובץ אחד רק כשהתוצאה היא קובץ הפעלה שאפשר להריץ.
+  ארכיון אינו מורכב: המתקין שצורך אותו מצפה לחלקים לצדו. }
+function ShouldAssembleSingleFile(AssetIndex: Integer): Boolean;
+begin
+  Result := IsExecutableName(AssetName[AssetIndex]) and
+    (AssetSize[AssetIndex] < MaxRunnableExeSize);
+end;
+
+{ כמה קבצים ייווצרו ביעד, לפי אותם כללים שמריץ PrepareOutput. }
+function ProducedFileCount(): Integer;
+var
+  C, A: Integer;
+begin
+  Result := 0;
+  for C := 0 to GetArrayLength(CompId) - 1 do
+  begin
+    if not CompSelected[C] then
+      Continue;
+    for A := CompAssetStart[C] to CompAssetStart[C] + CompAssetCount[C] - 1 do
+      if (AssetKind[A] = 'split') and not ShouldAssembleSingleFile(A) then
+        Result := Result + AssetPartCount[A]
+      else
+        Result := Result + 1;
+  end;
+end;
+
+function OutputBaseDir(): String;
 begin
   if ModePage.SelectedValueIndex = ModeThisComputer then
     Result := CacheDir()
@@ -985,12 +1194,14 @@ begin
     Result := RemoveBackslashUnlessRoot(FolderPage.Values[0]);
 end;
 
-{ נכס מפוצל מורכב לקובץ אחד רק כשהתוצאה היא קובץ הפעלה שאפשר להריץ.
-  ארכיון אינו מורכב: המתקין שצורך אותו מצפה לחלקים לצדו. }
-function ShouldAssembleSingleFile(AssetIndex: Integer): Boolean;
+{ קובץ בודד יושב ישירות בתיקייה שנבחרה; כמה קבצים שחייבים להישאר יחד מקבלים
+  תיקייה משלהם. }
+function OutputDir(): String;
 begin
-  Result := IsExecutableName(AssetName[AssetIndex]) and
-    (AssetSize[AssetIndex] < MaxRunnableExeSize);
+  Result := OutputBaseDir();
+  if (ModePage.SelectedValueIndex <> ModeThisComputer) and
+     (ProducedFileCount() > 1) then
+    Result := Result + '\' + OutputSubFolderName;
 end;
 
 { הקובץ שכבר מורכב ביעד, אם הוא שלם ומאומת. }
@@ -1274,12 +1485,16 @@ end;
 function PrepareOutput(): Boolean;
 var
   C, A, P: Integer;
-  Notes, PartsNote: String;
+  Notes, PartsNote, SingleName: String;
+  Produced: Integer;
 begin
   Result := False;
   ForceDirectories(OutputDir());
   Notes := '';
+  SingleName := '';
+  Produced := 0;
   RunAfterExe := '';
+  RevealPath := '';
 
   WorkPage.Show;
   try
@@ -1297,6 +1512,8 @@ begin
               if not AssembleAsset(A, CompName[C]) then
                 exit;
             Notes := Notes + '• ' + AssetName[A] + #13#10;
+            SingleName := AssetName[A];
+            Produced := Produced + 1;
           end
           else
           begin
@@ -1312,6 +1529,8 @@ begin
                 exit;
               end;
               PartsNote := PartsNote + '• ' + PartName[P] + #13#10;
+              SingleName := PartName[P];
+              Produced := Produced + 1;
             end;
             Notes := Notes + PartsNote;
           end;
@@ -1325,6 +1544,8 @@ begin
             exit;
           end;
           Notes := Notes + '• ' + AssetName[A] + #13#10;
+          SingleName := AssetName[A];
+          Produced := Produced + 1;
         end;
         if IsExecutableName(AssetName[A]) and (RunAfterExe = '') then
           RunAfterExe := OutputDir() + '\' + AssetName[A];
@@ -1334,14 +1555,31 @@ begin
     WorkPage.Hide;
   end;
 
+  { הניסוח נגזר ממה שנוצר בפועל, ולא מהרכיב שנבחר. }
   if ModePage.SelectedValueIndex = ModeThisComputer then
     ResultText := 'הקבצים ירדו ואומתו.' + #13#10#13#10 +
       'כעת ייפתח מתקין אוצריא. המשך בו כרגיל.'
+  else if Produced = 1 then
+  begin
+    RevealPath := OutputDir() + '\' + SingleName;
+    RevealIsFile := True;
+    ResultText := 'הקובץ מוכן:' + #13#10 + SingleName + #13#10#13#10 +
+      'הוא נמצא בתיקייה:' + #13#10 + OutputDir() + #13#10#13#10 +
+      'העתק את הקובץ הזה לדיסק-און-קי ומשם למחשב המנותק.';
+    if IsExecutableName(SingleName) then
+      ResultText := ResultText + ' שם הפעל אותו — אין צורך בחיבור לאינטרנט ' +
+        'ואין צורך בתוכנות נוספות.';
+  end
   else
+  begin
+    RevealPath := OutputDir();
+    RevealIsFile := False;
     ResultText := 'ההתקנה מוכנה בתיקייה:' + #13#10 + OutputDir() + #13#10#13#10 +
-      'העתק את כל תוכן התיקייה לדיסק-און-קי, ובמחשב המנותק הפעל מתוכה את ' +
-      'קובץ ההתקנה. אין צורך בחיבור לאינטרנט ואין צורך בתוכנות נוספות.'
+      'העתק את כל התיקייה הזאת לדיסק-און-קי, ובמחשב המנותק הפעל מתוכה את ' +
+      'קובץ ההתקנה. הקבצים חייבים להישאר יחד באותה תיקייה. אין צורך בחיבור ' +
+      'לאינטרנט ואין צורך בתוכנות נוספות.'
       + #13#10#13#10 + 'הקבצים שהוכנו:' + #13#10 + Notes;
+  end;
   Result := True;
 end;
 
@@ -1391,7 +1629,40 @@ begin
     WizardForm.FinishedLabel.Height := WizardForm.FinishedPage.ClientHeight -
       WizardForm.FinishedLabel.Top;
     WizardForm.FinishedLabel.Caption := ResultText;
+    if RevealPath <> '' then
+    begin
+      if not Assigned(RevealCheck) then
+      begin
+        RevealCheck := TNewCheckBox.Create(WizardForm);
+        RevealCheck.Parent := WizardForm.FinishedPage;
+        RevealCheck.Left := WizardForm.FinishedLabel.Left;
+        RevealCheck.Width := WizardForm.FinishedLabel.Width;
+        RevealCheck.Height := ScaleY(17);
+        RevealCheck.Checked := True;
+      end;
+      RevealCheck.Top := WizardForm.FinishedPage.ClientHeight -
+        RevealCheck.Height;
+      WizardForm.FinishedLabel.Height := RevealCheck.Top - ScaleY(8) -
+        WizardForm.FinishedLabel.Top;
+      if RevealIsFile then
+        RevealCheck.Caption := 'הצג את הקובץ שהוכן'
+      else
+        RevealCheck.Caption := 'הצג את התיקייה שהוכנה';
+    end;
   end;
+end;
+
+{ פתיחת הסיירת היא נוחות בלבד: אם היא נכשלת, התוצאה כבר מוכנה ואין מה לומר. }
+procedure DeinitializeSetup();
+var
+  ErrorCode: Integer;
+begin
+  if (RevealPath = '') or not Assigned(RevealCheck) or
+     not RevealCheck.Checked then
+    exit;
+  if not ExecAsOriginalUser(ExpandConstant('{win}\explorer.exe'),
+    '/select,"' + RevealPath + '"', '', SW_SHOWNORMAL, ewNoWait, ErrorCode) then
+    Log('DownloadAssistant: explorer /select failed: ' + IntToStr(ErrorCode));
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
@@ -1428,11 +1699,18 @@ begin
 
   if CurPageID = FolderPage.ID then
   begin
-    if not ForceDirectories(FolderPage.Values[0]) then
+    if DirIsWritable(FolderPage.Values[0]) then
+      exit;
+    if DirIsWritable(FallbackOutputBase()) then
     begin
-      MsgBox('לא ניתן ליצור את התיקייה שנבחרה. נסה תיקייה אחרת.', mbError, MB_OK);
-      Result := False;
-    end;
+      MsgBox('לא ניתן לשמור בתיקייה שנבחרה. במקומה מוצעת התיקייה:' + #13#10 +
+        FallbackOutputBase() + #13#10#13#10 +
+        'אפשר להמשיך איתה או לבחור תיקייה אחרת.', mbInformation, MB_OK);
+      FolderPage.Values[0] := FallbackOutputBase();
+    end
+    else
+      MsgBox('לא ניתן לשמור בתיקייה שנבחרה. נסה תיקייה אחרת.', mbError, MB_OK);
+    Result := False;
     exit;
   end;
 
@@ -1443,7 +1721,7 @@ begin
   for I := 0 to GetArrayLength(CompId) - 1 do
     if CompSelected[I] then
       Needed := Needed + CompDownloadSize[I] * 2;
-  if GetSpaceOnDisk64(OutputDir(), Free, Total) and (Free < Needed) then
+  if GetSpaceOnDisk64(OutputBaseDir(), Free, Total) and (Free < Needed) then
     if MsgBox('נראה שאין מספיק מקום פנוי. דרושים בערך ' + HumanSize(Needed) +
       '.' + #13#10#13#10 + 'להמשיך בכל זאת?', mbConfirmation, MB_YESNO) = IDNO then
     begin

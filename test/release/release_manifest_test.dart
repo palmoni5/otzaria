@@ -167,7 +167,7 @@ void main() {
 
     test('the download assistant is a tool, never a component', () {
       writeRealisticRelease();
-      writeFile('Otzaria-Download-Assistant-win.exe', 'assistant');
+      writeFile('Otzaria-Download-Assistant-windows.exe', 'assistant');
       final manifest = build();
       expect(jsonEncode(manifest), isNot(contains('Download-Assistant')));
     });
@@ -560,6 +560,41 @@ void main() {
       expect(
         asset['sha256'],
         sha256.convert(file.readAsBytesSync()).toString(),
+      );
+    });
+  });
+
+  group('שמות הרכיבים למשתמש', () {
+    test('שם מערכת ההפעלה נכתב Windows ולא בתרגום עברי', () {
+      for (final spec in kKnownComponents) {
+        expect(spec.name, isNot(contains('חלונות')), reason: spec.id);
+        expect(spec.description, isNot(contains('חלונות')), reason: spec.id);
+        if (spec.platform == 'windows') {
+          expect(spec.name, contains('Windows'), reason: spec.id);
+        }
+      }
+    });
+
+    test('שמות רכיבי Windows', () {
+      String nameOf(String id) =>
+          kKnownComponents.firstWhere((c) => c.id == id).name;
+      expect(nameOf('otzaria-windows-x64'), 'אוצריא ל-Windows');
+      expect(nameOf('otzaria-windows-arm64'), 'אוצריא ל-Windows (ARM64)');
+      expect(
+        nameOf('otzaria-windows-portable-x64'),
+        'אוצריא ל-Windows — גרסה ניידת',
+      );
+      expect(
+        nameOf('otzaria-windows-portable-arm64'),
+        'אוצריא ל-Windows — גרסה ניידת (ARM64)',
+      );
+      expect(
+        nameOf('otzaria-windows-full'),
+        'אוצריא ל-Windows עם ספרייה מלאה',
+      );
+      expect(
+        nameOf('otzaria-windows-full-indexed'),
+        'אוצריא ל-Windows עם ספרייה מאונדקסת',
       );
     });
   });

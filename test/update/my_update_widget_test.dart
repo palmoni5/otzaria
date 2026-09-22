@@ -462,7 +462,7 @@ void main() {
     test('never selects the download assistant', () {
       final withAssistant = [
         ...fullReleaseAssets,
-        asset('Otzaria-Download-Assistant-win.exe'),
+        asset('Otzaria-Download-Assistant-windows.exe'),
       ];
       expect(
         pickWindowsAssetUrl(
@@ -483,7 +483,10 @@ void main() {
     });
 
     test('the download assistant is not chosen even as the only exe', () {
+      // גם השם הישן: שחרורים שכבר פורסמו נושאים אותו, והמעדכן חייב
+      // להמשיך לדלג עליהם.
       for (final name in const [
+        'Otzaria-Download-Assistant-windows.exe',
         'Otzaria-Download-Assistant-win.exe',
         'otzaria_download_assistant_win.exe',
       ]) {
@@ -509,6 +512,10 @@ void main() {
     });
 
     test('isDownloadAssistantAsset matches only the assistant', () {
+      expect(
+        isDownloadAssistantAsset('Otzaria-Download-Assistant-windows.exe'),
+        isTrue,
+      );
       expect(
         isDownloadAssistantAsset('Otzaria-Download-Assistant-win.exe'),
         isTrue,

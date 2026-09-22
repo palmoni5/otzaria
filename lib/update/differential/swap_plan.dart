@@ -12,6 +12,13 @@ const int kSwapPlanSchemaVersion = 1;
 /// שם קובץ התוכנית בשורש תיקיית העבודה (לצד `staging` ו-`backup`).
 const String kSwapPlanFileName = 'swap-plan.json';
 
+/// תיקיית הקבצים שנבנו ומחכים להחלפה, בשורש תיקיית העבודה.
+const String kSwapStagingDirName = 'staging';
+
+/// תיקיית הקבצים הישנים. קיומה היא העדות היחידה שההחלפה כבר התחילה —
+/// המעדכן יוצר אותה רגע לפני שהוא נוגע בהתקנה ומוחק אותה בסיום מוצלח.
+const String kSwapBackupDirName = 'backup';
+
 /// תוכנית שאינה תקפה. תמיד עוצרת לפני שנגעו בהתקנה.
 class SwapPlanException implements Exception {
   SwapPlanException(this.message);

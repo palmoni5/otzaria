@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:otzaria/core/app_paths.dart';
@@ -1340,16 +1341,224 @@ void main() {
 
       expect(match, isNotNull);
       final name = _squeeze(match!.group(1)!);
-      expect(name, 'Otzaria-Download-Assistant-win');
-      // pickWindowsAssetUrl בוחר exe שאינו "full" ומדלג רק על "download-assistant";
-      // "windows" בשם היה הופך את האשף למועמד לעדכון.
-      expect(name.toLowerCase(), isNot(contains('windows')));
+      expect(name, 'Otzaria-Download-Assistant-windows');
+      // GitHub מסנן שם נכס ל-[A-Za-z0-9._-] ומוחק תווים עבריים בלי תחליף.
+      expect(name, matches(RegExp(r'^[A-Za-z0-9._-]+$')));
       expect(name.toLowerCase(), isNot(contains('full')));
+      expect(
+        name.toLowerCase(),
+        contains('download-assistant'),
+        reason: 'עליו נשענת ההחרגה של האשף מבחירת נכס העדכון',
+      );
       expect(
         File('lib/update/my_update_widget.dart').readAsStringSync(),
         contains("name.contains('download-assistant')"),
         reason: 'הפרדיקט שמחריג את האשף מבחירת נכס העדכון נעלם',
       );
+    });
+
+    test('$_assistant: מאפייני הקובץ בעברית — שם הקובץ נשאר ASCII', () {
+      final script = _script(_assistant);
+      final hebrew = RegExp(r'[֐-׿]');
+
+      for (final key in const [
+        'VersionInfoProductName',
+        'VersionInfoDescription',
+      ]) {
+        final match = RegExp(
+          '^$key=(.+)\$',
+          multiLine: true,
+        ).firstMatch(script);
+        expect(match, isNotNull, reason: '$key חסר');
+        expect(
+          match!.group(1)!,
+          matches(hebrew),
+          reason: '$key הוא הזיהוי העברי היחיד שאפשרי — שם הנכס חייב ASCII',
+        );
+      }
+      expect(
+        RegExp(
+          r'^VersionInfoDescription=(.+)$',
+          multiLine: true,
+        ).firstMatch(script)!.group(1),
+        contains('אינו מתקין'),
+      );
+      expect(
+        script,
+        contains('VersionInfoProductTextVersion={#TagVersionPart}'),
+        reason: 'הגרסה המוצגת נגזרת מהתג המוטבע ואינה מומצאת',
+      );
+    });
+
+    test('$_assistant: ניסוחי ההתקנה של Inno נדרסים', () {
+      final messages = _section(_script(_assistant), 'Messages');
+
+      for (final id in const [
+        'SetupLdrStartupMessage',
+        'ButtonInstall',
+        'WizardReady',
+        'ReadyLabel1',
+        'ReadyLabel2a',
+        'ReadyLabel2b',
+        'WizardPreparing',
+        'PreparingDesc',
+        'WizardInstalling',
+        'InstallingLabel',
+        'StatusCreateDirs',
+        'StatusExtractFiles',
+        'StatusSavingUninstall',
+        'StatusRunProgram',
+        'FinishedLabel',
+        'FinishedLabelNoIcons',
+        'ClickFinish',
+        'SetupAborted',
+      ]) {
+        expect(
+          messages,
+          matches(RegExp('^$id=', multiLine: true)),
+          reason: 'ברירת המחדל של $id מנוסחת כמתקין',
+        );
+      }
+      // "התקנה" מותר כאובייקט שמכינים; אסור שהכלי יתאר את עצמו כמתקין.
+      for (final claim in const ['תוכנת ההתקנה', 'מתקין את', 'על מחשבך']) {
+        expect(messages, isNot(contains(claim)), reason: claim);
+      }
+    });
+
+    test('$_assistant: ברירת המחדל לשמירה היא תיקיית המסייע עצמו', () {
+      final script = _script(_assistant);
+      final assistantDir = _routine(script, 'function AssistantDir()');
+      final wizard = _routine(script, 'procedure InitializeWizard()');
+
+      expect(assistantDir, contains(r"ExpandConstant('{srcexe}')"));
+      expect(assistantDir, contains('ExtractFileDir'));
+      expect(
+        wizard,
+        contains('DefaultBase := AssistantDir();'),
+        reason: 'התוצאה נשמרת ליד הקובץ שהופעל, לא בתיקייה קבועה',
+      );
+      expect(
+        wizard,
+        contains('FolderPage.Values[0] := DefaultBase;'),
+        reason: 'ברירת המחדל היא העדפה — המשתמש עדיין בוחר',
+      );
+    });
+
+    test('$_assistant: הכתיבוּת נבדקת בכתיבה, ויש נסיגה מוסברת', () {
+      final script = _script(_assistant);
+      final probe = _routine(script, 'function DirIsWritable(');
+      final wizard = _routine(script, 'procedure InitializeWizard()');
+      final next = _routine(script, 'function NextButtonClick(');
+
+      expect(
+        probe,
+        contains('SaveStringToFile('),
+        reason: 'נתיב אינו מעיד על כתיבוּת — חובה לנסות לכתוב',
+      );
+      expect(probe, contains('DeleteFile(Probe)'));
+      expect(wizard, contains('if not DirIsWritable(DefaultBase) then'));
+      expect(wizard, contains('DefaultBase := FallbackOutputBase();'));
+      expect(
+        wizard,
+        contains('FolderNote'),
+        reason: 'הנסיגה חייבת להיאמר למשתמש בעברית פשוטה',
+      );
+      expect(
+        next,
+        contains('if DirIsWritable(FolderPage.Values[0]) then'),
+        reason: 'גם תיקייה שנבחרה ידנית נבדקת בכתיבה',
+      );
+      expect(next, contains('FolderPage.Values[0] := FallbackOutputBase();'));
+    });
+
+    test('$_assistant: מספר הקבצים שנוצרו קובע פריסה וניסוח', () {
+      final script = _script(_assistant);
+      final count = _routine(script, 'function ProducedFileCount()');
+      final outputDir = _routine(script, 'function OutputDir()');
+      final prepare = _routine(script, 'function PrepareOutput()');
+
+      expect(count, contains("AssetKind[A] = 'split'"));
+      expect(count, contains('ShouldAssembleSingleFile(A)'));
+      expect(count, contains('AssetPartCount[A]'));
+      expect(
+        outputDir,
+        contains('ProducedFileCount() > 1'),
+        reason: 'קובץ בודד ישירות בתיקייה; כמה קבצים בתת-תיקייה',
+      );
+      expect(outputDir, contains('OutputSubFolderName'));
+      expect(
+        script,
+        contains("OutputSubFolderName = 'אוצריא להתקנה'"),
+        reason: 'שם שמשתמש שאינו טכני מבין',
+      );
+
+      expect(
+        prepare,
+        contains('else if Produced = 1 then'),
+        reason: 'הניסוח נגזר ממה שנוצר בפועל, לא מהרכיב שנבחר',
+      );
+      final single = prepare.substring(prepare.indexOf('else if Produced = 1'));
+      final multi = single.substring(single.indexOf("'ההתקנה מוכנה בתיקייה:'"));
+      expect(single, contains("'הקובץ מוכן:' + #13#10 + SingleName"));
+      expect(
+        single.substring(0, single.indexOf("'ההתקנה מוכנה בתיקייה:'")),
+        isNot(contains('תיקייה הזאת')),
+      );
+      expect(multi, contains('העתק את כל התיקייה הזאת'));
+      expect(multi, contains('חייבים להישאר יחד'));
+      for (final jargon in const ['מניפסט', 'sha', 'hash', 'נכס']) {
+        expect(single, isNot(contains(jargon)), reason: jargon);
+      }
+    });
+
+    test('$_assistant: תיבת "הצג" מסומנת מראש ומסמנת את מה שנוצר', () {
+      final script = _script(_assistant);
+      final page = _routine(script, 'procedure CurPageChanged(');
+      final deinit = _routine(script, 'procedure DeinitializeSetup()');
+
+      expect(page, contains('RevealCheck.Checked := True;'));
+      expect(page, contains("RevealCheck.Caption := 'הצג את הקובץ שהוכן'"));
+      expect(page, contains("RevealCheck.Caption := 'הצג את התיקייה שהוכנה'"));
+      expect(
+        page,
+        contains('if RevealIsFile then'),
+        reason: 'התווית נגזרת ממה שנוצר, כמו ניסוח עמוד הסיום',
+      );
+
+      expect(deinit, contains('ExecAsOriginalUser('));
+      expect(deinit, contains(r"ExpandConstant('{win}\explorer.exe')"));
+      expect(
+        deinit,
+        contains("'/select,\"' + RevealPath + '\"'"),
+        reason: 'בלי /select נפתחת תיקייה כלשהי, ובלי מרכאות נשבר נתיב עם רווח',
+      );
+      expect(
+        deinit,
+        isNot(contains('MsgBox')),
+        reason: 'פתיחת הסייר היא נוחות — כישלון שלה אינו מפיל ואינו מבהיל',
+      );
+      expect(deinit, contains('Log('));
+    });
+
+    test('$_assistant: תמונת האשף הקטנה שטוחה על רקע לבן', () {
+      final match = RegExp(
+        r'^WizardSmallImageFile=(.+)$',
+        multiLine: true,
+      ).firstMatch(_script(_assistant));
+      expect(match, isNotNull);
+
+      final files = _squeeze(match!.group(1)!).split(',');
+      for (final name in files) {
+        expect(
+          name,
+          contains('_white'),
+          reason: 'תמונה משותפת עם המתקינים נשמרה מאייקון שקוף — רקע שחור',
+        );
+        final bytes = File('installer/$name').readAsBytesSync();
+        // BMP נשמר מלמטה למעלה: הפיקסל הראשון בנתונים הוא הפינה התחתונה-שמאלית.
+        final offset = bytes.buffer.asByteData().getUint32(10, Endian.little);
+        expect(bytes.sublist(offset, offset + 3), [255, 255, 255]);
+      }
     });
 
     test('$_assistant: אין רשימת שמות נכסים קשיחה', () {
@@ -1358,8 +1567,13 @@ void main() {
       // הרכיבים, הגדלים וה-hash מגיעים מהמניפסט; שם נכס קשיח היה מקבע את
       // הכלי לגרסה אחת ומחייב שינוי קוד בכל רכיב חדש.
       expect(script, isNot(contains('otzaria-')));
+      // explorer.exe הוא תוכנית מערכת שפותחת את התוצאה, לא נכס של release.
+      final literals = script.replaceAll(
+        r"ExpandConstant('{win}\explorer.exe')",
+        '',
+      );
       expect(
-        script,
+        literals,
         isNot(matches(RegExp(r"'[^']+\.(exe|zip|tar\.zst)'"))),
         reason: 'שם קובץ נכס ספציפי בתוך הסקריפט',
       );
@@ -1559,12 +1773,59 @@ void main() {
       // לראש שורה שובר את הקומפילציה, והקובץ אינו נבנה בטסטים.
       final offenders = <String>[];
       final lines = _script(_assistant).split('\n');
+      final directive = RegExp(r'^\s*#(ifndef|ifdef|if|else|endif|define)\b');
       for (var i = 0; i < lines.length; i++) {
-        if (RegExp(r'^\s*#').hasMatch(lines[i])) {
+        if (RegExp(r'^\s*#').hasMatch(lines[i]) &&
+            !directive.hasMatch(lines[i])) {
           offenders.add('${i + 1}: ${lines[i].trim()}');
         }
       }
       expect(offenders, isEmpty, reason: offenders.join('\n'));
+    });
+
+    test('$_assistant: התג מגיע מהגדרת ISCC, עם נסיגה בהיעדרה', () {
+      final script = _script(_assistant);
+      // התג המוטבע הוא ברירת המחדל; בלעדיו הכלי חוזר ל-/releases/latest.
+      expect(script, contains('#ifndef AssistantReleaseTag'));
+      expect(
+        script,
+        contains(RegExp(r'#define\s+AssistantReleaseTag\s+""')),
+      );
+      expect(script, contains("Trim('{#AssistantReleaseTag}')"));
+      expect(script, contains("PinnedTag := LatestTag"));
+      expect(script, contains("PinnedTag := EmbeddedTag"));
+      expect(script, contains('/releases/'));
+    });
+
+    test('$_assistant: ההשוואה מתעלמת מסיומת ‎+build', () {
+      final script = _script(_assistant);
+      final versionPart = script.substring(
+        script.indexOf('function VersionPart('),
+        script.indexOf('function CompareVersionText('),
+      );
+      expect(versionPart, contains("Pos('+', Result)"));
+      expect(versionPart, contains('Copy(Result, 1, P - 1)'));
+      // רק גרסה גבוהה יותר דוחקת את התג המוטבע.
+      expect(
+        script,
+        contains('CompareVersionText(LatestTag, EmbeddedTag) > 0'),
+      );
+    });
+
+    test('ה-workflow מעביר את התג לבניית מסייע ההורדה', () {
+      final step = _workflowStep(
+        'Build Download Assistant (non-fatal helper tool)',
+      );
+      expect(step, contains('/DAssistantReleaseTag='));
+      expect(step, contains(r'$tagDefine installer\download_assistant.iss'));
+      // אותו כלל תג שבו create_release משתמש.
+      expect(
+        step,
+        contains(
+          "if ('\${{ github.ref }}' -eq 'refs/heads/main') "
+          '{ \$version } else { "\$version+\${{ github.run_number }}" }',
+        ),
+      );
     });
   });
 }

@@ -130,14 +130,13 @@ abstract class LibraryMessages {
       '$deltaApplySize והחלה ארוכה — עשרות דקות ומעלה. מתאים לרשת איטית.\n'
       'הורדה מלאה: הורדה גדולה ($fullDownloadSize) והחלה מהירה — דקות.';
 
-  /// עדכון מצומצם: מוצג לפני ההורדה כדי שהמשתמש יראה מה נחסך לו.
-  static String smallUpdateSaving(String updateSize, String fullSize) =>
-      'העדכון יוריד $updateSize במקום $fullSize';
+  static const String smallUpdateDialogTitle = 'העדכון מוכן';
 
-  static const String smallUpdateDialogTitle = 'העדכון מוכן להתקנה';
-
+  /// מה בפועל משלים את העדכון. חלון נוסף פתוח מחזיק את התהליך חי, והמעדכן
+  /// ממתין לו בשקט — בלי המשפט הזה נראה שהאישור לא עשה דבר.
   static const String smallUpdateDialogContent =
-      'אוצריא תיסגר לרגע ותיפתח מחדש עם הגרסה החדשה.';
+      'סגור את אוצריא לגמרי — כולל חלונות נוספים — והעדכון יושלם מעצמו '
+      'ואוצריא תיפתח מחדש.';
 
   static const String smallUpdateDialogCancel = 'לא עכשיו';
 
