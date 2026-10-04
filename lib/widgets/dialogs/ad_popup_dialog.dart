@@ -244,12 +244,9 @@ class _AdPopupDialogState extends State<AdPopupDialog>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Image.asset(
-                      'assets/icon/iconnew.png',
+                      'assets/icon/iconnew_256.png',
                       width: logoSize,
                       height: logoSize,
-                      // לפי הגודל המקסימלי של האנימציה — גודל מונפש היה מפענח
-                      // את הקובץ מחדש בכל פריים
-                      cacheWidth: imageDecodeSize(context, 120),
                     ),
                     SizedBox(width: gap),
                     // הטקסט מופיע ב-fade ומתרחב מ-0 רוחב כדי שלא יקפוץ

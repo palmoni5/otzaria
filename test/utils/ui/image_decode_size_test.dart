@@ -8,6 +8,9 @@ import 'package:otzaria/utils/ui/image_decode_size.dart';
 /// גודל הקובץ שמעליו נכס נחשב "כבד" ומחייב הקטנה בפענוח.
 const _heavyAssetBytes = 100 * 1024;
 
+/// עותק מוקטן מראש של הלוגו, לתצוגה עד 128 לוגי ב-DPR 2.
+const _appLogoAsset = 'assets/icon/iconnew_256.png';
+
 void main() {
   group('imageDecodeSize', () {
     testWidgets('מכפיל את הגודל הלוגי ב-devicePixelRatio', (tester) async {
@@ -86,8 +89,29 @@ void main() {
       );
 
       final image = tester.widget<Image>(find.byType(Image));
-      expect(image.image, isA<ResizeImage>());
-      expect((image.image as ResizeImage).width, 256); // 128 לוגי × 2
+      expect(image.image, isA<AssetImage>());
+      expect((image.image as AssetImage).assetName, _appLogoAsset);
+    });
+
+    test('לוגו האפליקציה לא מוקטן בפענוח (#1747)', () {
+      // הקטנה בפענוח מ-1024 היא bilinear בלי mipmaps — הלוגו יוצא מפוקסל
+      final offenders = <String>[];
+      for (final file in _dartFiles(Directory('lib'))) {
+        final src = file.readAsStringSync();
+        for (final call in _callSites(src, 'Image.asset(')) {
+          final asset = _firstStringLiteral(call.body);
+          if (asset == 'assets/icon/iconnew.png' ||
+              (asset == _appLogoAsset && call.body.contains('cache'))) {
+            offenders.add(file.path);
+          }
+        }
+      }
+      expect(
+        offenders,
+        isEmpty,
+        reason: 'השתמש ב-$_appLogoAsset בלי cacheWidth',
+      );
+      expect(File(_appLogoAsset).lengthSync(), lessThan(_heavyAssetBytes));
     });
   });
 
