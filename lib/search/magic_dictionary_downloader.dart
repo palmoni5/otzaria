@@ -109,6 +109,7 @@ class MagicDictionaryDownloader {
         }
       }
       if (upToDate) {
+        await _discardStaged(dest);
         onProgress?.call(1.0);
         return true;
       }
@@ -279,7 +280,6 @@ class MagicDictionaryDownloader {
     if (version.isEmpty) return;
     await replaceDownloadedFile(staged, dest);
     await writeVersionMarker(dest, version);
-    await stagedMarker.delete();
   }
 
   /// מתקין עותק ממתין לפני שהמנוע פותח את המילון, כשהקובץ עוד אינו נעול.
@@ -354,11 +354,22 @@ class MagicDictionaryDownloader {
 
   static String _versionPath(String dest) => '$dest.version';
 
-  /// כותב את סימון הגרסה של מילון שהותקן ב-[dest] — משמש גם את מסלול
-  /// ההתקנה הראשונית. best-effort: כישלון בו לא אמור להפיל את ההתקנה.
+  /// מסמן מילון שהותקן בהצלחה ב-[dest] ומבטל עותק ממתין מהתקנה קודמת.
+  /// best-effort: כשל בסימון אינו מכשיל את ההתקנה.
   static Future<void> writeVersionMarker(String dest, String tag) async {
     try {
       await File(_versionPath(dest)).writeAsString(tag);
+    } catch (_) {}
+    await _discardStaged(dest);
+  }
+
+  static Future<void> _discardStaged(String dest) async {
+    try {
+      // מבטלים את הסימון תחילה, כדי שכשל במחיקת הקובץ לא יאפשר התקנה שלו.
+      for (final path in [_versionPath(_stagedPath(dest)), _stagedPath(dest)]) {
+        final file = File(path);
+        if (await file.exists()) await file.delete();
+      }
     } catch (_) {}
   }
 

@@ -623,7 +623,16 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
   ) async {
     final dbName = DatabaseConstants.databaseFileName;
     final family = {for (final s in _dbFileSuffixes) '$dbName$s'};
+    final lexicalName = DatabaseConstants.lexicalDatabaseFileName;
+    final installsDictionary = await File(
+      path.join(staging, lexicalName),
+    ).exists();
     await _renameEntriesOver(staging, target, skip: family);
+    if (installsDictionary) {
+      await MagicDictionaryDownloader.writeFileDigestMarker(
+        path.join(target, lexicalName),
+      );
+    }
     final stagedDb = File(path.join(staging, dbName));
     if (!await stagedDb.exists()) return;
     await _deleteDbFamily(path.join(target, dbName));
@@ -1682,12 +1691,15 @@ class EmptyLibraryBloc extends Bloc<EmptyLibraryEvent, EmptyLibraryState> {
         await File(tempPath).copy(outputPath);
         // בלי סימון גרסה, בדיקת העדכון הבאה תוריד את המילון מחדש בכל הפעלה.
         final version = asset.sha256 ?? asset.releaseTag;
-        if (asset.outputFileName == DatabaseConstants.lexicalDatabaseFileName &&
-            version != null) {
-          await MagicDictionaryDownloader.writeVersionMarker(
-            outputPath,
-            version,
-          );
+        if (asset.outputFileName == DatabaseConstants.lexicalDatabaseFileName) {
+          if (version != null) {
+            await MagicDictionaryDownloader.writeVersionMarker(
+              outputPath,
+              version,
+            );
+          } else {
+            await MagicDictionaryDownloader.writeFileDigestMarker(outputPath);
+          }
         }
         report(1.0);
       } else {

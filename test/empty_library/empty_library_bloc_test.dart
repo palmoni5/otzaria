@@ -12,6 +12,7 @@ import 'package:otzaria/empty_library/bloc/empty_library_bloc.dart';
 import 'package:otzaria/empty_library/bloc/empty_library_event.dart';
 import 'package:otzaria/empty_library/bloc/empty_library_state.dart';
 import 'package:otzaria/settings/engine/settings_repository.dart';
+import 'package:otzaria/search/magic_dictionary_downloader.dart';
 import 'package:path/path.dart' as path;
 
 void main() {
@@ -241,6 +242,9 @@ void main() {
       final tempDir = await Directory.systemTemp.createTemp(
         'otzaria-empty-library-test-',
       );
+      final lexicalPath = path.join(tempDir.path, 'lexical.db');
+      await File('$lexicalPath.next').writeAsString('staged-old');
+      await File('$lexicalPath.next.version').writeAsString('old-digest');
       addTearDown(() async {
         if (await tempDir.exists()) {
           await tempDir.delete(recursive: true);
@@ -436,6 +440,9 @@ void main() {
         ).existsSync(),
         isFalse,
       );
+      await MagicDictionaryDownloader.installStagedBeforeAttach(lexicalPath);
+      expect(File('$lexicalPath.next').existsSync(), isFalse);
+      expect(File('$lexicalPath.next.version').existsSync(), isFalse);
       // מילון החיפוש המקורב (לא דחוס) הועתק לתיקיית הספרייה ליד seforim.db.
       expect(File(path.join(tempDir.path, 'lexical.db')).existsSync(), isTrue);
       // סימון הגרסה הוא ה-digest של lexical-v2.db — בלעדיו בדיקת העדכון
@@ -2080,6 +2087,57 @@ void main() {
         },
       );
 
+      test('מילון חדש ב-ZIP מבטל עותק ממתין ישן לפני פתיחה ללא רשת', () async {
+        final dest = path.join(target.path, 'lexical.db');
+        await File(path.join(staging.path, 'lexical.db')).writeAsString('new');
+        await File(dest).writeAsString('old');
+        await File('$dest.next').writeAsString('staged-old');
+        await File('$dest.next.version').writeAsString('old-digest');
+
+        await EmptyLibraryBloc.promoteStagedImport(staging.path, target.path);
+        await MagicDictionaryDownloader.installStagedBeforeAttach(dest);
+
+        expect(await File(dest).readAsString(), 'new');
+        expect(
+          await File('$dest.version').readAsString(),
+          sha256.convert(utf8.encode('new')).toString(),
+        );
+        expect(File('$dest.next').existsSync(), isFalse);
+        expect(File('$dest.next.version').existsSync(), isFalse);
+      });
+
+      test('ZIP בלי מילון אינו מבטל עותק ממתין תקין', () async {
+        final dest = path.join(target.path, 'lexical.db');
+        await File(path.join(staging.path, dbName)).writeAsString('new-db');
+        await File(dest).writeAsString('old');
+        await File('$dest.next').writeAsString('staged-new');
+        await File('$dest.next.version').writeAsString('new-digest');
+
+        await EmptyLibraryBloc.promoteStagedImport(staging.path, target.path);
+
+        expect(await File('$dest.next').readAsString(), 'staged-new');
+        expect(await File('$dest.next.version').readAsString(), 'new-digest');
+        await MagicDictionaryDownloader.installStagedBeforeAttach(dest);
+        expect(await File(dest).readAsString(), 'staged-new');
+      });
+
+      test('כשל בייבוא ZIP לפני העברת קבצים אינו מבטל עותק ממתין', () async {
+        final dest = path.join(target.path, 'lexical.db');
+        await File(dest).writeAsString('old');
+        await File('$dest.next').writeAsString('staged-new');
+        await File('$dest.next.version').writeAsString('new-digest');
+        await staging.delete();
+
+        await expectLater(
+          EmptyLibraryBloc.promoteStagedImport(staging.path, target.path),
+          throwsA(isA<FileSystemException>()),
+        );
+
+        expect(await File(dest).readAsString(), 'old');
+        expect(await File('$dest.next').readAsString(), 'staged-new');
+        expect(await File('$dest.next.version').readAsString(), 'new-digest');
+      });
+
       test('בלי seforim.db בביניים — שאר הפריטים עוברים והיעד נשמר', () async {
         await File(path.join(staging.path, 'lexical.db')).writeAsString('new');
         await File(path.join(target.path, dbName)).writeAsString('old-db');
@@ -2461,6 +2519,9 @@ void main() {
         await File(
           path.join(srcDir.path, DatabaseConstants.lexicalDatabaseFileName),
         ).writeAsString('lex');
+        final lexicalTarget = path.join(targetDir.path, 'lexical.db');
+        await File('$lexicalTarget.next').writeAsString('staged-old');
+        await File('$lexicalTarget.next.version').writeAsString('old-digest');
         // הנכס החדש עדיף על lexical.db הקפוא, ומותקן בשם המקומי.
         await File(
           path.join(srcDir.path, 'lexical-v2.db'),
@@ -2498,11 +2559,12 @@ void main() {
           ).exists(),
           isTrue,
         );
-        final lexicalTarget = path.join(
-          targetDir.path,
-          DatabaseConstants.lexicalDatabaseFileName,
+        await MagicDictionaryDownloader.installStagedBeforeAttach(
+          lexicalTarget,
         );
         expect(await File(lexicalTarget).readAsString(), 'lex2');
+        expect(File('$lexicalTarget.next').existsSync(), isFalse);
+        expect(File('$lexicalTarget.next.version').existsSync(), isFalse);
         // הסימון מה-digest של הקובץ: מילון עדכני שיובא אינו מורד שוב.
         expect(
           await File('$lexicalTarget.version').readAsString(),
@@ -2879,6 +2941,9 @@ void main() {
         final tempDir = await Directory.systemTemp.createTemp(
           'otzaria-exact-urls-',
         );
+        final lexicalPath = path.join(tempDir.path, 'lexical.db');
+        await File('$lexicalPath.next').writeAsString('staged-old');
+        await File('$lexicalPath.next.version').writeAsString('old-digest');
         addTearDown(() async {
           if (await tempDir.exists()) await tempDir.delete(recursive: true);
         });
@@ -2952,6 +3017,14 @@ void main() {
         ]).timeout(const Duration(seconds: 5));
 
         expect(result, 'success');
+        await MagicDictionaryDownloader.installStagedBeforeAttach(lexicalPath);
+        expect(await File(lexicalPath).readAsString(), 'ok');
+        expect(
+          await File('$lexicalPath.version').readAsString(),
+          sha256.convert(utf8.encode('ok')).toString(),
+        );
+        expect(File('$lexicalPath.next').existsSync(), isFalse);
+        expect(File('$lexicalPath.next.version').existsSync(), isFalse);
         expect(
           requestedUrls,
           containsAll([seforimUrl, talmudUrl, catalogUrl, lexicalUrl]),

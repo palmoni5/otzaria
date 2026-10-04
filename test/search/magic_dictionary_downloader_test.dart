@@ -429,6 +429,46 @@ void main() {
       expect(await File('$dest.version').readAsString(), newSha);
     });
 
+    test('מילון שכבר עדכני מבטל עותק ממתין ישן לפני פתיחה ללא רשת', () async {
+      await File(dest).writeAsBytes(newBody);
+      await File('$dest.version').writeAsString(newSha);
+      await File('$dest.next').writeAsBytes(oldBody);
+      await File('$dest.next.version').writeAsString('old-digest');
+
+      expect(await downloader().ensureLatest(), isTrue);
+      expect(downloads, 0);
+      await MagicDictionaryDownloader.installStagedBeforeAttach(dest);
+
+      expect(await File(dest).readAsBytes(), newBody);
+      expect(await File('$dest.version').readAsString(), newSha);
+      expect(File('$dest.next').existsSync(), isFalse);
+      expect(File('$dest.next.version').existsSync(), isFalse);
+    });
+
+    for (final useFileDigest in [false, true]) {
+      test(
+        'התקנה חדשה מבטלת עותק ממתין גם ללא בדיקת רשת ($useFileDigest)',
+        () async {
+          await File('$dest.next').writeAsBytes(oldBody);
+          await File('$dest.next.version').writeAsString('old-digest');
+          await File(dest).writeAsBytes(newBody);
+          if (useFileDigest) {
+            await MagicDictionaryDownloader.writeFileDigestMarker(dest);
+          } else {
+            await MagicDictionaryDownloader.writeVersionMarker(dest, newSha);
+          }
+
+          await MagicDictionaryDownloader.installStagedBeforeAttach(dest);
+
+          expect(downloads, 0);
+          expect(await File(dest).readAsBytes(), newBody);
+          expect(await File('$dest.version').readAsString(), newSha);
+          expect(File('$dest.next').existsSync(), isFalse);
+          expect(File('$dest.next.version').existsSync(), isFalse);
+        },
+      );
+    }
+
     test('installStagedBeforeAttach מתקין עותק ממתין בלי רשת', () async {
       await File('$dest.next').writeAsBytes(newBody);
       await File('$dest.next.version').writeAsString(newSha);
