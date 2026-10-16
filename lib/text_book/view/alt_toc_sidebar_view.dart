@@ -616,15 +616,21 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
     }
   }
 
-  void _handleEntryTap(int structureId, AltTocEntry entry) {
+  void _handleEntryTap(
+    int structureId,
+    AltTocEntry entry, {
+    bool toggleIfLinkless = false,
+  }) {
     _isManuallyScrolling = false;
     _lastScrolledEntryIds.remove(structureId);
-
-    // Always navigate on text tap, as requested
-    _handleLeafClick(structureId, entry);
+    _handleLeafClick(structureId, entry, toggleIfLinkless: toggleIfLinkless);
   }
 
-  void _handleLeafClick(int structureId, AltTocEntry entry) async {
+  void _handleLeafClick(
+    int structureId,
+    AltTocEntry entry, {
+    bool toggleIfLinkless = false,
+  }) async {
     if (structureId == kDibburimStructureId) {
       _scrollToLine(dibburimLineIndex(entry.id));
       return;
@@ -636,6 +642,16 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
         entry.id,
         source: widget.book.source,
       );
+
+      // צומת בלי קישור משלו: הלחיצה פותחת/סוגרת, ורק בפתיחה מנווטת לבן הראשון.
+      if (links.isEmpty &&
+          toggleIfLinkless &&
+          (_structureChildren[structureId]?[entry.id]?.isNotEmpty ?? false)) {
+        if (!mounted) return;
+        final wasExpanded = _entryExpanded[entry.id] ?? false;
+        _toggleEntryExpanded(entry.id);
+        if (wasExpanded) return;
+      }
 
       // 2. If no links, but has children, try to get link from first child (recursively)
       if (links.isEmpty) {
@@ -685,6 +701,11 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
   }
 
   Future<void> _handleStructureTap(AltTocStructure structure) async {
+    // למבנה אין קישור משלו: לחיצה עליו פותחת/סוגרת, ורק בפתיחה מנווטת.
+    final wasExpanded = _structureExpanded[structure.id] ?? false;
+    _toggleStructure(structure);
+    if (wasExpanded) return;
+
     // Ensure entries are loaded
     if (!_structureRoots.containsKey(structure.id)) {
       await _loadEntriesForStructure(structure.id);
@@ -912,7 +933,8 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
       isSelected: isSelected,
       isExpanded: isExpanded,
       hasChildren: hasChildren,
-      onTap: () => _handleEntryTap(structureId, entry),
+      onTap: () =>
+          _handleEntryTap(structureId, entry, toggleIfLinkless: hasChildren),
       onToggleExpand: hasChildren ? () => _toggleEntryExpanded(entry.id) : null,
     );
 
