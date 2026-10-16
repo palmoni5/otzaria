@@ -349,6 +349,55 @@ void main() {
       },
     );
 
+    // #2587: סעיף בשו"ע אינו בתוכן העניינים, ולכן כותרת הטאב זהה לכותרת היעד.
+    group('טאב פתוח באותה כותרת עם יעד בשורה אחרת', () {
+      Future<(TabsBloc, TextBookTab)> openAndRetarget({
+        required bool navigateToPositionIfReused,
+      }) async {
+        final bloc = _newBloc(_FakeTabsRepository());
+        final existingTab = _createTextTab('ספר א', index: 0, categoryId: 1)
+          ..currentTitle.value = 'סימן א';
+
+        bloc.add(AddTab(existingTab));
+        await bloc.stream.firstWhere((s) => s.tabs.length == 1);
+
+        bloc.add(
+          OpenOrFocusTab(
+            _createTextTab('ספר א', index: 12, categoryId: 1),
+            targetTitle: 'סימן א',
+            navigateToPositionIfReused: navigateToPositionIfReused,
+          ),
+        );
+        await pumpEventQueue();
+        return (bloc, existingTab);
+      }
+
+      test('עם navigateToPositionIfReused הטאב הקיים מנווט ליעד', () async {
+        final (bloc, existingTab) = await openAndRetarget(
+          navigateToPositionIfReused: true,
+        );
+
+        expect(bloc.state.tabs, hasLength(1));
+        expect(bloc.state.currentTabIndex, 0);
+        expect(existingTab.index, 12);
+        expect(existingTab.lines.hasPendingTarget, isTrue);
+
+        await _closeBlocAndAllowDeferredDispose(bloc);
+      });
+
+      test('בלי הדגל הטאב הקיים רק ממוקד ונשאר במקומו', () async {
+        final (bloc, existingTab) = await openAndRetarget(
+          navigateToPositionIfReused: false,
+        );
+
+        expect(bloc.state.tabs, hasLength(1));
+        expect(existingTab.index, 0);
+        expect(existingTab.lines.hasPendingTarget, isFalse);
+
+        await _closeBlocAndAllowDeferredDispose(bloc);
+      });
+    });
+
     test('ממקד טאב PDF קיים לפי כותרת גם אם העמוד שונה', () async {
       final bloc = _newBloc(_FakeTabsRepository());
       final existingTab = PdfBookTab(
