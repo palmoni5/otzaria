@@ -871,6 +871,7 @@ class _FindRefDialogState extends State<FindRefDialog> {
       '',
       ignoreHistory: openAsPdf,
       explicitIndex: hasExplicitLocation,
+      navigateToPositionIfReused: hasExplicitLocation,
       requiresStableLayout: openAsPdf,
       initialCommentators: initialCommentators,
     );
@@ -957,6 +958,7 @@ class _FindRefDialogState extends State<FindRefDialog> {
       segment,
       '',
       explicitIndex: true,
+      navigateToPositionIfReused: true,
     );
   }
 

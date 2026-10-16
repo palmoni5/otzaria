@@ -79,7 +79,7 @@ class _CapturingTabsBloc extends TabsBloc {
   @override
   void add(TabsEvent event) => events.add(event);
 
-  OpenedTab get openedTab => events.whereType<OpenOrFocusTab>().single.tab;
+  OpenOrFocusTab get openEvent => events.whereType<OpenOrFocusTab>().single;
 }
 
 class _FakeHistoryRepository extends HistoryRepository {
@@ -130,9 +130,23 @@ Library _libraryWith(List<Book> books) {
   return library;
 }
 
-/// פותח את הדיאלוג, מקליד ולוחץ על [reference] (או על [commentator] מתפריט
-/// המפרשים שלו); מחזיר את הטאב שנפתח.
 Future<OpenedTab> _openResult(
+  WidgetTester tester, {
+  required DbReferenceResult result,
+  required Library library,
+  List<Bookmark> history = const [],
+  DbCommentatorEntry? commentator,
+}) async => (await _openResultEvent(
+  tester,
+  result: result,
+  library: library,
+  history: history,
+  commentator: commentator,
+)).tab;
+
+/// פותח את הדיאלוג, מקליד ולוחץ על [reference] (או על [commentator] מתפריט
+/// המפרשים שלו); מחזיר את אירוע הפתיחה.
+Future<OpenOrFocusTab> _openResultEvent(
   WidgetTester tester, {
   required DbReferenceResult result,
   required Library library,
@@ -203,7 +217,7 @@ Future<OpenedTab> _openResult(
     await tester.tap(find.text(result.reference));
   }
   await tester.pumpAndSettle();
-  return tabsBloc.openedTab;
+  return tabsBloc.openEvent;
 }
 
 void main() {
@@ -390,6 +404,62 @@ void main() {
     );
 
     expect((tab as TextBookTab).index, 40);
+  });
+
+  // #2587: בספר שכבר פתוח בטאב, מיקום מפורש חייב לגלול אותו ולא רק למקד.
+  testWidgets('תוצאה עם מיקום מבקשת ניווט בטאב קיים', (tester) async {
+    final book = TextBook(id: 1, title: 'שולחן ערוך, אורח חיים');
+    final event = await _openResultEvent(
+      tester,
+      library: _libraryWith([book]),
+      result: const DbReferenceResult(
+        title: 'שולחן ערוך, אורח חיים',
+        reference: 'שולחן ערוך, אורח חיים סימן א סעיף ג',
+        segment: 12,
+        bookId: 1,
+      ),
+    );
+
+    expect(event.navigateToPositionIfReused, isTrue);
+    expect((event.tab as TextBookTab).index, 12);
+  });
+
+  testWidgets('תוצאת ספר בלבד ממקדת טאב קיים בלי לגלול אותו', (tester) async {
+    final book = TextBook(id: 1, title: 'בראשית');
+    final event = await _openResultEvent(
+      tester,
+      library: _libraryWith([book]),
+      result: const DbReferenceResult(
+        title: 'בראשית',
+        reference: 'בראשית',
+        segment: 0,
+        bookId: 1,
+      ),
+    );
+
+    expect(event.navigateToPositionIfReused, isFalse);
+  });
+
+  testWidgets('מפרש מתפריט המפרשים מבקש ניווט בטאב קיים', (tester) async {
+    final source = TextBook(id: 1, title: 'בראשית');
+    final rashi = TextBook(id: 81, title: 'רש"י על בראשית');
+    final event = await _openResultEvent(
+      tester,
+      library: _libraryWith([source, rashi]),
+      result: const DbReferenceResult(
+        title: 'בראשית',
+        reference: 'בראשית פרק א',
+        segment: 0,
+        bookId: 1,
+      ),
+      commentator: const DbCommentatorEntry(
+        title: 'רש"י על בראשית',
+        bookId: 81,
+        targetSegment: 5,
+      ),
+    );
+
+    expect(event.navigateToPositionIfReused, isTrue);
   });
 
   testWidgets('תוצאת PDF נפתחת עם הספר מהעץ ולא עם עותק לפי נתיב', (
