@@ -134,18 +134,18 @@ dependencies:
   wakelock_plus: ^1.8.1
 
 dependency_overrides:
-  # TODO: לחזור ל-pub.dev אחרי שחרור espresso3389/pdfrx#724, #729–#733, #740 ושילוב
+  # TODO: לחזור ל-pub.dev אחרי שחרור espresso3389/pdfrx#724, #729–#733, #740, #741 ושילוב
   # תיקון שימור הבחירה מ-palmoni5/pdfrx#1. שתי החבילות מוצמדות לאותו קומיט.
   # pdfrx_engine נדרש עבור Pdfrx.normalizeHebrewText.
   pdfrx:
     git:
       url: https://github.com/palmoni5/pdfrx
-      ref: 9854a7239bd75027fd2628ab4ab0e0ba275d1637
+      ref: 646af9c10801af4305684b9a110eac5e2d1d6ccf
       path: packages/pdfrx
   pdfrx_engine:
     git:
       url: https://github.com/palmoni5/pdfrx
-      ref: 9854a7239bd75027fd2628ab4ab0e0ba275d1637
+      ref: 646af9c10801af4305684b9a110eac5e2d1d6ccf
       path: packages/pdfrx_engine
   # TODO: להחזיר ל-pub.dev כשיתמזג וישוחרר MaikuB/flutter_local_notifications#2826
   # (קריאות WinRT ב-thread ייעודי). עד אז הפורק Otzaria, מוצמד לקומיט.
