@@ -245,10 +245,6 @@ dev_dependencies:
   vm_service: ^15.3.0
 
 flutter:
-  # התוספים הנייטיביים (search_engine מבוסס cargokit, printing) לא תומכים ב-SPM.
-  config:
-    enable-swift-package-manager: false
-
   uses-material-design: true
 
   assets:

@@ -23,12 +23,11 @@ String? _searchEnginePackageRoot() {
   return null;
 }
 
-/// כל בניות המנוע הזמינות (release/debug), ממוינות מהחדשה לישנה — קוד
-/// ה-FRB המחולל חייב להתאים ל-DLL (בדיקת content hash באתחול), ו-build
-/// ישן בפרופיל אחד אסור שיסתיר build עדכני בפרופיל השני.
+/// כל בניות המנוע הזמינות, ממוינות מהחדשה לישנה — קוד ה-FRB המחולל חייב
+/// להתאים לספרייה (בדיקת content hash באתחול), ובנייה ישנה אסור שתסתיר עדכנית.
 ///
-/// נסרקים גם פלטי הבנייה של האפליקציה עצמה — לא פעם זו הבנייה היחידה על
-/// מכונת פיתוח, ובלעדיה כל קבוצות הטסט שתלויות במנוע מדולגות בשקט.
+/// `flutter test` מריץ את ה-build hook של החבילה ומניח את הספרייה תחת
+/// build/native_assets; נסרקים גם בניית cargo ידנית ופלטי הבנייה של האפליקציה.
 List<String> searchEngineLibraryCandidates() {
   const names = [
     'search_engine.dll',
@@ -37,19 +36,26 @@ List<String> searchEngineLibraryCandidates() {
   ];
   final packageRoot = _searchEnginePackageRoot();
   final roots = <String>[
+    for (final os in ['windows', 'linux', 'macos']) 'build/native_assets/$os',
     for (final profile in ['release', 'debug'])
       if (packageRoot != null) '$packageRoot/rust/target/$profile',
     for (final profile in ['Release', 'Debug'])
-      'build/windows/x64/plugins/otzaria_search_engine/$profile',
-    'build/linux/x64/release/plugins/otzaria_search_engine',
-    'build/linux/x64/debug/plugins/otzaria_search_engine',
+      'build/windows/x64/runner/$profile',
+    for (final profile in ['release', 'debug'])
+      'build/linux/x64/$profile/bundle/lib',
   ];
 
-  // במק המנוע נארז ב-framework, והבינארי שבו חסר סיומת.
+  // במק הספרייה נארזת ב-framework בתוך האפליקציה, והבינארי שבו חסר סיומת.
   final macFrameworks = [
     for (final profile in ['Release', 'Debug'])
-      'build/macos/Build/Products/$profile/otzaria_search_engine/'
-          'search_engine.framework/search_engine',
+      if (Directory('build/macos/Build/Products/$profile').existsSync())
+        for (final app
+            in Directory(
+              'build/macos/Build/Products/$profile',
+            ).listSync().whereType<Directory>().where(
+              (d) => d.path.endsWith('.app'),
+            ))
+          '${app.path}/Contents/Frameworks/search_engine.framework/search_engine',
   ];
 
   final candidates = <File>[];

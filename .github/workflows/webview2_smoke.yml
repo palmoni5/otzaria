@@ -35,9 +35,6 @@ jobs:
   smoke:
     name: Live WebView2 lifecycle
     runs-on: windows-2022
-    env:
-      # MSBuild FileTracker still limits llama.cpp scratch paths to MAX_PATH.
-      CARGOKIT_TEMP_DIR: D:/ck
     timeout-minutes: 25
 
     steps:

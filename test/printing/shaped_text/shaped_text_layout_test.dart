@@ -9,8 +9,6 @@ import 'package:otzaria/printing/shaped_text/shaped_text_widget.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-import '../../support/shaper_test_init.dart';
-
 /// Ordinary pointed Hebrew words, repeated to fill several lines.
 const List<String> _words = [
   'שָׁלוֹם',
@@ -41,19 +39,13 @@ Uint8List? _readFont() {
 }
 
 void main() {
-  final libraryPath = findNativeShaperLibrary();
   final fontBytes = _readFont();
-  final skipReason = libraryPath == null
-      ? 'the native shaper is not built'
-      : fontBytes == null
-      ? 'no test font found'
-      : null;
+  final skipReason = fontBytes == null ? 'no test font found' : null;
 
   group('ShapedTextLayout', () {
     late ShaperFont shaper;
 
     setUp(() {
-      ShaperLibrary.path = libraryPath;
       shaper = ShaperFont.register(fontBytes!);
     });
 
@@ -156,7 +148,6 @@ void main() {
 
   group('ShapedText widget', () {
     test('spans a long paragraph across pages', () async {
-      ShaperLibrary.path = libraryPath;
       final shaper = ShaperFont.register(fontBytes!);
       addTearDown(shaper.dispose);
 
@@ -192,7 +183,6 @@ void main() {
     // Regression: with less room than the padding, a line was forced onto the
     // page anyway and printed over the line above it.
     test('moves a line that has no room left to the next page', () async {
-      ShaperLibrary.path = libraryPath;
       final shaper = ShaperFont.register(fontBytes!);
       addTearDown(shaper.dispose);
 
@@ -238,7 +228,6 @@ void main() {
     });
 
     test('renders a multi-line document for inspection', () async {
-      ShaperLibrary.path = libraryPath;
       final shaper = ShaperFont.register(fontBytes!);
       addTearDown(shaper.dispose);
 

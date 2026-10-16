@@ -23,12 +23,9 @@ File? _packagedFont(String name) {
 }
 
 void main() {
-  final libraryPath = findNativeShaperLibrary();
   final font = _packagedFont('OtzariaAshurit-Regular.otf');
 
-  final skipReason = libraryPath == null
-      ? 'the native shaper is not built'
-      : font == null
+  final skipReason = font == null
       ? 'the Ashurit package is not resolved'
       : null;
 
@@ -39,7 +36,6 @@ void main() {
     late Uint8List bytes;
 
     setUp(() {
-      ShaperLibrary.path = libraryPath;
       bytes = font!.readAsBytesSync();
       shaper = ShaperFont.register(bytes);
       document = PdfDocument(compress: false);

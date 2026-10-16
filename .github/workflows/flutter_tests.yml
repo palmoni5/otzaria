@@ -183,74 +183,14 @@ jobs:
       - name: Install dependencies
         run: flutter pub get --enforce-lockfile
 
-      # Resolve the Git or hosted package to cache the native library under the
-      # exact root used by flutter_test_config.dart.
-      - name: Resolve search engine package root
-        id: engine-package
-        run: |
-          python3 - <<'PYTHON'
-          import json
-          import os
-          from pathlib import Path
-          from urllib.parse import urljoin, urlparse
-          from urllib.request import url2pathname
-
-          config = Path('.dart_tool/package_config.json').resolve()
-          packages = json.loads(config.read_text())['packages']
-          package = next(p for p in packages if p['name'] == 'otzaria_search_engine')
-          uri = urlparse(urljoin(config.as_uri(), package['rootUri']))
-          if uri.scheme != 'file' or uri.netloc:
-              raise ValueError(f'Expected a local package root, got {uri.geturl()}')
-          root = Path(url2pathname(uri.path)).resolve()
-          if not (root / 'rust/Cargo.toml').is_file():
-              raise FileNotFoundError(f'Engine Cargo.toml missing in {root}')
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              print(f'root={root}', file=output)
-          print(f'Search engine package root: {root}')
-          PYTHON
-
-      # Cache by the immutable package reference so later runs can reuse the
-      # native library. The first uncached run builds it through Cargokit.
-      - name: Cache search engine library
-        id: engine-cache
+      # flutter test runs the build hooks of the engine and the shaper. A crate
+      # hash with no published binary (a Git-pinned engine) compiles from
+      # source, so its output is cached by the resolved packages.
+      - name: Cache native build hook output
         uses: actions/cache@v6.1.0
         with:
-          path: ${{ steps.engine-package.outputs.root }}/rust/target/release/libsearch_engine.so
-          key: ${{ runner.os }}-search-engine-lib-v3-${{ hashFiles('pubspec.yaml', 'pubspec.lock') }}
-
-      # flutter_test has no plugin assets. Cargokit downloads signed release
-      # artifacts when available and builds the pinned Git engine from source
-      # when that crate hash has not been published.
-      - name: Fetch native libraries (search engine, OpenType shaper)
-        env:
-          ENGINE_PACKAGE_ROOT: ${{ steps.engine-package.outputs.root }}
-        run: |
-          for pkg in otzaria_search_engine opentype_shaper; do
-            pkg_root=$(jq -r --arg pkg "$pkg" '.packages[] | select(.name == $pkg) | .rootUri' .dart_tool/package_config.json)
-            pkg_root=${pkg_root#file://}
-            case "$pkg_root" in
-              /*) ;;
-              *) pkg_root=".dart_tool/$pkg_root" ;;
-            esac
-            pkg_root=$(realpath "$pkg_root")
-            echo "Fetching $pkg at: $pkg_root"
-            if [ "$pkg" = "otzaria_search_engine" ] && \
-                [ -s "$ENGINE_PACKAGE_ROOT/rust/target/release/libsearch_engine.so" ]; then
-              echo "Using cached search engine native library"
-              continue
-            fi
-            mkdir -p "$pkg_root/rust/target/release"
-            CARGOKIT_CONFIGURATION=Release \
-            CARGOKIT_TARGET_PLATFORM=linux-x64 \
-            CARGOKIT_MANIFEST_DIR="$pkg_root/rust" \
-            CARGOKIT_OUTPUT_DIR="$pkg_root/rust/target/release" \
-            CARGOKIT_TARGET_TEMP_DIR="$RUNNER_TEMP/cargokit/$pkg/target" \
-            CARGOKIT_TOOL_TEMP_DIR="$RUNNER_TEMP/cargokit/$pkg/tool" \
-            CARGOKIT_ROOT_PROJECT_DIR="$GITHUB_WORKSPACE" \
-              bash "$pkg_root/cargokit/run_build_tool.sh" build-cmake
-            ls -la "$pkg_root/rust/target/release"
-          done
-          test -s "$ENGINE_PACKAGE_ROOT/rust/target/release/libsearch_engine.so"
+          path: .dart_tool/hooks_runner/shared
+          key: ${{ runner.os }}-native-hooks-v1-${{ hashFiles('pubspec.yaml', 'pubspec.lock') }}
 
       # הטסטים תלויים בקבצים המחוללים, לכן החילול רץ גם בכל shard (~20 שניות).
       - name: Generate settings search index
@@ -453,14 +393,12 @@ jobs:
 
   # שער הבנייה היחיד ל-Windows על PR. עד עכשיו לא היה כזה: `analyze` ו-`test`
   # רצים שניהם על ubuntu, ו-`webview2_smoke` מסונן ב-`paths`. המשמעות הייתה
-  # ששבירה בקוד הנייטיבי (windows/runner, רישום תוספים, cargokit) התגלתה רק
+  # ששבירה בקוד הנייטיבי (windows/runner, רישום תוספים, build hooks) התגלתה רק
   # אצל המפתח הבא שניסה לבנות מקומית.
   build_windows:
     name: Build (Windows)
     runs-on: windows-2022
     env:
-      # MSBuild FileTracker still limits llama.cpp scratch paths to MAX_PATH.
-      CARGOKIT_TEMP_DIR: D:/ck
       # כמו בבניית ההפצה: בלי אלה MSBuild מקמפל קובץ C++ אחד בכל פעם.
       UseMultiToolTask: 'true'
       EnforceProcessCountAcrossBuilds: 'true'
@@ -497,7 +435,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       # זה הצעד שבגללו ה-job קיים: MSBuild, רישום התוספים הנייטיביים
-      # ו-cargokit. debug ולא release — הוא מפעיל את אותה שרשרת נייטיבית
+      # וה-build hooks. debug ולא release — הוא מפעיל את אותה שרשרת נייטיבית
       # בשבריר מהזמן, ובניית ה-release כבר מכוסה ב-build-and-announce.
       - name: Build Windows (debug)
         run: flutter build windows --debug
@@ -509,23 +447,6 @@ jobs:
 
       # שומר לוגים בכישלון: כשהבנייה נופלת, הלוג של MSBuild הוא הדבר היחיד
       # שמסביר למה — ההודעה ב-stdout מפנה לכיוון הלא נכון בדרך כלל.
-      - name: Collect native build logs on failure
-        if: failure()
-        shell: pwsh
-        run: |
-          $source = $env:CARGOKIT_TEMP_DIR
-          $destination = Join-Path $env:GITHUB_WORKSPACE 'build/ci-native-logs'
-          if (Test-Path -LiteralPath $source) {
-            Get-ChildItem -LiteralPath $source -Recurse -File |
-              Where-Object { $_.Extension -in '.log', '.tlog' } |
-              ForEach-Object {
-                $relative = [IO.Path]::GetRelativePath($source, $_.FullName)
-                $target = Join-Path $destination $relative
-                New-Item -ItemType Directory -Path (Split-Path $target) -Force | Out-Null
-                Copy-Item -LiteralPath $_.FullName -Destination $target
-              }
-          }
-
       - name: Upload build logs on failure
         if: failure()
         uses: actions/upload-artifact@v7.0.1
@@ -534,13 +455,11 @@ jobs:
           path: |
             build/windows/x64/**/*.log
             build/windows/x64/**/*.tlog
-            build/ci-native-logs/**/*.log
-            build/ci-native-logs/**/*.tlog
           if-no-files-found: ignore
           retention-days: 7
 
-  # רץ במקביל לבנייה: הטסטים צריכים ממנה רק את ספריית המנוע, והיא יורדת
-  # כאן חתומה מאותו מקור ש-cargokit משתמש בו בבנייה.
+  # רץ במקביל לבנייה: את ספריית המנוע מוריד ה-build hook של flutter test,
+  # חתומה מאותו מקור שממנו הבנייה מורידה אותה.
   test_windows:
     name: Test (Windows)
     runs-on: windows-2022
@@ -564,27 +483,6 @@ jobs:
         run: |
           git config --global core.longpaths true
           flutter pub get --enforce-lockfile
-
-      - name: Fetch search engine library
-        shell: pwsh
-        run: |
-          $configPath = (Resolve-Path .dart_tool/package_config.json).Path
-          $config = Get-Content -Raw $configPath | ConvertFrom-Json
-          $package = $config.packages | Where-Object name -eq 'otzaria_search_engine'
-          $root = [Uri]::new([Uri]::new($configPath), $package.rootUri).LocalPath
-          $out = Join-Path $root 'rust/target/release'
-          New-Item -ItemType Directory -Force -Path $out | Out-Null
-          $env:CARGOKIT_CONFIGURATION = 'Release'
-          $env:CARGOKIT_TARGET_PLATFORM = 'windows-x64'
-          $env:CARGOKIT_MANIFEST_DIR = Join-Path $root 'rust'
-          $env:CARGOKIT_OUTPUT_DIR = $out
-          $env:CARGOKIT_TARGET_TEMP_DIR = Join-Path $env:RUNNER_TEMP 'ck/target'
-          $env:CARGOKIT_TOOL_TEMP_DIR = Join-Path $env:RUNNER_TEMP 'ck/tool'
-          $env:CARGOKIT_ROOT_PROJECT_DIR = $env:GITHUB_WORKSPACE
-          & (Join-Path $root 'cargokit/run_build_tool.cmd') build-cmake
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Get-ChildItem $out
-          if (-not (Test-Path (Join-Path $out 'search_engine.dll'))) { throw 'search_engine.dll is missing' }
 
       # ההיקף מכוון וצר: הסוללה המלאה רצה על Linux ב-4 shards. כאן רצות
       # רק הקבוצות שאומתו כירוקות ב-Windows (1,073 בדיקות, ועוד 146 של
@@ -658,7 +556,7 @@ jobs:
           update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-14 100
 
       # Bookworm-slim has no rustup. Unpublished crate hashes fall back to
-      # building the Git-pinned engine from source through Cargokit.
+      # building the Git-pinned engine from source in its build hook.
       - name: Install Rust for native source fallback
         uses: dtolnay/rust-toolchain@stable
 

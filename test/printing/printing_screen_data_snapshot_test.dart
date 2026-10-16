@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:opentype_shaper/opentype_shaper.dart';
 import 'package:otzaria/printing/export_restriction_service.dart';
 import 'package:otzaria/printing/view/printing_screen.dart';
 import 'package:otzaria/settings/engine/settings_bloc.dart';
@@ -17,7 +16,6 @@ import 'package:otzaria/text_display/text_display_exports.dart';
 import 'package:pdf/pdf.dart';
 
 import '../helpers/memory_settings_cache.dart';
-import '../support/shaper_test_init.dart';
 
 class _MockSettingsBloc extends MockBloc<SettingsEvent, SettingsState>
     implements SettingsBloc {}
@@ -28,12 +26,9 @@ class _FakeSettingsRepository extends Fake implements SettingsRepository {
 }
 
 void main() {
-  final shaperPath = findNativeShaperLibrary();
-
   setUpAll(() async {
     await Settings.init(cacheProvider: MemorySettingsCache());
     ExportRestrictionService.setRestrictedTitlesForTesting(const []);
-    ShaperLibrary.path = shaperPath;
   });
 
   testWidgets(
@@ -97,6 +92,5 @@ void main() {
       await export;
       await tester.pumpWidget(const SizedBox());
     },
-    skip: shaperPath == null,
   );
 }

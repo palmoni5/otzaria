@@ -489,9 +489,11 @@ flutter clean && flutter pub get  # Nuclear option for build issues
 
 `pubspec.lock` is committed. Do not run `flutter pub upgrade` as part of an unrelated change: a pull request that changes `pubspec.lock` without changing `pubspec.yaml` fails the Lockfile Guard check, and CI resolves dependencies with `--enforce-lockfile`.
 
-### Windows `search_engine_cargokit` build failure
+### Native libraries (search engine, OpenType shaper)
 
-If MSB8066 hides a `PathExistsException` while copying `search_engine.dll`, inspect `flutter build windows --debug -v`: a process may hold the destination DLL open (often an orphaned `flutter_tester.exe`). Identify the holder before stopping it; a running app's DLL under `runner/Debug` is unrelated. Tests load a separate copy from `build/test_engine/` via `test/support/search_engine_test_init.dart`; do not point them back to the plugin build output.
+Both packages ship their Rust library through a Dart build hook (`hook/build.dart`), not a platform plugin: it downloads the signed binary published for the crate hash, or compiles it with cargo (needs [rustup](https://rustup.rs)) when none is published, as for a Git-pinned engine. `flutter build` and `flutter test` both run it; the library lands in `build/native_assets/<os>/` and next to the app. To force the source build, set `hooks: user_defines: otzaria_search_engine: build_from_source: true` in `pubspec.yaml`. With a Git- or path-pinned engine whose hash has no published binary, every `flutter test` needs Rust installed: the hook fails instead of the engine tests skipping.
+
+If copying `search_engine.dll` fails, a process may hold the destination open (often an orphaned `flutter_tester.exe`). Identify the holder before stopping it; a running app's DLL under `runner/Debug` is unrelated. Tests load a separate copy from `build/test_engine/` via `test/support/search_engine_test_init.dart`; do not point them back to the build output.
 
 ## Platform Support
 **Supported:** Windows, Linux, Android, iOS, macOS

@@ -8,7 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:opentype_shaper/opentype_shaper.dart';
 import 'package:otzaria/models/books.dart';
 import 'package:otzaria/printing/export_restriction_service.dart';
 import 'package:otzaria/printing/view/printing_screen.dart';
@@ -21,7 +20,6 @@ import 'package:otzaria/text_display/text_display_exports.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import '../helpers/memory_settings_cache.dart';
-import '../support/shaper_test_init.dart';
 
 class _MockSettingsBloc extends MockBloc<SettingsEvent, SettingsState>
     implements SettingsBloc {}
@@ -118,14 +116,11 @@ Future<String> _exportWord(WidgetTester tester) async {
 }
 
 void main() {
-  // התצוגה המקדימה של מסך ההדפסה נבנית במעצב הנייטיבי.
-  final shaperPath = findNativeShaperLibrary();
   const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
 
   setUpAll(() async {
     await Settings.init(cacheProvider: MemorySettingsCache());
     await Settings.setValue<int>('key-print-destination', 1);
-    ShaperLibrary.path = shaperPath;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(pathProviderChannel, (_) async => '/tmp');
   });
@@ -142,5 +137,5 @@ void main() {
       dotAll: true,
     ).firstMatch(xml)!.group(0)!;
     expect(paragraph, contains('w:val="Heading2"'));
-  }, skip: shaperPath == null);
+  });
 }

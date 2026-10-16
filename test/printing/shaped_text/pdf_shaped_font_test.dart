@@ -6,8 +6,6 @@ import 'package:opentype_shaper/opentype_shaper.dart';
 import 'package:otzaria/printing/shaped_text/pdf_shaped_font.dart';
 import 'package:pdf/pdf.dart';
 
-import '../../support/shaper_test_init.dart';
-
 /// A pointed Hebrew word: three letters carrying nikud, one of them a ta'am.
 const String pointedWord = 'שָׁ֖לֹם';
 
@@ -29,14 +27,9 @@ const List<String> _fontCandidates = [
 }
 
 void main() {
-  final libraryPath = findNativeShaperLibrary();
   final font = _readFont();
 
-  final skipReason = libraryPath == null
-      ? 'the native shaper is not built'
-      : font == null
-      ? 'no test font found'
-      : null;
+  final skipReason = font == null ? 'no test font found' : null;
 
   group('PdfShapedFont', () {
     late ShaperFont shaper;
@@ -44,7 +37,6 @@ void main() {
     late PdfShapedFont pdfFont;
 
     setUp(() {
-      ShaperLibrary.path = libraryPath;
       shaper = ShaperFont.register(font!.$2);
       document = PdfDocument(compress: false);
       pdfFont = PdfShapedFont(
@@ -182,9 +174,7 @@ void main() {
       final lastRise = RegExp(r'(-?[\d.]+) Ts').allMatches(body).last;
       expect(lastRise.group(1), '0');
     },
-    skip: libraryPath == null
-        ? 'the native shaper is not built'
-        : File(_riseFontPath).existsSync()
+    skip: File(_riseFontPath).existsSync()
         ? null
         : 'the rise test font is missing',
   );
@@ -255,9 +245,7 @@ void main() {
         expect(drawn[i].$3, closeTo(expected[i].$3, 0.001));
       }
     },
-    skip: libraryPath == null
-        ? 'the native shaper is not built'
-        : File(_riseFontPath).existsSync()
+    skip: File(_riseFontPath).existsSync()
         ? null
         : 'the rise test font is missing',
   );

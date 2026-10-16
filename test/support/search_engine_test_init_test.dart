@@ -55,14 +55,20 @@ void main() {
   );
 
   test('בניית אפליקציית macOS נסרקת כמו בווינדוס ובלינוקס (issue #1493)', () {
-    const framework =
-        'build/macos/Build/Products/Debug/otzaria_search_engine/'
-        'search_engine.framework/search_engine';
-    if (!File(framework).existsSync()) {
+    final products = Directory('build/macos/Build/Products/Debug');
+    final frameworks = products.existsSync()
+        ? [
+            for (final app in products.listSync().whereType<Directory>())
+              if (app.path.endsWith('.app'))
+                '${app.path}/Contents/Frameworks/search_engine.framework/'
+                    'search_engine',
+          ].where((path) => File(path).existsSync()).toList()
+        : const <String>[];
+    if (frameworks.isEmpty) {
       markTestSkipped('אין בניית macOS של האפליקציה');
       return;
     }
 
-    expect(searchEngineLibraryCandidates(), contains(framework));
+    expect(searchEngineLibraryCandidates(), contains(frameworks.first));
   });
 }

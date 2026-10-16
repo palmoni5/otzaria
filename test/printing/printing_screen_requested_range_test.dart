@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:opentype_shaper/opentype_shaper.dart';
 import 'package:otzaria/models/books.dart';
 import 'package:otzaria/printing/view/printing_screen.dart';
 import 'package:otzaria/settings/engine/settings_bloc.dart';
@@ -13,7 +12,6 @@ import 'package:otzaria/settings/engine/settings_repository.dart';
 import 'package:otzaria/settings/engine/settings_state.dart';
 
 import '../helpers/memory_settings_cache.dart';
-import '../support/shaper_test_init.dart';
 
 class _MockSettingsBloc extends MockBloc<SettingsEvent, SettingsState>
     implements SettingsBloc {}
@@ -55,14 +53,10 @@ final _toc = [
 ];
 
 void main() {
-  // התצוגה המקדימה מעצבת את הטקסט במעצב הנייטיבי; בלעדיו אין מה לבדוק כאן.
-  final shaperPath = findNativeShaperLibrary();
-  final skip = shaperPath == null ? 'the native shaper is not built' : null;
   const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
 
   setUpAll(() async {
     await Settings.init(cacheProvider: MemorySettingsCache());
-    ShaperLibrary.path = shaperPath;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(pathProviderChannel, (_) async => '/tmp');
   });
@@ -130,7 +124,7 @@ void main() {
     expect(find.text('פרק א'), findsWidgets);
     expect(find.text('פרק ב'), findsWidgets);
     await tester.pumpWidget(const SizedBox());
-  }, skip: skip != null);
+  });
 
   testWidgets('בלי endLine — ברירת המחדל הקיימת: הכותרת שסביב השורה', (
     tester,
@@ -140,7 +134,7 @@ void main() {
     // פרק א בלבד (שורות 1–6)
     expect(find.text('6 שורות נבחרו מתוך 20'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
-  }, skip: skip != null);
+  });
   testWidgets(
     'SDK commentator picker changes selection and survives include toggle',
     (tester) async {
@@ -169,7 +163,6 @@ void main() {
       expect(tester.widget<FilterChip>(chips.at(1)).selected, isTrue);
       await tester.pumpWidget(const SizedBox());
     },
-    skip: skip != null,
   );
   testWidgets('SDK with no linked commentators has no selectable chips', (
     tester,
@@ -180,5 +173,5 @@ void main() {
     await tester.pump();
     expect(find.byType(FilterChip), findsNothing);
     await tester.pumpWidget(const SizedBox());
-  }, skip: skip != null);
+  });
 }

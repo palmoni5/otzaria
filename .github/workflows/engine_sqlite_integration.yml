@@ -58,7 +58,7 @@ jobs:
           # ב-macOS ה-cache כמעט לא נמצא בין ריצות, ושמירתו איטית מהתקנה.
           cache: false
 
-      # קומיט מנוע שעוד אין לו בינאריים מוכנים נבנה מהמקור דרך cargokit.
+      # קומיט מנוע שעוד אין לו בינאריים מוכנים נבנה מהמקור ב-build hook שלו.
       - name: Install Rust for native source fallback
         uses: dtolnay/rust-toolchain@stable
 

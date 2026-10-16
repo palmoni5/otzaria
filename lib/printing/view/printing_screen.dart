@@ -1029,11 +1029,8 @@ class _PrintingScreenState extends State<PrintingScreen> {
     final fallbackShaper = ShaperFont.register(fallbackBytes);
     final primaryHandle = primaryShaper.handle;
     final fallbackHandle = fallbackShaper.handle;
-    // נתיב מפורש לספרייה (בטסטים) הוא סטטי ולכן לכל isolate בנפרד.
-    final shaperPath = ShaperLibrary.path;
 
     final result = await Isolate.run(() async {
-      ShaperLibrary.path = shaperPath;
       final pdfData = pw.Document(pageMode: PdfPageMode.outlines);
       final shapedFonts = [
         PdfShapedFont(

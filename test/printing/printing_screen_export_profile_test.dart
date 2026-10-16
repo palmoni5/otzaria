@@ -9,7 +9,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:opentype_shaper/opentype_shaper.dart';
 import 'package:otzaria/models/books.dart';
 import 'package:otzaria/models/links.dart';
 import 'package:otzaria/printing/commentary_print_builder.dart';
@@ -29,7 +28,6 @@ import 'package:xml/xml.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import '../helpers/memory_settings_cache.dart';
-import '../support/shaper_test_init.dart';
 
 class _MockSettingsBloc extends MockBloc<SettingsEvent, SettingsState>
     implements SettingsBloc {}
@@ -138,15 +136,12 @@ Future<String> _exportWord(
 }
 
 void main() {
-  // התצוגה המקדימה של מסך ההדפסה נבנית במעצב הנייטיבי.
-  final shaperPath = findNativeShaperLibrary();
   final originalPdfiumPath = Pdfrx.pdfiumModulePath;
   const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
 
   setUpAll(() async {
     await Settings.init(cacheProvider: MemorySettingsCache());
     await Settings.setValue<int>('key-print-destination', 1);
-    ShaperLibrary.path = shaperPath;
     if (Platform.isMacOS) {
       Pdfrx.pdfiumModulePath = File(
         'build/native_assets/macos/libpdfium.dylib',
@@ -178,14 +173,14 @@ void main() {
     expect(xml, contains(applyTextDisplayProfile(_verse, profile)));
     expect(xml, contains('ֽ'), reason: 'המתג נמחק');
     expect(xml, contains('׃'), reason: 'סוף הפסוק נמחק');
-  }, skip: shaperPath == null);
+  });
 
   testWidgets('הסתרת פיסוק בפרופיל הייצוא מוחלת בהדפסה', (tester) async {
     const profile = TextDisplayProfile(punctuation: MarkVisibility.hide);
     final xml = await _exportWord(tester, profile);
     expect(xml, contains(applyTextDisplayProfile(_verse, profile)));
     expect(xml, isNot(contains(',')), reason: 'הפיסוק לא הוסר');
-  }, skip: shaperPath == null);
+  });
 
   testWidgets('הסתרת פיסוק שומרת על פיסוק כותרת הספר', (tester) async {
     final xml = await _exportWord(
@@ -203,7 +198,7 @@ void main() {
         ),
       ),
     );
-  }, skip: shaperPath == null);
+  });
 
   testWidgets('הסתרת פיסוק ב-PDF שומרת פיסוק של כותרת h2 בגוף', (tester) async {
     await _exportWord(
@@ -229,7 +224,7 @@ void main() {
         expect(text, contains(','), reason: 'רק כותרת h2 אמורה לשמור פסיק');
       },
     );
-  }, skip: shaperPath == null);
+  });
 
   testWidgets('מפרש עם כותרת HTML שומר פיסוק ב-Word וב-PDF', (tester) async {
     const profile = TextDisplayProfile(punctuation: MarkVisibility.hide);
@@ -287,7 +282,7 @@ void main() {
       contains('מפרש, בדיקה'),
     );
     expect(xml, contains(applyTextDisplayProfile(_verse, profile)));
-  }, skip: shaperPath == null);
+  });
 
   for (final commentaryPunctuation in MarkVisibility.values) {
     testWidgets('ייצוא מפרש מכבד פרופיל נפרד: $commentaryPunctuation', (
@@ -335,6 +330,6 @@ void main() {
       expect(exportedText, contains(applyTextDisplayProfile(text, commentary)));
       expect(xml, contains('ֽ'), reason: 'המתג חייב להישמר גם ללא ניקוד');
       expect(xml, contains('׃'), reason: 'סוף הפסוק חייב להישמר גם ללא ניקוד');
-    }, skip: shaperPath == null);
+    });
   }
 }
