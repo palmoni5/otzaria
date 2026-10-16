@@ -315,37 +315,15 @@ end;
 
 { ============================ התקדמות ============================ }
 
-{ ההתקדמות הכוללת: קבצים שהושלמו ועוד החלק של הקובץ הנוכחי לפי פס העמוד. }
+{ ההתקדמות הכוללת לפי הבתים: הפס של העמוד מודד קובץ בודד כש-Inno מוריד. }
 function UiDownloadFraction(): Extended;
 var
-  I: Integer;
-  Before, Current: Int64;
-  Part, Done: Extended;
-  Bar: TNewProgressBar;
+  Done: Extended;
 begin
   Result := 0;
   if ProgressTotal <= 0 then
     exit;
-  Before := 0;
-  Current := 0;
-  for I := 0 to GetArrayLength(QueueSize) - 1 do
-  begin
-    if Before = ProgressDone then
-    begin
-      Current := QueueSize[I];
-      Break;
-    end;
-    Before := Before + QueueSize[I];
-  end;
-  Part := 0;
-  Bar := DownloadPage.ProgressBar;
-  if Bar.Visible and (Bar.Style = npbstNormal) and (Bar.Max > 0) then
-  begin
-    Part := Bar.Position;
-    Part := Part / Bar.Max;
-  end;
-  Done := Current;
-  Done := Done * Part + ProgressDone;
+  Done := ProgressDone + CurrentProgress;
   Result := Done / ProgressTotal;
   if Result > 1 then
     Result := 1;

@@ -544,7 +544,8 @@ begin
   end;
   Done := CurlItemHave();
   CurrentProgress := Done;
-  DownloadPage.SetProgress(Done div 1024, QueueSize[I] div 1024);
+  { הפס המקורי מוסתר, אבל ממנו נקבעת ההתקדמות בשורת המשימות: לכן הוא על כל התור. }
+  DownloadPage.SetProgress((ProgressDone + Done) div 1024, ProgressTotal div 1024);
   if Done < QueueSize[I] then
     ShowDownloadStatus();
 end;
@@ -1226,7 +1227,7 @@ begin
   SpeedPause();
   CurrentProgress := 0;
   CurrentFileSize := QueueSize[I];
-  DownloadPage.SetProgress(0, QueueSize[I] div 1024);
+  DownloadPage.SetProgress(ProgressDone div 1024, ProgressTotal div 1024);
   Waiting := False;
   Lock := CurlTryLock(I);
   while Lock = 0 do
