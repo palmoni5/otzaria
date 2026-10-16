@@ -34,7 +34,7 @@ void main() {
   }) {
     final sidebar = PersonalNotesSidebar(
       bookId: 'ספר בדיקה',
-      onNavigateToLine: (_) {},
+      onNavigateToLine: (_, {note}) {},
       isPdf: isPdf,
       visibleLineIndices: visibleLineIndices,
     );
@@ -107,7 +107,7 @@ void main() {
             child: PersonalNotesSidebar(
               bookId: 'מפרש',
               focusLineNumber: 7,
-              onNavigateToLine: (_) {},
+              onNavigateToLine: (_, {note}) {},
             ),
           ),
         ),
@@ -162,7 +162,7 @@ void main() {
             ],
             child: PersonalNotesSidebar(
               bookId: 'ספר ברקע',
-              onNavigateToLine: (_) {},
+              onNavigateToLine: (_, {note}) {},
             ),
           ),
         ),
@@ -245,7 +245,7 @@ void main() {
               ],
               child: PersonalNotesSidebar(
                 bookId: 'ספר בדיקה',
-                onNavigateToLine: (_) {},
+                onNavigateToLine: (_, {note}) {},
               ),
             ),
           ),
@@ -286,7 +286,7 @@ void main() {
               ],
               child: PersonalNotesSidebar(
                 bookId: 'ספר בדיקה',
-                onNavigateToLine: (_) {},
+                onNavigateToLine: (_, {note}) {},
               ),
             ),
           ),
@@ -327,7 +327,7 @@ void main() {
                       value: firstTabBloc,
                       child: PersonalNotesSidebar(
                         bookId: 'ספר בדיקה',
-                        onNavigateToLine: (_) {},
+                        onNavigateToLine: (_, {note}) {},
                       ),
                     ),
                   ),
@@ -336,7 +336,7 @@ void main() {
                       value: secondTabBloc,
                       child: PersonalNotesSidebar(
                         bookId: 'ספר בדיקה',
-                        onNavigateToLine: (_) {},
+                        onNavigateToLine: (_, {note}) {},
                       ),
                     ),
                   ),
@@ -376,7 +376,7 @@ void main() {
               value: notesBloc,
               child: PersonalNotesSidebar(
                 bookId: 'ספר בדיקה',
-                onNavigateToLine: (_) {},
+                onNavigateToLine: (_, {note}) {},
               ),
             ),
           ),

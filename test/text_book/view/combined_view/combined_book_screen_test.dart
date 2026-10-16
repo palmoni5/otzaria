@@ -27,6 +27,7 @@ import 'package:otzaria/widgets/misc/link_context_menu_entry.dart';
 import 'package:otzaria/widgets/misc/link_preview_overlay.dart';
 import 'package:otzaria/widgets/smart_text/smart_text_widget.dart';
 import 'package:otzaria/widgets/text/selection_copy_shortcuts.dart';
+import '../../../support/search_engine_test_init.dart';
 import '../../../test_helpers/memory_cache_provider.dart';
 
 void main() {
@@ -378,6 +379,63 @@ void main() {
       expect(selection?.text, 'בחירת מפרש');
       expect(selection?.link, same(link));
     });
+  });
+
+  // issue #2533: ספר שנפתח מקישור ?m= גולל אל המילים המודגשות ולא לראש הקטע.
+  testWidgets('פתיחה עם הדגשה מקישור גוללת אל המילים בתוך שורה ארוכה', (
+    tester,
+  ) async {
+    if (!await tryInitSearchEngine()) {
+      markTestSkipped(searchEngineSkipReason);
+      return;
+    }
+    final longLine = '${List.filled(80, 'מילה').join(' ')} יעד ההדגשה סוף';
+    final content = ['שורה', 'שורה', longLine];
+    final textBookBloc = _RecordingTextBookBloc(
+      _loadedState().copyWith(
+        content: content,
+        visibleIndices: const [2],
+        highlightText: 'יעד ההדגשה',
+        permanentHighlightLine: 2,
+      ),
+    );
+    addTearDown(textBookBloc.close);
+    final tab = TextBookTab(book: TextBook(title: 'ספר בדיקה'), index: 2);
+    addTearDown(tab.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider<TextBookBloc>.value(value: textBookBloc),
+            BlocProvider<PersonalNotesBloc>.value(
+              value: _TestPersonalNotesBloc(
+                const PersonalNotesState.initial(),
+              ),
+            ),
+            BlocProvider<SettingsBloc>.value(
+              value: _TestSettingsBloc(SettingsState.initial()),
+            ),
+          ],
+          child: Scaffold(
+            body: CombinedView(
+              data: content,
+              openBookCallback: (_) {},
+              openLeftPaneTab: (_, {searchText}) {},
+              textSize: 18,
+              showCommentaryAsExpansionTiles: true,
+              tab: tab,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(tab.lines.position.value?.topLine, 2);
+    expect(tab.lines.position.value?.intraLineFraction, greaterThan(0.9));
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 20));
   });
 
   group('אזור הבחירה של התצוגה המשולבת (issue #674)', () {

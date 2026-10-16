@@ -7,6 +7,8 @@ import 'package:otzaria/models/links.dart';
 import 'package:otzaria/personal_notes/bloc/personal_notes_bloc.dart';
 import 'package:otzaria/personal_notes/bloc/personal_notes_event.dart';
 import 'package:otzaria/personal_notes/bloc/personal_notes_state.dart';
+import 'package:otzaria/personal_notes/models/personal_note.dart';
+import 'package:otzaria/personal_notes/widgets/note_tile.dart';
 import 'package:otzaria/personal_notes/widgets/personal_notes_sidebar.dart';
 import 'package:otzaria/settings/engine/settings_bloc.dart';
 import 'package:otzaria/settings/engine/settings_event.dart';
@@ -42,15 +44,14 @@ void main() {
     _TestTextBookBloc? textBookBlocOverride,
     Widget? notesFooter,
     String? notesBookIdOverride,
+    PersonalNotesState notesState = const PersonalNotesState.initial(),
   }) {
     final textBookBloc =
         textBookBlocOverride ??
         _TestTextBookBloc(
           _loadedState(activeCommentators: activeCommentators),
         );
-    final personalNotesBloc = _TestPersonalNotesBloc(
-      const PersonalNotesState.initial(),
-    );
+    final personalNotesBloc = _TestPersonalNotesBloc(notesState);
     final settingsBloc = _TestSettingsBloc(SettingsState.initial());
 
     return MaterialApp(
@@ -358,6 +359,56 @@ void main() {
     expect(navigated, [7]);
     expect(bloc.recordedEvents.whereType<UpdateSelectedIndex>().last.index, 7);
     expect(bloc.recordedEvents.whereType<HighlightLine>().last.lineIndex, 7);
+  });
+
+  // issue #2532: הערה על מילים בסוף שורה ארוכה גוללת אליהן ולא לראש השורה.
+  testWidgets('לחיצה על הערה במילים גוללת למיקומן בתוך השורה', (tester) async {
+    final lines = LineScrollController();
+    addTearDown(lines.dispose);
+    lines.externalNavigator = (_) async {};
+    final longLine =
+        '${List.filled(80, '<b>מילה</b> ארוכה').join(' ')} יעד ההערה סוף';
+    final content = ['<h2>א</h2>', 'שורה', longLine];
+    final note = PersonalNote(
+      id: 'n1',
+      bookId: 'ספר בדיקה',
+      lineNumber: 3,
+      anchorText: 'יעד ההערה',
+      anchorStart: longLine.indexOf('יעד'),
+      lastKnownLineNumber: 3,
+      status: PersonalNoteStatus.located,
+      content: 'תוכן',
+      contentPlain: 'תוכן',
+      contentFormat: PersonalNoteContentFormat.plain,
+      createdAt: DateTime(2026, 1, 1),
+      updatedAt: DateTime(2026, 1, 1),
+    );
+    final bloc = _TestTextBookBloc(_loadedState().copyWith(content: content));
+    addTearDown(bloc.close);
+    await tester.pumpWidget(
+      LineScrollScope(
+        controller: lines,
+        child: buildPanel(
+          initialTabIndex: kNotesTabIndex,
+          textBookBlocOverride: bloc,
+          notesBookIdOverride: 'ספר בדיקה',
+          notesState: PersonalNotesState(
+            isLoading: false,
+            bookId: 'ספר בדיקה',
+            locatedNotes: [note],
+            missingNotes: const [],
+            errorMessage: null,
+            showOnlyVisible: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    tester.widget<NoteTile>(find.byType(NoteTile)).onTap!();
+    await tester.pumpAndSettle();
+
+    expect(lines.position.value?.topLine, 2);
+    expect(lines.position.value?.intraLineFraction, greaterThan(0.95));
   });
 }
 

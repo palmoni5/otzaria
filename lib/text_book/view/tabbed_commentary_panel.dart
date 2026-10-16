@@ -8,7 +8,10 @@ import 'package:otzaria/text_book/bloc/text_book_bloc.dart';
 import 'package:otzaria/text_book/bloc/text_book_state.dart';
 import 'package:otzaria/text_book/bloc/text_book_event.dart';
 import 'package:otzaria/text_book/utils/reader_build_policy.dart';
+import 'package:otzaria/text_book/utils/section_search_utils.dart'
+    show noteAnchorFractionInLine;
 import 'package:otzaria/text_book/view/selected_line_links_view.dart';
+import 'package:otzaria/personal_notes/models/personal_note.dart';
 import 'package:otzaria/personal_notes/widgets/personal_notes_sidebar.dart';
 import 'package:otzaria/personal_notes/utils/personal_notes_book_key.dart';
 import 'package:otzaria/personal_notes/repository/personal_notes_repository.dart';
@@ -55,7 +58,7 @@ class TabbedCommentaryPanel extends StatefulWidget {
 
   /// ניווט לשורה מתוך לשונית ההערות. כשהוא null נעשה ניווט ישיר ב-scrollController.
   /// צורת הדף מספקת מימוש משלה, שממיר שורת מקור לסגמנט קריאה רציפה.
-  final ValueChanged<int>? onNavigateToLine;
+  final void Function(int lineNumber, {PersonalNote? note})? onNavigateToLine;
   final void Function(Link link, int lineNumber)? onOpenPersonalNote;
   final String? notesBookIdOverride;
   final int? notesCategoryIdOverride;
@@ -281,7 +284,8 @@ class _TabbedCommentaryPanelState extends State<TabbedCommentaryPanel>
                         : null,
                     onNavigateToLine:
                         widget.onNavigateToLine ??
-                        (line) => _handleNoteNavigation(context, state, line),
+                        (line, {note}) =>
+                            _handleNoteNavigation(context, state, line, note),
                   ),
                 ],
               ),
@@ -296,6 +300,7 @@ class _TabbedCommentaryPanelState extends State<TabbedCommentaryPanel>
     BuildContext context,
     TextBookLoaded state,
     int lineNumber,
+    PersonalNote? note,
   ) async {
     if (lineNumber < 1 || state.content.isEmpty) {
       return;
@@ -306,6 +311,10 @@ class _TabbedCommentaryPanelState extends State<TabbedCommentaryPanel>
     final lines = widget.tab?.lines ?? LineScrollScope.maybeOf(context);
     await lines?.scrollToLine(
       targetIndex,
+      intraLineFraction: noteAnchorFractionInLine(
+        state.content[targetIndex],
+        note,
+      ),
       duration: const Duration(milliseconds: 350),
       curve: Curves.easeInOut,
     );

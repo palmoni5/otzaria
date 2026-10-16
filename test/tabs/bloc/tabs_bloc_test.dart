@@ -27,7 +27,10 @@ import 'package:otzaria/text_book/bloc/text_book_state.dart';
 import 'package:otzaria/data/repository/text_book_repository.dart';
 import 'package:otzaria_search_engine/otzaria_search_engine.dart'
     show SearchScope, WordMatchMode;
+import 'package:otzaria/search/in_book_search_preferences.dart';
 import 'package:path/path.dart' as p;
+
+import '../../support/search_engine_test_init.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -1912,6 +1915,99 @@ void main() {
       },
     );
 
+    // issue #2533: קישור ?m= לטאב פתוח גולל אל המילים ולא לתחילת הקטע.
+    test('הדגשה מקישור לטאב קיים גוללת אל המילים בתוך שורה ארוכה', () async {
+      if (!await tryInitSearchEngine()) {
+        markTestSkipped(searchEngineSkipReason);
+        return;
+      }
+      final tabsBloc = _newBloc(_FakeTabsRepository());
+      final longLine = '${List.filled(80, 'מילה').join(' ')} יעד ההדגשה סוף';
+      final existingBloc = _createLoadedTextBookBloc(
+        book: TextBook(id: 42, title: 'בראשית'),
+        initialIndex: 2,
+        content: ['שורה', 'שורה', longLine].join('\n'),
+      );
+      await existingBloc.stream.firstWhere((s) => s is TextBookLoaded);
+      final existingTab = TextBookTab(
+        book: TextBook(id: 42, title: 'בראשית'),
+        index: 2,
+        blocOverride: existingBloc,
+      );
+      tabsBloc.add(AddTab(existingTab));
+      await tabsBloc.stream.firstWhere((s) => s.tabs.length == 1);
+
+      tabsBloc.add(
+        OpenOrFocusTab(
+          TextBookTab(
+            book: TextBook(id: 42, title: 'בראשית'),
+            index: 2,
+            highlightText: 'יעד ההדגשה',
+            permanentHighlightLine: 2,
+          ),
+        ),
+      );
+      await existingBloc.stream
+          .firstWhere((s) => s is TextBookLoaded && s.highlightText.isNotEmpty)
+          .timeout(const Duration(seconds: 2));
+
+      expect(existingTab.lines.position.value?.topLine, 2);
+      expect(
+        existingTab.lines.position.value?.intraLineFraction,
+        greaterThan(0.9),
+      );
+
+      await _closeBlocAndAllowDeferredDispose(tabsBloc);
+    });
+
+    test('בלי מילים שלמות: הדגשה מאמצע מילה בטאב קיים גוללת אליה', () async {
+      if (!await tryInitSearchEngine()) {
+        markTestSkipped(searchEngineSkipReason);
+        return;
+      }
+      await InBookSearchPreferences.saveWholeWord(false);
+      addTearDown(() => InBookSearchPreferences.saveWholeWord(true));
+      final tabsBloc = _newBloc(_FakeTabsRepository());
+      final longLine = '${List.filled(80, 'מילה').join(' ')} בירושלים סוף';
+      final existingBloc = _createLoadedTextBookBloc(
+        book: TextBook(id: 42, title: 'בראשית'),
+        initialIndex: 2,
+        content: ['שורה', 'שורה', longLine].join('\n'),
+      );
+      final loaded =
+          await existingBloc.stream.firstWhere((s) => s is TextBookLoaded)
+              as TextBookLoaded;
+      expect(loaded.searchWholeWord, isFalse);
+      final existingTab = TextBookTab(
+        book: TextBook(id: 42, title: 'בראשית'),
+        index: 2,
+        blocOverride: existingBloc,
+      );
+      tabsBloc.add(AddTab(existingTab));
+      await tabsBloc.stream.firstWhere((s) => s.tabs.length == 1);
+
+      tabsBloc.add(
+        OpenOrFocusTab(
+          TextBookTab(
+            book: TextBook(id: 42, title: 'בראשית'),
+            index: 2,
+            highlightText: 'רושלים',
+            permanentHighlightLine: 2,
+          ),
+        ),
+      );
+      await existingBloc.stream
+          .firstWhere((s) => s is TextBookLoaded && s.highlightText.isNotEmpty)
+          .timeout(const Duration(seconds: 2));
+
+      expect(
+        existingTab.lines.position.value?.intraLineFraction,
+        greaterThan(0.9),
+      );
+
+      await _closeBlocAndAllowDeferredDispose(tabsBloc);
+    });
+
     test(
       'מחיל ApplyMarkHighlight כש‑bloc הקיים עדיין ב‑Initial וטוען רק אחרי כן',
       () async {
@@ -2482,9 +2578,10 @@ class _TrackedPdfBookTab extends PdfBookTab {
 TextBookBloc _createLoadedTextBookBloc({
   required TextBook book,
   int initialIndex = 0,
+  String? content,
 }) {
   final bloc = TextBookBloc(
-    repository: _PinpointFakeTextBookRepository(),
+    repository: _PinpointFakeTextBookRepository(content: content),
     initialState: TextBookInitial.named(book, initialIndex, false, const []),
   );
   bloc.add(
@@ -2499,12 +2596,14 @@ TextBookBloc _createLoadedTextBookBloc({
 }
 
 class _PinpointFakeTextBookRepository extends TextBookRepository {
-  _PinpointFakeTextBookRepository()
+  _PinpointFakeTextBookRepository({this.content})
     : super(fileSystem: FileSystemData.instance);
+
+  final String? content;
 
   @override
   Future<String> getBookContent(TextBook book) async {
-    return List.generate(20, (index) => 'שורה $index').join('\n');
+    return content ?? List.generate(20, (index) => 'שורה $index').join('\n');
   }
 
   @override

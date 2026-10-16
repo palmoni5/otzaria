@@ -2030,7 +2030,7 @@ class PdfCommentaryPanelState extends State<PdfCommentaryPanel>
       isPdf: true,
       pdfOutline: widget.tab.outline,
       visibleLineIndices: _getVisibleLineIndicesForCurrentPage(),
-      onNavigateToLine: (lineNumber) {
+      onNavigateToLine: (lineNumber, {note}) {
         // lineNumber הוא מספר שורה לוגי — ממירים אותו לעמוד דרך ה-heading
         // הקרוב לפניו, ונופלים לפרשנות-עמוד-ישירה בספרים ללא headings.
         if (widget.tab.pdfHeadings != null) {

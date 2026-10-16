@@ -12,6 +12,8 @@ import 'package:otzaria/text_book/bloc/text_book_bloc.dart';
 import 'package:otzaria/text_book/bloc/text_book_event.dart';
 import 'package:otzaria/text_book/bloc/text_book_state.dart';
 import 'package:otzaria/text_book/utils/reader_build_policy.dart';
+import 'package:otzaria/text_book/utils/section_search_utils.dart'
+    show noteAnchorFractionInLine;
 import 'package:otzaria/text_book/view/page_shape/utils/page_shape_settings_manager.dart';
 import 'package:otzaria/text_book/view/tabbed_commentary_panel.dart';
 import 'package:otzaria/book_common/models/commentator_group.dart';
@@ -53,6 +55,7 @@ import 'package:otzaria/data/data_providers/book_database_resolver.dart';
 import 'package:otzaria/data/data_providers/sqlite_data_provider.dart';
 import 'package:otzaria/data/data_providers/library_provider_manager.dart';
 import 'package:otzaria/personal_notes/bloc/personal_notes_bloc.dart';
+import 'package:otzaria/personal_notes/models/personal_note.dart';
 import 'package:otzaria/personal_notes/bloc/personal_notes_state.dart';
 import 'package:otzaria/personal_notes/repository/personal_notes_repository.dart';
 import 'package:otzaria/personal_notes/widgets/commentary_notes_section.dart';
@@ -766,7 +769,11 @@ class _PageShapeScreenState extends State<PageShapeScreen> {
     );
   }
 
-  Future<void> _navigateToLine(TextBookLoaded state, int lineNumber) async {
+  Future<void> _navigateToLine(
+    TextBookLoaded state,
+    int lineNumber,
+    PersonalNote? note,
+  ) async {
     if (lineNumber < 1 || state.content.isEmpty) {
       return;
     }
@@ -777,6 +784,10 @@ class _PageShapeScreenState extends State<PageShapeScreen> {
 
     await widget.tab?.lines.scrollToLine(
       targetIndex,
+      intraLineFraction: noteAnchorFractionInLine(
+        state.content[targetIndex],
+        note,
+      ),
       duration: const Duration(milliseconds: 350),
       curve: Curves.easeInOut,
     );
@@ -1094,8 +1105,8 @@ class _PageShapeScreenState extends State<PageShapeScreen> {
                                   lineNumber,
                                 ),
                           ),
-                          onNavigateToLine: (lineNumber) =>
-                              _navigateToLine(state, lineNumber),
+                          onNavigateToLine: (lineNumber, {note}) =>
+                              _navigateToLine(state, lineNumber, note),
                           onClosePane: _toggleLeftSidebar,
                           initialTabIndex: _leftSidebarTabIndex,
                           onTabChanged: (index) {

@@ -51,7 +51,7 @@ void main() {
               value: notesBloc,
               child: PersonalNotesSidebar(
                 bookId: 'ספר בדיקה',
-                onNavigateToLine: (_) {},
+                onNavigateToLine: (_, {note}) {},
                 visibleLineIndices: const [],
               ),
             ),

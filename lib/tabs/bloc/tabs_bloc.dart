@@ -22,6 +22,12 @@ import 'package:otzaria/plugins/services/plugin_text_reader_registry.dart';
 import 'package:otzaria/tabs/models/tool_tab.dart';
 import 'package:otzaria/text_book/bloc/text_book_event.dart';
 import 'package:otzaria/text_book/bloc/text_book_state.dart';
+import 'package:otzaria/search/models/search_configuration.dart'
+    show SearchMode;
+import 'package:otzaria/text_book/utils/reading_segment_navigation.dart'
+    show kSearchResultAnchorAlignment;
+import 'package:otzaria/text_book/utils/section_search_utils.dart'
+    show matchFractionInLine;
 import 'package:otzaria/utils/text/ref_helper.dart';
 
 /// כמה כרטיסיות שנסגרו נשמרות לשחזור. מוגבל כי כל רשומה מחזיקה מופע טאב חי.
@@ -563,10 +569,26 @@ class TabsBloc extends Bloc<TabsEvent, TabsState> {
         ),
       );
       if (effectiveLine != null) {
+        final loaded = targetText.bloc.state;
         unawaited(
           targetText.lines.scrollToLine(
             effectiveLine,
-            alignment: 0,
+            alignment: kSearchResultAnchorAlignment,
+            intraLineFraction:
+                loaded is TextBookLoaded &&
+                    effectiveLine < loaded.content.length
+                ? matchFractionInLine(
+                    loaded.content[effectiveLine],
+                    effectiveHighlight,
+                    wholeWord: loaded.searchWholeWord,
+                    searchOptions: loaded.searchOptions,
+                    alternativeWords: loaded.alternativeWords,
+                    spacingValues: loaded.spacingValues,
+                    isFuzzy: loaded.searchMode == SearchMode.fuzzy,
+                    searchDistance: loaded.searchDistance,
+                    matchPolicy: loaded.matchPolicy,
+                  )
+                : 0,
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
           ),

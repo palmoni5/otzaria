@@ -33,7 +33,9 @@ import 'package:otzaria/settings/settings_exports.dart';
 class PersonalNotesSidebar extends StatefulWidget {
   final String bookId;
   final int? categoryId;
-  final ValueChanged<int> onNavigateToLine;
+
+  /// [note] — ההערה שאליה מנווטים, לגלילה אל המילים שעליהן נכתבה.
+  final void Function(int lineNumber, {PersonalNote? note}) onNavigateToLine;
   final bool isPdf;
   final List<int>? visibleLineIndices;
   final int? focusLineNumber;
@@ -416,7 +418,7 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
         filtered.locatedNotes.map(
           (note) => NoteTile(
             note: note,
-            onTap: () => widget.onNavigateToLine(note.lineNumber!),
+            onTap: () => widget.onNavigateToLine(note.lineNumber!, note: note),
             onSave: (result) => _saveInline(context, note, result),
             onDelete: () => _confirmDelete(context, note),
             onLinkTap: (url) => _handleNoteLinkTap(context, url),
@@ -631,7 +633,7 @@ class PersonalNotesSidebarState extends State<PersonalNotesSidebar>
         }
         if (note == null) return;
         if (note.lineNumber != null) {
-          widget.onNavigateToLine(note.lineNumber!);
+          widget.onNavigateToLine(note.lineNumber!, note: note);
           return;
         }
         await showDialog<void>(

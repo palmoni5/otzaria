@@ -42,7 +42,7 @@ void main() {
         value: bloc,
         child: PersonalNotesSidebar(
           bookId: bookId,
-          onNavigateToLine: (_) {},
+          onNavigateToLine: (_, {note}) {},
         ),
       ),
     ),

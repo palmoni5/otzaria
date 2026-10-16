@@ -883,16 +883,21 @@ class _CombinedViewState extends State<CombinedView> {
     });
   }
 
-  /// פתיחה מחיפוש: יעד המילה שנמצאה, סביב מרכז התצוגה — בעקביות עם סרגל
-  /// תוצאות החיפוש. יעד שכבר ממתין (ניווט, החלפת תצוגה) קודם.
+  /// פתיחה מחיפוש או מקישור עם הדגשה: יעד המילה המודגשת, סביב מרכז התצוגה —
+  /// בעקביות עם סרגל תוצאות החיפוש. יעד שכבר ממתין (ניווט, החלפת תצוגה) קודם.
   void _scrollToInitialPosition(TextBookLoaded state) {
     if (_hasScrolledToInitialPosition) return;
     _hasScrolledToInitialPosition = true;
     final lines = widget.tab.lines;
     if (lines.hasPendingTarget) return;
     final initialIndex = widget.tab.index;
+    final query = state.searchText.isNotEmpty
+        ? state.searchText
+        : state.isHighlightYellowBackground(initialIndex)
+        ? state.highlightText
+        : '';
     final isFromSearch =
-        state.searchText.isNotEmpty && initialIndex < state.content.length;
+        query.isNotEmpty && initialIndex < state.content.length;
     // הרשימה נפתחת על הפריט של השורה; רק שורה באמצע פסקה צריכה דיוק.
     final layout = readingLayoutOf(state);
     if (!isFromSearch &&
@@ -904,7 +909,7 @@ class _CombinedViewState extends State<CombinedView> {
     final intraLineFraction = isFromSearch
         ? matchFractionInLine(
             state.content[initialIndex],
-            state.searchText,
+            query,
             wholeWord: state.searchWholeWord,
             searchOptions: state.searchOptions,
             alternativeWords: state.alternativeWords,

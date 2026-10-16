@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
+import 'package:otzaria/personal_notes/models/personal_note.dart';
+import 'package:otzaria/personal_notes/utils/note_anchor_utils.dart';
 import 'package:otzaria/search/models/search_match_policy.dart';
 import 'package:otzaria/search/utils/literal_search_pattern.dart';
 import 'package:otzaria/text_book/models/search_results.dart';
@@ -216,6 +218,23 @@ double matchFractionInLine(
   }
   if (offset <= 0) return 0;
   return (offset / clean.length).clamp(0.0, 1.0);
+}
+
+/// מיקום יחסי (0..1) של המילים שעליהן נכתבה [note] בשורת המקור [rawLine],
+/// במרחב הנקי של [matchFractionInLine]. 0 להערת שורה שלמה או לעוגן שלא נמצא.
+double noteAnchorFractionInLine(String rawLine, PersonalNote? note) {
+  if (note == null || !note.isWordAnchored) return 0;
+  final range = locateAnchor(
+    rawLine: rawLine,
+    anchorText: note.anchorText!,
+    prefix: note.anchorPrefix,
+    suffix: note.anchorSuffix,
+    hintStart: note.anchorStart,
+  );
+  final clean = cleanLineForSearch(rawLine);
+  if (range == null || range.start <= 0 || clean.isEmpty) return 0;
+  final before = cleanLineForSearch(rawLine.substring(0, range.start));
+  return (before.length / clean.length).clamp(0.0, 1.0);
 }
 
 /// שבר המיקום של ההופעה בשורה כשטקסט השורה עצמו אינו זמין — למשל אחרי ששוחרר
