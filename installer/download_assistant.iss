@@ -420,6 +420,20 @@ function SetTimer(Wnd: Longint; IdEvent, Elapse, TimerFunc: LongWord): LongWord;
   external 'SetTimer@user32.dll stdcall';
 function KillTimer(Wnd: Longint; IdEvent: LongWord): BOOL;
   external 'KillTimer@user32.dll stdcall';
+function BCryptOpenAlgorithmProvider(var phAlgorithm: THandle; pszAlgId: String;
+  pszImplementation: Longint; dwFlags: LongWord): Longint;
+  external 'BCryptOpenAlgorithmProvider@bcrypt.dll stdcall delayload';
+function BCryptCloseAlgorithmProvider(hAlgorithm: THandle; dwFlags: LongWord): Longint;
+  external 'BCryptCloseAlgorithmProvider@bcrypt.dll stdcall delayload';
+function BCryptCreateHash(hAlgorithm: THandle; var phHash: THandle; pbHashObject: Longint;
+  cbHashObject: LongWord; pbSecret: Longint; cbSecret, dwFlags: LongWord): Longint;
+  external 'BCryptCreateHash@bcrypt.dll stdcall delayload';
+function BCryptHashData(hHash: THandle; pbInput: AnsiString; cbInput, dwFlags: LongWord): Longint;
+  external 'BCryptHashData@bcrypt.dll stdcall delayload';
+function BCryptFinishHash(hHash: THandle; pbOutput: AnsiString; cbOutput, dwFlags: LongWord): Longint;
+  external 'BCryptFinishHash@bcrypt.dll stdcall delayload';
+function BCryptDestroyHash(hHash: THandle): Longint;
+  external 'BCryptDestroyHash@bcrypt.dll stdcall delayload';
 
 const
   { מגבלת GitHub לנכס בודד. נכס גדול ממנה מתפרסם כחלקים. }
@@ -1016,13 +1030,66 @@ begin
   Result := GetTickCount64();
 end;
 
+{ SHA-256 של Windows: פי 2.5 ומעלה מ-GetSHA256OfFile, ופי כמה במעבד עם SHA-NI.
+  False — הספק אינו זמין (בלי אובייקט hash מוקצה, Vista מסרב). }
+function WindowsSha256OfFile(const Path: String; var Hex: String): Boolean;
+var
+  Alg, Hash: THandle;
+  Stream: TFileStream;
+  Buffer, Digest: AnsiString;
+  Left, Count: Int64;
+  I: Integer;
+begin
+  Result := False;
+  if BCryptOpenAlgorithmProvider(Alg, 'SHA256', 0, 0) <> 0 then
+    exit;
+  Hash := 0;
+  try
+    if BCryptCreateHash(Alg, Hash, 0, 0, 0, 0, 0) <> 0 then
+      exit;
+    Stream := TFileStream.Create(Path, fmOpenRead or fmShareDenyWrite);
+    try
+      Left := Stream.Size;
+      SetLength(Buffer, CopyChunkSize);
+      while Left > 0 do
+      begin
+        Count := CopyChunkSize;
+        if Left < Count then
+        begin
+          Count := Left;
+          SetLength(Buffer, Count);
+        end;
+        Stream.ReadBuffer(Buffer, Count);
+        if BCryptHashData(Hash, Buffer, Count, 0) <> 0 then
+          exit;
+        Left := Left - Count;
+      end;
+    finally
+      Stream.Free;
+    end;
+    Digest := StringOfChar(#0, 32);
+    if BCryptFinishHash(Hash, Digest, 32, 0) <> 0 then
+      exit;
+    Hex := '';
+    for I := 1 to 32 do
+      Hex := Hex + Format('%.2x', [Ord(Digest[I])]);
+    Hex := Lowercase(Hex);
+    Result := True;
+  finally
+    if Hash <> 0 then
+      BCryptDestroyHash(Hash);
+    BCryptCloseAlgorithmProvider(Alg, 0);
+  end;
+end;
+
 { מחשב hash ומתעד את משך הקריאה; הרכבה מחודשת מחייבת גם אימות של התוצר. }
 function HashFile(const Path: String): String;
 var
   Started: Int64;
 begin
   Started := NowMs();
-  Result := Lowercase(GetSHA256OfFile(Path));
+  if not WindowsSha256OfFile(Path, Result) then
+    Result := Lowercase(GetSHA256OfFile(Path));
   Log('DownloadAssistant: hashed ' + ExtractFileName(Path) + ' in ' +
     IntToStr(NowMs() - Started) + ' ms');
 end;
@@ -2867,7 +2934,7 @@ begin
     Tail := '';
     if VerifyStartTick > 0 then
     begin
-      { ה-hash של Inno חוסם את התצוגה, ולכן מספר היה קופא: רק שם השלב. }
+      { ה-hash חוסם את התצוגה, ולכן מספר היה קופא: רק שם השלב. }
       Caption := CustomMessage('CheckingDownloadedFile');
       Kind := 3;
       Tail := CustomMessage('VerifyingDownloadedFile');
@@ -3557,7 +3624,7 @@ begin
     DeleteFile(TmpPath + '.sha256');
     exit;
   end;
-  { GetSHA256OfFile חוסם את התצוגה: רק שם השלב, בלי מספר שהיה קופא. }
+  { HashFile חוסם את התצוגה: רק שם השלב, בלי מספר שהיה קופא. }
   WorkPage.SetText(Msg1('CheckingJoined', Caption), CustomMessage('VerifyingJoined'));
   WorkPage.SetProgress(0, 1);
   Started := NowMs();
