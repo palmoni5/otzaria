@@ -361,6 +361,23 @@ class _TocViewerState extends State<TocViewer>
     return true;
   }
 
+  /// העוגן של הרשימה הוירטואלית (למשל 0.85 מגלילה למטה) שורד שינוי הרחבה,
+  /// ואחרי כיווץ משאיר רווח ריק מעל הפריטים. מעגנים מחדש בשורה העליונה הגלויה.
+  void _anchorVirtualListAtTopRow() {
+    if (!_virtualScrollController.isAttached) return;
+    ItemPosition? top;
+    for (final p in _virtualPositionsListener.itemPositions.value) {
+      // הכותרת הראשית (0) מקבלת ריפוד עליון כשהיא העוגן, ולכן אינה מועמדת.
+      if (p.index == 0 || p.itemTrailingEdge <= 0) continue;
+      if (top == null || p.index < top.index) top = p;
+    }
+    if (top == null) return;
+    _virtualScrollController.jumpTo(
+      index: top.index,
+      alignment: top.itemLeadingEdge,
+    );
+  }
+
   _TocDisplayData _displayDataFor(TextBookLoaded state) {
     final tableOfContents = state.tableOfContents;
     final query = _appliedQuery;
@@ -430,6 +447,7 @@ class _TocViewerState extends State<TocViewer>
       onTap: navigateToEntry,
       onToggleExpand: hasChildren
           ? () {
+              _anchorVirtualListAtTopRow();
               setState(() {
                 _expanded[entry.index] = !isExpanded;
                 _expandedRevision++;
@@ -478,6 +496,9 @@ class _TocViewerState extends State<TocViewer>
               size: 18,
             ),
             onPressed: () => setState(() {
+              if (_virtualScrollController.isAttached) {
+                _virtualScrollController.jumpTo(index: 0);
+              }
               _expanded
                 ..clear()
                 ..addAll(

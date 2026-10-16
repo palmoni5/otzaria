@@ -1121,6 +1121,91 @@ Future<void> main() async {
       expect(row.bottom, lessThanOrEqualTo(list.bottom));
     },
   );
+
+  // #2552: גלילה לערך מתחת לתצוגה מעגנת את הרשימה ב-0.85; כיווץ אחריה
+  // הצמיד את הפריט האחרון לעוגן הזה והשאיר רווח ריק מעליו.
+  Future<void> pumpAnchoredFarBelowThenAtTop(
+    WidgetTester tester,
+    List<TocEntry> toc,
+  ) async {
+    final initial = _loadedState(toc: toc, visibleIndices: const [0]);
+    final bloc = _TestTextBookBloc(initial);
+    addTearDown(bloc.close);
+    final focusNode = FocusNode();
+    addTearDown(focusNode.dispose);
+    await tester.pumpWidget(
+      _wrap(
+        TocViewer(
+          lines: LineScrollController(),
+          closeLeftPaneCallback: () {},
+          focusNode: focusNode,
+        ),
+        bloc,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(ScrollablePositionedList), findsOneWidget);
+
+    bloc.emitState(initial.copyWith(visibleIndices: [toc.first.index + 120]));
+    await tester.pump();
+    for (var i = 0; i < 6; i++) {
+      tester.binding.scheduleFrame();
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await tester.pumpAndSettle();
+    expect(find.text('siman 0'), findsNothing);
+
+    for (var i = 0; i < 20 && find.text('siman 0').evaluate().isEmpty; i++) {
+      await tester.drag(
+        find.byType(ScrollablePositionedList),
+        const Offset(0, 2000),
+      );
+      await tester.pumpAndSettle();
+    }
+    await tester.drag(
+      find.byType(ScrollablePositionedList),
+      const Offset(0, 2000),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('siman 0'), findsOneWidget);
+  }
+
+  void expectFirstRowAtTop(WidgetTester tester) {
+    final list = tester.getRect(find.byType(ScrollablePositionedList));
+    final row = tester.getRect(find.text('siman 0'));
+    expect(row.top, lessThan(list.top + list.height * 0.2));
+  }
+
+  testWidgets('כיווץ ענף בעץ וירטואלי אינו משאיר רווח ריק מעליו (#2552)', (
+    tester,
+  ) async {
+    await pumpAnchoredFarBelowThenAtTop(
+      tester,
+      _buildLargeToc(simanim: 1, seifim: 600),
+    );
+
+    await tester.tap(find.byType(ExpandingChevron).first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('seif 0'), findsNothing);
+    expectFirstRowAtTop(tester);
+  });
+
+  testWidgets('כווץ הכל בעץ וירטואלי מציג את הענפים מראש הרשימה (#2552)', (
+    tester,
+  ) async {
+    await pumpAnchoredFarBelowThenAtTop(
+      tester,
+      _buildLargeToc(simanim: 3, seifim: 300),
+    );
+
+    await tester.tap(find.byTooltip('כווץ הכל'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('seif 0'), findsNothing);
+    expect(find.text('siman 2'), findsOneWidget);
+    expectFirstRowAtTop(tester);
+  });
 }
 
 /// השדה בלשונית הניווט סגור עד הלחיצה על אייקון החיפוש שבכותרת.
