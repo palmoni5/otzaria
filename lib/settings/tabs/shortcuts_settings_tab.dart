@@ -836,13 +836,13 @@ class ShortcutsSettingsTab extends StatelessWidget {
             _ShortcutTile(
               settingKey: 'key-shortcut-prev-toc',
               label: context.settingsText('הדף/פרק הקודם'),
-              icon: FluentIcons.arrow_previous_24_filled,
+              icon: FluentIcons.chevron_double_left_20_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(
               settingKey: 'key-shortcut-next-toc',
               label: context.settingsText('הדף/פרק הבא'),
-              icon: FluentIcons.arrow_next_24_filled,
+              icon: FluentIcons.chevron_double_right_20_regular,
               allShortcuts: _shortcutsList,
             ),
             _ShortcutTile(

@@ -1,3 +1,4 @@
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -152,6 +153,89 @@ void main() {
         lessThanOrEqualTo(86),
       );
       expect(tester.takeException(), isNull);
+    });
+
+    // #1534: מעבר כותרת הוא שברון כפול, ותחילת/סוף הספר נשארים חץ עם פס.
+    group('אייקוני הדף/פרק ב-RTL', () {
+      Future<IconData?> majorGlyph(
+        WidgetTester tester,
+        String tooltip, {
+        IconData? prevMajorIcon,
+        IconData? nextMajorIcon,
+      }) async {
+        final settingsBloc = _TestSettingsBloc(SettingsState.initial());
+        addTearDown(settingsBloc.close);
+        final center = prevMajorIcon == null
+            ? ReaderNavCenter(
+                title: const Text('ספר'),
+                prevMajorTooltip: 'קודם',
+                prevMinorTooltip: 'קטע קודם',
+                nextMinorTooltip: 'קטע הבא',
+                nextMajorTooltip: 'הבא',
+                onPrevMajor: () {},
+                onPrevMinor: () {},
+                onNextMinor: () {},
+                onNextMajor: () {},
+              )
+            : ReaderNavCenter(
+                title: const Text('ספר'),
+                prevMajorTooltip: 'קודם',
+                prevMinorTooltip: 'קטע קודם',
+                nextMinorTooltip: 'קטע הבא',
+                nextMajorTooltip: 'הבא',
+                prevMajorIcon: prevMajorIcon,
+                nextMajorIcon: nextMajorIcon!,
+                onPrevMajor: () {},
+                onPrevMinor: () {},
+                onNextMinor: () {},
+                onNextMajor: () {},
+              );
+        await tester.pumpWidget(
+          _buildHarness(
+            settingsBloc: settingsBloc,
+            child: Directionality(
+              textDirection: TextDirection.rtl,
+              child: SizedBox(width: 600, child: center),
+            ),
+          ),
+        );
+        return tester
+            .widget<Icon>(
+              find.descendant(
+                of: find.byTooltip(tooltip),
+                matching: find.byType(Icon),
+              ),
+            )
+            .icon;
+      }
+
+      testWidgets('ברירת המחדל: שברון כפול שפונה החוצה כמו השברון הבודד', (
+        tester,
+      ) async {
+        // לשברון הכפול אין matchTextDirection, ולכן הגליף המוצג הוא הנגדי.
+        expect(
+          await majorGlyph(tester, 'קודם'),
+          FluentIcons.chevron_double_right_20_regular,
+        );
+        expect(
+          await majorGlyph(tester, 'הבא'),
+          FluentIcons.chevron_double_left_20_regular,
+        );
+      });
+
+      testWidgets('אייקון שנמסר (תחילת/סוף הספר ב-PDF) מוצג כמו קודם', (
+        tester,
+      ) async {
+        expect(
+          await majorGlyph(
+            tester,
+            'קודם',
+            prevMajorIcon: FluentIcons.arrow_previous_24_filled,
+            nextMajorIcon: FluentIcons.arrow_next_24_filled,
+          ),
+          FluentIcons.arrow_previous_24_filled,
+        );
+      });
     });
   });
 }

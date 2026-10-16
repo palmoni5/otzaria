@@ -2090,7 +2090,7 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
   /// פעולות הניווט קוראות מצב עדכני כי התפריט נשאר פתוח בין לחיצות.
   List<ActionButtonData> _buildNavigationActions() {
     return buildBookViewNavigationActions(
-      firstAction: buildBookViewFirstNavigationAction(
+      firstAction: buildBookViewPreviousTocNavigationAction(
         widget: const SizedBox.shrink(),
         tooltip: 'הדף/פרק הקודם',
         onPressed: _onNavPreviousToc,
@@ -2105,7 +2105,7 @@ class _TextBookViewerBlocState extends State<TextBookViewerBloc>
         tooltip: 'הקטע הבא',
         onPressed: _onNavNextSegment,
       ),
-      lastAction: buildBookViewLastNavigationAction(
+      lastAction: buildBookViewNextTocNavigationAction(
         widget: const SizedBox.shrink(),
         tooltip: 'הדף/פרק הבא',
         onPressed: _onNavNextToc,

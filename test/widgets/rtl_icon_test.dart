@@ -50,6 +50,17 @@ void main() {
       final icon = tester.widget<Icon>(find.byType(Icon));
       expect(icon.icon, FluentIcons.chevron_left_24_regular);
     });
+
+    testWidgets('chevron_double_left_20_regular מוחלף ב-chevron_double_right', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(const RtlIcon(FluentIcons.chevron_double_left_20_regular)),
+      );
+
+      final icon = tester.widget<Icon>(find.byType(Icon));
+      expect(icon.icon, FluentIcons.chevron_double_right_20_regular);
+    });
   });
 
   group('RtlIcon — RTL context, היפוך גאומטרי (_flippableIcons)', () {

@@ -31,6 +31,14 @@ class RtlIcon extends StatelessWidget {
     FluentIcons.chevron_left_20_regular: FluentIcons.chevron_right_20_regular,
     FluentIcons.chevron_right_16_regular: FluentIcons.chevron_left_16_regular,
     FluentIcons.chevron_left_16_regular: FluentIcons.chevron_right_16_regular,
+    FluentIcons.chevron_double_right_20_regular:
+        FluentIcons.chevron_double_left_20_regular,
+    FluentIcons.chevron_double_left_20_regular:
+        FluentIcons.chevron_double_right_20_regular,
+    FluentIcons.chevron_double_right_16_regular:
+        FluentIcons.chevron_double_left_16_regular,
+    FluentIcons.chevron_double_left_16_regular:
+        FluentIcons.chevron_double_right_16_regular,
     FluentIcons.arrow_right_24_regular: FluentIcons.arrow_left_24_regular,
     FluentIcons.arrow_left_24_regular: FluentIcons.arrow_right_24_regular,
     FluentIcons.arrow_right_24_filled: FluentIcons.arrow_left_24_filled,

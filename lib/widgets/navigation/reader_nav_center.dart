@@ -20,6 +20,8 @@ class ReaderNavCenter extends StatelessWidget {
   final String prevMinorTooltip;
   final String nextMinorTooltip;
   final String nextMajorTooltip;
+  final IconData prevMajorIcon;
+  final IconData nextMajorIcon;
   final Widget? afterTitle;
 
   const ReaderNavCenter({
@@ -33,6 +35,8 @@ class ReaderNavCenter extends StatelessWidget {
     required this.prevMinorTooltip,
     required this.nextMinorTooltip,
     required this.nextMajorTooltip,
+    this.prevMajorIcon = FluentIcons.chevron_double_left_20_regular,
+    this.nextMajorIcon = FluentIcons.chevron_double_right_20_regular,
     this.afterTitle,
   });
 
@@ -70,7 +74,8 @@ class ReaderNavCenter extends StatelessWidget {
             if (showMajor)
               BarButton.icon(
                 tooltip: prevMajorTooltip,
-                icon: FluentIcons.arrow_previous_24_filled,
+                icon: prevMajorIcon,
+                flipInRtl: true,
                 compact: forceCompact,
                 onPressed: onPrevMajor,
               ),
@@ -108,7 +113,8 @@ class ReaderNavCenter extends StatelessWidget {
             if (showMajor)
               BarButton.icon(
                 tooltip: nextMajorTooltip,
-                icon: FluentIcons.arrow_next_24_filled,
+                icon: nextMajorIcon,
+                flipInRtl: true,
                 compact: forceCompact,
                 onPressed: onNextMajor,
               ),

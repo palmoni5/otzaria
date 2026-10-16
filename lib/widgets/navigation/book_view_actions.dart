@@ -19,7 +19,7 @@ List<ActionButtonData> buildBookViewNavigationActions({
   ];
 }
 
-/// כפתור "לתחילת הספר / פרק".
+/// כפתור "לתחילת הספר".
 ActionButtonData buildBookViewFirstNavigationAction({
   required Widget widget,
   required String tooltip,
@@ -28,6 +28,20 @@ ActionButtonData buildBookViewFirstNavigationAction({
   return ActionButtonData(
     widget: widget,
     icon: FluentIcons.arrow_previous_24_filled,
+    tooltip: tooltip,
+    onPressed: onPressed,
+  );
+}
+
+/// כפתור "הדף/פרק הקודם".
+ActionButtonData buildBookViewPreviousTocNavigationAction({
+  required Widget widget,
+  required String tooltip,
+  required VoidCallback onPressed,
+}) {
+  return ActionButtonData(
+    widget: widget,
+    icon: FluentIcons.chevron_double_left_20_regular,
     tooltip: tooltip,
     onPressed: onPressed,
   );
@@ -61,7 +75,21 @@ ActionButtonData buildBookViewNextNavigationAction({
   );
 }
 
-/// כפתור "לסוף הספר / פרק".
+/// כפתור "הדף/פרק הבא".
+ActionButtonData buildBookViewNextTocNavigationAction({
+  required Widget widget,
+  required String tooltip,
+  required VoidCallback onPressed,
+}) {
+  return ActionButtonData(
+    widget: widget,
+    icon: FluentIcons.chevron_double_right_20_regular,
+    tooltip: tooltip,
+    onPressed: onPressed,
+  );
+}
+
+/// כפתור "לסוף הספר".
 ActionButtonData buildBookViewLastNavigationAction({
   required Widget widget,
   required String tooltip,

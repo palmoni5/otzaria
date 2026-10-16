@@ -5334,6 +5334,8 @@ class _PdfBookScreenState extends State<PdfBookScreen>
       nextMinorTooltip: 'הבא',
       nextMajorTooltip:
           'סוף הספר (${ShortcutHelper.formatShortcutForDisplay('ctrl+end')})',
+      prevMajorIcon: FluentIcons.arrow_previous_24_filled,
+      nextMajorIcon: FluentIcons.arrow_next_24_filled,
       onPrevMajor: () => _goToPageWithSpreadLock(1),
       onPrevMinor: _goPreviousPage,
       onNextMinor: _goNextPage,

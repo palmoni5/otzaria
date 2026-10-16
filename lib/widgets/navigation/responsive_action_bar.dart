@@ -5,6 +5,7 @@ import 'package:otzaria/settings/settings_exports.dart';
 import 'package:otzaria/theme/theme_exports.dart';
 import 'package:otzaria/widgets/widgets_exports.dart';
 import 'package:otzaria/widgets/misc/app_menu_exports.dart';
+import 'package:otzaria/widgets/misc/rtl_icon.dart';
 
 /// זהות לוגית של פעולה שיכולה להופיע בשורת הכלים של הקורא.
 ///
@@ -610,7 +611,10 @@ class _MenuIconActionRow extends StatelessWidget {
             IconButton(
               onPressed: action.onPressed,
               tooltip: action.tooltip,
-              icon: Icon(action.icon, size: _iconSize),
+              // אייקון עם matchTextDirection מתהפך כבר ב-Icon; RtlIcon היה מהפך פעמיים.
+              icon: action.icon!.matchTextDirection
+                  ? Icon(action.icon, size: _iconSize)
+                  : RtlIcon(action.icon!, size: _iconSize),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(
                 minWidth: _buttonSize,

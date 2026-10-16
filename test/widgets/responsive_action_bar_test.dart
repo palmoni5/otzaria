@@ -107,10 +107,10 @@ void main() {
     const overflowIcon = FluentIcons.more_vertical_24_regular;
 
     final navIcons = <String, IconData>{
-      'הדף/פרק הקודם': FluentIcons.arrow_previous_24_filled,
+      'הדף/פרק הקודם': FluentIcons.chevron_double_left_20_regular,
       'הקטע הקודם': FluentIcons.chevron_left_24_regular,
       'הקטע הבא': FluentIcons.chevron_right_24_regular,
-      'הדף/פרק הבא': FluentIcons.arrow_next_24_filled,
+      'הדף/פרק הבא': FluentIcons.chevron_double_right_20_regular,
     };
 
     ActionButtonData action(
@@ -272,11 +272,21 @@ void main() {
       await pumpBar(tester, menuHeaderActions: navActions(onPressed: (_) {}));
       await openMenu(tester);
 
-      // לאייקוני Fluent יש matchTextDirection:true — Icon כבר מהפך אותם ב-RTL.
-      // החלפה נוספת ל-IconData הנגדי מהפכת פעמיים ומחזירה לכיוון LTR.
-      for (final entry in navIcons.entries) {
+      // לשברון הבודד יש matchTextDirection — Icon מהפך אותו בעצמו, והחלפה נוספת
+      // הייתה מהפכת פעמיים. לשברון הכפול אין, ולכן RtlIcon מחליף לנגדי.
+      expect(FluentIcons.chevron_left_24_regular.matchTextDirection, isTrue);
+      expect(
+        FluentIcons.chevron_double_left_20_regular.matchTextDirection,
+        isFalse,
+      );
+      final expectedGlyphs = <String, IconData>{
+        'הדף/פרק הקודם': FluentIcons.chevron_double_right_20_regular,
+        'הקטע הקודם': FluentIcons.chevron_left_24_regular,
+        'הקטע הבא': FluentIcons.chevron_right_24_regular,
+        'הדף/פרק הבא': FluentIcons.chevron_double_left_20_regular,
+      };
+      for (final entry in expectedGlyphs.entries) {
         expect(glyphIcon(tester, entry.key), entry.value);
-        expect(entry.value.matchTextDirection, isTrue);
       }
     });
 

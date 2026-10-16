@@ -86,6 +86,7 @@ Three shared widgets take an `icon:` / `searchIcon:` parameter for exactly this 
 
 *`_fluentMirrorMap` (swaps to opposite-direction variant in RTL):*
 - `chevron_right/left_24/20/16_regular`
+- `chevron_double_right/left_20/16_regular`
 - `arrow_right/left_24_regular`, `arrow_right/left_24_filled`
 - `arrow_previous/next_24_regular`
 - `calendar_24_regular/filled` → `calendar_rtl_*`
