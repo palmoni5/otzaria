@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
@@ -51,6 +52,7 @@ class _ScrollPositionReanchorState extends State<ScrollPositionReanchor> {
   double? _lastAlignment;
   double? _lastWidth;
   double? _selectedEdge;
+  bool _holdSelectedEdge = false;
 
   /// החוב שייך למקור הגלילה המקוננת; ניווט שמפרק אותו משנה גם את העוגן.
   ({double pixels, BuildContext? context})? _owedAt;
@@ -59,7 +61,7 @@ class _ScrollPositionReanchorState extends State<ScrollPositionReanchor> {
   @override
   void initState() {
     super.initState();
-    widget.positionsListener.itemPositions.addListener(_trackSelected);
+    widget.positionsListener.itemPositions.addListener(_onPositions);
   }
 
   @override
@@ -68,8 +70,8 @@ class _ScrollPositionReanchorState extends State<ScrollPositionReanchor> {
     final listenerChanged =
         widget.positionsListener != oldWidget.positionsListener;
     if (listenerChanged) {
-      oldWidget.positionsListener.itemPositions.removeListener(_trackSelected);
-      widget.positionsListener.itemPositions.addListener(_trackSelected);
+      oldWidget.positionsListener.itemPositions.removeListener(_onPositions);
+      widget.positionsListener.itemPositions.addListener(_onPositions);
     }
     if (listenerChanged || widget.preferredIndex != oldWidget.preferredIndex) {
       _trackSelected();
@@ -79,8 +81,12 @@ class _ScrollPositionReanchorState extends State<ScrollPositionReanchor> {
   @override
   void dispose() {
     _idleTimer?.cancel();
-    widget.positionsListener.itemPositions.removeListener(_trackSelected);
+    widget.positionsListener.itemPositions.removeListener(_onPositions);
     super.dispose();
+  }
+
+  void _onPositions() {
+    if (!_holdSelectedEdge) _trackSelected();
   }
 
   void _trackSelected() {
@@ -119,6 +125,14 @@ class _ScrollPositionReanchorState extends State<ScrollPositionReanchor> {
       _lastIndex = targetIndex;
       _lastAlignment = alignment;
       widget.scrollController.jumpTo(index: targetIndex, alignment: alignment);
+      // מדידת החבילה באותו פריים היא של הפריסה שלפני הקפיצה; בלי ההשהיה
+      // אנימציית רוחב מקפיצה את הפסקה בכל פריים בין שני גבהים.
+      if (targetIndex != widget.preferredIndex) return;
+      _selectedEdge = alignment;
+      _holdSelectedEdge = true;
+      SchedulerBinding.instance.scheduleFrameCallback(
+        (_) => _holdSelectedEdge = false,
+      );
     });
   }
 

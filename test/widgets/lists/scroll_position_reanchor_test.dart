@@ -372,6 +372,85 @@ void main() {
       );
     });
 
+    testWidgets(
+      'אנימציית צמצום אינה מקפיצה את הפסקה בין פריימים (issue #2658)',
+      (
+        tester,
+      ) async {
+        final controller = ItemScrollController();
+        final listener = ItemPositionsListener.create();
+        Widget list(double width, int? selected) => MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Center(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: width,
+                height: 400,
+                child: LayoutBuilder(
+                  builder: (context, constraints) => ScrollPositionReanchor(
+                    enabled: true,
+                    preferredIndex: selected,
+                    scrollController: controller,
+                    positionsListener: listener,
+                    child: ScrollablePositionedList.builder(
+                      itemScrollController: controller,
+                      itemPositionsListener: listener,
+                      itemCount: 200,
+                      itemBuilder: (context, index) => SizedBox(
+                        height: 30 * (600 / constraints.maxWidth),
+                        child: Text('$index'),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.pumpWidget(list(600, null));
+        await tester.pumpAndSettle();
+        await tester.drag(
+          find.byType(ScrollablePositionedList),
+          const Offset(0, -1500),
+        );
+        await tester.pumpAndSettle();
+        await tester.pump(ScrollPositionReanchor.idleDelay);
+        await tester.pumpAndSettle();
+
+        final selected = _topIndex(listener) + 10;
+        await tester.pumpWidget(list(600, selected));
+        await tester.pumpAndSettle();
+        final edgeBefore = listener.itemPositions.value
+            .firstWhere((p) => p.index == selected)
+            .itemLeadingEdge;
+
+        await tester.pumpWidget(list(300, selected));
+        final edges = <double?>[];
+        for (var frame = 0; frame < 20; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          edges.add(
+            listener.itemPositions.value
+                .where((p) => p.index == selected)
+                .firstOrNull
+                ?.itemLeadingEdge,
+          );
+        }
+        await tester.pumpAndSettle();
+
+        // העיגון רץ אחרי הפריים, ולכן הפריים הראשון עוד מוצג בלעדיו.
+        for (final edge in edges.skip(1)) {
+          expect(edge, isNotNull, reason: 'הפסקה הנבחרת יצאה מהמסך');
+          expect(
+            edge!,
+            moreOrLessEquals(edgeBefore, epsilon: 0.01),
+            reason: 'גובה הפסקה בפריימים: $edges',
+          );
+        }
+      },
+    );
+
     testWidgets('צמצום מיד אחרי גלילה ארוכה, לפני שהגלילה נחה, אינו מפיל', (
       tester,
     ) async {
