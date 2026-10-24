@@ -787,6 +787,33 @@ Future<void> main() async {
     });
   });
 
+  group('bracketMarkerFractionInLine (issue #3181)', () {
+    const line = 'אלף בית <b>[דף ו טור א]</b> גימל דלת <b>[דף ז טור א]</b> הא';
+
+    test('כותרת דף נוחתת על סמן הטור הראשון שלה', () {
+      final clean = cleanLineForSearch(line);
+      expect(
+        bracketMarkerFractionInLine(line, 'דף ז'),
+        closeTo(clean.indexOf('[דף ז') / clean.length, 0.001),
+      );
+      expect(
+        bracketMarkerFractionInLine(line, 'דף ו'),
+        lessThan(bracketMarkerFractionInLine(line, 'דף ז')),
+      );
+    });
+
+    test('סמן שלם וכותרת שהיא תחילית של מספר אחר', () {
+      expect(bracketMarkerFractionInLine(line, 'דף ו טור א'), greaterThan(0));
+      expect(bracketMarkerFractionInLine('א [דף וי] ב', 'דף ו'), 0);
+    });
+
+    test('בלי סמן נשארים בתחילת השורה', () {
+      expect(bracketMarkerFractionInLine(line, 'דף ח'), 0);
+      expect(bracketMarkerFractionInLine(line, ''), 0);
+      expect(bracketMarkerFractionInLine('דף ז בלי סוגריים', 'דף ז'), 0);
+    });
+  });
+
   group('noteAnchorFractionInLine (issue #2532)', () {
     PersonalNote note({String? anchorText, int? anchorStart}) => PersonalNote(
       id: 'n',

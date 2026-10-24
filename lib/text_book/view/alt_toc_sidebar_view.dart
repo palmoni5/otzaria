@@ -23,6 +23,8 @@ import 'package:otzaria/text_book/bloc/text_book_state.dart';
 import 'package:otzaria/text_book/utils/dibburim_structure.dart';
 import 'package:otzaria/text_book/utils/inline_section_markers.dart';
 import 'package:otzaria/text_book/utils/reading_segment_navigation.dart';
+import 'package:otzaria/text_book/utils/section_search_utils.dart'
+    show bracketMarkerFractionInLine;
 import 'package:otzaria/widgets/navigation/nav_panel_search.dart';
 import 'package:positioned_sliver_list/positioned_list.dart';
 import 'package:otzaria/text_book/view/reading_viewport/line_scroll_controller.dart';
@@ -593,14 +595,20 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
     _updateActiveItemFromBloc();
   }
 
-  /// גלילת הספר הפתוח לשורה [lineIndex].
-  void _scrollToLine(int lineIndex) {
+  /// גלילת הספר הפתוח לשורה [lineIndex], ולסמן `[markerTitle…]` כשהוא בתוכה.
+  void _scrollToLine(int lineIndex, {String? markerTitle}) {
     final state = context.read<TextBookBloc>().state;
     if (state is! TextBookLoaded) {
       return;
     }
+    final line = lineIndex >= 0 && lineIndex < state.content.length
+        ? state.content[lineIndex]
+        : null;
     final navigation = widget.lines.scrollToLine(
       lineIndex,
+      intraLineFraction: line == null || markerTitle == null
+          ? 0
+          : bracketMarkerFractionInLine(line, markerTitle),
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
@@ -619,10 +627,13 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
     }
   }
 
-  void _openLink(Link link) {
+  void _openLink(Link link, {String? markerTitle}) {
     if (link.path2 == widget.book.title) {
       // Ensure index is at least 0 to prevent RangeError
-      _scrollToLine((link.index2 - 1).clamp(0, double.maxFinite).toInt());
+      _scrollToLine(
+        (link.index2 - 1).clamp(0, double.maxFinite).toInt(),
+        markerTitle: markerTitle,
+      );
     } else {
       context.read<TabsBloc>().add(
         OpenOrFocusTab(
@@ -682,12 +693,14 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
       }
 
       // 2. If no links, but has children, try to get link from first child (recursively)
+      var linkEntry = entry;
       if (links.isEmpty) {
         AltTocEntry? current = entry;
         while (current != null && links.isEmpty) {
           final children = _structureChildren[structureId]?[current.id];
           if (children != null && children.isNotEmpty) {
             current = children.first;
+            linkEntry = current;
             links = await DatabaseLibraryProvider.instance
                 .getLinksForAltTocEntry(
                   structureId,
@@ -716,7 +729,7 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
             line - sectionHeadingLinesAbove([at(line - 1), at(line - 2)]),
           );
         } else {
-          _openLink(link);
+          _openLink(link, markerTitle: linkEntry.text);
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

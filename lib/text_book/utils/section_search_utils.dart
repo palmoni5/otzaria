@@ -221,6 +221,18 @@ double matchFractionInLine(
   return (offset / clean.length).clamp(0.0, 1.0);
 }
 
+/// מיקום יחסי (0..1) בשורה [rawLine] של הסמן בסוגריים שנפתח בכותרת [title]
+/// (`[דף ו טור א]` לכותרת "דף ו"), כמו [matchFractionInLine]. 0 כשאין סמן.
+double bracketMarkerFractionInLine(String rawLine, String title) {
+  final key = title.trim();
+  if (key.isEmpty) return 0;
+  return matchFractionInLine(
+    rawLine,
+    key,
+    pattern: RegExp('\\[${RegExp.escape(key)}[\\] ]'),
+  );
+}
+
 /// מיקום יחסי (0..1) של המילים שעליהן נכתבה [note] בשורת המקור [rawLine],
 /// במרחב הנקי של [matchFractionInLine]. 0 להערת שורה שלמה או לעוגן שלא נמצא.
 double noteAnchorFractionInLine(String rawLine, PersonalNote? note) {
