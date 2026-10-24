@@ -204,7 +204,13 @@ void main() {
       expect(result, isNot(contains('<i')));
       // האות א של ה-marker וגם תוכן ההערה הוסרו לגמרי
       expect(result, isNot(contains('תוכן ההערה')));
-      expect(result, 'גוף הטקסט. המשך');
+      expect(result, 'גוף הטקסט . המשך');
+    });
+
+    test('אות ההפניה מפרידה מילים, כמו תג sup של הערה באינדקס', () {
+      const input =
+          'גוף<sup class="footnote-marker">א</sup><i class="footnote">הערה</i>המשך';
+      expect(stripInlineNotesForSearch(input), 'גוף המשך');
     });
 
     test('מטפל במספר הערות באותה שורה', () {
@@ -215,7 +221,7 @@ void main() {
       expect(result, isNot(contains('<sup')));
       expect(result, isNot(contains('ראשונה')));
       expect(result, isNot(contains('שנייה')));
-      expect(result, 'א, ב.');
+      expect(result, 'א , ב .');
     });
 
     test('משאיר שורות ללא הערות ללא שינוי', () {

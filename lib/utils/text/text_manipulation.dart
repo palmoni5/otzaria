@@ -24,12 +24,96 @@ final RegExp _htmlStripper = RegExp(r'<[^>]*>');
 
 /// תגי שבירה — מוצגים כמעבר שורה/גבול בלוק ולכן הופכים לרווח ולא נמחקים,
 /// אחרת מילים משני צדי `<br>` נדבקות (כמו strip_html_for_indexing במנוע).
+/// sup/sub (קבוצה 1) שוברים רק דרך [_breakingTagAt].
 final RegExp _breakingTagStripper = RegExp(
   r'</?(?:address|article|aside|blockquote|br|caption|center|dd|div|dl|dt'
   r'|figcaption|figure|footer|h[1-6]|header|hr|li|main|nav|ol|p|pre|section'
-  r'|table|tbody|td|tfoot|th|thead|tr|ul)(?:[^>a-zA-Z0-9][^>]*)?>',
+  r'|table|tbody|td|tfoot|th|thead|tr|ul|(su[bp]))(?:[^>a-zA-Z0-9][^>]*)?>',
   caseSensitive: false,
 );
+
+final RegExp _footnoteMarkerWord = RegExp(
+  r'\bfootnote-marker\b',
+  caseSensitive: false,
+);
+
+/// תג השבירה שמתחיל ב-[lt], כמו tag_breaks_word במנוע: sup/sub מפרידים, חוץ
+/// מאות תלויה בתוך מילה (`מְ<sup>נַ</sup>שֶּׁה`) שאינה סימן הערה.
+Match? _breakingTagAt(String text, int lt) {
+  final tag = _breakingTagStripper.matchAsPrefix(text, lt);
+  if (tag == null || tag[1] == null) return tag;
+  if (text.codeUnitAt(lt + 1) != 0x2F) {
+    return _isHangingLetterTag(text, lt, tag.end - 1) ? null : tag;
+  }
+  // תג סגירה: תג הפתיחה נגמר מיד לפני האות (וסימניה) שלפניו.
+  var i = lt;
+  while (i > 0 && _isAttachedMark(text.codeUnitAt(i - 1))) {
+    i--;
+  }
+  if (i < 2 || !_isScriptLetter(text.codeUnitAt(i - 1))) return tag;
+  final openGt = i - 2;
+  if (text.codeUnitAt(openGt) != 0x3E) return tag;
+  final openLt = text.lastIndexOf('<', openGt);
+  if (openLt < 0 || text.indexOf('>', openLt) != openGt) return tag;
+  return _isHangingLetterTag(text, openLt, openGt) ? null : tag;
+}
+
+/// תג הפתיחה [lt]..[gt] עוטף אות אחת (וסימניה) בין אותיות, ואינו סימן הערה.
+bool _isHangingLetterTag(String text, int lt, int gt) {
+  final nameEnd = _tagNameEnd(text, lt + 1, gt);
+  if (nameEnd < 0 || lt == 0) return false;
+  final before = text.codeUnitAt(lt - 1);
+  if (!_isScriptLetter(before) && !_isAttachedMark(before)) return false;
+  var i = gt + 1;
+  if (i >= text.length || !_isScriptLetter(text.codeUnitAt(i))) return false;
+  i++;
+  while (i < text.length && _isAttachedMark(text.codeUnitAt(i))) {
+    i++;
+  }
+  if (!text.startsWith('</', i)) return false;
+  final closeGt = text.indexOf('>', i);
+  if (closeGt < 0 || closeGt + 1 >= text.length) return false;
+  final closeNameEnd = _tagNameEnd(text, i + 2, closeGt);
+  return closeNameEnd >= 0 &&
+      text.substring(i + 2, closeNameEnd).toLowerCase() ==
+          text.substring(lt + 1, nameEnd).toLowerCase() &&
+      _isScriptLetter(text.codeUnitAt(closeGt + 1)) &&
+      !_footnoteMarkerWord.hasMatch(text.substring(lt + 1, gt));
+}
+
+/// סוף שם התג (1–10 תווי ASCII אלפאנומריים) שמתחיל ב-[start], או -1.
+int _tagNameEnd(String text, int start, int gt) {
+  var i = start;
+  while (i < gt) {
+    final c = text.codeUnitAt(i);
+    final lower = c | 0x20;
+    if (!((c >= 0x30 && c <= 0x39) || (lower >= 0x61 && lower <= 0x7A))) break;
+    i++;
+  }
+  return i > start && i - start <= 10 ? i : -1;
+}
+
+/// ניקוד וטעמים, בלי מקף, פסק, סוף פסוק ונון הפוכה.
+bool _isAttachedMark(int c) =>
+    c >= 0x0591 &&
+    c <= 0x05C7 &&
+    c != 0x05BE &&
+    c != 0x05C0 &&
+    c != 0x05C3 &&
+    c != 0x05C6;
+
+/// אות עברית, או presentation form שמתקפלת לאות אחת עם סימנים.
+bool _isScriptLetter(int c) =>
+    (c >= 0x05D0 && c <= 0x05EA) ||
+    c == 0xFB1D ||
+    (c >= 0xFB20 && c <= 0xFB28) ||
+    (c >= 0xFB2A &&
+        c <= 0xFB4E &&
+        c != 0xFB37 &&
+        c != 0xFB3D &&
+        c != 0xFB3F &&
+        c != 0xFB42 &&
+        c != 0xFB45);
 
 /// ישות HTML — שמית או מספרית (עשרונית/הקסדצימלית).
 final RegExp _htmlEntity = RegExp(r'&(#x?[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);');
@@ -98,13 +182,13 @@ String stripHtmlIfNeeded(String text) {
   return decodeHtmlEntities(removeHtmlTags(_replaceBreakingTags(text)));
 }
 
-/// כמו `replaceAll(_breakingTagStripper, ' ')`, אך מנסה התאמה רק במקומות `<`.
+/// מחליף ברווח את תגי השבירה ([_breakingTagAt]), ובודק רק במקומות `<`.
 String _replaceBreakingTags(String text) {
   StringBuffer? out;
   var copied = 0;
   var i = text.indexOf('<');
   while (i >= 0) {
-    final tag = _breakingTagStripper.matchAsPrefix(text, i);
+    final tag = _breakingTagAt(text, i);
     if (tag == null) {
       i = text.indexOf('<', i + 1);
       continue;
@@ -486,7 +570,7 @@ String _stripQuotesOutsideTags(String text) {
     contextBuffer.write(removeVolwels(text.substring(lastEnd, match.start)));
     final token = match.group(0)!;
     if (token.startsWith('<')) {
-      final isBreakingTag = _breakingTagStripper.hasMatch(token);
+      final isBreakingTag = _breakingTagAt(text, match.start) != null;
       final tag = _htmlTagName.firstMatch(token);
       if (tag != null) {
         final name = tag.group(2)!.toLowerCase();

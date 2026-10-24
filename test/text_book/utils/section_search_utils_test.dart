@@ -952,6 +952,22 @@ Future<void> main() async {
       expect(queryMatchesInlineNoteOnly(noteLine, ''), isFalse);
     });
   });
+  test('cleanLineForSearch: sup מפריד מילים, אות תלויה ממשיכה את המילה', () {
+    expect(
+      cleanLineForSearch(
+        'גוף<sup class="footnote-marker">א</sup>'
+        '<i class="footnote">הערה</i>המשך',
+      ),
+      'גוף המשך',
+    );
+    expect(
+      cleanLineForSearch('גוף<sup class="footnote-marker">א</sup>המשך'),
+      'גוף המשך',
+    );
+    expect(cleanLineForSearch('תורה<sup>30</sup>המשך'), 'תורה 30 המשך');
+    expect(cleanLineForSearch('מְ<sup>נַ</sup>שֶּׁה'), 'מנשה');
+  });
+
   test('cleanLineForSearch זהה לכיווץ הרווחים ב-regex (perf)', () {
     // אורקל: המימוש הקודם.
     String oracle(String rawLine) => utils

@@ -185,10 +185,11 @@ String stripInlineNotes(String html) {
 
 /// מסיר גם את אות ההפניה וגם את גוף ההערה — לחיפוש ולאינדוקס, שבהם תגי ה-HTML
 /// נמחקים והשאריות היו נשארות כטקסט חשוף שמזהם את התוצאות.
+/// אות ההפניה מפרידה מילים באינדקס, ולכן במקומה נשאר רווח.
 String stripInlineNotesForSearch(String html) {
   if (!html.contains('footnote')) return html;
   return html
-      .replaceAll(_footnoteMarkerRegExp, '')
+      .replaceAll(_footnoteMarkerRegExp, ' ')
       .replaceAll(_footnoteBodyRegExp, '');
 }
 

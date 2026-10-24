@@ -391,6 +391,45 @@ Future<void> main() async {
       expect(stripHtmlIfNeeded('א<h7>ב'), equals('אב'));
     });
 
+    test('תגי sup/sub מפרידים מילים, חוץ מאות תלויה — כמו המנוע', () {
+      // הטבלה של strip_html_script_tags_are_word_boundaries במנוע.
+      const cases = {
+        'תורה<sup>30</sup> המשך': 'תורה 30  המשך',
+        'תורה<sub>30</sub> המשך': 'תורה 30  המשך',
+        'תורה<sup>א</sup> מסוף': 'תורה א  מסוף',
+        'תורה.<sup>30</sup>': 'תורה. 30 ',
+        'תורה&nbsp;<sup>30</sup>&nbsp;המשך': 'תורה  30  המשך',
+        'תורה<sup class="x">30</sup>המשך': 'תורה 30 המשך',
+        'תורה<SUP>30</SUP>המשך': 'תורה 30 המשך',
+        'תורה<b><sup>30</sup></b>המשך': 'תורה 30 המשך',
+        'תורה<sup>30המשך': 'תורה 30המשך',
+        'תּוֹרָה<sup>30</sup>הֶמְשֵׁךְ': 'תּוֹרָה 30 הֶמְשֵׁךְ',
+        'תחלה<sup>31</sup>א': 'תחלה 31 א',
+        'גוף<sup class="footnote-marker">א</sup><i class="footnote">הרי זה</i>':
+            'גוף א הרי זה',
+        'א<supx>ב': 'אב',
+        'מי<b>לה</b>': 'מילה',
+        'מְ<sup>נַ</sup>שֶּׁה': 'מְנַשֶּׁה',
+        'מִיָּ֑<sup>עַ</sup>ר': 'מִיָּ֑עַר',
+        'ו<sup>ג</sup>וש': 'וגוש',
+        'ו<SUB>ג</SUB>וש': 'וגוש',
+        'ו<sup>ג</sub>וש': 'ו ג וש',
+        'ו<sup>גד</sup>וש': 'ו גד וש',
+        'ו <sup>ג</sup>וש': 'ו  ג וש',
+        'ו<sup>ג</sup> וש': 'ו ג  וש',
+        'גוף<sup class="footnote-marker">א</sup>המשך': 'גוף א המשך',
+        'גוף<SUP CLASS="x Footnote-Marker">א</SUP>המשך': 'גוף א המשך',
+        'גוף<sup class="footnote-markers">א</sup>המשך': 'גוףאהמשך',
+        'שׁ<sup>נ</sup>ה': 'שׁנה',
+        'מ<sup>שׁ</sup>ה': 'משׁה',
+        'מ<sup>נ</sup>בּ': 'מנבּ',
+        'מ<sup>ﭏ</sup>ה': 'מ ﭏ ה',
+      };
+      cases.forEach((html, stripped) {
+        expect(stripHtmlIfNeeded(html), stripped, reason: html);
+      });
+    });
+
     test(
       'זהה להסרה בשני ביטויים רגולריים על כל תו ועל צירופים אקראיים (perf)',
       () {
@@ -592,6 +631,13 @@ Future<void> main() async {
 
       expect(rendered, isNot(contains('thinsp')));
       expect(rendered, isNot(contains('&')));
+    });
+
+    test('גרשיים לפני sup: התג מפריד כמו באינדקס, ואין כאן ראשי תיבות', () {
+      expect(
+        removePunctuation('אמר ר"<sup>א</sup> כך'),
+        'אמר ר<sup>א</sup> כך',
+      );
     });
 
     test('ישות מספרית עשרונית והקסדצימלית נשמרות במלואן', () {

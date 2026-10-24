@@ -381,7 +381,7 @@ void main() {
           '<sup class="footnote-marker">$marker</sup>'
           '<i class="footnote">note</i>',
         );
-        expect(stripInlineNotesForSearch(out), '<h1>ספר</h1>\nx<sup>2</sup>');
+        expect(stripInlineNotesForSearch(out), '<h1>ספר</h1>\nx<sup>2</sup> ');
       });
     }
 

@@ -100,7 +100,7 @@ void main() {
       bookNotes: notes,
     );
     final text = await compute(createTextBookTextExport, withNote);
-    expect(text.split('\n')[1], 'בראשית ברא אלקים*הערה מודגשת');
+    expect(text.split('\n')[1], 'בראשית ברא אלקים * הערה מודגשת');
     expect(
       textBookExportLines(withNote, stripHtml: false)[1],
       contains('<i class="footnote">הערה <b>מודגשת</b></i>'),
