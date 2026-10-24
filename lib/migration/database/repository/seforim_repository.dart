@@ -1420,20 +1420,37 @@ class SeforimRepository {
   ///
   /// כשהתחילית לא החזירה כלום נעשה ניסיון שני של "מכיל" על [containsBookIds]
   /// בלבד — סריקה יקרה יותר, ולכן על קבוצת ספרים מצומצמת.
+  /// ספר שיש לו ציון ב-[locations] מחזיר רק דיבורים שבתוכו.
   Future<List<DibburCandidate>> resolveDibburimInBooks(
     List<int> bookIds,
     String prefix, {
     List<int> containsBookIds = const [],
+    Map<int, DibburLocation> locations = const {},
     int limit = 40,
   }) async {
+    bool withinLocation(DibburCandidate dibbur) {
+      final location = locations[dibbur.bookId];
+      if (location == null) return true;
+      final heRef = dibbur.heRef;
+      return heRef != null &&
+          heRefWithinLocation(heRef, location.bookTitle, location.keyTokens);
+    }
+
+    final where = locations.isEmpty ? null : withinLocation;
     final dao = _database.lineDhDao;
-    final byPrefix = await dao.dibburimForBooks(bookIds, prefix, limit: limit);
+    final byPrefix = await dao.dibburimForBooks(
+      bookIds,
+      prefix,
+      limit: limit,
+      where: where,
+    );
     if (byPrefix.isNotEmpty || containsBookIds.isEmpty) return byPrefix;
     return dao.dibburimForBooks(
       containsBookIds,
       prefix,
       contains: true,
       limit: limit,
+      where: where,
     );
   }
 

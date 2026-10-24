@@ -3,19 +3,34 @@ import 'package:mockito/mockito.dart';
 import 'package:otzaria/data/repository/data_repository.dart';
 import 'package:otzaria/find_ref/repository/find_ref_repository.dart';
 import 'package:otzaria/find_ref/repository/reference_books_cache.dart';
+import 'package:otzaria/migration/database/daos/line_dh_dao.dart';
+import 'package:otzaria/utils/text/ref_key.dart';
 
 class MockDataRepository extends Mock implements DataRepository {}
 
 /// איתור דיבור-מתחיל: "תוספות ברכות ד"ה מאימתי" (issue #1415).
 void main() {
-  /// דיבורי-המתחיל המדומים: bookId → dhText מנורמל → (שורה, תצוגה).
+  /// דיבורי-המתחיל המדומים: bookId → dhText מנורמל → (שורה, תצוגה, heRef).
   const dibburimByBook = {
     1927: {
-      'מאימתי קורין וכו': (3, 'מאימתי קורין וכו\''),
-      'ואמר רבי יוחנן': (40, 'ואמר רבי יוחנן'),
+      'מאימתי קורין וכו': (
+        3,
+        'מאימתי קורין וכו\'',
+        'תוספות על ברכות, ב., א, א',
+      ),
+      'ואמר רבי יוחנן': (40, 'ואמר רבי יוחנן', 'תוספות על ברכות, ד:, ב, א'),
+      'מאימתי מתחילין': (
+        90,
+        'מאימתי מתחילין להזכיר גבורות גשמים',
+        'תוספות על ברכות, כו., ג, א',
+      ),
     },
     2151: {
-      'מאימתי קורין את שמע': (7, 'מאימתי קורין את שמע'),
+      'מאימתי קורין את שמע': (
+        7,
+        'מאימתי קורין את שמע',
+        'תוספות הרא"ש על ברכות, ב., א',
+      ),
     },
   };
 
@@ -25,7 +40,14 @@ void main() {
     70: 'ברכות',
   };
 
-  late List<({List<int> bookIds, String prefix, List<int> containsBookIds})>
+  late List<
+    ({
+      List<int> bookIds,
+      String prefix,
+      List<int> containsBookIds,
+      Map<int, DibburLocation> locations,
+    })
+  >
   lookups;
 
   FindRefRepository buildRepo({bool withDibburim = true}) {
@@ -52,22 +74,41 @@ void main() {
           const [],
       resolveDibburim: !withDibburim
           ? null
-          : (bookIds, prefix, {containsBookIds = const []}) async {
+          : (
+              bookIds,
+              prefix, {
+              containsBookIds = const [],
+              locations = const {},
+            }) async {
               lookups.add((
                 bookIds: bookIds,
                 prefix: prefix,
                 containsBookIds: containsBookIds,
+                locations: locations,
               ));
+              // כמו ה-worker: ספר עם ציון מחזיר רק את הדיבורים שבתוכו.
+              bool within(int bookId, String heRef) {
+                final location = locations[bookId];
+                return location == null ||
+                    heRefWithinLocation(
+                      heRef,
+                      location.bookTitle,
+                      location.keyTokens,
+                    );
+              }
+
               return [
                 for (final bookId in bookIds)
                   for (final dibbur
                       in (dibburimByBook[bookId] ?? const {}).entries)
-                    if (dibbur.key.startsWith(prefix))
+                    if (dibbur.key.startsWith(prefix) &&
+                        within(bookId, dibbur.value.$3))
                       {
                         'bookId': bookId,
                         'lineIndex': dibbur.value.$1,
                         'lineId': 10000 + dibbur.value.$1,
                         'display': dibbur.value.$2,
+                        'heRef': dibbur.value.$3,
                       },
               ];
             },
@@ -99,6 +140,32 @@ void main() {
     };
 
     expect(segments, containsAll([(1927, 3), (2151, 7)]));
+  });
+
+  test('ציון בראש השאילתה משאיר רק דיבורים שבתוכו (issue #3179)', () async {
+    final repo = buildRepo();
+
+    Future<Set<int>> dibburLines(String query) async => {
+      for (final r in await repo.findRefs(query))
+        if (r.isSourceLine && r.bookId == 1927) r.segment.toInt(),
+    };
+
+    expect(await dibburLines('תוספות ברכות ב ד"ה מאימתי'), {3});
+    expect(await dibburLines('תוספות ברכות כו ד"ה מאימתי'), {90});
+    expect(await dibburLines('תוספות ברכות כו ע"ב ד"ה מאימתי'), isEmpty);
+    expect(await dibburLines('תוספות ברכות ד"ה מאימתי'), {3, 90});
+  });
+
+  test('הציון שנשאר לכל ספר נשלח לשאילתת הדיבורים', () async {
+    final repo = buildRepo();
+    await repo.findRefs('תוספות ברכות כו ע"ב ד"ה מאימתי');
+
+    final location = lookups.single.locations[1927]!;
+    expect(location.bookTitle, 'תוספות על ברכות');
+    expect(location.keyTokens, ['כו', 'ב']);
+
+    await repo.findRefs('תוספות ברכות ד"ה מאימתי');
+    expect(lookups.last.locations, isEmpty);
   });
 
   test('שאילתה מאוגדת אחת לכל הספרים המועמדים', () async {

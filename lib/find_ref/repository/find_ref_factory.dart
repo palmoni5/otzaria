@@ -107,17 +107,24 @@ FindRefRepository buildFindRefRepository({bool respectHiddenLibrary = true}) {
         searchEpoch: request.epoch,
       );
     },
-    resolveDibburim: (bookIds, prefix, {containsBookIds = const []}) async {
-      final request = await searchWorker();
-      repository.throwIfSearchGenerationCancelled(request.epoch);
-      return request.worker.resolveDibburim(
-        bookIds,
-        prefix,
-        containsBookIds: containsBookIds,
-        searchScope: scope,
-        searchEpoch: request.epoch,
-      );
-    },
+    resolveDibburim:
+        (
+          bookIds,
+          prefix, {
+          containsBookIds = const [],
+          locations = const {},
+        }) async {
+          final request = await searchWorker();
+          repository.throwIfSearchGenerationCancelled(request.epoch);
+          return request.worker.resolveDibburim(
+            bookIds,
+            prefix,
+            containsBookIds: containsBookIds,
+            locations: locations,
+            searchScope: scope,
+            searchEpoch: request.epoch,
+          );
+        },
     cachedEraOrder: (bookId) => GenerationCache.instance.isLoaded
         ? GenerationCache.instance.getOrderForBook(bookId, BookSource.official)
         : null,

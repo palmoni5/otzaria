@@ -25,6 +25,7 @@ import 'package:otzaria/find_ref/repository/reference_books_cache.dart';
 import 'package:otzaria/library/hidden/hidden_library_selection.dart';
 import 'package:otzaria/library/hidden/hidden_library_store.dart';
 import 'package:otzaria/library/models/library.dart';
+import 'package:otzaria/migration/database/daos/line_dh_dao.dart';
 import 'package:otzaria/migration/database/repository/seforim_repository.dart';
 import 'package:otzaria/models/book_source.dart';
 import 'package:otzaria/search/utils/foundational_book_classifier.dart';
@@ -322,12 +323,14 @@ class FindRefRepository {
   resolvePartialLineRefs;
 
   /// Injection for testing: מחזיר את דיבורי-המתחיל (`line_dh`) שתחילתם
-  /// [prefix] בספרים המועמדים. In production calls
-  /// [FindRefDbIsolate.resolveDibburim]; מסד בלי הטבלה מחזיר רשימה ריקה.
+  /// [prefix] בספרים המועמדים, ובספר שיש לו ציון ב-`locations` רק שבתוכו.
+  /// In production calls [FindRefDbIsolate.resolveDibburim]; מסד בלי הטבלה
+  /// מחזיר רשימה ריקה.
   final Future<List<Map<String, dynamic>>> Function(
     List<int> bookIds,
     String prefix, {
     List<int> containsBookIds,
+    Map<int, DibburLocation> locations,
   })?
   resolveDibburim;
 
@@ -1118,16 +1121,11 @@ class FindRefRepository {
     final search = _FindRefSearch(
       rawQuery: query.ref,
       queryTokens: queryTokens,
-      isDibburQuery: query.dibbur != null,
+      dibburPrefix: query.dibbur?.prefix,
       visibility: visibility,
       books: books,
       detection: detection,
       bookMatchRanks: _bookMatchRanks(detection.hits),
-      dibburim: query.dibbur == null
-          ? const <int, List<_Dibbur>>{}
-          : await _awaitCurrent(
-              _resolveDibburim(detection.hits, query.dibbur!.prefix),
-            ),
       includePersonalBooks: includePersonalBooks,
       userBooks: userBooks,
     );
@@ -1320,7 +1318,7 @@ class FindRefRepository {
     isCategoryMatch: isCategoryMatch,
   );
 
-  static Iterable<DbReferenceResult> _dibburResults(
+  static List<DbReferenceResult> _dibburResults(
     ReferenceBookHit hit,
     Map<int, List<_Dibbur>> dibburim,
   ) => [
@@ -1346,9 +1344,11 @@ class FindRefRepository {
     final queryTokens = search.queryTokens;
     final results = <DbReferenceResult>[];
     final directMatches = <DbReferenceResult>{};
+    final dibburim = await _resolveDibburim(search, search.detection.hits);
     for (final hit in search.detection.hits) {
-      results.addAll(_dibburResults(hit, search.dibburim));
-      results.add(_bookResult(hit));
+      results
+        ..addAll(_dibburResults(hit, dibburim))
+        ..add(_bookResult(hit));
     }
 
     if (queryTokens.first.length >= 2) {
@@ -1410,6 +1410,11 @@ class FindRefRepository {
       );
     }
 
+    final dibburim = await _resolveDibburim(
+      search,
+      bookHits,
+      remainingByHit: remainingByHit,
+    );
     final plans = await _planTocLookups(search, bookHits, remainingByHit);
     final exactLines = await _awaitCurrent(
       _resolveExactLines(
@@ -1436,12 +1441,12 @@ class FindRefRepository {
         results.addAll(await _pdfHitResults(hit, plan, remainingTokens));
         continue;
       }
+      results.addAll(_dibburResults(hit, dibburim));
       final requestIndex = plan.requestIndex;
       results.addAll(
         _dbHitResults(
           hit,
           remainingTokens,
-          dibburim: search.dibburim,
           exactLines: exactLines[hit.bookId] ?? const <_ExactLine>[],
           toc: requestIndex == null ? null : tocResponses[requestIndex],
           isOverCap: plan.isOverCap,
@@ -1606,12 +1611,11 @@ class FindRefRepository {
     return results;
   }
 
-  /// תוצאות ספר מהמסד: דיבורים, שורות מדויקות, ותוכן העניינים וה-AltToc
-  /// שלו מתוך [toc] (`null` = הספר לא הגיע לחיפוש TOC).
+  /// תוצאות ספר מהמסד: שורות מדויקות, ותוכן העניינים וה-AltToc שלו מתוך
+  /// [toc] (`null` = הספר לא הגיע לחיפוש TOC).
   List<DbReferenceResult> _dbHitResults(
     ReferenceBookHit hit,
     List<String> remainingTokens, {
-    required Map<int, List<_Dibbur>> dibburim,
     required List<_ExactLine> exactLines,
     required TocBatchResult? toc,
     bool isOverCap = false,
@@ -1619,7 +1623,7 @@ class FindRefRepository {
     final title = hit.title;
     final bookId = hit.bookId;
     final isPdf = hit.fileType == 'pdf';
-    final results = <DbReferenceResult>[..._dibburResults(hit, dibburim)];
+    final results = <DbReferenceResult>[];
 
     for (final exact in exactLines) {
       results.add(
@@ -2778,13 +2782,16 @@ class FindRefRepository {
     return (next == 'המתחיל' || next == 'מתחיל') ? 2 : 0;
   }
 
-  /// דיבורי-המתחיל שתחילתם [prefix] בספרים שזוהו, ממופתחים לפי bookId.
+  /// דיבורי-המתחיל של שאילתת ד"ה בספרים שזוהו, ממופתחים לפי bookId. ציון
+  /// שנשאר לספר ב-[remainingByHit] ("סנהדרין עט") מגביל אותו לדיבורים שבתוכו.
   Future<Map<int, List<_Dibbur>>> _resolveDibburim(
-    List<ReferenceBookHit> bookHits,
-    String prefix,
-  ) async {
+    _FindRefSearch search,
+    List<ReferenceBookHit> bookHits, {
+    Map<ReferenceBookHit, List<String>> remainingByHit = const {},
+  }) async {
     final resolve = resolveDibburim;
-    if (resolve == null || prefix.isEmpty) return const {};
+    final prefix = search.dibburPrefix;
+    if (resolve == null || prefix == null || prefix.isEmpty) return const {};
 
     final bookIds = <int>[
       for (final hit in bookHits)
@@ -2793,11 +2800,18 @@ class FindRefRepository {
     if (bookIds.isEmpty) return const {};
 
     final searched = bookIds.take(_maxDibburBooks).toList();
+    final locations = <int, DibburLocation>{};
+    for (final MapEntry(key: hit, value: remaining) in remainingByHit.entries) {
+      final keyTokens = refKeyTokens(remaining.join(' '));
+      if (keyTokens.isEmpty || !searched.contains(hit.bookId)) continue;
+      locations[hit.bookId] = (bookTitle: hit.title, keyTokens: keyTokens);
+    }
     final rows = await _awaitCurrent(
       resolve(
         searched,
         prefix,
         containsBookIds: searched.take(_maxDibburContainsBooks).toList(),
+        locations: locations,
       ),
     );
 
@@ -3467,12 +3481,11 @@ class _FindRefSearch {
   _FindRefSearch({
     required this.rawQuery,
     required this.queryTokens,
-    required this.isDibburQuery,
+    required this.dibburPrefix,
     required this.visibility,
     required this.books,
     required this.detection,
     required this.bookMatchRanks,
-    required this.dibburim,
     required this.includePersonalBooks,
     this.userBooks,
   });
@@ -3480,16 +3493,19 @@ class _FindRefSearch {
   /// השאילתה אחרי הרחבת ע"א/ע"ב, לפני הנרמול.
   final String rawQuery;
   final List<String> queryTokens;
-  final bool isDibburQuery;
+
+  /// טקסט הדיבור שאחרי הסמן ד"ה; `null` כשאין סמן.
+  final String? dibburPrefix;
   final FindRefVisibility visibility;
   final _BookSearch books;
   final _BookDetection detection;
   final Map<_BookKey, int> bookMatchRanks;
-  final Map<int, List<_Dibbur>> dibburim;
   final bool includePersonalBooks;
 
   /// טעינת הספרים האישיים, שהתחילה עם השאילתה.
   final Future<_SecondaryIndex>? userBooks;
+
+  bool get isDibburQuery => dibburPrefix != null;
 
   FindRefVisibility? get visibilityFilter =>
       visibility.selection.isEmpty ? null : visibility;

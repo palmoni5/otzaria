@@ -36,6 +36,29 @@ void main() {
     }
   });
 
+  group('heRefWithinLocation', () {
+    const heRef = 'רש"י על סנהדרין, עט., ט, א';
+    const title = 'רש"י על סנהדרין';
+
+    test('דף ועמוד שהשורה בתוכם', () {
+      expect(heRefWithinLocation(heRef, title, ['עט']), isTrue);
+      expect(heRefWithinLocation(heRef, title, ['עט', 'א']), isTrue);
+    });
+
+    test('דף אחר, עמוד אחר או מספר שרק פותח באותן אותיות', () {
+      expect(heRefWithinLocation(heRef, title, ['עט', 'ב']), isFalse);
+      expect(heRefWithinLocation(heRef, title, ['מח']), isFalse);
+      expect(
+        heRefWithinLocation('ספר, יא, ב', 'ספר', ['י']),
+        isFalse,
+      );
+    });
+
+    test('heRef שאינו פותח בשם הספר אינו בתוך הציון', () {
+      expect(heRefWithinLocation(heRef, 'רש"י על שבת', ['עט']), isFalse);
+    });
+  });
+
   group('partialLineRefKeys', () {
     for (final entry in fixtures['partialLineKeys'] as List) {
       final heRef = entry['heRef'] as String;

@@ -8,6 +8,7 @@ import 'package:otzaria/data/constants/database_constants.dart';
 import 'package:otzaria/find_ref/repository/alt_toc_flat_entry.dart';
 import 'package:otzaria/find_ref/repository/find_ref_ranking.dart';
 import 'package:otzaria/migration/database/daos/database.dart';
+import 'package:otzaria/migration/database/daos/line_dh_dao.dart';
 import 'package:otzaria/migration/database/repository/seforim_repository.dart';
 import 'package:otzaria/migration/models/toc_entry.dart';
 import 'package:otzaria/migration/database/query_loader.dart';
@@ -358,6 +359,7 @@ class FindRefDbIsolate {
     List<int> bookIds,
     String prefix, {
     List<int> containsBookIds = const [],
+    Map<int, DibburLocation> locations = const {},
     int searchScope = 0,
     int? searchEpoch,
   }) async {
@@ -367,6 +369,7 @@ class FindRefDbIsolate {
         'bookIds': bookIds,
         'prefix': prefix,
         'containsBookIds': containsBookIds,
+        'locations': locations,
       },
       cancellable: true,
       searchScope: searchScope,
@@ -1138,6 +1141,7 @@ void _workerMain(_Bootstrap bootstrap) {
           (args['bookIds'] as List).cast<int>(),
           args['prefix'] as String,
           containsBookIds: (args['containsBookIds'] as List).cast<int>(),
+          locations: (args['locations'] as Map).cast<int, DibburLocation>(),
         );
         return [
           for (final dibbur in found)
@@ -1146,6 +1150,7 @@ void _workerMain(_Bootstrap bootstrap) {
               'lineIndex': dibbur.lineIndex,
               'lineId': dibbur.lineId,
               'display': dibbur.display,
+              'heRef': dibbur.heRef,
             },
         ];
       case 'partialLineRefs':

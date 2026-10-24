@@ -204,6 +204,23 @@ String? buildLineRefKey(String heRef, Iterable<String> titleAliases) {
   return tokens.sublist(longestMatch.length).join(' ');
 }
 
+/// האם השורה שה-heRef שלה [heRef] יושבת בתוך הציון [locationKey]
+/// ([refKeyTokens] של "עט" או "עט ב") בספר [bookTitle].
+bool heRefWithinLocation(
+  String heRef,
+  String bookTitle,
+  List<String> locationKey,
+) {
+  final lineKey = buildLineRefKey(heRef, [bookTitle]);
+  if (lineKey == null) return false;
+  final lineTokens = lineKey.split(' ');
+  if (lineTokens.length < locationKey.length) return false;
+  for (var i = 0; i < locationKey.length; i++) {
+    if (lineTokens[i] != locationKey[i]) return false;
+  }
+  return true;
+}
+
 /// ה-hash של המפתח המלא והמפתחות החלקיים של שורה; ריק לשורה בלי מפתח.
 List<int> lineRefKeyHashes(String heRef, String bookTitle) => [
   if (buildLineRefKey(heRef, [bookTitle]) case final key?) ...[
