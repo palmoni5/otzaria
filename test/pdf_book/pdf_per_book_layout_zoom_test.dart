@@ -108,7 +108,6 @@ void main() {
     tabsBloc.emit(TabsState(tabs: [tab], currentTabIndex: 0));
     final settings = _SettingsBloc();
     final tour = TourCubit();
-    addTearDown(tab.dispose);
     addTearDown(tabsBloc.close);
     addTearDown(settings.close);
     addTearDown(tour.close);
