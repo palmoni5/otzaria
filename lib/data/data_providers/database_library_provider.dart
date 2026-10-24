@@ -5039,10 +5039,10 @@ class DatabaseLibraryProvider implements LibraryProvider, LinkLinesProvider {
     return _dbOperation<List<Link>>(
       (db) async {
         // Join line_alt_toc -> line -> book
-        final results = db
+        var results = db
             .select(
               '''
-          SELECT 
+          SELECT
             b.title as bookTitle,
             l.lineIndex,
             l.heRef
@@ -5055,6 +5055,21 @@ class DatabaseLibraryProvider implements LibraryProvider, LinkLinesProvider {
               [structureId, altTocEntryId],
             )
             .toMapList();
+        // עלה שאחיו הבא נפתח באותה שורה (דפים בפסקה אחת) אינו ממופה ב-line_alt_toc.
+        if (results.isEmpty) {
+          results = db
+              .select(
+                '''
+          SELECT b.title as bookTitle, l.lineIndex, l.heRef
+          FROM alt_toc_entry e
+          JOIN line l ON e.lineId = l.id
+          JOIN book b ON l.bookId = b.id
+          WHERE e.structureId = ? AND e.id = ? AND e.hasChildren = 0
+        ''',
+                [structureId, altTocEntryId],
+              )
+              .toMapList();
+        }
 
         return results.map((row) {
           final bookTitle = row['bookTitle'] as String;

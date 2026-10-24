@@ -469,6 +469,7 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
 
     final changed = matches
         .where((match) => _activeEntryIds[match.structureId] != match.entryId)
+        .where((match) => !_sharesLineWithActive(match.structureId, match.entryId))
         .toList();
     if (changed.isEmpty) return;
 
@@ -512,6 +513,30 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
         _scrollToActiveItem(match.structureId, match.entryId);
       }
     }
+  }
+
+  /// אחים שנפתחים באותה שורה (דפים בפסקה אחת) ממופים במסד לאחרון שבהם,
+  /// ולכן האח שנבחר בלחיצה נשאר מסומן כל עוד השורה לא התחלפה.
+  bool _sharesLineWithActive(int structureId, int entryId) {
+    final activeId = _activeEntryIds[structureId];
+    if (activeId == null || structureId == kDibburimStructureId) return false;
+    AltTocEntry? find(int id) =>
+        _flattenEntries(structureId).where((e) => e.id == id).firstOrNull;
+    final active = find(activeId);
+    final resolved = find(entryId);
+    return active != null &&
+        resolved != null &&
+        active.lineId != null &&
+        active.lineId == resolved.lineId &&
+        active.parentId == resolved.parentId;
+  }
+
+  void _selectEntry(int structureId, int entryId) {
+    final previous = _activeEntryIds[structureId];
+    if (previous == entryId) return;
+    _selectionTicks[previous]?.value++;
+    _selectionTicks[entryId]?.value++;
+    _activeEntryIds[structureId] = entryId;
   }
 
   void _scrollToActiveItem(int structureId, int entryId) {
@@ -729,6 +754,9 @@ class _AltTocSidebarViewState extends State<AltTocSidebarView>
             line - sectionHeadingLinesAbove([at(line - 1), at(line - 2)]),
           );
         } else {
+          if (link.path2 == widget.book.title) {
+            _selectEntry(structureId, linkEntry.id);
+          }
           _openLink(link, markerTitle: linkEntry.text);
         }
       } else {

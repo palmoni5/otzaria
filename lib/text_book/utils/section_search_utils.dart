@@ -225,12 +225,11 @@ double matchFractionInLine(
 /// (`[דף ו טור א]` לכותרת "דף ו"), כמו [matchFractionInLine]. 0 כשאין סמן.
 double bracketMarkerFractionInLine(String rawLine, String title) {
   final key = title.trim();
-  if (key.isEmpty) return 0;
-  return matchFractionInLine(
-    rawLine,
-    key,
-    pattern: RegExp('\\[${RegExp.escape(key)}[\\] ]'),
-  );
+  final clean = cleanLineForSearch(rawLine);
+  if (key.isEmpty || clean.isEmpty) return 0;
+  final offset =
+      RegExp('\\[${RegExp.escape(key)}[\\] ]').firstMatch(clean)?.start ?? 0;
+  return (offset / clean.length).clamp(0.0, 1.0);
 }
 
 /// מיקום יחסי (0..1) של המילים שעליהן נכתבה [note] בשורת המקור [rawLine],
