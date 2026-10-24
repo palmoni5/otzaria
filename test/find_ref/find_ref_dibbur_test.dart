@@ -168,6 +168,13 @@ void main() {
     expect(lookups.last.locations, isEmpty);
   });
 
+  test('דיבור קודם לספר שנקרא בשמו אך אין בו דיבור (issue #3179)', () async {
+    final results = await buildRepo().findRefs('ברכות ד"ה מאימתי');
+
+    expect(results.first.isSourceLine, isTrue);
+    expect(results.indexWhere((r) => r.bookId == 70), greaterThan(0));
+  });
+
   test('שאילתה מאוגדת אחת לכל הספרים המועמדים', () async {
     final repo = buildRepo();
     await repo.findRefs('תוספות ברכות ד"ה מאימתי');

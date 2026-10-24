@@ -1344,10 +1344,13 @@ class FindRefRepository {
     final queryTokens = search.queryTokens;
     final results = <DbReferenceResult>[];
     final directMatches = <DbReferenceResult>{};
+    final dibburMatches = <DbReferenceResult>{};
     final dibburim = await _resolveDibburim(search, search.detection.hits);
     for (final hit in search.detection.hits) {
+      final dibburResults = _dibburResults(hit, dibburim);
+      dibburMatches.addAll(dibburResults);
       results
-        ..addAll(_dibburResults(hit, dibburim))
+        ..addAll(dibburResults)
         ..add(_bookResult(hit));
     }
 
@@ -1372,6 +1375,7 @@ class FindRefRepository {
       queryTokens,
       bookMatchRanks: search.bookMatchRanks,
       directMatches: directMatches,
+      dibburMatches: dibburMatches,
       preserveSubstringTail: true,
       rawQuery: search.rawQuery,
     );
@@ -1433,6 +1437,7 @@ class FindRefRepository {
 
     // התוצאות, בסדר הספרים.
     final results = <DbReferenceResult>[];
+    final dibburMatches = <DbReferenceResult>{};
     for (var i = 0; i < bookHits.length; i++) {
       final hit = bookHits[i];
       final plan = plans.plans[i];
@@ -1441,7 +1446,9 @@ class FindRefRepository {
         results.addAll(await _pdfHitResults(hit, plan, remainingTokens));
         continue;
       }
-      results.addAll(_dibburResults(hit, dibburim));
+      final dibburResults = _dibburResults(hit, dibburim);
+      dibburMatches.addAll(dibburResults);
+      results.addAll(dibburResults);
       final requestIndex = plan.requestIndex;
       results.addAll(
         _dbHitResults(
@@ -1482,6 +1489,7 @@ class FindRefRepository {
       queryTokens,
       bookMatchRanks: search.bookMatchRanks,
       directMatches: directMatches,
+      dibburMatches: dibburMatches,
       rawQuery: search.rawQuery,
     );
     return await _awaitCurrent(_enrichWithPaths(ranked));
@@ -3132,6 +3140,7 @@ class FindRefRepository {
     List<String> queryTokens, {
     Map<_BookKey, int> bookMatchRanks = const {},
     Set<DbReferenceResult> directMatches = const {},
+    Set<DbReferenceResult> dibburMatches = const {},
     bool preserveSubstringTail = false,
     String rawQuery = '',
   }) {
@@ -3203,6 +3212,7 @@ class FindRefRepository {
         return FindRefRankKey(
           item: r,
           normTitle: title.normTitle,
+          answersDibbur: dibburMatches.contains(r),
           fuzzyBookMatch: fuzzyBookMatch,
           exactMatch: match.exactMatch,
           startsWithMatch: match.startsWithMatch,

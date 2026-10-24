@@ -136,6 +136,7 @@ class FindRefRankKey<T> {
     required this.reference,
     required this.segment,
     required this.bookId,
+    this.answersDibbur = false,
     this.categoryTokens = const {},
     this.punctuationAgrees = true,
   });
@@ -161,6 +162,9 @@ class FindRefRankKey<T> {
   /// אינו מפתח דירוג; מכריע בין שורות שקולות כשבוחרים חלק מהרשימה.
   final int bookId;
 
+  /// דיבור-מתחיל שנמצא לשאילתת ד"ה.
+  final bool answersDibbur;
+
   /// מילות שם התיקייה, לתוצאה שנמצאה לפיו (ריק לכל השאר).
   final Set<String> categoryTokens;
 
@@ -179,6 +183,9 @@ int compareFindRefRelevance(
   FindRefRankKey<Object?> b,
   FindRefRankQuery query,
 ) {
+  // בשאילתת ד"ה הדיבור הוא התשובה, גם כשהספר שלו אינו הספר שנקרא בשמו.
+  if (a.answersDibbur != b.answersDibbur) return a.answersDibbur ? -1 : 1;
+
   // התאמה מקורבת בשם הספר תמיד מתחת להתאמה מילולית או לכינוי מדויק.
   if (a.fuzzyBookMatch != b.fuzzyBookMatch) {
     return a.fuzzyBookMatch ? 1 : -1;
