@@ -2627,6 +2627,7 @@ class _CommentaryLinkItemState extends State<_CommentaryLinkItem> {
             segmentCount: countTextSegments(text),
           ),
       menuContext: menuContext,
+      readerState: state,
     );
   }
 

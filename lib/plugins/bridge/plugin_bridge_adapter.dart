@@ -85,6 +85,7 @@ import 'package:otzaria/tabs/models/text_tab.dart';
 import 'package:otzaria/plugins/services/plugin_text_reader_registry.dart';
 import 'package:otzaria/tabs/models/pdf_tab.dart';
 import 'package:otzaria/text_book/bloc/text_book_state.dart';
+import 'package:otzaria/text_book/view/selection/plugin_selection_payload.dart';
 import 'package:otzaria/text_display/text_display_exports.dart';
 import 'package:otzaria/text_book/bloc/text_book_event.dart';
 import 'package:otzaria/history/bloc/history_bloc.dart';
@@ -126,6 +127,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:otzaria/plugins/services/plugin_print_service.dart';
 import 'package:otzaria/printing/view/printing_screen.dart';
 import 'package:otzaria/plugins/services/plugin_runtime_dispatcher.dart';
+import 'package:otzaria/plugins/models/plugin_valid_permissions.dart';
 import 'package:otzaria/plugins/models/plugin_network_allowlist.dart';
 import 'package:otzaria/plugins/services/plugin_network_gate.dart';
 import 'package:otzaria/plugins/services/plugin_file_download_service.dart';
@@ -134,6 +136,9 @@ import 'package:otzaria/plugins/services/plugin_store_link_parser.dart';
 import 'package:otzaria/plugins/services/plugin_report_service.dart';
 import 'package:otzaria/plugins/services/plugin_book_correction_service.dart';
 import 'package:otzaria/plugins/services/plugin_correction_session_service.dart';
+import 'package:otzaria/plugins/services/plugin_divine_names_filter.dart';
+import 'package:otzaria/divine_names/models/divine_name_spans.dart';
+import 'package:otzaria/divine_names/models/divine_name_forms.dart';
 import 'package:otzaria/services/direct_error_report_service.dart';
 import 'package:otzaria/services/data_collection_service.dart';
 import 'package:otzaria/data/data_providers/book_database_resolver.dart';
@@ -379,6 +384,11 @@ class PluginBridgeDependencies {
   /// היא [Link.content] עם המטמון שלו.
   final Future<String> Function(Link link)? linkContentLoader;
 
+  /// שורות היעד של הקישור, לסינון שמות הקודש לפי מופעיהן. ברירת המחדל:
+  /// [Link.contentLines]; גובר על [linkContentLoader].
+  final Future<List<LinkContentLine>> Function(Link link)?
+  linkContentLinesLoader;
+
   /// הגבלת המו"ל של ספר. ברירת המחדל: [BookProtectionRepository].
   final Future<BookProtection> Function(Book book)? bookProtectionResolver;
 
@@ -492,6 +502,7 @@ class PluginBridgeDependencies {
     this.textBookRepository,
     this.linkTargetsSummaryProvider,
     this.linkContentLoader,
+    this.linkContentLinesLoader,
     this.bookProtectionResolver,
     this.bookmarkBloc,
     this.onBackgroundInstanceDone,
@@ -540,17 +551,6 @@ class _PluginNetworkRequest {
 // ===================================================================
 // Bridge Adapter
 // ===================================================================
-String _transformTextReaderContent((String, TextDisplayProfile) input) {
-  final (rawText, profile) = input;
-  return rawText
-      .split('\n')
-      .map(
-        (line) =>
-            applyTextDisplayProfile(line, profile).replaceAll('\n', '<br>'),
-      )
-      .join('\n');
-}
-
 class PluginBridgeAdapter {
   final InstalledPlugin plugin;
   final TextBookTab? readerTab;
@@ -715,9 +715,8 @@ class PluginBridgeAdapter {
 
   // LRU קצר לכל תוסף; bookUid מפריד ספרים זהים ממסדים מצורפים שונים.
   final Map<String, String> _bookContentCache = {};
-  String? _textReaderRawContent;
-  Future<String>? _textReaderDisplayContent;
-  TextDisplayProfile? _textReaderProfile;
+  final List<({String raw, Object key, Future<String> content})>
+  _filteredContents = [];
   static const int _bookContentCacheMaxEntries = 4;
   static int _bookContentRevision = 0;
   int _seenBookContentRevision = 0;
@@ -803,9 +802,7 @@ class PluginBridgeAdapter {
     _networkFetchService?.dispose();
     _fileDownloadService?.dispose();
     _bookContentCache.clear();
-    _textReaderRawContent = null;
-    _textReaderProfile = null;
-    _textReaderDisplayContent = null;
+    _filteredContents.clear();
     unawaited(_directBookReportService?.closeHttpClient());
     _bookIndexLibrary = null;
     _booksById = const {};
@@ -884,6 +881,77 @@ class PluginBridgeAdapter {
     return rawText;
   }
 
+  /// [request] כפי שהתוסף מקבל אותו. המרת הספר כולו רצה מחוץ ל-UI, ובקשות
+  /// מקבילות לאותו טקסט ולאותה תצוגה חולקות אותה.
+  Future<String> _filteredBookContent(
+    PluginBookContentFilterRequest request,
+  ) async {
+    final rawText = request.rawText;
+    if (!request.names.filters && request.displayProfile == null) {
+      return rawText;
+    }
+    final key = (request.names, request.displayProfile, request.spans);
+    final index = _filteredContents.indexWhere(
+      (entry) => identical(entry.raw, rawText) && entry.key == key,
+    );
+    final entry = index >= 0
+        ? _filteredContents.removeAt(index)
+        : (
+            raw: rawText,
+            key: key,
+            content: compute(filterPluginBookContent, request),
+          );
+    _filteredContents.add(entry);
+    if (_filteredContents.length > _bookContentCacheMaxEntries) {
+      _filteredContents.removeAt(0);
+    }
+    try {
+      return await entry.content;
+    } catch (_) {
+      _filteredContents.removeWhere(
+        (cached) => identical(cached.content, entry.content),
+      );
+      rethrow;
+    }
+  }
+
+  /// מצב הכרטיסייה שבה [book] פתוח: המקושרת, אחריה החלונית הפעילה ושאר החלוניות.
+  TextBookLoaded? _openReaderStateFor(Book book) {
+    final uid = PluginBookIdentity.uidOf(book);
+    final tabs = _windowDependencies.tabsBloc.state;
+    for (final tab in <OpenedTab>[
+      ?readerTab,
+      ?tabs.readingPane,
+      ...tabs.tabs.expand(leafPanes),
+    ]) {
+      if (tab is! TextBookTab || PluginBookIdentity.uidOf(tab.book) != uid) {
+        continue;
+      }
+      final state = tab.bloc.state;
+      if (state is TextBookLoaded) return state;
+    }
+    return null;
+  }
+
+  /// `rawDivineNames: true` — הטקסט כפי שנשמר, בלי החלפת שמות הקודש.
+  static bool _rawDivineNamesArg(Map<String, dynamic> args) {
+    final value = args['rawDivineNames'];
+    if (value != null && value is! bool) {
+      throw Exception('error.invalid_params: rawDivineNames must be a boolean');
+    }
+    return value == true;
+  }
+
+  /// הצגת השמות לטקסט נגזר של [book] (כותרות, תקצירים, תוויות).
+  Future<PluginDivineNamesDisplay> _derivedTextNames(
+    Book? book,
+    Map<String, dynamic> args,
+  ) => PluginDivineNamesFilter.resolve(
+    book: book,
+    readerState: book == null ? null : _openReaderStateFor(book),
+    raw: _rawDivineNamesArg(args),
+  );
+
   Future<dynamic> execute(
     String domain,
     String action,
@@ -950,6 +1018,8 @@ class PluginBridgeAdapter {
         return await _handleShortcut(action, args);
       case 'plugin':
         return await _handlePlugin(action, args);
+      case 'events':
+        return await _handleEvents(action, args);
       default:
         throw Exception("error.unknown_method: Unknown domain: $domain");
     }
@@ -976,6 +1046,36 @@ class PluginBridgeAdapter {
     }
   }
 
+  /// `app.getDivineNamesDisplay` — איך שמות הקודש יגיעו לתוסף בטקסט של ספר
+  /// (או בהגדרה הכללית, בלי ספר), לפי הגדרת המשתמש ברגע הקריאה.
+  Future<Map<String, dynamic>> _getDivineNamesDisplay(
+    Map<String, dynamic> args,
+  ) async {
+    final target = switch (args['target'] ?? 'body') {
+      'body' => TextTarget.body,
+      'commentary' => TextTarget.commentary,
+      _ => throw Exception(
+        "error.invalid_params: target must be 'body' or 'commentary'",
+      ),
+    };
+    final hasIdentity =
+        PluginBookIdentity.parseId(args['id']) != null ||
+        (args['bookId'] ?? args['title']) != null ||
+        args['bookUid'] != null;
+    final book = hasIdentity
+        ? _findPluginBook(await DataRepository.instance.library, args)
+        : null;
+    if (hasIdentity && book == null) {
+      throw Exception('error.not_found: book not found');
+    }
+    final names = await PluginDivineNamesFilter.resolve(
+      book: book,
+      readerState: book == null ? null : _openReaderStateFor(book),
+      target: target,
+    );
+    return names.toJson();
+  }
+
   Future<dynamic> _handleApp(String action, Map<String, dynamic> args) async {
     switch (action) {
       case 'getInfo':
@@ -987,6 +1087,8 @@ class PluginBridgeAdapter {
         };
       case 'getTheme':
         return _dependencies.themePayloadBuilder();
+      case 'getDivineNamesDisplay':
+        return await _getDivineNamesDisplay(args);
       case 'getLocale':
         // שפת הממשק שבחר המשתמש (או שפת המערכת בזיהוי אוטומטי) — לתוספים
         // רב-לשוניים. 'language' הוא קוד השפה ('he'/'en'); 'locale' נשמר
@@ -1247,6 +1349,7 @@ class PluginBridgeAdapter {
           _requireBookIdentity(args);
           final book = _findPluginBook(library, args);
           if (book == null) return null;
+          final names = await _derivedTextNames(book, args);
           final info = await BookDetailsService().getBookInformation(book);
           final sourceName = info.source?.trim();
           final sourceDisplay = sourceName == null || sourceName.isEmpty
@@ -1265,8 +1368,14 @@ class PluginBridgeAdapter {
             'publicationDates': info.publicationDates,
             'publicationPlaces': info.publicationPlaces,
             'topics': info.topics,
-            'shortDescription': info.shortDescription,
-            'fullDescription': info.fullDescription,
+            'shortDescription': switch (info.shortDescription) {
+              final text? => filterPluginDivineNamesText(text, names),
+              null => null,
+            },
+            'fullDescription': switch (info.fullDescription) {
+              final text? => filterPluginDivineNamesText(text, names),
+              null => null,
+            },
             'textSource': sourceDisplay == null
                 ? null
                 : {
@@ -1393,9 +1502,13 @@ class PluginBridgeAdapter {
           throw Exception('error.not_found: book not found');
         }
         await _ensureBookTextAvailable(book ?? TextBook(title: bookId!));
-        var rawText = book == null
+        final rawNames = _rawDivineNamesArg(args);
+        final rawText = book == null
             ? await DataRepository.instance.getBookText(bookId!)
             : await _loadBookRawText(book);
+        final contentBook = book ?? TextBook(title: bookId!);
+        TextDisplayProfile? displayProfile;
+        TextBookLoaded? readerState;
         if (args['textReaderDisplay'] == true) {
           final tab = readerTab;
           final state = tab?.bloc.state;
@@ -1408,47 +1521,59 @@ class PluginBridgeAdapter {
               'error.unavailable: Display content requires the bound reader',
             );
           }
-          final profile = state.bodyDisplayProfile;
-          if (!identical(_textReaderRawContent, rawText) ||
-              _textReaderProfile != profile) {
-            _textReaderRawContent = rawText;
-            _textReaderProfile = profile;
-            // המרת הספר כולו מתבצעת מחוץ ל-UI; בקשות מקבילות חולקות אותה.
-            _textReaderDisplayContent = compute(
-              _transformTextReaderContent,
-              (rawText, profile),
-            );
-          }
-          final displayContent = _textReaderDisplayContent!;
-          try {
-            rawText = await displayContent;
-          } catch (_) {
-            if (identical(_textReaderDisplayContent, displayContent)) {
-              _textReaderRawContent = null;
-              _textReaderProfile = null;
-              _textReaderDisplayContent = null;
-            }
-            rethrow;
-          }
+          readerState = state;
+          displayProfile = PluginDivineNamesFilter.readerProfile(state);
+        } else if (book != null) {
+          readerState = _openReaderStateFor(book);
         }
+        final names = await PluginDivineNamesFilter.resolve(
+          book: contentBook,
+          readerState: readerState,
+          raw: rawNames,
+        );
+        final PluginBookContentFilterRequest request = (
+          rawText: rawText,
+          spans: names.filters
+              ? await PluginDivineNamesFilter.spansFor(
+                  contentBook,
+                  readerState: readerState,
+                )
+              : DivineNameSpans.empty,
+          names: names,
+          displayProfile: displayProfile,
+        );
+        final text = await _filteredBookContent(request);
         final limit = args['limit'] as int? ?? 1000;
         final offset = args['offset'] as int? ?? 0;
         final section = args['section'] as String?;
         int startIndex = offset;
         if (section != null && section.isNotEmpty) {
-          final idx = rawText.indexOf(section);
+          final idx = identical(text, rawText)
+              ? text.indexOf(section)
+              : await compute(locatePluginBookSection, (
+                  request: request,
+                  filtered: text,
+                  section: section,
+                ));
           // ה-offset נספר יחסית למיקום ה-section, לא לתחילת הטקסט
           if (idx >= 0) startIndex = idx + offset;
         }
         final clampedLimit = limit > 5000 ? 5000 : limit;
-        final end = (startIndex + clampedLimit).clamp(0, rawText.length);
-        return rawText.substring(startIndex.clamp(0, rawText.length), end);
+        final end = (startIndex + clampedLimit).clamp(0, text.length);
+        return text.substring(startIndex.clamp(0, text.length), end);
       case 'getBookToc':
         final book = _findPluginBook(library, args);
         if (book is TextBook) {
+          final names = await _derivedTextNames(book, args);
           final toc = flattenToc(await book.tableOfContents);
           return toc
-              .map((e) => {'text': e.text, 'index': e.index, 'level': e.level})
+              .map(
+                (e) => {
+                  'text': filterPluginDivineNamesText(e.text, names),
+                  'index': e.index,
+                  'level': e.level,
+                },
+              )
               .toList();
         }
         return [];
@@ -1459,13 +1584,20 @@ class PluginBridgeAdapter {
             throw Exception('error.invalid_params: bookId required');
           }
           final book = _findPluginBook(library, args);
+          final names = await _derivedTextNames(book, args);
           final structures = book is TextBook
               ? await _loadAltStructures(book)
               : const <AltTocStructure>[];
           // ה-id הפנימי של ה-DB אינו יציב בין גרסאות ספרייה — לא נחשף לתוסף.
           return structures
               .map(
-                (s) => {'key': s.key, 'title': s.title, 'heTitle': s.heTitle},
+                (s) => {
+                  'key': s.key,
+                  'title': s.title,
+                  'heTitle': s.heTitle == null
+                      ? null
+                      : filterPluginDivineNamesText(s.heTitle!, names),
+                },
               )
               .toList();
         }
@@ -1509,8 +1641,18 @@ class PluginBridgeAdapter {
             }
             selected = match.first;
           }
+          final names = await _derivedTextNames(book, args);
           final entries = await _loadAltTocEntries(selected);
-          return _flattenAltToc(entries);
+          return [
+            for (final entry in _flattenAltToc(entries))
+              {
+                ...entry,
+                'text': filterPluginDivineNamesText(
+                  entry['text'] as String,
+                  names,
+                ),
+              },
+          ];
         }
       case 'getTree':
         // spec: getTree({ path?, includeBooks? }) -> מבנה עץ הספרייה המלא
@@ -1736,6 +1878,7 @@ class PluginBridgeAdapter {
       'connectionTypes',
     );
     final includeAnchors = args['includeAnchors'] as bool? ?? false;
+    final rawAnchorNames = _rawDivineNamesArg(args);
 
     final book = _findLinksTextBook(library, args);
     if (book == null) throw Exception('error.not_found: book not found');
@@ -1759,6 +1902,13 @@ class PluginBridgeAdapter {
             versionTitle: book.versionTitle,
           )
         : BookNotes.empty;
+    final anchorNames = includeAnchors
+        ? await PluginDivineNamesFilter.resolve(
+            book: book,
+            readerState: _openReaderStateFor(book),
+            raw: rawAnchorNames,
+          )
+        : PluginDivineNamesDisplay.raw;
 
     final filtered = _filterLinkRecords(
       links,
@@ -1780,7 +1930,11 @@ class PluginBridgeAdapter {
         'targetSource': link.targetSource.wireKey,
         'targetCategoryId': link.targetCategoryId,
         if (includeAnchors)
-          ...?_linkAnchorJson(link, notes.notesAt(link.index1 - 1)),
+          ...?_linkAnchorJson(
+            link,
+            notes.notesAt(link.index1 - 1),
+            anchorNames,
+          ),
       },
     );
     return {'links': filtered.records, 'truncated': filtered.truncated};
@@ -1896,14 +2050,25 @@ class PluginBridgeAdapter {
 
   /// העוגן הראשון של [link] בטקסט השמור של השורה ([notes] — הערותיה); עוגן
   /// שכולו בגוף הערה אינו מוחזר.
-  Map<String, dynamic>? _linkAnchorJson(Link link, List<BookNote> notes) {
+  Map<String, dynamic>? _linkAnchorJson(
+    Link link,
+    List<BookNote> notes,
+    PluginDivineNamesDisplay names,
+  ) {
     final spans = linkAnchorSpans(link);
     final span =
         (link.anchorOffsetsAreRaw ? spans : projectAnchorSpans(spans, notes))
             .firstOrNull;
     if (span == null) return null;
     return {
-      'anchor': {'start': span.start, 'end': span.end, 'label': span.label},
+      'anchor': {
+        'start': span.start,
+        'end': span.end,
+        'label': switch (span.label) {
+          final label? => filterPluginDivineNamesText(label, names),
+          null => null,
+        },
+      },
     };
   }
 
@@ -1962,7 +2127,19 @@ class PluginBridgeAdapter {
         '$_pluginLinkContentMaxItems entries',
       );
     }
+    final rawNames = _rawDivineNamesArg(args);
     final loader = _dependencies.linkContentLoader;
+    final linesLoader =
+        _dependencies.linkContentLinesLoader ??
+        (loader == null ? (Link link) => link.contentLines : null);
+    // הגדרות המפרשים של הכרטיסייה חלות רק על מפרשים של הספר שפתוח בה.
+    final boundState = readerTab?.bloc.state;
+    final readerState = boundState is TextBookLoaded ? boundState : null;
+    final readerTargets = {
+      ...?readerState?.availableCommentators,
+      for (final link in readerState?.links ?? const <Link>[])
+        getTitleFromPath(link.path2),
+    };
     final items = <Map<String, dynamic>>[];
     for (final raw in rawItems) {
       if (raw is! Map) {
@@ -1990,18 +2167,41 @@ class PluginBridgeAdapter {
           legacyUserFlagKey: 'targetIsUserBook',
         ),
       );
-      if (await _isTextRestricted(
-        TextBook(
-          title: targetTitle,
-          categoryId: link.targetCategoryId,
-          source: link.targetSource,
-        ),
-      )) {
+      final targetBook = TextBook(
+        title: targetTitle,
+        categoryId: link.targetCategoryId,
+        source: link.targetSource,
+      );
+      if (await _isTextRestricted(targetBook)) {
         items.add(const {'error': 'forbidden'});
         continue;
       }
       try {
-        items.add({'content': await (loader?.call(link) ?? link.content)});
+        final names = await PluginDivineNamesFilter.resolve(
+          book: targetBook,
+          readerState: readerTargets.contains(targetTitle) ? readerState : null,
+          target: TextTarget.commentary,
+          raw: rawNames,
+        );
+        final String content;
+        if (linesLoader != null) {
+          final lines = await linesLoader(link);
+          final spans = names.filters
+              ? await PluginDivineNamesFilter.spansFor(targetBook)
+              : DivineNameSpans.empty;
+          content = [
+            for (final line in lines)
+              filterPluginDivineNamesLine(
+                line.content,
+                line.lineIndex,
+                spans,
+                names,
+              ),
+          ].join('<br>');
+        } else {
+          content = filterPluginDivineNamesText(await loader!(link), names);
+        }
+        items.add({'content': content});
       } catch (_) {
         items.add(const {'error': 'not_found'});
       }
@@ -2281,6 +2481,7 @@ class PluginBridgeAdapter {
       case 'fullText':
         final query = args['query'] as String?;
         final limit = args['limit'] as int? ?? 50;
+        final rawNames = _rawDivineNamesArg(args);
         if (query == null || query.isEmpty) return [];
         final results = await _dependencies.searchRepository.searchTexts(
           SearchEngineRequest(query: query, facets: [], limit: limit),
@@ -2296,13 +2497,23 @@ class PluginBridgeAdapter {
                 TextBook(title: result.title),
           );
         }
+        final namesByPath = await _searchResultNames(
+          results.map((r) => (filePath: r.filePath, title: r.title)),
+          _booksByIndexedPath,
+          raw: rawNames,
+        );
         return results.map((r) {
           final isRestricted =
               !r.isPdf && (restrictedByPath[r.filePath] ?? false);
           return {
             'type': r.isPdf ? 'pdf' : 'text',
             'book': r.title,
-            'text': isRestricted ? '' : removeAttachedMarks(r.text),
+            'text': isRestricted
+                ? ''
+                : filterPluginDivineNamesText(
+                    removeAttachedMarks(r.text),
+                    namesByPath[r.filePath]!,
+                  ),
             'textStatus': r.textStatus.name,
             'continuesToNextLine': r.continuesToNextLine,
             'index': r.segment.toInt(),
@@ -2329,6 +2540,25 @@ class PluginBridgeAdapter {
           "error.unknown_method: Unknown action in search: $action",
         );
     }
+  }
+
+  /// הצגת השמות בתקצירי [results], לפי ספר — כמו בתוצאות החיפוש של התוכנה.
+  Future<Map<String, PluginDivineNamesDisplay>> _searchResultNames(
+    Iterable<({String filePath, String title})> results,
+    Map<String, Book> booksByPath, {
+    required bool raw,
+  }) async {
+    final names = <String, PluginDivineNamesDisplay>{};
+    for (final (:filePath, :title) in results) {
+      if (names.containsKey(filePath)) continue;
+      final book = booksByPath[filePath];
+      names[filePath] = await PluginDivineNamesFilter.resolve(
+        book: book ?? TextBook(title: title),
+        readerState: book == null ? null : _openReaderStateFor(book),
+        raw: raw,
+      );
+    }
+    return names;
   }
 
   /// `search.setFieldText` / `setFieldActionState` / `endFieldSession`.
@@ -2395,7 +2625,10 @@ class PluginBridgeAdapter {
       throw Exception('error.rate_limited: too many active search streams');
     }
 
-    final publicArgs = Map<String, dynamic>.of(args)..remove(_streamIdKey);
+    final rawNames = _rawDivineNamesArg(args);
+    final publicArgs = Map<String, dynamic>.of(args)
+      ..remove(_streamIdKey)
+      ..remove('rawDivineNames');
     final request = PluginSearchRequest.fromArgs(publicArgs)
       ..validateAgainstQuery();
     final library = await DataRepository.instance.library;
@@ -2474,6 +2707,11 @@ class PluginBridgeAdapter {
             booksByPath[result.filePath] ?? TextBook(title: result.title),
           );
         }
+        final namesByPath = await _searchResultNames(
+          update.results.map((r) => (filePath: r.filePath, title: r.title)),
+          booksByPath,
+          raw: rawNames,
+        );
         await eventSink(_searchStreamEvent, {
           'streamId': streamId,
           'chunk': {
@@ -2486,6 +2724,10 @@ class PluginBridgeAdapter {
                   booksByPath: booksByPath,
                   textRestricted: restrictedByPath[result.filePath] ?? false,
                   vocalizedSearch: vocalizedSearch,
+                  filterText: (text) => filterPluginDivineNamesText(
+                    text,
+                    namesByPath[result.filePath]!,
+                  ),
                 ),
             ],
             'total': totalCount,
@@ -3127,8 +3369,13 @@ class PluginBridgeAdapter {
             'בחירה בנוסח מתוקן אינה ניתנת למיפוי בטוח למקור.',
           );
         }
+        final rawNames = _rawDivineNamesArg(args);
         final snapshot = await resolveReaderLocation(currentPane);
-        return _buildCurrentSelection(currentPane, snapshot?.currentRef);
+        return _buildCurrentSelection(
+          currentPane,
+          snapshot?.currentRef,
+          rawNames: rawNames,
+        );
       case 'findTextOccurrences':
         return _findTextOccurrences(args);
       case 'getSectionTextMap':
@@ -3439,12 +3686,14 @@ class PluginBridgeAdapter {
     final layer = args['layer'] ?? 'source';
     final limit = args['limit'] ?? PluginTextOccurrenceService.defaultLimit;
     final cursor = args['cursor'];
+    final rawNames = args['rawDivineNames'] ?? false;
     if (bookId is! String ||
         bookId.isEmpty ||
         sectionIndex is! int ||
         query is! String ||
         layer is! String ||
         limit is! int ||
+        rawNames is! bool ||
         (cursor != null && cursor is! String)) {
       throw const PluginTextOccurrenceException(
         'error.invalid_params',
@@ -3465,6 +3714,7 @@ class PluginBridgeAdapter {
       bookId,
       sectionIndex,
       bookUid: args['bookUid'] as String?,
+      rawNames: rawNames,
     );
     final map = const TextSourceMapService().build(
       bookId: bookId,
@@ -3503,11 +3753,14 @@ class PluginBridgeAdapter {
     }
   }
 
+  /// [rawText] נושא את סמני השמות, ולכן השכבה המוצגת מחליפה אותם לפי
+  /// [RenderSettings]; שכבת המקור (הטקסט בלי התגים) נשארת כפי שנשמרה.
   Future<({String rawText, RenderSettings settings, String? currentRef})>
   _loadPluginTextSection(
     String bookId,
     int sectionIndex, {
     String? bookUid,
+    bool rawNames = false,
   }) async {
     if (sectionIndex < 0) {
       throw const PluginTextOccurrenceException(
@@ -3545,9 +3798,16 @@ class PluginBridgeAdapter {
               tab.index == sectionIndex
           ? await resolveReaderLocation(tab)
           : null;
+      final profile = PluginDivineNamesFilter.readerProfile(state);
       return (
-        rawText: state.content[sectionIndex],
-        settings: RenderSettings.fromProfile(state.bodyDisplayProfile),
+        rawText: injectDivineNameMarkers(
+          state.content[sectionIndex],
+          state.divineNames,
+          sectionIndex,
+        ),
+        settings: RenderSettings.fromProfile(
+          rawNames ? PluginDivineNamesDisplay.raw.applyTo(profile) : profile,
+        ),
         currentRef: snapshot?.currentRef,
       );
     }
@@ -3584,12 +3844,17 @@ class PluginBridgeAdapter {
         'section was not found',
       );
     }
+    final profile = await PluginDivineNamesFilter.bookProfile(book);
     return (
-      rawText: range.lines.first,
+      rawText: rawNames
+          ? range.lines.first
+          : injectDivineNameMarkers(
+              range.lines.first,
+              await PluginDivineNamesFilter.spansFor(book),
+              sectionIndex,
+            ),
       settings: RenderSettings.fromProfile(
-        SettingsRepository().loadTextDisplayPolicy().resolve(
-          TextDisplaySlot.root,
-        ),
+        rawNames ? PluginDivineNamesDisplay.raw.applyTo(profile) : profile,
       ),
       currentRef: null,
     );
@@ -3898,6 +4163,7 @@ class PluginBridgeAdapter {
     final includeDomRects = args['includeDomRects'] ?? false;
     final limit = args['limit'] ?? PluginSectionTextMapService.defaultLimit;
     final cursor = args['cursor'];
+    final rawNames = args['rawDivineNames'] ?? false;
     if (bookId is! String ||
         bookId.isEmpty ||
         sectionIndex is! int ||
@@ -3907,6 +4173,7 @@ class PluginBridgeAdapter {
         includeSourceMap is! bool ||
         includeDomRects is! bool ||
         limit is! int ||
+        rawNames is! bool ||
         (cursor != null && cursor is! String)) {
       throw const PluginSectionTextMapException(
         'error.invalid_params',
@@ -3938,6 +4205,7 @@ class PluginBridgeAdapter {
       bookId,
       sectionIndex,
       bookUid: args['bookUid'] as String?,
+      rawNames: rawNames,
     );
     final map = const TextSourceMapService().build(
       bookId: bookId,
@@ -6618,6 +6886,7 @@ class PluginBridgeAdapter {
           if (term is! String || term.trim().isEmpty || term.length > 200) {
             throw Exception('error.invalid_params: term required');
           }
+          final names = await _derivedTextNames(null, args);
           final repository = DictionaryLookupRepository.instance;
           await repository.ensureAcronymsLoaded();
           await repository.ensureAramaicLoaded();
@@ -6625,11 +6894,24 @@ class PluginBridgeAdapter {
             'term': term.trim(),
             'acronyms': repository
                 .findAcronymMatches(term)
-                .map((e) => {'acronym': e.acronym, 'meanings': e.meanings})
+                .map(
+                  (e) => {
+                    'acronym': e.acronym,
+                    'meanings': [
+                      for (final meaning in e.meanings)
+                        filterPluginDivineNamesText(meaning, names),
+                    ],
+                  },
+                )
                 .toList(),
             'aramaic': repository
                 .findAramaicMatches(term)
-                .map((e) => {'aramaic': e.aramaic, 'hebrew': e.hebrew})
+                .map(
+                  (e) => {
+                    'aramaic': e.aramaic,
+                    'hebrew': filterPluginDivineNamesText(e.hebrew, names),
+                  },
+                )
                 .toList(),
           };
         }
@@ -6649,6 +6931,7 @@ class PluginBridgeAdapter {
           if (limit != null && (limit is! int || limit < 1 || limit > 50)) {
             throw Exception('error.invalid_params: limit must be 1..50');
           }
+          final names = await _derivedTextNames(null, args);
           final List<Biography> all;
           try {
             all = await BiographiesRepository.instance.loadAll();
@@ -6662,7 +6945,7 @@ class PluginBridgeAdapter {
             'total': matched.length,
             'results': matched
                 .take((limit as int?) ?? 20)
-                .map(_biographyToJson)
+                .map((bio) => _biographyToJson(bio, names))
                 .toList(),
           };
         }
@@ -6674,7 +6957,11 @@ class PluginBridgeAdapter {
     }
   }
 
-  Map<String, dynamic> _biographyToJson(Biography bio) => {
+  /// [names] — לתקצירים בלבד; שאר השדות הם שמות ומפתחות.
+  Map<String, dynamic> _biographyToJson(
+    Biography bio,
+    PluginDivineNamesDisplay names,
+  ) => {
     'id': bio.id,
     'name': bio.name,
     'generation': bio.generation,
@@ -6683,8 +6970,14 @@ class PluginBridgeAdapter {
     'countries': bio.countries,
     'birth': bio.birthHebrew?.display,
     'death': bio.deathHebrew?.display,
-    'summary': bio.summary,
-    'biographyShort': bio.biographyShort,
+    'summary': switch (bio.summary) {
+      final text? => filterPluginDivineNamesText(text, names),
+      null => null,
+    },
+    'biographyShort': switch (bio.biographyShort) {
+      final text? => filterPluginDivineNamesText(text, names),
+      null => null,
+    },
   };
 
   // ----------------------------------------------------------------
@@ -7139,10 +7432,13 @@ class PluginBridgeAdapter {
     return leafPanes(tab).first;
   }
 
+  /// העוגנים נבנים מול התצוגה שעל המסך; הטקסט המוצג נמסר לפי הגדרת השמות
+  /// העדכנית או, עם [rawNames], בלי החלפתם. טקסט המקור נשאר כפי שנשמר.
   Map<String, dynamic>? _buildCurrentSelection(
     OpenedTab? currentTab,
-    String? currentRef,
-  ) {
+    String? currentRef, {
+    bool rawNames = false,
+  }) {
     if (currentTab is! TextBookTab) {
       return null;
     }
@@ -7166,7 +7462,7 @@ class PluginBridgeAdapter {
       'type': PluginBookIdentity.typeOf(currentTab.book),
       'source': PluginBookIdentity.sourceOf(currentTab.book),
       'bookUid': PluginBookIdentity.uidOf(currentTab.book),
-      'text': selectedText,
+      'text': withoutDivineNameJoiners(selectedText),
       'start': state.selectedTextStart,
       'end': state.selectedTextEnd,
       'currentRef': currentRef,
@@ -7178,26 +7474,82 @@ class PluginBridgeAdapter {
     final start = state.selectedTextStart;
     final end = state.selectedTextEnd;
     final sectionIndex = state.selectedTextSectionIndex ?? currentTab.index;
-    if (!identical(selectedText, rawSelectedText) ||
-        start == null ||
-        end == null ||
-        sectionIndex < 0 ||
-        sectionIndex >= state.content.length) {
-      return legacySelection;
+    final names = rawNames
+        ? PluginDivineNamesDisplay.raw
+        : PluginDivineNamesDisplay.of(
+            PluginDivineNamesFilter.readerProfile(state),
+          );
+    if (sectionIndex < 0 || sectionIndex >= state.content.length) {
+      return {
+        ...legacySelection,
+        'text': filterPluginDivineNamesText(
+          legacySelection['text'] as String,
+          names,
+        ),
+      };
     }
 
-    final selection = const ReaderSelectionService().build(
-      bookId: currentTab.title,
-      bookTitle: currentTab.title,
-      sectionIndex: sectionIndex,
-      rawText: state.content[sectionIndex],
-      settings: RenderSettings.fromProfile(state.bodyDisplayProfile),
-      renderedStartUtf16: start,
-      renderedEndUtf16: end,
-      currentRef: currentRef,
-    );
-    if (selection == null) return legacySelection;
-    return {...legacySelection, ...selection.toJson()};
+    final settings = RenderSettings.fromProfile(state.bodyDisplayProfile);
+    if (identical(selectedText, rawSelectedText) &&
+        start != null &&
+        end != null) {
+      final rawLine = injectDivineNameMarkers(
+        state.content[sectionIndex],
+        state.divineNames,
+        sectionIndex,
+      );
+      const service = ReaderSelectionService();
+      final selection = service.build(
+        bookId: currentTab.title,
+        bookTitle: currentTab.title,
+        sectionIndex: sectionIndex,
+        rawText: rawLine,
+        settings: settings,
+        renderedStartUtf16: start,
+        renderedEndUtf16: end,
+        currentRef: currentRef,
+      );
+      if (selection != null) {
+        return service.withDivineNames(
+          {...legacySelection, ...selection.toJson()},
+          names: names,
+          settings: settings,
+          rawTextOf: (_) => rawLine,
+        );
+      }
+    }
+
+    // בחירה רב-פסקתית, מוגבלת-העתקה או בלי טווח תקף: מעוגנת לפי הטקסט, כמו
+    // בתפריט ההקשר, ולכן גם בה הטקסט נמסר לפי [names].
+    final lineCount = selectedText.split('\n').length;
+    final anchored = lineCount > 1
+        ? buildPluginMultiSectionSelectionPayload(
+            state: state,
+            firstSectionIndex: sectionIndex,
+            rawTexts: state.content.sublist(
+              sectionIndex,
+              math.min(sectionIndex + lineCount, state.content.length),
+            ),
+            selectedText: selectedText,
+            startHint: null,
+            settings: settings,
+          )
+        : buildPluginSelectionPayload(
+            state: state,
+            sectionIndex: sectionIndex,
+            rawText: state.content[sectionIndex],
+            selectedText: selectedText,
+            startHint: start,
+            settings: settings,
+          );
+    return {
+      ...legacySelection,
+      ...PluginDivineNamesPayload.resolve(anchored, names),
+      'start': legacySelection['start'],
+      'end': legacySelection['end'],
+      'currentRef': currentRef,
+      'currentIndex': legacySelection['currentIndex'],
+    };
   }
 
   String? _currentBookId() {
@@ -7263,6 +7615,71 @@ class PluginBridgeAdapter {
   // ----------------------------------------------------------------
   // plugin.*
   // ----------------------------------------------------------------
+  Future<dynamic> _handleEvents(String action, Map<String, dynamic> args) {
+    switch (action) {
+      case 'setOptions':
+        return _setEventOptions(args);
+      default:
+        throw Exception('error.unknown_method: Unknown events action: $action');
+    }
+  }
+
+  /// `events.setOptions` — אפשרויות המסירה של נושא למופע הזה, עד טעינה מחדש
+  /// של הדף. הרשאת `events.subscribe:<topic>` נבדקת כאן, לפי הנושא.
+  Future<Map<String, dynamic>> _setEventOptions(
+    Map<String, dynamic> args,
+  ) async {
+    // נלכד לפני ה-await: בקשה של דף שנטען מחדש בינתיים לא תחול על הדף החדש.
+    final generation = PluginRuntimeDispatcher.instance.eventOptionsGeneration(
+      plugin.pluginId,
+      instanceId,
+    );
+    final topic = args['topic'];
+    final raw = args['rawDivineNames'];
+    if (topic is! String || raw is! bool) {
+      throw Exception(
+        'error.invalid_params: topic (string) and rawDivineNames (boolean) '
+        'are required',
+      );
+    }
+    final permission = 'events.subscribe:$topic';
+    if (!pluginValidPermissions.contains(permission)) {
+      throw Exception(
+        'error.invalid_params: $topic is not an event topic a plugin '
+        'subscribes to; context menu items take rawDivineNames themselves',
+      );
+    }
+    if (!pluginBaselinePermissions.contains(permission) &&
+        await _pluginRepo.getPermission(plugin.pluginId, permission) != true) {
+      throw Exception('error.forbidden: $permission is required');
+    }
+    if (generation == null ||
+        !PluginRuntimeDispatcher.instance.setEventRawDivineNames(
+          plugin.pluginId,
+          instanceId,
+          topic,
+          raw: raw,
+          generation: generation,
+        )) {
+      throw Exception('error.unavailable: plugin instance is not running');
+    }
+    return {'topic': topic, 'rawDivineNames': raw};
+  }
+
+  /// אפשרויות האירועים שה-boot החזיר. המארח מחכה להן לפני מסירת אירועים
+  /// שהמתינו לדף, כדי שגם האירוע שהעיר את התוסף יכבד אותן.
+  Future<void> applyBootEventOptions(Object? bootResult) async {
+    if (bootResult is! List) return;
+    for (final options in bootResult.take(64)) {
+      if (options is! Map) continue;
+      try {
+        await _setEventOptions(Map<String, dynamic>.from(options));
+      } catch (e) {
+        debugPrint('Plugin ${plugin.pluginId}: boot event options: $e');
+      }
+    }
+  }
+
   Future<dynamic> _handlePlugin(
     String action,
     Map<String, dynamic> args,

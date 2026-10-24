@@ -97,6 +97,7 @@ void _registerTalmudSynopsis(String libraryPath) {
       label: 'עדי נוסח בבלי',
       databasePath: dbPath,
       readOnly: true,
+      filtersDivineNames: true,
       policy: PluginDatabasePolicy(
         tables: {
           'tractates',

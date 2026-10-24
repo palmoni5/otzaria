@@ -48,6 +48,11 @@ const Map<String, PluginApiMethod> pluginApiMethods = {
     '0.9.96',
     hasPermissionHint: true,
   ),
+  'app.getDivineNamesDisplay': PluginApiMethod(
+    'app.info.read',
+    '0.9.98',
+    hasPermissionHint: true,
+  ),
   'fonts.resolveFamilies': PluginApiMethod(
     'app.info.read',
     '0.9.97',
@@ -671,6 +676,8 @@ const Map<String, PluginApiMethod> pluginApiMethods = {
     documented: false,
   ),
   'plugin.backgroundDone': PluginApiMethod(null, '0.9.97'),
+  // ההרשאה תלויה בנושא (events.subscribe:<topic>) ונבדקת באדפטר.
+  'events.setOptions': PluginApiMethod(null, '0.9.98'),
   'plugin.setRestoreState': PluginApiMethod(null, '0.9.99'),
 };
 

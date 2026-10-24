@@ -5,7 +5,10 @@ import 'package:otzaria/models/books.dart';
 import 'package:otzaria/models/links.dart';
 import 'package:otzaria/plugins/models/plugin_book_identity.dart';
 import 'package:otzaria/plugins/models/plugin_context_menu_item.dart';
+import 'package:otzaria/plugins/services/plugin_divine_names_filter.dart';
 import 'package:otzaria/plugins/utils/plugin_context_menu_entries.dart';
+import 'package:otzaria/text_book/bloc/text_book_state.dart';
+import 'package:otzaria/text_display/text_display_exports.dart';
 import 'package:otzaria/utils/text/text_manipulation.dart' as utils;
 import 'package:otzaria/widgets/misc/app_popup_menu.dart';
 
@@ -49,14 +52,24 @@ String limitCommentarySelection(CommentaryCopyGuard guard, String text) {
 }
 
 /// What plugins receive for a right click on a commentary: the commentary is
-/// the current book, and `mainBook` is the book being read.
+/// the current book, and `mainBook` is the book being read. Holy names in
+/// the selected text follow the commentary display of [readerState].
 Map<String, dynamic> buildCommentaryPluginPayload({
   required CommentaryMenuTarget target,
   required CommentaryMainBook mainBook,
   String selectedText = '',
+  TextBookLoaded? readerState,
 }) {
   final book = target.book;
-  return {
+  PluginDivineNamesDisplay names() => readerState == null
+      ? PluginDivineNamesFilter.generalNames(target: TextTarget.commentary)
+      : PluginDivineNamesDisplay.of(
+          PluginDivineNamesFilter.readerProfile(
+            readerState,
+            target: TextTarget.commentary,
+          ),
+        );
+  return PluginDivineNamesPayload.text(names).attachTo({
     ...pluginMenuPayload(
       identity: {
         ...PluginBookIdentity.toJson(book),
@@ -75,7 +88,7 @@ Map<String, dynamic> buildCommentaryPluginPayload({
       'sectionIndex': ?mainBook.sectionIndex,
       'pageNumber': ?mainBook.pageNumber,
     },
-  };
+  });
 }
 
 /// Plugin entries for a right click on a commentary. The copy limit resolves
@@ -86,6 +99,7 @@ List<AppContextMenuEntry> buildCommentaryPluginMenuEntries({
   required String? selectedText,
   required Future<CommentaryCopyGuard> Function() copyGuard,
   required BuildContext menuContext,
+  TextBookLoaded? readerState,
   List<(String, PluginContextMenuItem)>? records,
   PluginSelectionActionDispatcher? selectionActionDispatcher,
 }) {
@@ -96,6 +110,7 @@ List<AppContextMenuEntry> buildCommentaryPluginMenuEntries({
       target: target,
       mainBook: mainBook,
       selectedText: text,
+      readerState: readerState,
     ),
     menuContext: menuContext,
     resolveSelectedText: text.isEmpty

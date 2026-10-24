@@ -273,6 +273,7 @@ export interface SearchResult {
   /** `'text'` for a text book, `'pdf'` for a PDF book. */
   type: 'text' | 'pdf';
   book: string;
+  /** Snippet; שם הוי"ה per the user's setting (from 0.9.98) — see `RawDivineNamesOption`. */
   text: string;
   /** ראה `SearchTextStatus`. */
   textStatus?: SearchTextStatus;
@@ -301,6 +302,92 @@ export interface BookIdentity {
   type?: BookType | null;
   source?: 'library' | 'user' | 'external' | 'attached' | null;
   external?: { provider: 'hebrewbooks' | 'otzar'; id: number | string };
+}
+
+/**
+ * Opt-out of the user's divine-names display setting (from 0.9.98).
+ *
+ * By default every API that returns book text applies the setting chosen by
+ * the user (שם הוי"ה as יקוק / ה' / יי / ידוד, and the other names where the
+ * library marks them). Accepted by `library.getBookContent`,
+ * `library.getBookToc`, `library.getBookAltToc`,
+ * `library.listBookAltStructures`, `library.getLinks` (anchor labels),
+ * `library.getLinkContent`, `library.getBookDetails` (descriptions),
+ * `search.fullText`, `search.query`, `reader.getSelection`,
+ * `reader.findTextOccurrences`, `reader.getSectionTextMap`,
+ * `tools.dictionary` (meanings) and `tools.biographies` (summaries); and, as
+ * a field of each `DatabaseQuerySpec`, by `database.query` on library-text
+ * sources (`talmud_synopsis`). A non-boolean value is `error.invalid_params`.
+ *
+ * Text taken from the screen (commentary/PDF selections, reader selections
+ * that cannot be anchored) can only come back as shown, possibly filtered.
+ *
+ * Plain text fields never contain the U+2060 word joiner of the substitute
+ * forms; offset-bearing structures (rendered layer maps, `renderedRange`)
+ * keep it, because their offsets count it.
+ *
+ * ⚠️ Raw text that reaches the user (shown, printed, saved or sent) bypasses
+ * the user's choice — filter it yourself with `app.getDivineNamesDisplay`.
+ * See API_REFERENCE.md § שמות הקודש בטקסט שמגיע לתוסף.
+ */
+export interface RawDivineNamesOption {
+  /** `true`: divine names as stored. Default `false` (filtered). ⚠️ See the
+   * warning on `RawDivineNamesOption`. */
+  rawDivineNames?: boolean;
+}
+
+/** `holyName` of `app.getDivineNamesDisplay`: how שם הוי"ה is written. */
+export type HolyNameDisplay =
+  | 'asIs'
+  | 'kufKuf'
+  | 'hehApostrophe'
+  | 'doubleYod'
+  | 'daletDalet';
+
+/** Arguments to `app.getDivineNamesDisplay` (from 0.9.98). */
+export interface DivineNamesDisplayArgs extends BookIdentity {
+  /** `'body'` (default): the book's text; `'commentary'`: commentaries and
+   * link content. */
+  target?: 'body' | 'commentary';
+}
+
+/**
+ * How divine names reach the plugin in book text, resolved at the moment of
+ * the call as the reader would show that book (from 0.9.98). Without a book:
+ * the general setting only. The setting can change at any time.
+ */
+export interface DivineNamesDisplay {
+  holyName: HolyNameDisplay;
+  /** `'substitute'` applies only where the library marks the name; derived
+   * text (search snippets, TOC headings) keeps the other names as written. */
+  otherNames: 'asIs' | 'substitute';
+  /** `true` when any name is replaced. */
+  filtered: boolean;
+  /** שם הוי"ה as the plugin receives it: `'יהוה'`, `'יקוק'`, `"ה'"`, `'יי'` or `'ידוד'`. */
+  holyNameSample: string;
+}
+
+/** Arguments to `library.getBookContent`. */
+export interface GetBookContentArgs extends BookIdentity, RawDivineNamesOption {
+  /** UTF-16 offset in the returned (filtered, unless `rawDivineNames`) text. Default 0. */
+  offset?: number;
+  /** Default 1000, max 5000. */
+  limit?: number;
+  /** Jump to the first occurrence of this string; `offset` then counts from
+   * it. A string as stored, or a `getBookToc` heading, is located in the
+   * stored text and mapped to the same place in the returned text. */
+  section?: string;
+  /** Embedded text reader only: apply the bound tab's display profile. */
+  textReaderDisplay?: boolean;
+}
+
+/** Arguments to `events.setOptions` (from 0.9.98). */
+export interface EventOptionsArgs {
+  /** An event topic subscribed with `events.subscribe:<topic>`. */
+  topic: string;
+  /** `true`: book text in this topic arrives with divine names as stored.
+   * ⚠️ See the warning on `RawDivineNamesOption`. */
+  rawDivineNames: boolean;
 }
 
 /** Initial print range; the user can change the range and commentators in the dialog. */
@@ -381,7 +468,9 @@ export interface SearchQueryParams {
 export interface SearchQueryHit extends BookIdentity {
   book: string;
   categoryPath?: string | null;
+  /** Stored form; a lookup key, never filtered. */
   reference: string;
+  /** Snippet; שם הוי"ה per the user's setting (from 0.9.98) — see `RawDivineNamesOption`. */
   text: string;
   /** ראה `SearchTextStatus`. */
   textStatus?: SearchTextStatus;
@@ -496,6 +585,8 @@ export interface OpenSearchTabArgs {
 }
 
 export interface TocEntry {
+  /** Heading; שם הוי"ה per the user's setting (from 0.9.98). Navigate by
+   * `index` — a filtered heading may not resolve as a ref. */
   text: string;
   index: number;
   level: number;
@@ -509,6 +600,7 @@ export interface TocEntry {
 export interface AltStructure {
   key: string;
   title: string | null;
+  /** שם הוי"ה per the user's setting (from 0.9.98). */
   heTitle: string | null;
 }
 
@@ -536,11 +628,13 @@ export type GetCommentatorsResult =
 /**
  * עוגן-מילה של קישור בשורת המקור, באופסטים בתווים גלויים של הטקסט ש-`getBookContent`
  * מחזיר. גוף הערה שבטבלה נפרדת אינו בטקסט הזה: עוגן שכולו בגוף הערה אינו מוחזר,
- * וטווח שחוצה הערה מוחזר בלי החלק שבה.
+ * וטווח שחוצה הערה מוחזר בלי החלק שבה. האופסטים נספרים בטקסט השמור
+ * (`getBookContent` עם `rawDivineNames: true`), לא בטקסט המסונן.
  */
 export interface LinkAnchor {
   start: number;
   end: number | null;
+  /** שם הוי"ה per the user's setting (from 0.9.98). */
   label: string | null;
 }
 
@@ -612,7 +706,10 @@ export interface GetLinkTargetsSummaryResult {
   maxSourceLine: number;
 }
 
-export type LinkContentItem = { content: string } | { error: 'not_found' };
+/** `content`: divine names per the user's commentary setting (from 0.9.98). */
+export type LinkContentItem =
+  | { content: string }
+  | { error: 'not_found' | 'forbidden' };
 
 export interface GetLinkContentResult {
   /** באותו סדר של פריטי הקלט. */
@@ -1049,9 +1146,16 @@ export interface ReaderRefState {
   currentRef: string | null;
 }
 
+/**
+ * A reader selection. From 0.9.98 `text`, `renderedSelectedText` and
+ * `normalizedSelectedText` follow the user's divine-names setting (see
+ * `RawDivineNamesOption`); the `source*` fields stay as stored.
+ */
 export interface ReaderSelection {
-  /** Legacy fields, retained for backward compatibility. */
+  /** Legacy fields, retained for backward compatibility. Without
+   * `sourceRange` (unanchored), `text` is as shown on screen. */
   text: string;
+  /** Offsets in the on-screen text. */
   start: number | null;
   end: number | null;
   currentRef: string | null;
@@ -1069,7 +1173,10 @@ export interface ReaderSelection {
   tabId?: string;
   sectionIndex?: number;
   sectionId?: string;
+  /** Rendered layer, divine names per the request; without U+2060 joiners
+   * (`renderedRange.exactText` keeps them). */
   renderedSelectedText?: string;
+  /** Stored text — divine names never substituted. */
   sourceSelectedText?: string;
   normalizedSelectedText?: string;
   sourceRange?: TextRangeAnchor;
@@ -1188,7 +1295,7 @@ export interface NormalizeOptions {
   };
 }
 
-export interface FindTextOccurrencesArgs {
+export interface FindTextOccurrencesArgs extends RawDivineNamesOption {
   bookId: string;
   sectionIndex: number;
   query: string;
@@ -1240,7 +1347,7 @@ export interface TextSourceMap {
   mappings: TextSourceMapSegment[];
 }
 
-export interface GetSectionTextMapArgs {
+export interface GetSectionTextMapArgs extends RawDivineNamesOption {
   bookId: string;
   sectionIndex: number;
   layer?: 'source' | 'rendered' | 'both';
@@ -1440,6 +1547,12 @@ export interface ContextMenuItem {
    * plugins. Set `false` on a plugin's first top-level item to opt out.
    * Top-level items only. Available from 0.9.99. */
   separatorBefore?: boolean;
+  /** Deliver the clicked selection (`selectedText`, `selection.text`,
+   * `renderedSelectedText`, `normalizedSelectedText`, `sections`) with divine
+   * names as stored, ignoring the user's display setting. Applies to every
+   * click path of the item; inherited by children. Available from 0.9.98.
+   * ⚠️ See the warning on `RawDivineNamesOption`. */
+  rawDivineNames?: boolean;
 }
 
 /**
@@ -1460,7 +1573,8 @@ export interface UpdateContextMenuItemArgs {
 export interface ContextMenuItemClickedEvent {
   itemId: string;
   selection: ReaderSelection;
-  /** Legacy fields retained for existing plugins. */
+  /** Legacy fields retained for existing plugins. `selectedText` follows the
+   * user's divine-names setting unless the item set `rawDivineNames`. */
   selectedText: string;
   currentRef: string | null;
   currentBook: string;
@@ -1613,7 +1727,9 @@ export interface OtzariaEventMap {
   'settings.changed': { key: string; newValue: unknown };
   /** Permissions snapshot changed (list of all currently granted permissions). */
   'plugin.permissions_changed': { permissions: string[] };
-  /** User selected text in the reader. Requires permission: events.subscribe:reader.selection_changed */
+  /** User selected text in the reader. Requires permission: events.subscribe:reader.selection_changed.
+   * `text` follows the user's divine-names setting; opt out per topic with
+   * `Otzaria.on(topic, cb, { rawDivineNames: true })` (from 0.9.98). */
   'reader.selection_changed': {
     text: string;
     currentRef: string;
@@ -1813,6 +1929,10 @@ export interface DatabaseQuerySpec {
   limit?: number;
   offset?: number;
   rowFormat?: 'array' | 'object';
+  /** From 0.9.98, library-text sources (`talmud_synopsis`): `true` returns
+   * string values as stored instead of שם הוי"ה per the user's setting.
+   * ⚠️ See the warning on `RawDivineNamesOption`. */
+  rawDivineNames?: boolean;
 }
 
 export interface DatabaseQueryMeta {
@@ -2231,6 +2351,14 @@ export interface SubmitBookCorrectionResult {
   correctionSupported: boolean | null;
 }
 
+/** Delivery options of an event topic for this plugin instance, until the
+ * page reloads (`events.setOptions`, from 0.9.98). */
+export interface OtzariaEventOptions {
+  /** Book text in the event arrives with divine names as stored.
+   * ⚠️ See the warning on `RawDivineNamesOption`. */
+  rawDivineNames?: boolean;
+}
+
 export type OtzariaMethod =
   | 'app.getInfo'
   | 'app.getTheme'
@@ -2238,6 +2366,7 @@ export type OtzariaMethod =
   | 'app.getUserEmail'
   | 'app.getGrantedPermissions'
   | 'app.getConnectivity'
+  | 'app.getDivineNamesDisplay'
   | 'app.openUrl'
   | 'fonts.resolveFamilies'
   | 'fonts.listInstalled'
@@ -2397,6 +2526,7 @@ export type OtzariaMethod =
   /** @internal חנות התוספים בלבד — לא מתועד ב-API_REFERENCE ואינו חוזה יציב. */
   | 'plugin.requestInstall'
   | 'plugin.backgroundDone'
+  | 'events.setOptions'
   | 'plugin.setRestoreState'
   | 'plugin.listInstalled'
   | 'reader.addContextMenuItem'
@@ -2420,8 +2550,46 @@ export interface OtzariaGlobal {
   /** חיפוש מלא שמזרים chunks ככל שהם מתקבלים מהמנוע. */
   call(
     method: 'search.query',
-    payload: SearchQueryParams
+    payload: SearchQueryParams & RawDivineNamesOption
   ): AsyncIterable<SearchQueryChunk>;
+
+  /** How divine names reach the plugin in book text (from 0.9.98). */
+  call(
+    method: 'app.getDivineNamesDisplay',
+    payload?: DivineNamesDisplayArgs
+  ): Promise<OtzariaResponse<DivineNamesDisplay>>;
+
+  /** Delivery options of an event topic for this instance (from 0.9.98). */
+  call(
+    method: 'events.setOptions',
+    payload: EventOptionsArgs
+  ): Promise<OtzariaResponse<{ topic: string; rawDivineNames: boolean }>>;
+
+  /** Up to 5000 UTF-16 units of the book text, divine names filtered by default. */
+  call(
+    method: 'library.getBookContent',
+    payload: GetBookContentArgs
+  ): Promise<OtzariaResponse<string>>;
+
+  call(
+    method: 'library.getBookToc',
+    payload: BookIdentity & RawDivineNamesOption
+  ): Promise<OtzariaResponse<TocEntry[]>>;
+
+  call(
+    method: 'reader.getSelection',
+    payload?: RawDivineNamesOption
+  ): Promise<OtzariaResponse<ReaderSelection | null>>;
+
+  call(
+    method: 'reader.findTextOccurrences',
+    payload: FindTextOccurrencesArgs
+  ): Promise<OtzariaResponse<FindTextOccurrencesResult>>;
+
+  call(
+    method: 'reader.getSectionTextMap',
+    payload: GetSectionTextMapArgs
+  ): Promise<OtzariaResponse<SectionTextMapResult>>;
 
   /** בקשת HTTP שמזרימה כותרות ומקטעי גוף עם הגעתם. */
   call(
@@ -2560,12 +2728,18 @@ export interface OtzariaGlobal {
     payload?: Record<string, unknown>
   ): Promise<OtzariaResponse<T>>;
 
-  /** Subscribe to a host-dispatched event. */
+  /** Subscribe to a host-dispatched event. With `options`, also calls
+   * `events.setOptions` for the topic and returns its response. */
   on<K extends keyof OtzariaEventMap>(
     event: K,
-    callback: (detail: OtzariaEventMap[K]) => void
-  ): void;
-  on(event: string, callback: (detail: unknown) => void): void;
+    callback: (detail: OtzariaEventMap[K]) => void,
+    options?: OtzariaEventOptions
+  ): void | Promise<OtzariaResponse<unknown>>;
+  on(
+    event: string,
+    callback: (detail: unknown) => void,
+    options?: OtzariaEventOptions
+  ): void | Promise<OtzariaResponse<unknown>>;
 
   /** Unsubscribe. Must use the exact same function reference passed to `on()`. */
   off<K extends keyof OtzariaEventMap>(

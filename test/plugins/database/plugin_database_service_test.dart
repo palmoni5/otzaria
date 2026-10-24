@@ -8,6 +8,7 @@ import 'package:otzaria/plugins/database/plugin_database_service.dart';
 import 'package:otzaria/plugins/database/plugin_database_source.dart';
 import 'package:otzaria/plugins/models/installed_plugin.dart';
 import 'package:otzaria/plugins/models/plugin_manifest.dart';
+import 'package:otzaria/utils/text/text_manipulation.dart' show HolyNameStyle;
 import 'package:path/path.dart' as path;
 
 void main() {
@@ -26,6 +27,44 @@ void main() {
 
   tearDown(() async {
     await tempDirectory.delete(recursive: true);
+  });
+
+  test('מקור של טקסט ספרייה: שם הוי"ה לפי ההגדרה, או גולמי לפי בקשה', () async {
+    _createDatabase(databasePath, 'שם יהוה', id: 2);
+    _registerSource(
+      sourceId: sourceId,
+      databasePath: databasePath,
+      filtersDivineNames: true,
+    );
+    final service = PluginDatabaseService(
+      holyNameStyle: () => HolyNameStyle.kufKuf,
+    );
+    final plugin = _pluginWithSource(sourceId);
+    final query = {
+      ..._titleQuery(sourceId),
+      'select': [
+        {'expr': 'books.id', 'as': 'id'},
+        {'expr': 'books.title', 'as': 'title'},
+      ],
+      'where': {'left': 'books.id', 'op': '=', 'value': 2},
+    };
+
+    final filtered =
+        ((await service.query(plugin, query))['rows'] as List).single as Map;
+    expect(filtered, {'id': 2, 'title': 'שם יקוק'});
+    final raw = await service.batchQuery(plugin, [
+      {...query, 'rawDivineNames': true},
+    ]);
+    expect(((raw.single['rows'] as List).single as Map)['title'], 'שם יהוה');
+    expect(
+      () => service.query(plugin, {...query, 'rawDivineNames': 'yes'}),
+      _throwsDatabaseError('database.invalid_spec'),
+    );
+
+    _registerSource(sourceId: sourceId, databasePath: databasePath);
+    final plain =
+        ((await service.query(plugin, query))['rows'] as List).single as Map;
+    expect(plain['title'], 'שם יהוה');
   });
 
   test('מקור שאינו מסומן לקריאה בלבד נדחה', () {
@@ -226,8 +265,17 @@ void main() {
   });
 }
 
-void _createDatabase(String databasePath, String title) {
+void _createDatabase(String databasePath, String title, {int? id}) {
   final database = sqlite3.sqlite3.open(databasePath);
+  if (id != null) {
+    database
+      ..execute(
+        'INSERT INTO books (id, title, author_id) VALUES (?, ?, ?)',
+        [id, title, 1],
+      )
+      ..close();
+    return;
+  }
   database
     ..execute(
       'CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT NOT NULL)',
@@ -249,6 +297,7 @@ void _registerSource({
   required String databasePath,
   bool readOnly = true,
   PluginDatabasePolicy? policy,
+  bool filtersDivineNames = false,
 }) {
   PluginDatabaseRegistry.instance.register(
     PluginDatabaseSource(
@@ -257,6 +306,7 @@ void _registerSource({
       databasePath: databasePath,
       readOnly: readOnly,
       policy: policy ?? _policy(),
+      filtersDivineNames: filtersDivineNames,
     ),
   );
 }

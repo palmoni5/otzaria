@@ -6,6 +6,9 @@ import 'dart:typed_data';
 
 import 'package:otzaria/data/sqlite/sqlite3_api.dart' as sqlite3_pkg;
 import 'package:otzaria/plugins/models/installed_plugin.dart';
+import 'package:otzaria/plugins/services/plugin_divine_names_filter.dart';
+import 'package:otzaria/utils/text/text_manipulation.dart'
+    show HolyNameStyle, replaceHolyNames;
 import 'plugin_database_source.dart';
 import 'plugin_database_registry.dart';
 
@@ -30,8 +33,17 @@ class PluginDatabaseException implements Exception {
 class PluginDatabaseService {
   final PluginDatabaseRegistry _registry;
 
-  PluginDatabaseService({PluginDatabaseRegistry? registry})
-    : _registry = registry ?? PluginDatabaseRegistry.instance;
+  /// סגנון שם הוי"ה במקורות [PluginDatabaseSource.filtersDivineNames], לפי
+  /// ההגדרה הכללית ברגע השאילתה; null — ככתבו.
+  final HolyNameStyle? Function() _holyNameStyle;
+
+  PluginDatabaseService({
+    PluginDatabaseRegistry? registry,
+    HolyNameStyle? Function()? holyNameStyle,
+  }) : _registry = registry ?? PluginDatabaseRegistry.instance,
+       _holyNameStyle =
+           holyNameStyle ??
+           (() => PluginDivineNamesFilter.generalNames().holyNameStyle);
 
   // ----------------------------------------------------------------
   // Public API
@@ -98,6 +110,13 @@ class PluginDatabaseService {
 
     // Validate (throws on any violation)
     _validateSpec(spec, policy);
+    final rawDivineNames = spec['rawDivineNames'];
+    if (rawDivineNames != null && rawDivineNames is! bool) {
+      throw const PluginDatabaseException(
+        'database.invalid_spec',
+        'rawDivineNames must be a boolean',
+      );
+    }
 
     // Apply effective limits
     final rawLimit = spec['limit'] as int?;
@@ -118,6 +137,9 @@ class PluginDatabaseService {
         effectiveLimit: effectiveLimit,
         offset: offset,
         maxResultBytes: policy.maxResultBytes,
+        holyNameStyle: source.filtersDivineNames && rawDivineNames != true
+            ? _holyNameStyle()
+            : null,
       ),
       timeout: policy.maxQueryDuration,
     );
@@ -201,6 +223,7 @@ class PluginDatabaseService {
       'limit',
       'offset',
       'rowFormat',
+      'rawDivineNames',
     }, 'query');
     final aliasMap = <String, String>{};
 
@@ -833,6 +856,9 @@ class _DatabaseQueryRequest {
   final int offset;
   final int maxResultBytes;
 
+  /// שם הוי"ה במחרוזות התוצאה מוחלף לסגנון הזה.
+  final HolyNameStyle? holyNameStyle;
+
   const _DatabaseQueryRequest({
     required this.databasePath,
     required this.sourceId,
@@ -842,6 +868,7 @@ class _DatabaseQueryRequest {
     required this.effectiveLimit,
     required this.offset,
     required this.maxResultBytes,
+    this.holyNameStyle,
   });
 }
 
@@ -993,6 +1020,8 @@ Map<String, dynamic> _executeDatabaseQuery(_DatabaseQueryRequest request) {
         : resultSet.toList();
     var resultBytes = 0;
 
+    // המכסה נמדדת על הערך השמור; ההחלפה אינה מאריכה את שם הוי"ה.
+    final holyNameStyle = request.holyNameStyle;
     Object? checkedValue(Object? value) {
       resultBytes += _estimateValueBytes(value);
       if (resultBytes > request.maxResultBytes) {
@@ -1000,6 +1029,9 @@ Map<String, dynamic> _executeDatabaseQuery(_DatabaseQueryRequest request) {
           'database.query_too_large',
           'Query result exceeds maxResultBytes (${request.maxResultBytes})',
         );
+      }
+      if (holyNameStyle != null && value is String) {
+        return replaceHolyNames(value, style: holyNameStyle);
       }
       return value;
     }

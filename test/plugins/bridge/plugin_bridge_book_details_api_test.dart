@@ -1,4 +1,6 @@
 import 'package:otzaria/settings/engine/app_settings_store.dart';
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:otzaria/data/repository/data_repository.dart';
@@ -13,6 +15,8 @@ import 'package:otzaria/plugins/models/installed_plugin.dart';
 import 'package:otzaria/plugins/models/plugin_manifest.dart';
 import 'package:otzaria/plugins/repository/plugin_registry_repository.dart';
 import 'package:otzaria/search/search_repository.dart';
+import 'package:otzaria/settings/engine/settings_repository.dart';
+import 'package:otzaria/text_display/text_display_exports.dart';
 import 'package:otzaria/tabs/bloc/tabs_bloc.dart';
 import 'package:otzaria/tabs/bloc/tabs_state.dart';
 import 'package:otzaria/tools/calendar/bloc/calendar_cubit.dart';
@@ -161,6 +165,51 @@ void main() {
       expect(result['shortDescription'], 'ספר הלכה');
       expect(result['fullDescription'], 'תיאור מורחב');
       expect(result['libraryPath'], 'הלכה/שולחן ערוך אורח חיים');
+    });
+
+    test('התיאורים עם שם הוי"ה לפי ההגדרה, או כפי שנשמרו', () async {
+      await Settings.setValue<String>(
+        SettingsRepository.keyTextDisplayPolicy,
+        jsonEncode(
+          TextDisplayPolicy(
+            general: TextDisplayLayer({
+              TextDisplaySlot.root: const TextDisplayPatch(
+                holyName: HolyNameDisplay.hehApostrophe,
+              ),
+            }),
+            tanach: TextDisplayLayer.empty,
+          ).toJson(),
+        ),
+      );
+      addTearDown(
+        () => Settings.setValue<String>(
+          SettingsRepository.keyTextDisplayPolicy,
+          '',
+        ),
+      );
+      installLibrary([
+        TextBook(
+          title: 'ספר השם',
+          heShortDesc: 'על שם יהוה',
+          heDesc: 'יהוה אחד',
+        ),
+      ]);
+
+      final result =
+          await adapter.execute('library', 'getBookDetails', {
+                'bookId': 'ספר השם',
+              })
+              as Map<String, dynamic>;
+      expect(result['shortDescription'], "על שם ה'");
+      expect(result['fullDescription'], "ה' אחד");
+
+      final raw =
+          await adapter.execute('library', 'getBookDetails', {
+                'bookId': 'ספר השם',
+                'rawDivineNames': true,
+              })
+              as Map<String, dynamic>;
+      expect(raw['shortDescription'], 'על שם יהוה');
     });
 
     test('נתיב מוחלט של ספר אישי אינו נחשף', () async {

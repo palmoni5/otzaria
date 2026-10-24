@@ -746,6 +746,10 @@ class _PluginTabPageState extends State<PluginTabPage> with PluginWebViewHost {
           pluginId: widget.plugin.pluginId,
           instanceId: widget.instanceId,
         ));
+        PluginRuntimeDispatcher.instance.resetEventOptions(
+          widget.plugin.pluginId,
+          instanceId: widget.instanceId,
+        );
         try {
           // לוכד theme לפני ה-await (context חייב להישמר synchronously)
           final theme = buildThemePayload(context);
@@ -776,7 +780,7 @@ class _PluginTabPageState extends State<PluginTabPage> with PluginWebViewHost {
           if (stale()) return;
           // Real SDK — injected after load, calls _boot() which re-plays queued
           // Otzaria.on() calls and then fires plugin.boot
-          await controller.evaluateJavascript(
+          final booted = await controller.evaluateJavascript(
             source: pluginBootScript(
               runMode: 'foreground',
               packageInfo: packageInfo,
@@ -796,6 +800,8 @@ class _PluginTabPageState extends State<PluginTabPage> with PluginWebViewHost {
                   : pluginFontFaceJson(fallbackCss),
             ),
           );
+          if (stale()) return;
+          await adapter.applyBootEventOptions(booted);
           if (stale()) return;
           await _pushHostShortcuts(controller);
           _bootedOnce = true;

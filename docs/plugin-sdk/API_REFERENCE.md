@@ -82,6 +82,121 @@
 
 ---
 
+## שמות הקודש בטקסט שמגיע לתוסף
+
+**מגרסה:** 0.9.98
+
+המשתמש בוחר בהגדרות התצוגה איך ייכתבו שמות הקודש: שם הוי"ה — ככתבו, `יקוק`,
+`ה'`, `יי` או `ידוד`; ושאר השמות (אלהים, אדני, שדי, צבאות ועוד) — ככתבם או
+בצורה חלופית (`אלקים`, `אד-ני`, `ש-די`, `צבקות`). **כל API שמוסר לתוסף טקסט
+מתוך ספר מחיל את הבחירה הזו כברירת מחדל**, כפי שהקורא היה מציג את אותו ספר:
+
+- **ההגדרה נקבעת ברגע הקריאה.** שינוי שהמשתמש עשה לפני שנייה חל כבר בקריאה
+  הבאה, בלי טעינה מחדש של התוסף. טקסט שהתוסף שמר קודם לכן אינו מתעדכן מעצמו —
+  ראו [`app.getDivineNamesDisplay`](#appgetdivinenamesdisplay).
+- **כמו בקורא:** ספר שפתוח בכרטיסייה — ההגדרות של הכרטיסייה (כולל שינוי זמני
+  מסרגל הכלים) מעל הגדרות הספר וההגדרה הכללית. ספר שאינו פתוח — הגדרות הספר
+  (כשהגדרות לפי ספר מופעלות), שכבת התנ"ך וההגדרה הכללית. מפרשים ותוכן קישורים —
+  לפי הגדרות המפרשים.
+
+**מה מוחלף באיזה טקסט:**
+
+| הטקסט | מה מוחלף | איפה |
+|-------|----------|------|
+| שורות ספר שיש להן זהות במסד | שם הוי"ה לפי הסגנון; שאר השמות — רק במופעים שמסד הספרייה מסמן, ורק אם המשתמש בחר להחליף אותם | `library.getBookContent`, `library.getLinkContent`, הבחירה בטקסט הראשי (`reader.getSelection`, `reader.selection_changed`, אירועי תפריט ההקשר), השכבה המוצגת (`rendered`) של `reader.getSectionTextMap` ו-`reader.findTextOccurrences` |
+| טקסט נגזר בלי זהות שורה | שם הוי"ה בלבד (זיהוי לפי תבנית, כמו בתוצאות החיפוש של אוצריא) | תקצירי `search.fullText` / `search.query`, כותרות `library.getBookToc` / `library.getBookAltToc`, `heTitle` של `library.listBookAltStructures`, `anchor.label` של `library.getLinks`, טקסט שסומן במפרש או ב-PDF ונמסר בתפריט ההקשר |
+| מידע על ספרים וכלים | שם הוי"ה בלבד, לפי ההגדרה לספר (או הכללית) | `shortDescription` / `fullDescription` של `library.getBookDetails`, `meanings` של `tools.dictionary`, `summary` / `biographyShort` של `tools.biographies` |
+| מסד נתונים של טקסט ספרייה | שם הוי"ה בלבד, לפי ההגדרה הכללית, בכל ערך מחרוזת בתוצאה | `database.query`, `database.batchQuery` ו-`database.select` הדקלרטיבי על המקור `talmud_synopsis` |
+
+> **מחבר מילים סמוי (U+2060).** בצורות החלופיות של שאר השמות יש מקף ASCII
+> (`ש-די`), ובתצוגה בא אחריו U+2060 כדי שהשם לא יישבר בין שורות. הכלל:
+>
+> - **כל שדה טקסט רגיל — בלי התו**, ב-`reader.getSelection`, באירועים ובכל
+>   מתודה: תוכן ספר (`library.getBookContent`), `content` של קישורים, תקצירים,
+>   `text`, `selectedText`, `renderedSelectedText`, `sourceSelectedText` ו-`normalizedSelectedText`,
+>   גם בכל איבר של `sections`.
+> - **מבנה שנושא אופסטים של השכבה המוצגת — עם התו**, כי האופסטים נספרים איתו:
+>   `renderedText`, הטוקנים, המילים והתווים של `reader.getSectionTextMap`
+>   בשכבה `rendered`; טווחי `reader.findTextOccurrences` בשכבה הזו; ו-`renderedRange`
+>   של בחירה — `start`/`end` וגם `exactText`, `beforeText` ו-`afterText` שבתוכו.
+>
+> לכן `renderedSelectedText` עשוי להיות קצר מ-`renderedRange.exactText` בתווים
+> האלה. לפני השוואה או הצגה של מבנה עם אופסטים הסירו אותו:
+> `s.replace(/\u2060/g, '')`.
+
+### מה נשאר כפי שנשמר
+
+אלה אינם מסוננים לעולם, כי הם עוגנים או מפתחות שחייבים להתאים לספר השמור:
+
+- **שכבת המקור** — `layer: 'source'` ב-`reader.findTextOccurrences` /
+  `reader.getSectionTextMap`, `sourceText`, `sourceSelectedText` ו-`sourceRange`.
+  זה העוגן היציב ש-`reader.setHighlight` מקבל.
+- **עוגני הדגשות** — מה שמחזיר `reader.getHighlights`.
+- **תיקונים** — סשן התיקונים (`reader.beginCorrectionSession` והפעולות שלו)
+  ו-`feedback.submitBookCorrection` עובדים מול הנוסח השמור, והתיקון חייב
+  להתאים לו.
+- **מפתחות לחיפוש ולניווט** — `ref`, `currentRef`, `reference`,
+  `targetHeRef`, כתובות בהיסטוריה ובסימניות, ושמות ספרים. הם נשארים כפי שנשמרו
+  כדי שאפשר יהיה להחזיר אותם ל-`reader.openBookAtRef` או ל-`library.resolveRef`.
+  כשמציגים אותם למשתמש — סננו בעצמכם (ראו האזהרה להלן).
+- **אופסטים מול הטקסט השמור** — `anchor.start` / `anchor.end` של
+  `library.getLinks` נספרים בטקסט השמור, כלומר מול
+  `library.getBookContent` עם `rawDivineNames: true`.
+- **קבצים בינאריים** — [`library.openBookFile`](#libraryopenbookfile) מוסר את
+  הקובץ עצמו (PDF, DOCX, EPUB וכו'). אוצריא אינה משנה את תוכנו: טקסט שהתוסף
+  מחלץ מהקובץ ומציג למשתמש — **סננו בעצמכם** לפי
+  [`app.getDivineNamesDisplay`](#appgetdivinenamesdisplay).
+
+> 💡 **נווטו לפי `index`, לא לפי טקסט הכותרת.** כותרת מסוננת מתוכן העניינים
+> (למשל `ה'` במקום השם) עשויה שלא להתאים לשום `ref`. העבירו את ה-`index` של
+> הרשומה ל-`reader.openBook` או ל-`reader.scrollToSection`.
+
+### `rawDivineNames` — טקסט כפי שנשמר
+
+`rawDivineNames: true` מחזיר את השמות כפי שנשמרו, בלי בחירת המשתמש. הפרמטר
+חייב להיות בוליאני (ערך אחר: `error.invalid_params`); השמטתו או `false` הם
+ברירת המחדל המסוננת. **קראו קודם את האזהרה להלן.**
+
+| API | מה מגיע גולמי |
+|-----|---------------|
+| `library.getBookContent` | כל התוכן. עם `textReaderDisplay: true` שאר פרופיל התצוגה נשאר, ורק השמות גולמיים |
+| `library.getBookToc`, `library.getBookAltToc` | `text` |
+| `library.listBookAltStructures` | `heTitle` |
+| `library.getLinks` | `anchor.label` (משפיע רק עם `includeAnchors: true`, אך נבדק תמיד) |
+| `library.getBookDetails` | `shortDescription`, `fullDescription` |
+| `tools.dictionary` | `meanings` |
+| `tools.biographies` | `summary`, `biographyShort` |
+| `database.query`, `database.batchQuery` | ערכי המחרוזת במקור `talmud_synopsis` (הפרמטר הוא שדה של כל שאילתה) |
+| `library.getLinkContent` | `content` |
+| `search.fullText`, `search.query` | `text` של כל תוצאה |
+| `reader.getSelection` | `text`, `renderedSelectedText`, `normalizedSelectedText` ו-`renderedRange` (וכך גם בכל איבר של `sections`) |
+| `reader.findTextOccurrences`, `reader.getSectionTextMap` | השכבה `rendered`: שאר פרופיל התצוגה נשאר, ורק השמות גולמיים |
+
+באירועים ההגדרה היא לפי נושא — [`events.setOptions`](#eventssetoptions). בפריטי
+תפריט ההקשר היא שדה של הפריט — `rawDivineNames` ב-[`reader.addContextMenuItem`](#readeraddcontextmenuitem).
+
+> **מגבלה — טקסט שנלקח מהמסך.** בטקסט שסומן במפרש או ב-PDF (תפריט ההקשר
+> ואירועיו), ובבחירה בטקסט הראשי שאי אפשר לעגן (`reader.getSelection`,
+> `reader.selection_changed`), אין לאוצריא את הנוסח השמור. שם `rawDivineNames: true`
+> מחזיר את הטקסט כפי שהוצג על המסך — והוא עשוי כבר להיות מסונן לפי ההגדרה
+> שהייתה בתצוגה.
+
+> ⚠️ **אל תבקשו טקסט גולמי אלא אם התוסף באמת זקוק למקור כפי שנשמר** — למשל
+> להשוואה מול המקור, לעיבוד פנימי שאינו מוצג, או כדי לסנן בעצמכם לפי
+> [`app.getDivineNamesDisplay`](#appgetdivinenamesdisplay). טקסט גולמי שמוצג
+> למשתמש, מודפס, נשמר בקובץ או נשלח החוצה עוקף את בחירת המשתמש באופן כתיבת
+> שמות הקודש, ועלול להציג לו שם קודש בדיוק באופן שביקש להימנע ממנו. **קיבלתם
+> טקסט גולמי והוא מגיע בסוף לעיני המשתמש? סננו אותו בעצמכם לפי ההגדרה.** אותו
+> כלל חל על המפתחות שנשארים גולמיים תמיד (`ref`, כותרות בהיסטוריה וכו').
+
+**מארחים ישנים.** לפני 0.9.98 לא היה סינון אחיד: רוב ה-APIs מסרו את הטקסט כפי
+שנשמר, ושדות שנלקחו מהמסך (כמו `text` של בחירה) — כפי שהוצגו. הפרמטר
+`rawDivineNames` אינו מוכר שם: רוב המתודות מתעלמות ממנו, אבל `search.query`
+דוחה כל פרמטר לא מוכר ב-`error.invalid_params`. תוסף שתומך בגרסאות קודמות שולח
+אותו רק כשגרסת אוצריא (`payload.app.version` ב-`plugin.boot`) היא 0.9.98 ומעלה.
+
+---
+
 ## שימוש בסיסי
 
 ```javascript
@@ -147,6 +262,7 @@ if (response.success) {
 | `app.getGrantedPermissions` | 0.9.89 |
 | `app.openUrl` | 0.9.95 |
 | `app.getConnectivity` | 0.9.96 |
+| `app.getDivineNamesDisplay` | 0.9.98 |
 | `app.registerShortcut` | 0.9.97 |
 | `app.unregisterShortcut` | 0.9.97 |
 | `app.updateShortcut` | 0.9.97 |
@@ -238,6 +354,7 @@ if (response.success) {
 | `plugin.backgroundDone` | 0.9.97 |
 | `plugin.setRestoreState` | 0.9.99 |
 | `plugin.listInstalled` | 0.9.97 |
+| `events.setOptions` | 0.9.98 |
 | `notes.list` | 0.9.89 |
 | `notes.getBookNotesSummary` | 0.9.89 |
 | `notes.add` | 0.9.89 |
@@ -492,6 +609,49 @@ Otzaria.on('plugin.boot', async (payload) => {
   if (online) document.getElementById('online-section').hidden = false;
 });
 ```
+
+### `app.getDivineNamesDisplay`
+**הרשאה:** `app.info.read` (הרשאת בסיס) · **מגרסה:** 0.9.98
+
+מחזיר איך שמות הקודש יגיעו לתוסף בטקסט של ספר — לפי בחירת המשתמש ברגע הקריאה,
+כפי שהקורא היה מציג את אותו ספר. כל API שמוסר טקסט של ספר מחיל את ההגדרה הזו,
+אלא אם התוסף ביקש `rawDivineNames: true` (ראו
+[שמות הקודש בטקסט שמגיע לתוסף](#שמות-הקודש-בטקסט-שמגיע-לתוסף)).
+
+שני שימושים עיקריים: לדעת מראש מה התוסף יקבל (למשל כדי להשוות מחרוזת חיפוש
+שהמשתמש הקליד מול טקסט מסונן), ותוסף שביקש טקסט גולמי ומציג אותו בסוף למשתמש —
+כדי לסנן אותו בעצמו לפי אותה בחירה.
+
+```javascript
+const { data } = await Otzaria.call('app.getDivineNamesDisplay', { bookUid: 'id:1' });
+// { holyName: 'kufKuf', otherNames: 'asIs', filtered: true, holyNameSample: 'יקוק' }
+```
+
+| פרמטר | משמעות |
+|-------|---------|
+| `id` / `bookUid` / `bookId` | אופציונלי — הספר, כמו ב-`library.getBookContent`. ספר שפתוח בכרטיסייה — לפי הכרטיסייה (כולל שינוי זמני מסרגל הכלים); אחרת — הגדרות הספר, שכבת התנ"ך וההגדרה הכללית. ספר שלא נמצא: `error.not_found` |
+| `target` | `'body'` (ברירת מחדל) — טקסט הספר; `'commentary'` — מפרשים ותוכן קישורים. ערך אחר: `error.invalid_params` |
+
+בלי ספר מוחזרת ההגדרה הכללית בלבד, בלי שכבת התנ"ך ובלי הגדרות של ספר. כשהתוצאה
+נוגעת לספר מסוים — העבירו את זהותו.
+
+| שדה | משמעות |
+|-----|---------|
+| `holyName` | `asIs` (ככתבו), `kufKuf` (`יקוק`), `hehApostrophe` (`ה'`), `doubleYod` (`יי`) או `daletDalet` (`ידוד`) |
+| `otherNames` | `asIs` או `substitute`. גם ב-`substitute` מוחלפים רק מופעים שמסד הספרייה מסמן; בטקסט נגזר (תקצירים, כותרות) הם נשארים ככתבם |
+| `filtered` | `true` כשמוחלף שם כלשהו — `holyName` אינו `asIs` או ש-`otherNames` הוא `substitute` |
+| `holyNameSample` | שם הוי"ה כפי שיגיע לתוסף: `יהוה`, `יקוק`, `ה'`, `יי` או `ידוד` (בלי ניקוד) |
+
+> **סינון עצמי.** את שם הוי"ה אפשר להחליף בעצמכם לפי `holyName`. את שאר השמות
+> אי אפשר לשחזר נאמנה בלי הסימון שבמסד (`אל` שבתוך מילה אינו שם), ולכן תוסף
+> שצריך טקסט מסונן מבקש אותו מה-API ולא מסנן טקסט גולמי בעצמו.
+
+**ההגדרה יכולה להשתנות בכל רגע.** תוסף ששומר טקסט שקיבל (מטמון, תצוגה שכבר
+צוירה) צריך לקרוא שוב לפני שהוא משתמש בו. אין אירוע ייעודי לשינוי הזה. שינוי
+בהגדרה הכללית נמסר ב-`settings.changed` עם `key: 'key-text-display-policy'`
+(הרשאה `events.subscribe:settings.changed`), ובקורא טקסט משובץ שינוי בתצוגת
+הכרטיסייה שולח את פקודת `display` (ראו [DEFAULT_TEXT_READER.md](DEFAULT_TEXT_READER.md)).
+שינוי בהגדרות של ספר בודד אינו מודיע על עצמו.
 
 ### `app.openUrl`
 **הרשאה נדרשת:** `app.open_url`
@@ -764,6 +924,9 @@ const { data } = await Otzaria.call('library.getBookDetails', {
   הקובץ שלו אינו נחשף לתוספים.
 - `protection` (מגרסה 0.9.99) — הגבלת המו"ל של הספר. ראו
   [`library.getBookProtections`](#librarygetbookprotections).
+- `shortDescription` ו-`fullDescription` מגיעים עם שם הוי"ה לפי בחירת המשתמש
+  לספר (מ-0.9.98); `rawDivineNames: true` מחזיר אותם כפי שנשמרו (ראו
+  [שמות הקודש בטקסט שמגיע לתוסף](#שמות-הקודש-בטקסט-שמגיע-לתוסף)).
 
 ### `library.getBookProtections`
 **הרשאה:** `library.books.read` · **מגרסה:** 0.9.99
@@ -913,6 +1076,11 @@ const { data } = await Otzaria.call('library.openBookFile', {
 `error.unsupported` (ספר בלי קובץ מקומי — טקסט מהמסד או ספר חיצוני),
 `error.permission_denied`, `error.invalid_params` (אין זהות, או `access` לא חוקי).
 
+**שמות הקודש.** הקובץ נמסר כפי שהוא, בלי הגדרת התצוגה של שמות הקודש. טקסט
+שהתוסף מחלץ ממנו ומציג, מדפיס או שולח — עליו לסנן בעצמו לפי
+[`app.getDivineNamesDisplay`](#appgetdivinenamesdisplay) (ראו
+[שמות הקודש בטקסט שמגיע לתוסף](#שמות-הקודש-בטקסט-שמגיע-לתוסף)).
+
 ### `library.getBookContent`
 **הרשאה:** `library.content.read`
 
@@ -928,6 +1096,20 @@ const { data } = await Otzaria.call('library.getBookContent', {
 // "בראשית ברא אלהים..."
 ```
 
+**שמות הקודש (מ-0.9.98):** התוכן מגיע עם שמות הקודש לפי בחירת המשתמש לספר הזה,
+שם הוי"ה ושאר השמות שהמסד מסמן (ראו
+[שמות הקודש בטקסט שמגיע לתוסף](#שמות-הקודש-בטקסט-שמגיע-לתוסף)).
+`offset` ו-`limit` נספרים **בטקסט המסונן**, והסגנון `ה'` משנה את אורכו — אל
+תערבבו אופסטים מקריאה מסוננת עם קריאה גולמית. `section` נמצא קודם בטקסט
+המסונן; מחרוזת שאינה שם — למשל מהטקסט השמור, או כותרת מ-`library.getBookToc`
+(שבה רק שם הוי"ה הוחלף) — מאותרת בטקסט השמור, והקריאה מתחילה מהמקום המקביל
+בטקסט המסונן. מחרוזת שלא נמצאה כלל — הקריאה מתחילה מתחילת הספר.
+
+- `rawDivineNames: true` — השמות כפי שנשמרו. ⚠️ ראו
+  [האזהרה](#rawdivinenames--טקסט-כפי-שנשמר) לפני שימוש.
+- `textReaderDisplay: true` (קורא משובץ בלבד) — פרופיל התצוגה של הכרטיסייה,
+  כולל החלפת שאר השמות; ראו [DEFAULT_TEXT_READER.md](DEFAULT_TEXT_READER.md).
+
 ### `library.getBookToc`
 **הרשאה:** `library.content.read`
 
@@ -939,6 +1121,10 @@ const { data } = await Otzaria.call('library.getBookToc', {
 });
 // [{ text: "פרק א", index: 0, level: 1 }, ...]
 ```
+
+`text` מגיע עם שם הוי"ה לפי בחירת המשתמש (מ-0.9.98); `rawDivineNames: true`
+מחזיר אותו כפי שנשמר (⚠️ [האזהרה](#rawdivinenames--טקסט-כפי-שנשמר)). לניווט
+העבירו את `index`, לא את `text`.
 
 ---
 
@@ -957,6 +1143,10 @@ const { data } = await Otzaria.call('library.listBookAltStructures', {
 });
 // [{ key: "Parasha", title: "Parasha", heTitle: "פרשה" }, ...]
 ```
+
+`heTitle` מגיע עם שם הוי"ה לפי בחירת המשתמש (מ-0.9.98); `rawDivineNames: true`
+מחזיר אותו כפי שנשמר (⚠️ [האזהרה](#rawdivinenames--טקסט-כפי-שנשמר)). `key`
+ו-`title` אינם משתנים.
 
 ---
 
@@ -983,6 +1173,9 @@ const { data } = await Otzaria.call('library.getBookAltToc', {
 });
 // [{ text: "בראשית", index: 0, level: 1 }, ...]
 ```
+
+`text` מגיע עם שם הוי"ה לפי בחירת המשתמש, כמו ב-`getBookToc` (מ-0.9.98);
+`rawDivineNames: true` מחזיר אותו כפי שנשמר (⚠️ [האזהרה](#rawdivinenames--טקסט-כפי-שנשמר)).
 
 ### `library.refreshUserBooks`
 **הרשאה:** `library.refresh` · **מ-0.9.97**
@@ -1144,6 +1337,12 @@ const { data } = await Otzaria.call('library.getCommentators', {
   אופסטים בתווים גלויים של טקסט השורה כפי ש-`getBookContent` מחזיר אותו. בספר
   שהערות השוליים שלו בטבלה נפרדת, גופי ההערות אינם בטקסט הזה; עוגן שכולו בתוך
   גוף הערה אינו מוחזר, וטווח שחוצה הערה מוחזר בלי החלק שבה.
+  האופסטים נספרים בטקסט **השמור** — כפי ש-`getBookContent` מחזיר אותו עם
+  `rawDivineNames: true`; בטקסט המסונן הם עלולים לזוז.
+- `anchor.label` מגיע עם שם הוי"ה לפי בחירת המשתמש (מ-0.9.98).
+  `rawDivineNames: true` מחזיר אותו כפי שנשמר (⚠️ [האזהרה](#rawdivinenames--טקסט-כפי-שנשמר)).
+  ערך שאינו בוליאני נדחה ב-`error.invalid_params` גם בלי `includeAnchors`.
+  `targetHeRef` ו-`targetTitle` הם מפתחות ונשארים תמיד כפי שנשמרו.
 
 ```javascript
 const { data } = await Otzaria.call('library.getLinks', {
@@ -1306,6 +1505,12 @@ const { data } = await Otzaria.call('library.getLinkContent', {
 });
 // { items: [{ content: "בראשית ברא — אמר רבי יצחק..." }] }
 ```
+
+`content` מגיע עם שמות הקודש לפי בחירת המשתמש **למפרשים** (מ-0.9.98): שם הוי"ה,
+ושאר השמות שהמסד מסמן בשורות היעד. בתוסף שמשובץ בכרטיסיית ספר (קורא טקסט) —
+לפי הגדרות המפרשים של אותה כרטיסייה, אבל רק ליעד שהוא מפרש או קישור של הספר
+שפתוח בה; יעד אחר — לפי הגדרות המפרשים של הספר עצמו. שורות של קישור-טווח מחוברות ב-`<br>`. `rawDivineNames: true`
+ברמת הבקשה מחזיר את כל הפריטים כפי שנשמרו (⚠️ [האזהרה](#rawdivinenames--טקסט-כפי-שנשמר)).
 
 ---
 
@@ -1496,6 +1701,10 @@ const { data } = await Otzaria.call('search.fullText', {
 - `index` — אינדקס השורה/עמוד בספר
 - `error` — `"forbidden"` בתוצאה מספר שהמו"ל הגביל; `text` ריק בה
 
+`text` מגיע עם שם הוי"ה לפי בחירת המשתמש לספר של כל תוצאה (מ-0.9.98), כמו
+בתוצאות החיפוש של אוצריא; שאר השמות נשארים בתקציר ככתבם. `rawDivineNames: true`
+מחזיר את התקצירים כפי שנשמרו (⚠️ [האזהרה](#rawdivinenames--טקסט-כפי-שנשמר)).
+
 > **הערה:** `search.fullText` אינו מחזיר `id` כי מנוע החיפוש (Tantivy) אינו שומר את מזהה הספר מה-DB. כדי לקבל את `id` — יש לקרוא ל-`library.getBookMetadata({ bookId, type })` עם התוצאה. `search.query` (להלן) כן מחזיר זהות מלאה.
 
 ### `search.query`
@@ -1546,6 +1755,7 @@ for await (const chunk of chunks) {
 | `customSpacing` | `{}` | מרווח ידני בין זוג מילים **סמוכות**: `{ "0-1": "3" }` |
 | `negativeDistance`, `negativeProximityScope`, `negativeOptions`, `negativeWordOptions`, `negativeAlternativeWords`, `negativeCustomSpacing` | כמו החיוביים | אותם פרמטרים עבור `negativeQuery` |
 | `includeBookCounts` | `false` | להחזיר גם ספירת תוצאות לפי ספר |
+| `rawDivineNames` (מגרסה 0.9.98) | `false` | `true` = `text` של התוצאות עם שם הוי"ה כפי שנשמר. ⚠️ ראו [האזהרה](#rawdivinenames--טקסט-כפי-שנשמר) |
 
 **היקף החיפוש** (ניתן לשלב; ריק = כל הספרייה):
 
@@ -1606,6 +1816,10 @@ for await (const chunk of chunks) {
 
 **`error`** — `"forbidden"` בתוצאה מספר שהמו"ל הגביל את מסירת הטקסט שלו;
 `text` ריק בה, ושאר השדות (זהות, `index`) נשמרים.
+
+**שמות הקודש ב-`text`** (מ-0.9.98) — שם הוי"ה לפי בחירת המשתמש לספר של כל
+תוצאה; שאר השמות נשארים ככתבם, כמו במסך החיפוש של אוצריא. `reference` הוא מפתח
+ונשאר כפי שנשמר. ראו [שמות הקודש בטקסט שמגיע לתוסף](#שמות-הקודש-בטקסט-שמגיע-לתוסף).
 
 **`continuesToNextLine`** — `true` כשהביטוי מתחיל בסוף השורה `index` ונמשך
 בתחילת השורה הבאה (`index + 1`). `text` מחבר אז את סוף השורה ואת תחילת הבאה
@@ -2138,6 +2352,22 @@ const { data } = await Otzaria.call('reader.getSelection');
 בספר שהמו"ל הגביל, `text` כולל לכל היותר את 40 השורות הראשונות של הבחירה,
 והעוגן המורחב אינו מוחזר כשהבחירה קוצרה.
 
+**שמות הקודש (מ-0.9.98).** `text`, `renderedSelectedText`, `normalizedSelectedText`
+ו-`renderedRange` מגיעים לפי בחירת המשתמש העדכנית לכרטיסייה — גם אם שינה אותה
+אחרי שהבחירה סומנה. כשהשמות המבוקשים שונים ממה שעל המסך, `renderedRange` (כולל
+`exactText` והקשרו) נבנה מחדש מולם, כמו השכבה `rendered` של
+`reader.getSectionTextMap`. `sourceSelectedText` ו-`sourceRange` נשארים מול הטקסט
+השמור, ולכן `reader.setHighlight` עם `sourceRange` ממשיך לעבוד בכל הגדרה.
+`start`/`end` הוותיקים הם אופסטים בטקסט שעל המסך.
+
+- `rawDivineNames: true` — שדות הטקסט ו-`renderedRange` עם השמות כפי שנשמרו
+  (⚠️ [האזהרה](#rawdivinenames--טקסט-כפי-שנשמר)).
+- בחירה חוצת פסקאות, בחירה שקוצרה בספר מוגבל, או בחירה שהטווח שלה אינו תקף —
+  מעוגנת לפי הטקסט, כמו בתפריט ההקשר, ומגיעה באותו אופן.
+- רק בחירה שאי אפשר לעגן כלל (אין `sourceRange` ואין `sections`) נמסרת מהטקסט
+  שעל המסך: שם הוי"ה מוחלף בה לפי ההגדרה העדכנית, אבל `rawDivineNames` אינו יכול
+  לשחזר ממנה את הנוסח השמור.
+
 יחידת המיקום הקנונית היא grapheme cluster לפי חלוקת Unicode של ה־Host. `codePoint` ו־`utf16` נמסרים לצורכי שילוב בלבד; אין להשתמש ב־`String.length` של JavaScript כעוגן קנוני.
 
 ### `reader.getActiveCommentators`
@@ -2289,6 +2519,14 @@ if (data.hasMore) {
 
 ה־cursor קשור לספר, למקטע, לשכבה, לשאילתה, לפרופיל ול־hash של הטקסט. שימוש בו לאחר שינוי אחד מהם מחזיר `error.invalid_params`. מקטע מעל 50,000 grapheme clusters מחזיר `error.section_too_large`.
 
+**שמות הקודש (מ-0.9.98).** `layer: 'source'` מחפש בטקסט השמור, ללא שינוי.
+`layer: 'rendered'` מחפש בטקסט כפי שהקורא מציג את הספר ברגע הקריאה — כולל שמות
+הקודש לפי בחירת המשתמש — ולכן שאילתה `אלקים` נמצאת בו כשהמשתמש בחר בצורה הזו,
+ו-`אלהים` לא. גם ה-hash של השכבה הזו משתנה כשההגדרה משתנה, וה-cursor נפסל.
+`rawDivineNames: true` משאיר בשכבה המוצגת את שאר פרופיל התצוגה ומחזיר רק את
+השמות כפי שנשמרו (⚠️ [האזהרה](#rawdivinenames--טקסט-כפי-שנשמר)). `text` של
+תוצאה בשכבה המוצגת עשוי לכלול U+2060.
+
 ### `reader.beginCorrectionSession`
 
 **גרסת מינימום:** `0.9.99`. **הרשאה:** `reader.local_edit` לכל פעולות הסשן.
@@ -2299,6 +2537,9 @@ if (data.hasMore) {
 מובנים (`RtlTextField`) בפסקאות פשוטות בקורא הרגיל והרציף. השדות מציגים את
 טקסט המקור לאחר `TextRendererService.stripHtml`, ללא עיבודי פרופיל תצוגה בזמן העריכה.
 אוצריא אינה כותבת לספר, לקובץ המקור או למסד הספרייה.
+כל הטקסט של סשן התיקונים (`originalSourceText`, `originalText`, `proposedText`)
+הוא הנוסח השמור — שמות הקודש אינם מוחלפים בו לפי בחירת המשתמש, כי התיקון חייב
+להתאים למקור (ראו [מה נשאר כפי שנשמר](#מה-נשאר-כפי-שנשמר)).
 
 ```javascript
 const { data: state } = await Otzaria.call('reader.getCurrentState');
@@ -2666,6 +2907,13 @@ const { data } = await Otzaria.call('reader.getSectionTextMap', {
 `WordToken` כולל offsets ועוגנים הן למקור והן לתצוגה כאשר ניתן למפות אותם. `CharToken` מייצג grapheme cluster אחד ומחזיר offsets בכל שלוש היחידות. טוקני מילים ותווים מחולקים לעמודים משותפים; `nextCursor` ממשיך בדיוק מאותה בקשה.
 
 המגבלות הן 2,000 טוקנים לעמוד ו־50,000 grapheme clusters למקטע. מקטעי מפת המקור משתמשים רק בסוגים `identity`,‏ `substitution`,‏ `hidden` ו־`inserted`.
+
+**שמות הקודש (מ-0.9.98).** `sourceText` הוא הטקסט השמור. `renderedText` הוא
+הטקסט כפי שהקורא מציג את הספר ברגע הקריאה, כולל שמות הקודש לפי בחירת המשתמש
+(ספר שאינו פתוח — לפי הגדרות הספר, שכבת התנ"ך וההגדרה הכללית). מפת
+Source↔Rendered ממפה גם את השמות שהוחלפו, ו-`renderedText` עשוי לכלול U+2060
+שנספר באופסטים. `rawDivineNames: true` משאיר את שאר פרופיל התצוגה
+ומחזיר בשכבה המוצגת את השמות כפי שנשמרו (⚠️ [האזהרה](#rawdivinenames--טקסט-כפי-שנשמר)).
 
 > **`includeDomRects` שמור לעתיד ואינו נתמך.** הפרמטר מתקבל ומאומת כבוליאני,
 > אך `true` נדחה תמיד ב-`error.unsupported_context`. השאירו אותו `false`
@@ -3933,6 +4181,7 @@ const result = await Otzaria.call('feedback.submitBookCorrection', {
 - `reportId` הוא מזהה יציב באורך 1–160 תווים מתוך `[A-Za-z0-9_.:-]`. `details` אופציונלי ומוגבל ל־20,000 יחידות UTF-16.
 - זהות הספר דורשת `bookId` כמחרוזת; `bookUid` אופציונלי. כאשר נמסר UID, ההתאמה אליו מחמירה וללא חזרה לחיפוש לפי כותרת. ללא UID, הכותרת חייבת לזהות ספר יחיד.
 - `sectionIndex/endSectionIndex` הם אינדקסי מקור אפסיים; ברירת המחדל של הסיום היא פסקת ההתחלה. עד 32 פסקאות. `snapshots` מכסה את כולן ברצף, והטקסט חייב להתאים למקור הרשמי העדכני לאחר ניקוי HTML של אוצריא.
+- `snapshots`, `original` ו-`proposed` נכתבים מול הנוסח השמור, עם שמות הקודש כפי שנשמרו. טקסט שהתקבל מ-API מסונן (למשל `getBookContent` בלי `rawDivineNames`) לא יתאים למקור — קחו אותו מסשן התיקונים, מ-`sourceSelectedText` או עם `rawDivineNames: true`.
 - `original/proposed` נשמרים ללא נרמול, עד 20,000 יחידות UTF-16 כל אחד. הצעה ריקה היא מחיקה. `sourceStart/sourceEnd` הם טווח מקומי בתוך פסקה יחידה; יש להעביר את שניהם או להשמיט את שניהם. הוספה ריקה דורשת טווח מפורש כדי לבנות תיקון מובנה.
 - אוצריא בונה מיקום, מקור, גרסת ספרייה, digest ופרטי לקוח מהמידע שלה. תיקון חד־משמעי בפסקה אחת מקבל `text_correction` עם מקור HTML גולמי; טווח שאינו ממופה בבטחה או שינוי בין פסקאות מקבלים `free_text` v2 עם נוסח לפני/אחרי, בלי להמציא טווח DB. טווחי `sourceStart/sourceEnd` שנמסרו נשמרים גם בדיווח `free_text`.
 - נתמכים רק ספרי טקסט רשמיים ממסד הספרייה, ללא ספר אישי, מסד מצורף, קובץ חיצוני או מהדורה חלופית. גוף הדיווח מוגבל ל־256 KiB UTF-8.
@@ -4103,6 +4352,10 @@ const { data } = await Otzaria.call('tools.dictionary', { term: 'רמב״ם' });
 > לעזי רש"י אינם נכללים: הם נקראים ממסד הנתונים של הספרייה ומטבלת
 > הקישורים, ולא ממילון מצורף.
 
+`meanings` מגיעים עם שם הוי"ה לפי בחירת המשתמש (מ-0.9.98); `rawDivineNames: true`
+מחזיר אותם כפי שנשמרו. ראו
+[שמות הקודש בטקסט שמגיע לתוסף](#שמות-הקודש-בטקסט-שמגיע-לתוסף).
+
 ### `tools.biographies`
 **הרשאה:** `tools.read` · **מגרסה:** 0.9.98
 
@@ -4127,6 +4380,10 @@ const { data } = await Otzaria.call('tools.biographies', { query: 'החתם סו
 ```
 
 `total` הוא מספר ההתאמות לפני ה-`limit`. שדות חסרים במאגר מוחזרים כ-`null`.
+
+`summary` ו-`biographyShort` מגיעים עם שם הוי"ה לפי בחירת המשתמש (מ-0.9.98);
+`rawDivineNames: true` מחזיר אותם כפי שנשמרו. ראו
+[שמות הקודש בטקסט שמגיע לתוסף](#שמות-הקודש-בטקסט-שמגיע-לתוסף).
 
 > המאגר ארוז באפליקציה ומתעדכן מהרשת. בהתקנה שבה הנתונים אינם
 > זמינים הקריאה נכשלת ב-`error.not_supported`.
@@ -4793,6 +5050,15 @@ const { data } = await Otzaria.call('database.describeSource', {
 | `limit` | `number` | — | מקסימום שורות (ברירת מחדל: maxLimit) |
 | `offset` | `number` | — | דילוג שורות |
 | `rowFormat` | `'array' \| 'object'` | — | פורמט תשובה (ברירת מחדל: `'array'`) |
+| `rawDivineNames` | `boolean` | — | מ-0.9.98. במקור של טקסט ספרייה: `true` — ערכי המחרוזת כפי שנשמרו |
+
+**שמות הקודש (מ-0.9.98).** במקור שמכיל טקסט ספרייה — היום `talmud_synopsis` —
+שם הוי"ה בכל ערך מחרוזת בתוצאה מגיע לפי ההגדרה הכללית של המשתמש, כמו
+ב-[שמות הקודש בטקסט שמגיע לתוסף](#שמות-הקודש-בטקסט-שמגיע-לתוסף). מספרים ומזהים
+אינם משתנים. `rawDivineNames: true` (⚠️ [האזהרה](#rawdivinenames--טקסט-כפי-שנשמר))
+מחזיר את הערכים כפי שנשמרו; ערך שאינו בוליאני — `database.invalid_spec`. המכסה
+`maxResultBytes` נמדדת על הערכים השמורים, וההחלפה אינה מאריכה אותם. אותו כלל חל
+על כל שאילתה ב-`database.batchQuery` ועל `database.select` הדקלרטיבי.
 
 **דוגמה — קריאת עדי נוסח לדף:**
 
@@ -4977,6 +5243,61 @@ const { data } = await Otzaria.call('database.batchQuery', {
 Otzaria.on('event.name', (data) => {
   console.log('אירוע התרחש:', data);
 });
+```
+
+### `events.setOptions`
+**הרשאה:** `events.subscribe:<topic>` של הנושא | **מגרסה:** 0.9.98
+
+קובע את אפשרויות המסירה של נושא אירוע **למופע הזה** של התוסף. האפשרות היחידה
+כרגע היא `rawDivineNames`: עם `true`, טקסט מספר שהאירוע נושא (היום — `text`
+ו-`renderedSelectedText` של `reader.selection_changed`) מגיע עם שמות הקודש כפי
+שנשמרו, בלי בחירת המשתמש. ⚠️ קראו את [האזהרה](#rawdivinenames--טקסט-כפי-שנשמר)
+לפני שימוש.
+
+```javascript
+const { data } = await Otzaria.call('events.setOptions', {
+  topic: 'reader.selection_changed',
+  rawDivineNames: true
+});
+// { topic: 'reader.selection_changed', rawDivineNames: true }
+```
+
+| פרמטר | משמעות |
+|-------|---------|
+| `topic` | חובה. נושא שתוסף נרשם אליו בהרשאת `events.subscribe:<topic>` |
+| `rawDivineNames` | חובה, בוליאני. `false` מחזיר את ברירת המחדל המסוננת |
+
+- **הרשאה:** הרשאת המנוי של אותו נושא, מאושרת (או הרשאת בסיס כמו
+  `events.subscribe:theme.changed`). בלעדיה: `error.forbidden`.
+- **שגיאות נוספות:** `error.invalid_params` — פרמטר חסר או שאינו מהסוג הנכון,
+  או נושא שאין לו הרשאת מנוי (למשל `contextMenu.itemClicked` או `onClickEvent`
+  מותאם — בפריטי תפריט ההקשר האפשרות היא שדה של הפריט, ראו
+  [`reader.addContextMenuItem`](#readeraddcontextmenuitem)).
+  `error.unavailable` — המופע אינו רץ.
+- **היקף:** המופע הקורא בלבד — כל כרטיסייה של התוסף ומופע הרקע שלו נפרדים —
+  ולכל המאזינים לנושא במופע הזה. `Otzaria.off` אינו מבטל את האפשרות.
+- **משך:** עד שהדף נטען מחדש (כולל טעינה אחרי פינוי או נפילה). דף חדש מתחיל
+  בברירת המחדל, ולכן קבעו את האפשרות בכל טעינה — למשל לצד ה-`Otzaria.on`.
+- **אפשרויות של ה-boot חלות לפני אירועים שהמתינו לדף.** אפשרות שנקבעה
+  ב-`Otzaria.on` לפני ה-boot, או באופן סינכרוני בתוך מאזין `plugin.boot` /
+  `plugin.ready`, חלה לפני מסירת אירועים שהמתינו לטעינת הדף — כולל האירוע
+  שהעיר את מופע הרקע בהפעלה עצלה ואירועים שנמסרים שוב אחרי טעינה מחדש.
+- **אירועים שנמסרו לפני שהאפשרות נקבעה** (למשל כשנקבעה אחרי `await` ב-boot)
+  מגיעים מסוננים. זה הכיוון הבטוח: לא יגיע טקסט גולמי שלא התבקש. בקשה של דף
+  שנטען מחדש לפני שהסתיימה אינה חלה על הדף החדש (`error.unavailable`).
+
+**קיצור — `Otzaria.on` עם אפשרויות:** הארגומנט השלישי קורא ל-`events.setOptions`
+בשבילכם ומחזיר את ה-Promise שלו; כשל נרשם בקונסול ואינו נזרק. רישום שנעשה לפני
+`plugin.boot` נשמר בתור, והאפשרות נשלחת ב-boot; במקרה הזה `on` מחזיר `undefined`.
+בתוך ה-boot (עד סוף מאזיני `plugin.boot` ו-`plugin.ready`) גם `on` עם אפשרויות וגם
+`Otzaria.call('events.setOptions')` רק נרשמים, וה-Promise מתממש מיד ב-`success: true`;
+אוצריא מחילה אותם לפי הסדר עם סיום ה-boot, וכשל (למשל `error.forbidden`) אינו מוחזר
+לתוסף — האפשרות פשוט אינה חלה.
+
+```javascript
+Otzaria.on('reader.selection_changed', (data) => {
+  compareWithSource(data.text);            // השוואה פנימית בלבד — לא להצגה
+}, { rawDivineNames: true });
 ```
 
 ### אירועים זמינים:
@@ -5844,7 +6165,7 @@ API — מפונה. הפינוי שקוף באותו אופן ככיבוי אח�
 
 | נתיב `$selection` | ערך |
 |---|---|
-| `selectedText` | הטקסט המסומן |
+| `selectedText` | הטקסט המסומן, עם שמות הקודש לפי בחירת המשתמש (מ־0.9.98; `rawDivineNames: true` על הפריט — כפי שנשמרו) |
 | `currentRef` | הכותרת הנוכחית |
 | `currentBook` / `currentBookId` | שם הספר |
 | `currentIndex` | אינדקס השורה |
@@ -6250,6 +6571,36 @@ await Otzaria.call('reader.addContextMenuItem', {
 - ילד שלא מגדיר `contexts` יורש את המערך של אביו. ילד שמגדיר `contexts` במפורש מוצג רק בהקשרים שלו, ללא איחוד אוטומטי עם הקשר האב; ההקשרים המפורשים חייבים להיות תת־קבוצה של הקשרי האב.
 - אפשר להגדיר `onClickEvent` או `onColorClickEvent` כאירוע מותאם אישית
 
+**שמות הקודש בלחיצה — `rawDivineNames` (מ־`0.9.98`):**
+הטקסט שבלחיצה — `selectedText`, וב־`selection` גם `text`, `renderedSelectedText`,
+`normalizedSelectedText` ואיברי `sections` — מגיע כברירת מחדל עם שמות הקודש לפי
+בחירת המשתמש, כפי שהקורא מציג את הספר ברגע הלחיצה (ראו
+[שמות הקודש בטקסט שמגיע לתוסף](#שמות-הקודש-בטקסט-שמגיע-לתוסף)). בטקסט הראשי
+מוחלפים שם הוי"ה ושאר השמות שהמסד מסמן; במפרש וב־PDF — שם הוי"ה בלבד.
+`sourceSelectedText` ו־`sourceRange` נשארים מול הטקסט השמור.
+
+פריט שצריך את הנוסח השמור מצהיר `rawDivineNames: true`:
+
+```javascript
+await Otzaria.call('reader.addContextMenuItem', {
+  id: 'compare-source',
+  title: 'השווה למקור',
+  rawDivineNames: true        // ⚠️ רק אם הטקסט אינו מוצג למשתמש כמו שהוא
+});
+```
+
+- ערך בוליאני בלבד (אחר: `error.invalid_params`); ברירת המחדל `false`.
+- ילד יורש את הערך מאביו, ויכול לקבוע ערך משלו.
+- חל על כל מסלולי הלחיצה של הפריט: אירועי הלחיצה, שורת צבעים
+  (`contextMenu.colorClicked`), `openPlugin`, קיצור מקלדת עם `contextMenuItemId`
+  ופעולה דקלרטיבית (`$selection.selectedText`). עובד גם בפריטי `contextMenuItems`
+  במניפסט.
+- `showWhen` נבדק מול הטקסט כפי שהוא מוצג על המסך.
+- במפרש וב־PDF, ובבחירה שאי אפשר לעגן, `rawDivineNames: true` מחזיר את הטקסט כפי
+  שהוצג על המסך (ראו [המגבלה](#rawdivinenames--טקסט-כפי-שנשמר)).
+- ⚠️ קראו את [האזהרה](#rawdivinenames--טקסט-כפי-שנשמר) לפני שימוש. בפריטים אין
+  `events.setOptions` — האפשרות היא של הפריט בלבד.
+
 **פעולה ללא סימון — `reader-book` (מ־`0.9.99`):**
 מ־`0.9.99`, `selection.tabId` מזהה את לשונית הטקסט המדויקת שממנה נפתח התפריט,
 גם כשאותו ספר פתוח בכמה לשוניות או בחלוניות מפוצלות. מעבירים אותו ישירות ל־
@@ -6470,6 +6821,10 @@ Otzaria.on('reader.context_menu_item_clicked', (data) => {
 // }
 ```
 
+`selectedText` ו-`selection.text` מגיעים עם שמות הקודש לפי בחירת המשתמש, בלי
+U+2060 (מ-0.9.98). פריט שנרשם עם `rawDivineNames: true` מקבל אותם כפי שנשמרו —
+ראו `rawDivineNames` ב-[`reader.addContextMenuItem`](#readeraddcontextmenuitem).
+
 ---
 
 ### `reader.addToolbarItem`
@@ -6626,6 +6981,13 @@ Otzaria.on('reader.selection_changed', (data) => {
 
 בספר שהמו"ל הגביל, `text` כולל לכל היותר את 40 השורות הראשונות של הבחירה.
 
+**שמות הקודש (מ-0.9.98).** `text` (ו-`renderedSelectedText` כשהוא קיים) מגיע לפי
+בחירת המשתמש העדכנית לכרטיסייה, שם הוי"ה ושאר השמות שהמסד מסמן, בלי U+2060.
+`start`/`end` הם אופסטים בטקסט שעל המסך. מאזין שצריך את הנוסח השמור מבקש אותו
+לנושא כולו — `Otzaria.on('reader.selection_changed', handler, { rawDivineNames: true })`
+או [`events.setOptions`](#eventssetoptions) (⚠️ [האזהרה](#rawdivinenames--טקסט-כפי-שנשמר)).
+בחירה שלא ניתן לעגן נמסרת כפי שהוצגה על המסך גם במקרה הזה.
+
 ---
 
 ### Event: `reader.sectionContentChanged`
@@ -6706,6 +7068,9 @@ const { data: updated } = await Otzaria.call('reader.updateHighlight', {
 **הרשאה:** `reader.highlight`
 
 קבלת ההדגשות שבבעלות התוסף הקורא. אפשר לסנן לפי `bookId` ו־`sectionIndex`; תוסף אינו יכול לקרוא הדגשות של תוסף אחר.
+
+העוגנים שבהדגשות הם עוגני מקור, עם הטקסט השמור — שמות הקודש אינם מסוננים בהם
+(ראו [מה נשאר כפי שנשמר](#מה-נשאר-כפי-שנשמר)); הציגו למשתמש טקסט מסונן ממקור אחר.
 
 ברירת המחדל מחזירה רק רשומות `active`. כאשר נוסח המקור משתנה, ה־Host מנסה לעגן מחדש לפי hash ו־offset, הטקסט המדויק, ההקשר לפני ואחרי, טקסט מנורמל ולבסוף occurrence index. התאמה עמומה מסומנת `stale`, והיעדר התאמה מסומן `failed_to_anchor`; שני המצבים אינם מצוירים. השתמשו ב־`includeStale: true` כדי לקבל גם אותם ולשמור או לתקן אותם בצד התוסף.
 

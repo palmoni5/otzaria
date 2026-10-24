@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:otzaria/core/windowing/app_window_keys.dart';
+import 'package:otzaria/divine_names/models/divine_name_forms.dart';
 import 'package:otzaria/plugins/bloc/plugin_system_bloc.dart';
 import 'package:otzaria/plugins/models/plugin_context_menu_item.dart';
 import 'package:otzaria/plugins/services/context_menu_registry.dart';
+import 'package:otzaria/plugins/services/plugin_divine_names_filter.dart';
 import 'package:otzaria/plugins/services/plugin_page_launcher.dart';
 import 'package:otzaria/plugins/services/plugin_runtime_dispatcher.dart';
 import 'package:otzaria/plugins/utils/plugin_icon_resolver.dart';
@@ -179,7 +181,10 @@ AppContextMenuEntry _buildEntry({
                 'itemId': item.id,
                 'colorId': color.id,
                 'color': color.color,
-                'selection': selection,
+                'selection': PluginDivineNamesPayload.select(
+                  selection,
+                  raw: item.rawDivineNames,
+                ),
               },
               preferBackground: true,
               viewId: viewId,
@@ -242,22 +247,32 @@ AppContextMenuEntry _buildEntry({
   );
 }
 
+/// הבחירה נמסרת עם שמות הקודש לפי ההגדרה, או כפי שנשמרו לפריט שביקש
+/// `rawDivineNames`.
 Map<String, dynamic> _clickPayload({
   required PluginContextMenuItem item,
   required Map<String, dynamic> selection,
-}) => {
-  'itemId': item.id,
-  'selection': selection,
-  'selectedText': selection['renderedSelectedText'] ?? selection['text'] ?? '',
-  'currentRef': selection['currentRef'],
-  'currentBook': selection['bookTitle'] ?? selection['currentBook'],
-  'currentBookId': selection['bookId'] ?? selection['currentBookId'],
-  'currentIndex': selection['sectionIndex'] ?? selection['currentIndex'],
-  if (selection['id'] != null) 'id': selection['id'],
-  if (selection['type'] != null) 'type': selection['type'],
-  if (selection['source'] != null) 'source': selection['source'],
-  'param': item.param,
-};
+}) {
+  selection = PluginDivineNamesPayload.select(
+    selection,
+    raw: item.rawDivineNames,
+  );
+  return {
+    'itemId': item.id,
+    'selection': selection,
+    'selectedText': withoutDivineNameJoiners(
+      (selection['renderedSelectedText'] ?? selection['text'] ?? '').toString(),
+    ),
+    'currentRef': selection['currentRef'],
+    'currentBook': selection['bookTitle'] ?? selection['currentBook'],
+    'currentBookId': selection['bookId'] ?? selection['currentBookId'],
+    'currentIndex': selection['sectionIndex'] ?? selection['currentIndex'],
+    if (selection['id'] != null) 'id': selection['id'],
+    if (selection['type'] != null) 'type': selection['type'],
+    if (selection['source'] != null) 'source': selection['source'],
+    'param': item.param,
+  };
+}
 
 /// מופע היעד ללחיצה על [item]: קדמי גלוי מבין המופעים שרשמו אותו, אחרת
 /// הקדמי האחרון שנרשם; אין קדמי חי — null והדיספצ'ר בוחר (רקע/החייאה).

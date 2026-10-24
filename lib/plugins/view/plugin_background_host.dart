@@ -19,6 +19,7 @@ import 'package:otzaria/plugins/services/plugin_download_handler.dart';
 import 'package:otzaria/plugins/services/plugin_webview_permission_gate.dart';
 import 'package:otzaria/plugins/services/plugin_headless_shell.dart';
 import 'package:otzaria/plugins/services/plugin_lazy_activation_service.dart';
+import 'package:otzaria/plugins/services/plugin_runtime_dispatcher.dart';
 import 'package:otzaria/plugins/storage/plugin_system_database.dart';
 import 'package:otzaria/plugins/view/plugin_drop_guard_script.dart';
 import 'package:otzaria/plugins/view/plugin_webrtc_block_script.dart';
@@ -500,6 +501,10 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner>
         return interceptPluginRequest(request, headless: _isHeadless);
       },
       onLoadStop: (controller, url) async {
+        PluginRuntimeDispatcher.instance.resetEventOptions(
+          widget.plugin.pluginId,
+          instanceId: PluginInstanceIds.background,
+        );
         try {
           final theme = currentThemePayload();
           final packageInfo =
@@ -507,7 +512,7 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner>
               await PackageInfo.fromPlatform();
           final permissions = await pluginRegistryRepository
               .getGrantedPermissionNames(widget.plugin.pluginId);
-          await controller.evaluateJavascript(
+          final booted = await controller.evaluateJavascript(
             source: pluginBootScript(
               runMode: 'background',
               packageInfo: packageInfo,
@@ -515,6 +520,7 @@ class _BackgroundPluginRunnerState extends State<_BackgroundPluginRunner>
               theme: theme,
             ),
           );
+          await adapter.applyBootEventOptions(booted);
           // המופע מוכן — מוסר אירועים שהמתינו להפעלה עצלה (contributes.startup).
           unawaited(
             PluginLazyActivationService.instance.onBackgroundInstanceReady(

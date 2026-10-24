@@ -2,9 +2,12 @@ import 'dart:convert';
 
 import 'package:characters/characters.dart';
 import 'package:crypto/crypto.dart';
+import 'package:otzaria/divine_names/models/divine_name_forms.dart';
 import 'package:otzaria/plugins/models/plugin_reader_selection.dart';
 import 'package:otzaria/plugins/models/text_source_map.dart';
+import 'package:otzaria/plugins/services/plugin_divine_names_filter.dart';
 import 'package:otzaria/plugins/services/text_source_map_service.dart';
+import 'package:otzaria/text_display/text_display_exports.dart';
 import 'package:otzaria/utils/text/text_manipulation.dart' as text_utils;
 import 'package:otzaria/widgets/smart_text/render_settings.dart';
 import 'package:otzaria/widgets/smart_text/text_renderer_service.dart';
@@ -144,6 +147,130 @@ class ReaderSelectionService {
     if (sections.isEmpty) return legacy;
     if (sections.length == 1) return {...legacy, ...sections.single};
     return {...legacy, 'sections': sections};
+  }
+
+  /// [payload] עם הטקסט ו-`renderedRange` לפי [names] במקום השמות של
+  /// [settings]; [rawTextOf] — שורת הפסקה עם סמני השמות. המקור לא משתנה.
+  Map<String, dynamic> withDivineNames(
+    Map<String, dynamic> payload, {
+    required PluginDivineNamesDisplay names,
+    required RenderSettings settings,
+    required String Function(int sectionIndex) rawTextOf,
+    bool includeNormalized = true,
+  }) {
+    final namesChanged = PluginDivineNamesDisplay.ofSettings(settings) != names;
+    final shownText = withoutDivineNameJoiners(
+      (payload['text'] ?? '').toString(),
+    );
+    Map<String, dynamic> withNames(Map<String, dynamic> selection) => {
+      ...selection,
+      ..._textFieldsWithNames(
+        selection,
+        names,
+        settings,
+        rawTextOf,
+        namesChanged: namesChanged,
+        includeNormalized: includeNormalized,
+      ),
+    };
+    final result = Map<String, dynamic>.of(payload);
+    final sections = payload['sections'];
+    if (sections is List) {
+      final resolved = [
+        for (final section in sections.cast<Map<String, dynamic>>())
+          withNames(section),
+      ];
+      result['sections'] = resolved;
+      final first = resolved.first['sectionIndex'] as int;
+      final contiguous = resolved.indexed.every(
+        (entry) => entry.$2['sectionIndex'] == first + entry.$1,
+      );
+      result['text'] = !namesChanged
+          ? shownText
+          : contiguous
+          ? resolved
+                .map((section) => section['renderedSelectedText'] as String)
+                .join('\n')
+          : filterPluginDivineNamesText(shownText, names);
+    } else if (payload['sourceRange'] is Map) {
+      result.addAll(withNames(payload));
+      result['text'] = namesChanged
+          ? result['renderedSelectedText']
+          : shownText;
+    } else {
+      result['text'] = filterPluginDivineNamesText(shownText, names);
+    }
+    return result;
+  }
+
+  /// שדות הטקסט של [selection] לפי [names]. מפת מקור נבנית לכל היותר פעם
+  /// אחת לכל גרסה, ורק כשהיא נדרשת.
+  Map<String, dynamic> _textFieldsWithNames(
+    Map<String, dynamic> selection,
+    PluginDivineNamesDisplay names,
+    RenderSettings settings,
+    String Function(int sectionIndex) rawTextOf, {
+    required bool namesChanged,
+    required bool includeNormalized,
+  }) {
+    final sectionIndex = selection['sectionIndex'] as int;
+    final range = selection['sourceRange'] as Map<String, dynamic>;
+    final start = (range['start'] as Map<String, dynamic>)['grapheme'] as int;
+    final end = (range['end'] as Map<String, dynamic>)['grapheme'] as int;
+    final maps = <RenderSettings, PluginTextSourceMap>{};
+    PluginTextSourceMap mapWith(RenderSettings settings) => maps.putIfAbsent(
+      settings,
+      () => _sourceMapService.build(
+        bookId: selection['bookId'] as String,
+        sectionIndex: sectionIndex,
+        rawText: rawTextOf(sectionIndex),
+        settings: settings,
+      ),
+    );
+    ({PluginTextSourceMap map, int start, int end}) rangeIn(
+      RenderSettings settings,
+    ) {
+      final map = mapWith(settings.copyWith(formatParentheses: false));
+      return (
+        map: map,
+        start: _sourceMapService.sourceBoundaryToRendered(map, start),
+        end: _sourceMapService.sourceBoundaryToRendered(map, end),
+      );
+    }
+
+    final fields = <String, dynamic>{};
+    if (namesChanged) {
+      // אחרת exactText והקשרו היו מוסרים את השמות שעל המסך גם למי שביקש אחרת.
+      final shown = rangeIn(names.applyToSettings(settings));
+      final anchor = _anchor(
+        text: _GraphemeBoundaries(shown.map.renderedText),
+        start: shown.start,
+        end: shown.end,
+        layer: 'rendered',
+        renderedTextHash: shown.map.renderedTextHash,
+      );
+      fields['renderedRange'] = anchor.toJson();
+      fields['renderedSelectedText'] = withoutDivineNameJoiners(
+        anchor.exactText,
+      );
+    } else {
+      fields['renderedSelectedText'] = withoutDivineNameJoiners(
+        selection['renderedSelectedText'] as String,
+      );
+    }
+    if (includeNormalized && names.filters) {
+      final plain = rangeIn(
+        RenderSettings.fromProfile(names.applyTo(TextDisplayProfile.defaults)),
+      );
+      fields['normalizedSelectedText'] = _normalize(
+        withoutDivineNameJoiners(
+          plain.map.renderedText.characters
+              .getRange(plain.start, plain.end)
+              .toString(),
+        ),
+      );
+    }
+    return fields;
   }
 
   PluginReaderSelection? build({

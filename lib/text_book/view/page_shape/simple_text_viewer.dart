@@ -1638,24 +1638,37 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
               : null,
         ),
       );
+      final eventIndex =
+          selectedIndex ??
+          _selectionPointerLineIndex ??
+          textBookState.selectedIndex ??
+          0;
       unawaited(
         PluginRuntimeDispatcher.instance.dispatchEvent(
           'reader.selection_changed',
-          buildPageShapePluginSelectionPayload(
-            selectedText: limitTextToCopySegments(
-              textBookState.protection,
-              sourceText,
+          withSelectionEventDivineNames(
+            buildPageShapePluginSelectionPayload(
+              selectedText: limitTextToCopySegments(
+                textBookState.protection,
+                sourceText,
+              ),
+              bookTitle: textBookState.book.title,
+              sectionIndex: eventIndex,
+              currentRef: textBookState.currentTitle,
+              bookDbId: textBookState.book.id,
+              bookType: PluginBookIdentity.typeOf(textBookState.book),
+              bookSource: PluginBookIdentity.sourceOf(textBookState.book),
             ),
-            bookTitle: textBookState.book.title,
-            sectionIndex:
-                selectedIndex ??
-                _selectionPointerLineIndex ??
-                textBookState.selectedIndex ??
-                0,
-            currentRef: textBookState.currentTitle,
-            bookDbId: textBookState.book.id,
-            bookType: PluginBookIdentity.typeOf(textBookState.book),
-            bookSource: PluginBookIdentity.sourceOf(textBookState.book),
+            state: textBookState,
+            lines: widget.content,
+            paragraphIndex: eventIndex,
+            anchor: (
+              lineStart: lineStart,
+              lineEnd: lineEnd,
+              startColumn: source.column,
+              pointerColumn: null,
+            ),
+            settings: renderSettings,
           ),
         ),
       );
@@ -2176,6 +2189,7 @@ class _SimpleTextViewerState extends State<SimpleTextViewer> {
         segmentCount: segmentCount,
       ),
       menuContext: menuContext,
+      readerState: state,
     );
   }
 

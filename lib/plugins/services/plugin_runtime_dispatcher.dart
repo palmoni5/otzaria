@@ -11,6 +11,7 @@ import 'package:otzaria/plugins/utils/plugin_safe_mode.dart';
 import 'package:otzaria/plugins/services/context_menu_registry.dart';
 import 'package:otzaria/plugins/services/plugin_condition_evaluator.dart';
 import 'package:otzaria/plugins/services/plugin_discard_policy.dart';
+import 'package:otzaria/plugins/services/plugin_divine_names_filter.dart';
 import 'package:otzaria/plugins/services/plugin_external_search_service.dart';
 import 'package:otzaria/plugins/services/plugin_in_book_search_service.dart';
 import 'package:otzaria/plugins/services/plugin_library_books_registry.dart';
@@ -104,8 +105,9 @@ class _PluginInstance {
   /// ראה [PluginWebViewFocus.request]; false אם אחת הבקשות שנזכרו דרשה זאת.
   bool pendingFocusTrustsPage = true;
 
-  /// אירועים שהוזרקו בזמן השעיה וממתינים למסירה חוזרת אחרי boot.
-  final List<({String topic, String jsonPayload, DateTime at})>
+  /// אירועים שהוזרקו בזמן השעיה וממתינים למסירה חוזרת אחרי boot. מקודדים
+  /// רק במסירה, לפי אפשרויות האירועים של הדף שנטען.
+  final List<({String topic, Map<String, dynamic> payload, DateTime at})>
   pendingRedeliveries = [];
 
   /// אירועי מצב לפי מפתח (האחרון גובר ועובר לסוף), וחד-פעמיים לפי ההגעה.
@@ -114,6 +116,17 @@ class _PluginInstance {
 
   /// חלון החסד להשלמת טיפול אסינכרוני לפני הקפאה חוזרת.
   Timer? graceTimer;
+
+  /// נושאים שהדף ביקש בהם את טקסט הספר כפי שנשמר (`events.setOptions`).
+  final Set<String> rawDivineNamesTopics = {};
+
+  /// מתחלף בכל דף חדש, כדי ש-`events.setOptions` של דף קודם לא יחול עליו.
+  int eventOptionsGeneration = 0;
+
+  void resetEventOptions() {
+    rawDivineNamesTopics.clear();
+    eventOptionsGeneration++;
+  }
 
   bool get isBackground => instanceId == PluginInstanceIds.background;
 
@@ -376,7 +389,79 @@ class PluginRuntimeDispatcher {
       ..controller = controller
       ..busyCount = 0
       ..released = false
-      ..ready = false;
+      ..ready = false
+      ..resetEventOptions();
+  }
+
+  /// הדף הנוכחי של המופע לאפשרויות האירועים, או null כשהמופע אינו רץ.
+  int? eventOptionsGeneration(String pluginId, PluginInstanceId instanceId) {
+    final instance = _instances[_keyOf(pluginId, instanceId)];
+    return instance?.controller == null
+        ? null
+        : instance!.eventOptionsGeneration;
+  }
+
+  /// `events.setOptions`: עם [raw] המופע מקבל את [topic] עם טקסט הספר כפי
+  /// שנשמר. false — המופע אינו רץ, או שהדף [generation] כבר הוחלף.
+  bool setEventRawDivineNames(
+    String pluginId,
+    PluginInstanceId instanceId,
+    String topic, {
+    required bool raw,
+    required int generation,
+  }) {
+    final instance = _instances[_keyOf(pluginId, instanceId)];
+    if (instance == null ||
+        instance.controller == null ||
+        instance.eventOptionsGeneration != generation) {
+      return false;
+    }
+    if (raw) {
+      instance.rawDivineNamesTopics.add(topic);
+    } else {
+      instance.rawDivineNamesTopics.remove(topic);
+    }
+    return true;
+  }
+
+  /// דף שנטען מחדש מתחיל בלי האפשרויות של קודמו.
+  void resetEventOptions(
+    String pluginId, {
+    PluginInstanceId instanceId = PluginInstanceIds.defaultForeground,
+  }) => _instances[_keyOf(pluginId, instanceId)]?.resetEventOptions();
+
+  @visibleForTesting
+  Set<String> rawDivineNamesTopicsOf(
+    String pluginId, {
+    PluginInstanceId instanceId = PluginInstanceIds.defaultForeground,
+  }) => {...?_instances[_keyOf(pluginId, instanceId)]?.rawDivineNamesTopics};
+
+  /// [payload] כפי שהמופע [key] מקבל את [topic] — ראו [_encodePayload].
+  String? _encodeFor(
+    PluginInstanceKey key,
+    String topic,
+    Map<String, dynamic> payload,
+  ) => _encodePayload(
+    topic,
+    payload,
+    raw: _instances[key]?.rawDivineNamesTopics.contains(topic) ?? false,
+  );
+
+  /// [payload] מקודד כפי שתוסף מקבל אותו ([PluginDivineNamesPayload]). כשל
+  /// בגרסה הגולמית נופל לגרסה המסוננת, ולא להפך; null — אין גרסה בטוחה.
+  static String? _encodePayload(
+    String topic,
+    Map<String, dynamic> payload, {
+    required bool raw,
+  }) {
+    try {
+      return jsonEncode(PluginDivineNamesPayload.select(payload, raw: raw));
+    } catch (e) {
+      debugPrint(
+        'PluginRuntimeDispatcher: $topic payload (raw: $raw) failed: $e',
+      );
+      return raw ? _encodePayload(topic, payload, raw: false) : null;
+    }
   }
 
   /// רושם את המארח של מופע קדמי. [token] מזהה את בעליו (ראו
@@ -572,6 +657,7 @@ class PluginRuntimeDispatcher {
       instance.pendingKeyboardFocus = false;
       instance.pendingFocusTrustsPage = true;
       instance.pendingRedeliveries.clear();
+      instance.resetEventOptions();
       instance.clearQueue();
       instance.graceTimer?.cancel();
       instance.graceTimer = null;
@@ -618,6 +704,7 @@ class PluginRuntimeDispatcher {
     instance.suspendedAt = null;
     instance.busyCount = 0;
     instance.nextBootReason = reason;
+    instance.resetEventOptions();
     instance.clearQueue();
     instance.graceTimer?.cancel();
     instance.graceTimer = null;
@@ -770,7 +857,8 @@ class PluginRuntimeDispatcher {
       // ה-boot נתן theme עדכני, ואת השאר התוסף שואל בעצמו.
       instance?.clearQueue();
       final now = clock();
-      final fresh = <({String topic, String jsonPayload, DateTime at})>[];
+      final fresh =
+          <({String topic, Map<String, dynamic> payload, DateTime at})>[];
       if (instance != null) {
         fresh.addAll(
           instance.pendingRedeliveries.where(
@@ -785,11 +873,13 @@ class PluginRuntimeDispatcher {
           'to $pluginId',
         );
         for (final event in fresh) {
+          final json = _encodeFor(key, event.topic, event.payload);
+          if (json == null) continue;
           try {
             await controller.evaluateJavascript(
               source:
                   "window.dispatchEvent(new CustomEvent('${event.topic}', "
-                  '{ detail: ${event.jsonPayload} }));',
+                  '{ detail: $json }));',
             );
           } catch (e) {
             debugPrint('Failed to redeliver ${event.topic} to $pluginId: $e');
@@ -1321,9 +1411,12 @@ class PluginRuntimeDispatcher {
     if (topic == 'settings.changed') {
       PluginConditionEvaluator.instance.notifySettingsChanged();
     }
-    // מקודד רק אם יש יעד שעבר את בדיקת ההרשאה, ולכל היותר פעם אחת.
-    String? encoded;
-    String json() => encoded ??= jsonEncode(payload);
+    // מקודד רק אם יש יעד שעבר את בדיקת ההרשאה, ולכל היותר פעם אחת לכל גרסה —
+    // גם כשהקידוד נכשל, כדי שהכשל לא יחזור לכל תוסף.
+    final encoded = <bool, String?>{};
+    String? json({required bool raw}) => encoded.containsKey(raw)
+        ? encoded[raw]
+        : encoded[raw] = _encodePayload(topic, payload, raw: raw);
     debugPrint('PluginRuntimeDispatcher: Dispatching $topic');
 
     // מסירה מקבילית: WebView תקוע של תוסף אחד לא יחסום את המסירה לשאר.
@@ -1378,7 +1471,7 @@ class PluginRuntimeDispatcher {
   Future<void> _broadcastEventToPlugin(
     String pluginId,
     String topic,
-    String Function() json, {
+    String? Function({required bool raw}) json, {
     required bool preferBackground,
     required String? queueKey,
   }) async {
@@ -1392,7 +1485,7 @@ class PluginRuntimeDispatcher {
       );
       if (selection.now.isEmpty && selection.queue.isEmpty) return;
       if (!await _canReceiveEvent(pluginId, topic)) return;
-      final targetControllers = <InAppWebViewController>[];
+      final targets = <(InAppWebViewController, String)>[];
       for (final target in [...selection.now, ...selection.queue]) {
         if (!ownsController(
           pluginId,
@@ -1402,17 +1495,23 @@ class PluginRuntimeDispatcher {
           continue;
         }
         final instance = _instances[_keyOf(pluginId, target.instanceId)]!;
+        final encoded = json(
+          raw: instance.rawDivineNamesTopics.contains(topic),
+        );
+        if (encoded == null) continue;
         if (instance.suspended && !instance.isBackground) {
-          _enqueue(instance, queueKey, topic, json());
+          _enqueue(instance, queueKey, topic, encoded);
         } else {
-          targetControllers.add(target.controller);
+          targets.add((target.controller, encoded));
         }
       }
-      if (targetControllers.isEmpty) return;
-      _notifyBackgroundActivity(pluginId, targetControllers);
+      if (targets.isEmpty) return;
+      _notifyBackgroundActivity(pluginId, [
+        for (final (controller, _) in targets) controller,
+      ]);
       await Future.wait([
-        for (final controller in targetControllers)
-          _evalEvent(controller, pluginId, topic, json()),
+        for (final (controller, encoded) in targets)
+          _evalEvent(controller, pluginId, topic, encoded),
       ]);
     } catch (e) {
       debugPrint('Failed to dispatch $topic to plugin $pluginId: $e');
@@ -1527,29 +1626,30 @@ class PluginRuntimeDispatcher {
               (preferBackground && background == null));
       if (shouldResumeForeground) {
         debugPrint('PluginRuntimeDispatcher: $topic → resume suspended tab');
-        await _dispatchToSuspendedForeground(
-          primaryKey!,
-          topic,
-          jsonEncode(payload),
-        );
+        await _dispatchToSuspendedForeground(primaryKey!, topic, payload);
         return;
       }
       // אירועים ממוקדים (למשל לחיצה בתפריט הקשר) חייבים להגיע למנוע הפעיל.
       // המופע הקדמי עשוי להישאר רשום אך מושהה, ולכן הבחירה מתחשבת בכך.
       InAppWebViewController? target;
+      PluginInstanceKey? targetKey;
       if ((preferBackground || primarySuspended || primary == null) &&
           background != null) {
         target = background;
+        targetKey = _keyOf(pluginId, PluginInstanceIds.background);
       } else if (primary != null) {
         target = primary.controller;
+        targetKey = primaryKey;
       }
-      if (target == null) return;
+      if (target == null || targetKey == null) return;
+      final json = _encodeFor(targetKey, topic, payload);
+      if (json == null) return;
       _notifyBackgroundActivity(pluginId, [target]);
       debugPrint('PluginRuntimeDispatcher: $topic → eval to 1 controller(s)');
       try {
         await target.evaluateJavascript(
           source:
-              "window.dispatchEvent(new CustomEvent('$topic', { detail: ${jsonEncode(payload)} }));",
+              "window.dispatchEvent(new CustomEvent('$topic', { detail: $json }));",
         );
       } catch (e) {
         debugPrint('Failed to dispatch $topic to plugin $pluginId: $e');
@@ -1574,7 +1674,7 @@ class PluginRuntimeDispatcher {
     if (instance != null && instance.released) {
       // אירוע מצב מתיישן — ה-boot של הדף המשוחזר מקבל את המצב העדכני.
       if (queueKey == null) {
-        _addRedelivery(instance, topic, jsonEncode(payload));
+        _addRedelivery(instance, topic, payload);
       }
       return;
     }
@@ -1590,14 +1690,15 @@ class PluginRuntimeDispatcher {
           _enabledCache[pluginId] ?? await _repository.getIsEnabled(pluginId);
       _enabledCache[pluginId] = isEnabled;
       if (!isEnabled) return;
-      final jsonPayload = jsonEncode(payload);
+      if (instance.suspended && queueKey == null) {
+        await _dispatchToSuspendedForeground(key, topic, payload);
+        return;
+      }
+      final jsonPayload = _encodeFor(key, topic, payload);
+      if (jsonPayload == null) return;
       if (instance.suspended) {
         // מצב (ניווט בכרטיסיית ספר מוסתרת) אינו מצדיק להעיר את הטאב.
-        if (queueKey != null) {
-          _enqueue(instance, queueKey, topic, jsonPayload, targeted: true);
-          return;
-        }
-        await _dispatchToSuspendedForeground(key, topic, jsonPayload);
+        _enqueue(instance, queueKey, topic, jsonPayload, targeted: true);
         return;
       }
       _notifyBackgroundActivity(pluginId, [controller]);
@@ -1612,25 +1713,31 @@ class PluginRuntimeDispatcher {
     }
   }
 
-  void _addRedelivery(_PluginInstance instance, String topic, String json) {
+  void _addRedelivery(
+    _PluginInstance instance,
+    String topic,
+    Map<String, dynamic> payload,
+  ) {
     final pending = instance.pendingRedeliveries;
     if (pending.length >= _maxPendingRedeliveries) pending.removeAt(0);
-    pending.add((topic: topic, jsonPayload: json, at: clock()));
+    pending.add((topic: topic, payload: payload, at: clock()));
   }
 
   Future<void> _dispatchToSuspendedForeground(
     PluginInstanceKey key,
     String topic,
-    String jsonPayload,
+    Map<String, dynamic> payload,
   ) {
     final pluginId = key.pluginId;
     return _serializeLifecycle(() async {
       final instance = _instances[key];
       final controller = instance?.controller;
       if (instance == null || controller == null) return;
+      final jsonPayload = _encodeFor(key, topic, payload);
+      if (jsonPayload == null) return;
       // ההזרקה שלהלן אובדת אם ההחייאה גוררת טעינת-דף מחדש — האירוע נרשם
       // למסירה חוזרת כשה-boot של הדף יסתיים (onForegroundInstanceReady).
-      _addRedelivery(instance, topic, jsonPayload);
+      _addRedelivery(instance, topic, payload);
       try {
         await _resumeForeground(key);
         // בפלטפורמות בלי pause נייטיבי הדף מעולם לא הוקפא — מצב ה"זומבי"

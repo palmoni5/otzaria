@@ -105,11 +105,16 @@ class PluginDatabaseSource {
   /// מדיניות הרשאות
   final PluginDatabasePolicy policy;
 
+  /// המקור מכיל טקסט ספרייה: שם הוי"ה במחרוזות התוצאה מוצג לפי הגדרת
+  /// המשתמש, אלא אם השאילתה ביקשה `rawDivineNames: true`.
+  final bool filtersDivineNames;
+
   const PluginDatabaseSource({
     required this.sourceId,
     required this.label,
     required this.databasePath,
     this.readOnly = true,
     required this.policy,
+    this.filtersDivineNames = false,
   });
 }

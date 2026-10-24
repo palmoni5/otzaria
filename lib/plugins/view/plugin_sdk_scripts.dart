@@ -19,9 +19,9 @@ const String _sdkStubCore = r'''
       }
       return Promise.reject(new Error('Otzaria SDK not ready yet'));
     },
-    on: function (event, cb) {
-      if (_realSdk) { _realSdk.on(event, cb); }
-      else { _queue.push({ event: event, cb: cb }); }
+    on: function (event, cb, options) {
+      if (_realSdk) return _realSdk.on(event, cb, options);
+      _queue.push({ event: event, cb: cb, options: options });
     },
     off: function (event, cb) {
       if (_realSdk) _realSdk.off(event, cb);
@@ -34,10 +34,12 @@ const String _sdkStubCore = r'''
       // ה-boot — והיעדר הדגל מזוהה בפינג ומפעיל reload.
       window.Otzaria._booted = true;
       // Re-register all listeners that were queued before boot
-      _queue.forEach(function (item) { sdk.on(item.event, item.cb); });
+      _queue.forEach(function (item) { sdk.on(item.event, item.cb, item.options); });
       _queue = [];
       window.dispatchEvent(new CustomEvent('plugin.boot', { detail: payload }));
       window.dispatchEvent(new CustomEvent('plugin.ready', { detail: null }));
+      // אפשרויות האירועים שנקבעו עד כאן חוזרות למארח עם ה-boot עצמו.
+      return sdk._takeBootEventOptions ? sdk._takeBootEventOptions() : null;
     }
   };
 
@@ -130,6 +132,7 @@ String buildPluginBootScript({
     '''
 (function () {
 ${fontFaceJson == null ? '' : _fontFaceJs(fontFaceJson)}  var _ls = {};
+  var _bootEventOptions = [];
   var _searchStreams = {};
   var _searchSequence = 0;
   var _searchEvent = '__otzaria.search.query.chunk';
@@ -237,17 +240,44 @@ ${fontFaceJson == null ? '' : _fontFaceJs(fontFaceJson)}  var _ls = {};
     var id = 'network_' + Date.now().toString(36) + '_' + (++_networkSequence).toString(36);
     return createRpcStream('network.fetchStream', payload, _networkStreams, id);
   };
+  // בתוך ה-boot רק נרשמת, והמארח מחיל את כולן לפי הסדר לפני מסירת אירועים.
+  var recordBootEventOptions = function (request) {
+    _bootEventOptions.push(request);
+    return Promise.resolve({ success: true, data: request });
+  };
   var realSdk = {
     call: function (method, payload) {
       if (method === 'search.query') return createSearchStream(payload);
       if (method === 'network.fetchStream') return createNetworkFetchStream(payload);
+      if (method === 'events.setOptions' && _bootEventOptions) {
+        return recordBootEventOptions(payload);
+      }
       return rpc(method, payload);
     },
-    on: function (event, cb) {
+    on: function (event, cb, options) {
       if (!_ls[event]) _ls[event] = [];
       var w = function (e) { cb(e.detail); };
       _ls[event].push({ orig: cb, wrap: w });
       window.addEventListener(event, w);
+      // אפשרות מסירה של הנושא כולו במופע הזה, עד טעינה מחדש של הדף.
+      if (options && options.rawDivineNames !== undefined) {
+        var request = { topic: event, rawDivineNames: options.rawDivineNames };
+        if (_bootEventOptions) return recordBootEventOptions(request);
+        return rpc('events.setOptions', request).then(function (response) {
+          if (response && response.success === false) {
+            console.debug('events.setOptions', event, response.error);
+          }
+          return response;
+        }, function (error) {
+          console.debug('events.setOptions', event, error);
+          return { success: false, error: { code: 'error.internal', message: String(error) } };
+        });
+      }
+    },
+    _takeBootEventOptions: function () {
+      var options = _bootEventOptions;
+      _bootEventOptions = null;
+      return options;
     },
     off: function (event, cb) {
       var list = _ls[event];
@@ -261,6 +291,6 @@ ${fontFaceJson == null ? '' : _fontFaceJs(fontFaceJson)}  var _ls = {};
       }
     }
   };
-  window.Otzaria._boot(realSdk, $payloadJson);
+  return window.Otzaria._boot(realSdk, $payloadJson);
 })();
 ''';

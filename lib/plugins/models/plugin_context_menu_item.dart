@@ -61,6 +61,13 @@ class PluginContextMenuItem implements PluginRegistryItem {
   /// נקרא רק מהפריט העליון הראשון של התוסף בתפריט.
   final bool separatorBefore;
 
+  /// הבחירה בלחיצה נמסרת עם שמות הקודש כפי שנשמרו, בלי הגדרת התצוגה.
+  final bool rawDivineNames;
+
+  /// הערך שנמסר לפריט עצמו (null — יורש מההורה). רק הוא נכתב ב-[toJson], כדי
+  /// שעדכון של ההורה יחושב מחדש בילדים שלא קבעו ערך משלהם.
+  final bool? declaredRawDivineNames;
+
   const PluginContextMenuItem({
     required this.id,
     this.type = 'item',
@@ -78,7 +85,10 @@ class PluginContextMenuItem implements PluginRegistryItem {
     this.when,
     this.action,
     this.separatorBefore = true,
-  }) : title = title ?? label;
+    this.declaredRawDivineNames,
+    bool? rawDivineNames,
+  }) : title = title ?? label,
+       rawDivineNames = rawDivineNames ?? declaredRawDivineNames ?? false;
 
   /// האם להציג את הפריט עבור [selectedText] לפי [showWhenContainsAny].
   bool isVisibleForSelection(String selectedText) {
@@ -108,6 +118,8 @@ class PluginContextMenuItem implements PluginRegistryItem {
     if (when != null) 'when': when!.toJson(),
     if (action != null) 'action': action,
     if (!separatorBefore) 'separatorBefore': false,
+    if (declaredRawDivineNames != null)
+      'rawDivineNames': declaredRawDivineNames,
   };
 }
 

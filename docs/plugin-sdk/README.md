@@ -223,6 +223,11 @@ Otzaria.on('calendar.date_changed', handler);
 Otzaria.off('calendar.date_changed', handler); // חייב להיות אותו reference
 ```
 
+מ-0.9.98 `Otzaria.on` מקבל ארגומנט שלישי עם אפשרויות מסירה לנושא כולו במופע
+הזה — `{ rawDivineNames: true }` מוסר טקסט מספר באירוע עם שמות הקודש כפי
+שנשמרו (קורא בשבילכם ל-`events.setOptions`). השתמשו בו רק כשהטקסט אינו מוצג
+למשתמש — ראו [שמות הקודש](API_REFERENCE.md#שמות-הקודש-בטקסט-שמגיע-לתוסף).
+
 ---
 
 ## אירועי מחזור חיים
@@ -352,6 +357,8 @@ Otzaria.on('plugin.boot', (payload) => {
 
 > ⚠️ עמודת **הרשאה** היא שם ההרשאה שיש להצהיר עליה ב-`permissions` — **לא** שם ה-method. שם של method ב-`permissions` נדחה כהרשאה לא חוקית ושובר את ההתקנה. `—` בעמודה פירושו שהקריאה אינה דורשת הרשאה כלל, ואין להצהיר עליה בשום צורה.
 
+> 🔤 **שמות הקודש (מ-0.9.98).** כל API שמוסר טקסט מתוך ספר — תוכן, כותרות, תקצירי חיפוש, תוכן קישורים, בחירה בקורא, אירועי בחירה ותפריט הקשר — מחיל את בחירת המשתמש באופן כתיבת שמות הקודש (למשל `יקוק` או `ה'`), כפי שהקורא היה מציג את אותו ספר ברגע הקריאה. `rawDivineNames: true` מחזיר את הנוסח השמור, ו-`app.getDivineNamesDisplay` מחזיר את ההגדרה עצמה. גם תיאורי ספרים, פירושי המילון, תקצירי הביוגרפיות ותוצאות המקור `talmud_synopsis` ב-`database.query` מקבלים את שם הוי"ה לפי ההגדרה. עוגני מקור, סשן תיקונים ו-`ref` נשארים תמיד כפי שנשמרו, וכך גם קובץ מ-`library.openBookFile` — טקסט שמחלצים ממנו ומציגים מסננים בעצמכם. **אל תציגו למשתמש טקסט גולמי בלי לסנן אותו** — ראו [שמות הקודש בטקסט שמגיע לתוסף](API_REFERENCE.md#שמות-הקודש-בטקסט-שמגיע-לתוסף).
+
 ### app.*
 
 | Method | הרשאה | תיאור |
@@ -361,6 +368,7 @@ Otzaria.on('plugin.boot', (payload) => {
 | `app.getLocale` | `app.info.read` | locale, language ו-textDirection (מ-0.9.97 — לפי שפת הממשק שנבחרה) |
 | `app.openUrl` | `app.open_url` | פתיחת כתובת http/https בדפדפן המערכת |
 | `app.getConnectivity` | `app.info.read` | האם יש אינטרנט — להסתרת יכולות מקוונות |
+| `app.getDivineNamesDisplay` | `app.info.read` | איך שמות הקודש יגיעו בטקסט הספרים (מ-0.9.98) — לסינון עצמי של טקסט גולמי |
 | `app.registerShortcut` | `app.shortcuts` | רישום קיצור מקלדת (פקודה / פעולת תפריט הקשר) |
 | `app.unregisterShortcut` | `app.shortcuts` | הסרת קיצור מקלדת |
 | `app.updateShortcut` | `app.shortcuts` | עדכון קיצור מקלדת (key) |
@@ -373,15 +381,15 @@ Otzaria.on('plugin.boot', (payload) => {
 | `library.getBookMetadata` | `library.books.read` | `{ bookId }` | `BookMeta \| null` |
 | `library.resolveBooks` | `library.books.read` | `{ items: BookIdentity[] }` (עד 100) | `(BookMeta \| null)[]` |
 | `library.listRecentBooks` | `library.books.read` | — | `{ bookId, title, ref }[]` |
-| `library.getBookContent` | `library.content.read` | `{ bookId, offset?, limit?, section? }` | `string` (max 5000 תווים) |
-| `library.getBookToc` | `library.content.read` | `{ bookId }` | `TocEntry[]` |
-| `library.listBookAltStructures` | `library.content.read` | `{ bookId }` | `AltStructure[]` |
-| `library.getBookAltToc` | `library.content.read` | `{ bookId, structureKey? }` | `TocEntry[]` |
+| `library.getBookContent` | `library.content.read` | `{ bookId, offset?, limit?, section?, rawDivineNames? }` | `string` (max 5000 תווים) |
+| `library.getBookToc` | `library.content.read` | `{ bookId, rawDivineNames? }` | `TocEntry[]` |
+| `library.listBookAltStructures` | `library.content.read` | `{ bookId, rawDivineNames? }` | `AltStructure[]` |
+| `library.getBookAltToc` | `library.content.read` | `{ bookId, structureKey?, rawDivineNames? }` | `TocEntry[]` |
 | `library.getCommentators` | `library.links.read` | `{ bookId, categoryId?, startLine?, endLine?, grouped? }` | `{ commentators }` או `{ groups }` |
-| `library.getLinks` | `library.links.read` | `{ bookId, categoryId?, startLine, endLine, connectionTypes?, targetTitles?, includeAnchors? }` (חלון עד 200 שורות) | `{ links, truncated }` |
+| `library.getLinks` | `library.links.read` | `{ bookId, categoryId?, startLine, endLine, connectionTypes?, targetTitles?, includeAnchors?, rawDivineNames? }` (חלון עד 200 שורות) | `{ links, truncated }` |
 | `library.getRawLinks` | `library.links.read` | `{ bookId, categoryId?, startLine?, endLine?, connectionTypes?, targetTitles? }` (הטווח חובה יחד; חלון עד 1000 שורות) | `{ links, truncated, startLine, endLine }` — אותם קישורים של `getLinks`, בחמשת המפתחות של `links.json` |
 | `library.getLinkTargetsSummary` | `library.links.read` | `{ bookId, categoryId? }` | `{ targets, maxSourceLine }` |
-| `library.getLinkContent` | `library.content.read` | `{ links }` (עד 25) | `{ items }` |
+| `library.getLinkContent` | `library.content.read` | `{ links, rawDivineNames? }` (עד 25) | `{ items }` |
 | `library.refreshUserBooks` | `library.refresh` | — | `{ addedBooks, updatedBooks, errors }` |
 | `library.setProviderBooks` | `library.books.provide` | `{ provider, books }` | `{ count }` |
 
@@ -397,7 +405,7 @@ Otzaria.on('plugin.boot', (payload) => {
 
 | Method | הרשאה | פרמטרים | החזרה |
 |--------|-------|----------|-------|
-| `search.fullText` | `search.fulltext.read` | `{ query, limit? }` | `SearchResult[]` |
+| `search.fullText` | `search.fulltext.read` | `{ query, limit?, rawDivineNames? }` | `SearchResult[]` |
 | `search.query` | `search.fulltext.read` | `{ query, mode?, distance?, proximityScope?, order?, grouping?, wordMatchMode?, anyOrder?, options?, wordOptions?, alternativeWords?, customSpacing?, negativeQuery?, categories?, books?, authors?, eras?, baseBooksOnly?, limit?, offset?, includeBookCounts? }` | `AsyncIterable<{ sequence, results, total, groupCount, truncated, facets, bookCounts? }>` |
 | `search.getOptions` | `search.fulltext.read` | `{}` | הערכים החוקיים לכל פרמטר של `search.query` |
 

@@ -77,6 +77,7 @@
   },
   "apiMethods": [
     "app.getConnectivity",
+    "app.getDivineNamesDisplay",
     "app.getGrantedPermissions",
     "app.getInfo",
     "app.getLocale",
@@ -99,6 +100,7 @@
     "database.describeSource",
     "database.listSources",
     "database.query",
+    "events.setOptions",
     "feedback.hasReporterEmail",
     "feedback.report",
     "feedback.sendEmail",
@@ -257,6 +259,7 @@
   ],
   "methodPermissions": {
     "app.getConnectivity": "app.info.read",
+    "app.getDivineNamesDisplay": "app.info.read",
     "app.getGrantedPermissions": "app.info.read",
     "app.getInfo": "app.info.read",
     "app.getLocale": "app.info.read",
@@ -417,6 +420,7 @@
   },
   "methodMinVersions": {
     "app.getConnectivity": "0.9.96",
+    "app.getDivineNamesDisplay": "0.9.98",
     "app.getGrantedPermissions": "0.9.89",
     "app.getInfo": "0.9.89",
     "app.getLocale": "0.9.89",
@@ -439,6 +443,7 @@
     "database.describeSource": "0.9.89",
     "database.listSources": "0.9.89",
     "database.query": "0.9.89",
+    "events.setOptions": "0.9.98",
     "feedback.hasReporterEmail": "0.9.97",
     "feedback.report": "0.9.97",
     "feedback.sendEmail": "0.9.89",

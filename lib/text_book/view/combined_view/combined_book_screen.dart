@@ -2118,20 +2118,35 @@ class _CombinedViewState extends State<CombinedView> {
                           unawaited(
                             PluginRuntimeDispatcher.instance.dispatchEvent(
                               'reader.selection_changed',
-                              {
-                                'text': selectionText,
-                                'currentRef': loadedState.currentTitle ?? '',
-                                'currentBook': loadedState.book.title,
-                                'currentBookId': loadedState.book.title,
-                                'currentIndex': foundIndex ?? 0,
-                                'id': ?loadedState.book.id,
-                                'type': PluginBookIdentity.typeOf(
-                                  loadedState.book,
+                              withSelectionEventDivineNames(
+                                {
+                                  'text': selectionText,
+                                  'currentRef': loadedState.currentTitle ?? '',
+                                  'currentBook': loadedState.book.title,
+                                  'currentBookId': loadedState.book.title,
+                                  'currentIndex': foundIndex ?? 0,
+                                  'id': ?loadedState.book.id,
+                                  'type': PluginBookIdentity.typeOf(
+                                    loadedState.book,
+                                  ),
+                                  'source': PluginBookIdentity.sourceOf(
+                                    loadedState.book,
+                                  ),
+                                },
+                                state: loadedState,
+                                lines: widget.data,
+                                paragraphIndex: foundIndex ?? 0,
+                                anchor: (
+                                  lineStart: _selectionLineStart,
+                                  lineEnd: _selectionLineEnd,
+                                  startColumn: source.column,
+                                  pointerColumn: null,
                                 ),
-                                'source': PluginBookIdentity.sourceOf(
-                                  loadedState.book,
+                                settings: _selectionRenderSettings(
+                                  loadedState,
+                                  context.read<SettingsBloc>().state,
                                 ),
-                              },
+                              ),
                             ),
                           );
                         }

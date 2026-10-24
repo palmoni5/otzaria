@@ -22,10 +22,17 @@ import 'package:otzaria/data/data_providers/book_composite_key.dart';
 import 'package:otzaria/data/data_providers/library_provider.dart';
 import 'package:otzaria/data/data_providers/library_provider_manager.dart';
 import 'package:otzaria/data/repository/data_repository.dart';
+import 'package:otzaria/divine_names/models/divine_name_spans.dart';
+import 'package:otzaria/divine_names/repository/divine_names_repository.dart';
 import 'package:otzaria/library/models/library.dart';
 import 'package:otzaria/models/book_source.dart';
 import 'package:otzaria/models/books.dart';
 import 'package:otzaria/models/links.dart';
+import 'package:otzaria/migration/models/alt_toc_structure.dart';
+import 'package:otzaria/plugins/plugin_constants.dart';
+import 'package:otzaria/data/repository/text_book_repository.dart';
+import 'package:otzaria/plugins/services/plugin_lazy_activation_service.dart';
+import 'package:otzaria/plugins/services/plugin_divine_names_filter.dart';
 import 'package:otzaria/history/bloc/history_bloc.dart';
 import 'package:otzaria/history/bloc/history_state.dart';
 import 'package:otzaria/navigation/bloc/navigation_bloc.dart';
@@ -389,6 +396,31 @@ _RefHit _refHit({
   bookPath: bookPath,
   isSourceLine: isSourceLine,
   source: source,
+);
+
+Future<void> _saveDivineNamesPolicy(
+  HolyNameDisplay holyName, {
+  bool substitute = false,
+  HolyNameDisplay? commentaryHolyName,
+}) => Settings.setValue<String>(
+  SettingsRepository.keyTextDisplayPolicy,
+  jsonEncode(
+    TextDisplayPolicy(
+      general: TextDisplayLayer({
+        TextDisplaySlot.root: TextDisplayPatch(
+          holyName: holyName,
+          divineNames: substitute
+              ? DivineNamesDisplay.substitute
+              : DivineNamesDisplay.asIs,
+        ),
+        if (commentaryHolyName != null)
+          TextDisplaySlot.commentaryDisplay: TextDisplayPatch(
+            holyName: commentaryHolyName,
+          ),
+      }),
+      tanach: TextDisplayLayer.empty,
+    ).toJson(),
+  ),
 );
 
 Future<void> main() async {
@@ -6009,6 +6041,943 @@ Future<void> main() async {
       );
     });
   });
+
+  group('events.setOptions', () {
+    const pluginId = 'events.options.plugin';
+    late _StubPluginRegistryRepository repository;
+    late PluginBridgeAdapter adapter;
+
+    setUp(() {
+      repository = _StubPluginRegistryRepository()
+        ..permissionGrants = {
+          'events.subscribe:reader.selection_changed': true,
+        };
+      adapter = PluginBridgeAdapter(
+        _buildInstalledPlugin(pluginId: pluginId),
+        dependencies: PluginBridgeDependencies(
+          historyBloc: _MockHistoryBloc(),
+          tabsBloc: _StubTabsBloc(),
+          navigationBloc: _MockNavigationBloc(),
+          calendarCubit: _StubCalendarCubit(
+            _buildCalendarState(DateTime(2026, 1, 1), inIsrael: true),
+          ),
+          workspaceBloc: _MockWorkspaceBloc(),
+          searchRepository: _MockSearchRepository(),
+          personalNotesRepository: _MockPersonalNotesRepository(),
+          bookOpenCoordinator: _MockBookOpenCoordinator(),
+          themePayloadBuilder: () => <String, dynamic>{},
+          showConfirmDialog: ({required title, required content}) async => true,
+          showWarningDialog:
+              ({required title, required content, required subtitle}) async =>
+                  true,
+        ),
+        pluginRepository: repository,
+      );
+      PluginRuntimeDispatcher.instance.registerController(
+        pluginId,
+        _RecordingWebViewController(),
+      );
+      addTearDown(() {
+        PluginRuntimeDispatcher.instance.unregisterController(pluginId);
+        adapter.dispose();
+      });
+    });
+
+    Future<dynamic> setOptions(Map<String, dynamic> args) =>
+        adapter.execute('events', 'setOptions', args);
+
+    Matcher failsWith(String code) =>
+        throwsA(predicate((e) => e.toString().contains(code)));
+
+    test('נשמר למופע ונמחק בבקשה הפוכה', () async {
+      expect(
+        await setOptions({
+          'topic': 'reader.selection_changed',
+          'rawDivineNames': true,
+        }),
+        {'topic': 'reader.selection_changed', 'rawDivineNames': true},
+      );
+      expect(
+        PluginRuntimeDispatcher.instance.rawDivineNamesTopicsOf(pluginId),
+        {'reader.selection_changed'},
+      );
+      await setOptions({
+        'topic': 'reader.selection_changed',
+        'rawDivineNames': false,
+      });
+      expect(
+        PluginRuntimeDispatcher.instance.rawDivineNamesTopicsOf(pluginId),
+        isEmpty,
+      );
+    });
+
+    test('פרמטרים לא תקינים ונושא שאינו נושא מנוי', () async {
+      await expectLater(
+        setOptions({
+          'topic': 'reader.selection_changed',
+          'rawDivineNames': 'true',
+        }),
+        failsWith('error.invalid_params'),
+      );
+      await expectLater(
+        setOptions({'rawDivineNames': true}),
+        failsWith('error.invalid_params'),
+      );
+      await expectLater(
+        setOptions({
+          'topic': 'contextMenu.itemClicked',
+          'rawDivineNames': true,
+        }),
+        failsWith('error.invalid_params'),
+      );
+      await expectLater(
+        adapter.execute('events', 'subscribe', const {}),
+        failsWith('error.unknown_method'),
+      );
+    });
+
+    test('בלי הרשאת events.subscribe לנושא — forbidden', () async {
+      await expectLater(
+        setOptions({'topic': 'settings.changed', 'rawDivineNames': true}),
+        failsWith('error.forbidden'),
+      );
+      expect(
+        PluginRuntimeDispatcher.instance.rawDivineNamesTopicsOf(pluginId),
+        isEmpty,
+      );
+      // הרשאת בסיס אינה דורשת הענקה.
+      await setOptions({'topic': 'theme.changed', 'rawDivineNames': true});
+    });
+
+    test('בקשה שהסתיימה אחרי טעינה מחדש אינה חלה על הדף החדש', () async {
+      repository.permissionGate = Completer<void>();
+      final pending = setOptions({
+        'topic': 'reader.selection_changed',
+        'rawDivineNames': true,
+      });
+      PluginRuntimeDispatcher.instance.resetEventOptions(pluginId);
+      repository.permissionGate!.complete();
+      await expectLater(pending, failsWith('error.unavailable'));
+      expect(
+        PluginRuntimeDispatcher.instance.rawDivineNamesTopicsOf(pluginId),
+        isEmpty,
+      );
+    });
+
+    test('אפשרויות מה-boot חלות לפני מסירת האירוע שהעיר את התוסף', () async {
+      const lazyId = 'events.options.lazy';
+      const topic = 'reader.selection_changed';
+      final dispatcher = PluginRuntimeDispatcher.instance;
+      final lazy = PluginLazyActivationService.instance;
+      final controller = _RecordingWebViewController();
+      final background = PluginBridgeAdapter(
+        _buildInstalledPlugin(pluginId: lazyId),
+        instanceId: PluginInstanceIds.background,
+        dependencies: PluginBridgeDependencies(
+          historyBloc: _MockHistoryBloc(),
+          tabsBloc: _StubTabsBloc(),
+          navigationBloc: _MockNavigationBloc(),
+          calendarCubit: _StubCalendarCubit(
+            _buildCalendarState(DateTime(2026, 1, 1), inIsrael: true),
+          ),
+          workspaceBloc: _MockWorkspaceBloc(),
+          searchRepository: _MockSearchRepository(),
+          personalNotesRepository: _MockPersonalNotesRepository(),
+          bookOpenCoordinator: _MockBookOpenCoordinator(),
+          themePayloadBuilder: () => <String, dynamic>{},
+          showConfirmDialog: ({required title, required content}) async => true,
+          showWarningDialog:
+              ({required title, required content, required subtitle}) async =>
+                  true,
+        ),
+        pluginRepository: repository,
+      );
+      dispatcher.repositoryForTesting = _EnabledRegistryRepo();
+      lazy.syncPlugin(
+        lazyId,
+        broadcastTopics: {topic},
+        scheduleStartup: false,
+      );
+      lazy.backgroundActivator = (id) async => dispatcher.registerController(
+        id,
+        controller,
+        instanceId: PluginInstanceIds.background,
+      );
+      addTearDown(() {
+        lazy
+          ..backgroundActivator = null
+          ..removePlugin(lazyId);
+        dispatcher.unregisterController(
+          lazyId,
+          instanceId: PluginInstanceIds.background,
+        );
+        dispatcher.repositoryForTesting = PluginRegistryRepository();
+        background.dispose();
+      });
+
+      await dispatcher.dispatchEvent(
+        topic,
+        PluginDivineNamesPayload(
+          () => const PluginDivineNamesDisplay(
+            holyName: HolyNameDisplay.kufKuf,
+            otherNames: DivineNamesDisplay.asIs,
+          ),
+          (payload, names) => {
+            ...payload,
+            'text': names.filters ? 'יקוק' : 'יהוה',
+          },
+        ).attachTo({'currentIndex': 0}),
+      );
+      await pumpEventQueue();
+      expect(lazy.isBootPending(lazyId), isTrue);
+
+      await background.applyBootEventOptions([
+        {'topic': topic, 'rawDivineNames': true},
+        {'topic': 'not.a.topic', 'rawDivineNames': true},
+        'junk',
+      ]);
+      await lazy.onBackgroundInstanceReady(lazyId);
+
+      final delivered = controller.jsCalls.singleWhere(
+        (js) => js.contains(topic),
+      );
+      expect(delivered, contains('יהוה'));
+      expect(delivered, isNot(contains(PluginDivineNamesPayload.key)));
+    });
+
+    test('מופע שאינו רץ — unavailable', () async {
+      PluginRuntimeDispatcher.instance.unregisterController(pluginId);
+      await expectLater(
+        setOptions({
+          'topic': 'reader.selection_changed',
+          'rawDivineNames': true,
+        }),
+        failsWith('error.unavailable'),
+      );
+    });
+  });
+
+  group('PluginBridgeAdapter — שמות הקודש בטקסט שנמסר לתוסף', () {
+    const raw = 'ויאמר אלהים יהוה\nשמע ישראל יהוה אלהינו';
+    final spans =
+        (DivineNameSpansBuilder()
+              ..add(0, 6, 11, DivineNameKind.elohim)
+              ..add(0, 12, 16, DivineNameKind.hvyh))
+            .build();
+    late _StubTabsBloc tabsBloc;
+    late TextBook book;
+
+    PluginBridgeAdapter build({
+      TextBookTab? readerTab,
+      SearchRepository? searchRepository,
+      Future<List<LinkContentLine>> Function(Link link)? linesLoader,
+      TextBookRepository? textBookRepository,
+      Future<List<AltTocStructure>> Function(TextBook book)? altStructures,
+      Future<List<AltTocEntryRow>> Function(int structureId)? altEntries,
+    }) {
+      final adapter = PluginBridgeAdapter(
+        _buildInstalledPlugin(permissions: const ['library.read']),
+        readerTab: readerTab,
+        dependencies: PluginBridgeDependencies(
+          historyBloc: _MockHistoryBloc(),
+          tabsBloc: tabsBloc,
+          navigationBloc: _MockNavigationBloc(),
+          calendarCubit: _StubCalendarCubit(
+            _buildCalendarState(DateTime(2026, 1, 1), inIsrael: true),
+          ),
+          workspaceBloc: _MockWorkspaceBloc(),
+          searchRepository: searchRepository ?? _MockSearchRepository(),
+          personalNotesRepository: _MockPersonalNotesRepository(),
+          bookOpenCoordinator: _MockBookOpenCoordinator(),
+          themePayloadBuilder: () => <String, dynamic>{},
+          showConfirmDialog: ({required title, required content}) async => true,
+          showWarningDialog:
+              ({required title, required content, required subtitle}) async =>
+                  true,
+          bookProtectionResolver: (_) async => BookProtection.none,
+          linkContentLinesLoader: linesLoader,
+          textBookRepository: textBookRepository,
+          altStructuresProvider: altStructures,
+          altTocEntriesProvider: altEntries,
+        ),
+        pluginRepository: _StubPluginRegistryRepository(),
+      );
+      addTearDown(adapter.dispose);
+      return adapter;
+    }
+
+    TextBookTab openTab({
+      List<String> content = const ['ויאמר אלהים יהוה'],
+      TextDisplayLayer? overrides,
+    }) {
+      final tab = TextBookTab(book: book, index: 0);
+      addTearDown(tab.dispose);
+      tab.bloc.emit(
+        TextBookLoaded.initial(
+          book: book,
+          index: 0,
+          showLeftPane: false,
+          splitView: false,
+        ).copyWith(
+          content: content,
+          divineNames: spans,
+          displayPolicy: SettingsRepository().loadTextDisplayPolicy(),
+          displayOverrides: overrides,
+        ),
+      );
+      tabsBloc.currentState = TabsState(tabs: [tab], currentTabIndex: 0);
+      return tab;
+    }
+
+    Matcher invalidParams() => throwsA(
+      predicate((e) => e.toString().contains('error.invalid_params')),
+    );
+
+    setUp(() async {
+      tabsBloc = _StubTabsBloc();
+      book = _TocTextBook(title: 'ספר שמות', categoryId: 610, id: 610);
+      final key = BookCompositeKey.create(
+        title: book.title,
+        categoryId: 610,
+        fileType: 'txt',
+      );
+      final provider = _FakeBookProvider({key: raw});
+      LibraryProviderManager.instance.seedMappingsForTesting(
+        mapping: {key: provider},
+        providers: [provider],
+      );
+      DataRepository.instance.library = Future.value(
+        Library(
+          categories: [
+            Category(
+              title: 'בדיקה',
+              description: '',
+              shortDescription: '',
+              order: 0,
+              subCategories: const [],
+              books: [book],
+              parent: null,
+            ),
+          ],
+        ),
+      );
+      DivineNamesRepository.instance
+        ..clear()
+        ..debugLoader = (title, {categoryId, required source}) async => spans;
+      await _saveDivineNamesPolicy(HolyNameDisplay.kufKuf, substitute: true);
+    });
+
+    tearDown(() async {
+      DivineNamesRepository.instance
+        ..debugLoader = null
+        ..clear();
+      await Settings.setValue<String>(
+        SettingsRepository.keyTextDisplayPolicy,
+        '',
+      );
+      LibraryProviderManager.instance.resetForTesting();
+    });
+
+    test('getBookContent מסנן כברירת מחדל ומחזיר גולמי לפי בקשה', () async {
+      final adapter = build();
+      expect(
+        await adapter.execute('library', 'getBookContent', {
+          'bookId': book.title,
+        }),
+        'ויאמר אלקים יקוק\nשמע ישראל יקוק אלהינו',
+      );
+      expect(
+        await adapter.execute('library', 'getBookContent', {
+          'bookId': book.title,
+          'rawDivineNames': true,
+        }),
+        raw,
+      );
+      await expectLater(
+        adapter.execute('library', 'getBookContent', {
+          'bookId': book.title,
+          'rawDivineNames': 'true',
+        }),
+        invalidParams(),
+      );
+    });
+
+    test('getBookContent — שינוי ההגדרה חל מהקריאה הבאה', () async {
+      final adapter = build();
+      final request = {'bookId': book.title};
+      expect(
+        await adapter.execute('library', 'getBookContent', request),
+        contains('יקוק'),
+      );
+      await _saveDivineNamesPolicy(HolyNameDisplay.daletDalet);
+      expect(
+        await adapter.execute('library', 'getBookContent', request),
+        'ויאמר אלהים ידוד\nשמע ישראל ידוד אלהינו',
+      );
+    });
+
+    test('getBookContent — offset/limit/section על הטקסט המסונן', () async {
+      await _saveDivineNamesPolicy(HolyNameDisplay.hehApostrophe);
+      final adapter = build();
+      final full =
+          await adapter.execute('library', 'getBookContent', {
+                'bookId': book.title,
+                'limit': 5000,
+              })
+              as String;
+      expect(full, "ויאמר אלהים ה'\nשמע ישראל ה' אלהינו");
+      final fragments = <String>[];
+      for (var offset = 0; offset < full.length; offset += 4) {
+        fragments.add(
+          await adapter.execute('library', 'getBookContent', {
+                'bookId': book.title,
+                'offset': offset,
+                'limit': 4,
+              })
+              as String,
+        );
+      }
+      expect(fragments.join(), full);
+      expect(
+        await adapter.execute('library', 'getBookContent', {
+          'bookId': book.title,
+          'section': "ישראל ה'",
+          'limit': 7,
+        }),
+        'ישראל ה',
+      );
+    });
+
+    test('textReaderDisplay — פרופיל הקורא, השמות לפי הבקשה', () async {
+      final tab = openTab(
+        content: raw.split('\n'),
+        overrides: TextDisplayLayer({
+          TextDisplaySlot.root: const TextDisplayPatch(
+            punctuation: MarkVisibility.hide,
+          ),
+        }),
+      );
+      final adapter = build(readerTab: tab);
+      final identity = PluginBookIdentity.toJsonWithUid(book);
+      expect(
+        await adapter.execute('library', 'getBookContent', {
+          ...identity,
+          'textReaderDisplay': true,
+        }),
+        'ויאמר אלקים יקוק\nשמע ישראל יקוק אלהינו',
+      );
+      expect(
+        await adapter.execute('library', 'getBookContent', {
+          ...identity,
+          'textReaderDisplay': true,
+          'rawDivineNames': true,
+        }),
+        raw,
+      );
+    });
+
+    test('getSelection — השכבה המוצגת מסוננת ושכבת המקור גולמית', () async {
+      final tab = openTab();
+      tab.bloc.emit(
+        (tab.bloc.state as TextBookLoaded).copyWith(
+          selectedTextForNote: 'אלקים יקוק',
+          selectedTextSectionIndex: 0,
+          selectedTextStart: 6,
+          selectedTextEnd: 16,
+        ),
+      );
+      final adapter = build();
+
+      final filtered =
+          await adapter.execute('reader', 'getSelection', {})
+              as Map<String, dynamic>;
+      expect(filtered['text'], 'אלקים יקוק');
+      expect(filtered['renderedSelectedText'], 'אלקים יקוק');
+      expect(filtered['normalizedSelectedText'], 'אלקים יקוק');
+      expect(filtered['sourceSelectedText'], 'אלהים יהוה');
+      expect(filtered['sourceRange']['exactText'], 'אלהים יהוה');
+      expect(filtered['renderedRange']['exactText'], 'אלקים יקוק');
+
+      final rawSelection =
+          await adapter.execute('reader', 'getSelection', {
+                'rawDivineNames': true,
+              })
+              as Map<String, dynamic>;
+      expect(rawSelection['text'], 'אלהים יהוה');
+      expect(rawSelection['renderedSelectedText'], 'אלהים יהוה');
+      expect(rawSelection['normalizedSelectedText'], 'אלהים יהוה');
+      expect(rawSelection['sourceSelectedText'], 'אלהים יהוה');
+
+      await expectLater(
+        adapter.execute('reader', 'getSelection', {'rawDivineNames': 1}),
+        invalidParams(),
+      );
+    });
+
+    test('getSelection — הגדרה שהשתנתה אחרי טעינת הכרטיסייה', () async {
+      final tab = openTab();
+      tab.bloc.emit(
+        (tab.bloc.state as TextBookLoaded).copyWith(
+          selectedTextForNote: 'אלקים יקוק',
+          selectedTextSectionIndex: 0,
+          selectedTextStart: 6,
+          selectedTextEnd: 16,
+        ),
+      );
+      await _saveDivineNamesPolicy(HolyNameDisplay.daletDalet);
+      final data =
+          await build().execute('reader', 'getSelection', {})
+              as Map<String, dynamic>;
+      expect(data['text'], 'אלהים ידוד');
+      expect(data['sourceSelectedText'], 'אלהים יהוה');
+    });
+
+    test(
+      'getSectionTextMap / findTextOccurrences — מוצג מסונן, מקור גולמי',
+      () async {
+        openTab();
+        final adapter = build();
+        final map =
+            await adapter.execute('reader', 'getSectionTextMap', {
+                  'bookId': book.title,
+                  'sectionIndex': 0,
+                  'layer': 'both',
+                })
+                as Map<String, dynamic>;
+        expect(map['sourceText'], 'ויאמר אלהים יהוה');
+        expect(map['renderedText'], 'ויאמר אלקים יקוק');
+
+        final rawMap =
+            await adapter.execute('reader', 'getSectionTextMap', {
+                  'bookId': book.title,
+                  'sectionIndex': 0,
+                  'layer': 'rendered',
+                  'rawDivineNames': true,
+                })
+                as Map<String, dynamic>;
+        expect(rawMap['renderedText'], 'ויאמר אלהים יהוה');
+        await expectLater(
+          adapter.execute('reader', 'getSectionTextMap', {
+            'bookId': book.title,
+            'sectionIndex': 0,
+            'rawDivineNames': 'no',
+          }),
+          throwsA(
+            predicate((e) => e.toString().contains('error.invalid_params')),
+          ),
+        );
+
+        Future<int> count(String layer, {bool raw = false}) async =>
+            ((await adapter.execute('reader', 'findTextOccurrences', {
+                      'bookId': book.title,
+                      'sectionIndex': 0,
+                      'query': 'אלקים',
+                      'layer': layer,
+                      if (raw) 'rawDivineNames': true,
+                    })
+                    as Map<String, dynamic>)['totalCount']
+                as int);
+        expect(await count('rendered'), 1);
+        expect(await count('source'), 0);
+        expect(await count('rendered', raw: true), 0);
+      },
+    );
+
+    test('search.fullText — תקציר עם שם הוי"ה לפי ההגדרה', () async {
+      final stub = _StubSearchRepository()
+        ..fullTextResults = [
+          SearchResult(
+            title: book.title,
+            reference: 'פרק א',
+            text: 'שמע ישראל יהוה',
+            id: BigInt.one,
+            segment: BigInt.one,
+            isPdf: false,
+            filePath: 'id:610',
+            mergedCount: 1,
+            merged: const <MergedSibling>[],
+            textStatus: TextStatus.ok,
+            continuesToNextLine: false,
+          ),
+        ];
+      final adapter = build(searchRepository: stub);
+      final filtered =
+          await adapter.execute('search', 'fullText', {'query': 'שמע'}) as List;
+      expect(filtered.single['text'], 'שמע ישראל יקוק');
+      final rawResults =
+          await adapter.execute('search', 'fullText', {
+                'query': 'שמע',
+                'rawDivineNames': true,
+              })
+              as List;
+      expect(rawResults.single['text'], 'שמע ישראל יהוה');
+    });
+
+    test('getLinkContent — שורות היעד במשבצת המפרשים', () async {
+      await _saveDivineNamesPolicy(
+        HolyNameDisplay.kufKuf,
+        substitute: true,
+        commentaryHolyName: HolyNameDisplay.daletDalet,
+      );
+      final adapter = build(
+        linesLoader: (link) async => [
+          (lineIndex: link.index2 - 1, content: 'ויאמר אלהים יהוה'),
+        ],
+      );
+      final result =
+          await adapter.execute('library', 'getLinkContent', {
+                'links': [
+                  {'targetTitle': 'מפרש', 'targetLine': 0},
+                  {'targetTitle': 'מפרש', 'targetLine': 5},
+                ],
+              })
+              as Map<String, dynamic>;
+      final items = result['items'] as List;
+      expect(items[0]['content'], 'ויאמר אלקים ידוד');
+      expect(items[1]['content'], 'ויאמר אלהים ידוד');
+
+      final rawResult =
+          await adapter.execute('library', 'getLinkContent', {
+                'links': [
+                  {'targetTitle': 'מפרש', 'targetLine': 0},
+                ],
+                'rawDivineNames': true,
+              })
+              as Map<String, dynamic>;
+      expect(
+        (rawResult['items'] as List).single['content'],
+        'ויאמר אלהים יהוה',
+      );
+    });
+
+    test('app.getDivineNamesDisplay — ההגדרה העדכנית, לפי ספר ויעד', () async {
+      final adapter = build();
+      expect(await adapter.execute('app', 'getDivineNamesDisplay', {}), {
+        'holyName': 'kufKuf',
+        'otherNames': 'substitute',
+        'filtered': true,
+        'holyNameSample': 'יקוק',
+      });
+
+      openTab(
+        overrides: TextDisplayLayer({
+          TextDisplaySlot.root: const TextDisplayPatch(
+            holyName: HolyNameDisplay.hehApostrophe,
+          ),
+        }),
+      );
+      final forBook =
+          await adapter.execute('app', 'getDivineNamesDisplay', {
+                'bookId': book.title,
+              })
+              as Map<String, dynamic>;
+      expect(forBook['holyName'], 'hehApostrophe');
+      expect(forBook['holyNameSample'], "ה'");
+
+      await _saveDivineNamesPolicy(HolyNameDisplay.asIs);
+      expect(
+        await adapter.execute('app', 'getDivineNamesDisplay', {
+          'target': 'commentary',
+        }),
+        {
+          'holyName': 'asIs',
+          'otherNames': 'asIs',
+          'filtered': false,
+          'holyNameSample': 'יהוה',
+        },
+      );
+      await expectLater(
+        adapter.execute('app', 'getDivineNamesDisplay', {'target': 'notes'}),
+        invalidParams(),
+      );
+      await expectLater(
+        adapter.execute('app', 'getDivineNamesDisplay', {'bookId': 'אין כזה'}),
+        throwsA(predicate((e) => e.toString().contains('error.not_found'))),
+      );
+    });
+
+    test('getBookContent — section מהטקסט השמור או מכותרת מסוננת', () async {
+      final adapter = build();
+      Future<String> from(String section, {int limit = 5}) async =>
+          await adapter.execute('library', 'getBookContent', {
+                'bookId': book.title,
+                'section': section,
+                'limit': limit,
+              })
+              as String;
+      // ההחלפה של אלהים מסומנת במסד, ולכן אינה נמצאת בטקסט המסונן.
+      expect(await from('אלהים יהוה'), 'אלקים');
+      // כותרת מ-getBookToc: שם הוי"ה בלבד מוחלף.
+      expect(await from('אלהים יקוק'), 'אלקים');
+      expect(await from('ישראל יהוה', limit: 10), 'ישראל יקוק');
+      expect(await from('אין כזה'), 'ויאמר');
+      // המופע הראשון של קידומת השם בטקסט השמור קודם למופע בטקסט המסונן.
+      expect(await from('אלהי'), 'אלקים');
+    });
+
+    test('getBookContent — section עם textReaderDisplay', () async {
+      final tab = openTab(content: raw.split('\n'));
+      final adapter = build(readerTab: tab);
+      expect(
+        await adapter.execute('library', 'getBookContent', {
+          ...PluginBookIdentity.toJsonWithUid(book),
+          'textReaderDisplay': true,
+          'section': 'שמע ישראל יהוה',
+          'limit': 4,
+        }),
+        'שמע ',
+      );
+    });
+
+    test('getBookContent — מטמון של כמה תצוגות לאותו ספר', () async {
+      final adapter = build();
+      final request = {'bookId': book.title};
+      Future<Object?> read() =>
+          adapter.execute('library', 'getBookContent', request);
+      final first = await read();
+      await _saveDivineNamesPolicy(HolyNameDisplay.daletDalet);
+      await read();
+      await _saveDivineNamesPolicy(HolyNameDisplay.kufKuf, substitute: true);
+      // התוכן כולו קצר מה-limit, ולכן חוזר אותו מופע מהמטמון — בלי המרה חוזרת.
+      expect(identical(await read(), first), isTrue);
+    });
+
+    test(
+      'getBookContent — מהדורה חלופית: שם הוי"ה בלבד, לפי ההגדרה העדכנית',
+      () async {
+        final edition = TextBook(
+          title: book.title,
+          categoryId: 610,
+          id: 610,
+          versionTitle: 'Edition',
+        );
+        final adapter = build(
+          textBookRepository: _EditionTextBookRepository({edition: raw}),
+        );
+        final identity = PluginBookIdentity.toJsonWithUid(edition);
+        DataRepository.instance.library = Future.value(
+          Library(
+            categories: [
+              Category(
+                title: 'בדיקה',
+                description: '',
+                shortDescription: '',
+                order: 0,
+                subCategories: const [],
+                books: [edition],
+                parent: null,
+              ),
+            ],
+          ),
+        );
+        expect(
+          await adapter.execute('library', 'getBookContent', identity),
+          'ויאמר אלהים יקוק\nשמע ישראל יקוק אלהינו',
+        );
+        await _saveDivineNamesPolicy(HolyNameDisplay.hehApostrophe);
+        expect(
+          await adapter.execute('library', 'getBookContent', identity),
+          "ויאמר אלהים ה'\nשמע ישראל ה' אלהינו",
+        );
+        expect(
+          await adapter.execute('library', 'getBookContent', {
+            ...identity,
+            'rawDivineNames': true,
+          }),
+          raw,
+        );
+      },
+    );
+
+    test('getSelection — בחירה חוצת פסקאות לפי השמות המבוקשים', () async {
+      final tab = openTab(content: raw.split('\n'));
+      tab.bloc.emit(
+        (tab.bloc.state as TextBookLoaded).copyWith(
+          selectedTextForNote: 'ויאמר אלקים יקוק\nשמע ישראל יקוק אלהינו',
+          selectedTextSectionIndex: 0,
+        ),
+      );
+      await _saveDivineNamesPolicy(HolyNameDisplay.daletDalet);
+      final adapter = build();
+      final filtered =
+          await adapter.execute('reader', 'getSelection', {})
+              as Map<String, dynamic>;
+      expect(filtered['text'], 'ויאמר אלהים ידוד\nשמע ישראל ידוד אלהינו');
+      expect(filtered['sections'], hasLength(2));
+      expect(filtered['start'], isNull);
+      expect(filtered['currentIndex'], 0);
+      expect(jsonEncode(filtered), isNot(contains('יקוק')));
+
+      final rawSelection =
+          await adapter.execute('reader', 'getSelection', {
+                'rawDivineNames': true,
+              })
+              as Map<String, dynamic>;
+      expect(rawSelection['text'], raw);
+    });
+
+    test('getSelection — טווח שאינו תקף נמצא לפי הטקסט', () async {
+      final tab = openTab();
+      tab.bloc.emit(
+        (tab.bloc.state as TextBookLoaded).copyWith(
+          selectedTextForNote: 'אלקים יקוק',
+          selectedTextSectionIndex: 0,
+          selectedTextStart: 40,
+          selectedTextEnd: 50,
+        ),
+      );
+      final data =
+          await build().execute('reader', 'getSelection', {
+                'rawDivineNames': true,
+              })
+              as Map<String, dynamic>;
+      expect(data['text'], 'אלהים יהוה');
+      expect(data['start'], 40);
+    });
+
+    test('getBookToc / getBookAltToc / listBookAltStructures', () async {
+      final adapter = build(
+        altStructures: (_) async => [
+          const AltTocStructure(
+            id: 1,
+            bookId: 610,
+            key: 'parasha',
+            heTitle: 'פרשיות יהוה',
+          ),
+        ],
+        altEntries: (_) async => [
+          (id: 1, parentId: null, level: 1, lineIndex: 0, text: 'פרשת יהוה'),
+        ],
+      );
+      Future<String> first(
+        String action,
+        String field, {
+        bool raw = false,
+      }) async {
+        final result =
+            await adapter.execute('library', action, {
+                  'bookId': book.title,
+                  if (raw) 'rawDivineNames': true,
+                })
+                as List;
+        return (result.first as Map)[field] as String;
+      }
+
+      expect(await first('getBookToc', 'text'), 'שם יקוק');
+      expect(await first('getBookToc', 'text', raw: true), 'שם יהוה');
+      expect(await first('getBookAltToc', 'text'), 'פרשת יקוק');
+      expect(await first('getBookAltToc', 'text', raw: true), 'פרשת יהוה');
+      expect(await first('listBookAltStructures', 'heTitle'), 'פרשיות יקוק');
+      expect(
+        await first('listBookAltStructures', 'heTitle', raw: true),
+        'פרשיות יהוה',
+      );
+      await expectLater(
+        adapter.execute('library', 'getBookToc', {
+          'bookId': book.title,
+          'rawDivineNames': 1,
+        }),
+        invalidParams(),
+      );
+    });
+
+    test('search.query — תקצירי הזרם מסוננים, או גולמיים לפי בקשה', () async {
+      SearchResult hit() => SearchResult(
+        title: book.title,
+        reference: 'פרק א',
+        text: 'שמע ישראל יהוה',
+        id: BigInt.one,
+        segment: BigInt.one,
+        isPdf: false,
+        filePath: 'id:610',
+        mergedCount: 1,
+        merged: const <MergedSibling>[],
+        textStatus: TextStatus.ok,
+        continuesToNextLine: false,
+      );
+      final stub = _StubSearchRepository()
+        ..updates = [
+          SearchStreamUpdate(results: [hit()], truncated: false),
+        ];
+      final adapter = build(searchRepository: stub);
+      Future<String> snippet({bool raw = false, String id = 's1'}) async {
+        final chunks = <Map<String, dynamic>>[];
+        await adapter.execute(
+          'search',
+          'query',
+          {'query': 'שמע', if (raw) 'rawDivineNames': true, '__streamId': id},
+          eventSink: (topic, payload) async =>
+              chunks.add(payload['chunk'] as Map<String, dynamic>),
+        );
+        return ((chunks.last['results'] as List).single as Map)['text']
+            as String;
+      }
+
+      expect(await snippet(), 'שמע ישראל יקוק');
+      expect(await snippet(raw: true, id: 's2'), 'שמע ישראל יהוה');
+    }, skip: engineReady ? false : searchEngineSkipReason);
+
+    test('getLinkContent — הגדרות הכרטיסייה רק למפרשים של הספר שבה', () async {
+      final tab = openTab(
+        overrides: TextDisplayLayer({
+          TextDisplaySlot.commentaryDisplay: const TextDisplayPatch(
+            holyName: HolyNameDisplay.hehApostrophe,
+          ),
+        }),
+      );
+      tab.bloc.emit(
+        (tab.bloc.state as TextBookLoaded).copyWith(
+          availableCommentators: const ['מפרש'],
+        ),
+      );
+      final adapter = build(
+        readerTab: tab,
+        linesLoader: (link) async => [
+          (lineIndex: 99, content: 'אמר יהוה'),
+        ],
+      );
+      Future<String> content(String title) async {
+        final result =
+            await adapter.execute('library', 'getLinkContent', {
+                  'links': [
+                    {'targetTitle': title, 'targetLine': 0},
+                  ],
+                })
+                as Map<String, dynamic>;
+        return (result['items'] as List).single['content'] as String;
+      }
+
+      expect(await content('מפרש'), "אמר ה'");
+      expect(await content('ספר אחר'), 'אמר יקוק');
+    });
+
+    test('getLinks — rawDivineNames נבדק גם בלי includeAnchors', () async {
+      await expectLater(
+        build().execute('library', 'getLinks', {
+          'bookId': book.title,
+          'rawDivineNames': 'yes',
+        }),
+        invalidParams(),
+      );
+    });
+
+    test(
+      'getBookDetails / tools — rawDivineNames חייב להיות בוליאני',
+      () async {
+        final adapter = build();
+        for (final (domain, action, args) in [
+          ('library', 'getBookDetails', {'bookId': book.title}),
+          ('tools', 'dictionary', {'term': 'ה׳'}),
+          ('tools', 'biographies', {'query': 'רש"י'}),
+        ]) {
+          await expectLater(
+            adapter.execute(domain, action, {...args, 'rawDivineNames': 'x'}),
+            invalidParams(),
+          );
+        }
+      },
+    );
+  });
 }
 
 class _FakeBookProvider implements LibraryProvider {
@@ -6219,4 +7188,24 @@ class _InMemoryPluginReportQueue {
     final rows = await store.listByKind(PluginReportService.pendingKind);
     return rows.map((row) => PluginReportRecord.fromJson(row.payload)).toList();
   }
+}
+
+/// ספר שתוכן העניינים שלו מוזרק, בלי קובץ.
+class _TocTextBook extends TextBook {
+  _TocTextBook({required super.title, super.categoryId, super.id});
+
+  @override
+  Future<List<TocEntry>> get tableOfContents async => [
+    TocEntry(text: 'שם יהוה', index: 0),
+  ];
+}
+
+/// תוכן לפי ספר, למהדורות חלופיות שאינן עוברות דרך הספקים.
+class _EditionTextBookRepository extends Fake implements TextBookRepository {
+  _EditionTextBookRepository(this.contents);
+
+  final Map<TextBook, String> contents;
+
+  @override
+  Future<String> getBookContent(TextBook book) async => contents[book]!;
 }

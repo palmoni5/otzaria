@@ -57,7 +57,7 @@ void main() {
   });
 
   test('מפת הרמזים נשארת חלקית ולא כוללת API קריאה רגילים', () {
-    expect(pluginApiPermissionHints.length, 112);
+    expect(pluginApiPermissionHints.length, 113);
     for (final method in const [
       'reader.openBook',
       'search.query',

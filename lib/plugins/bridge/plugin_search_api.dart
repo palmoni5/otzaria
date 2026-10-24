@@ -311,12 +311,14 @@ class PluginSearchApi {
   /// `filePath` של האינדקס, וממנו נלקחים `id`/`source`.
   /// [textRestricted] — ספר עם הגבלת מו"ל: הטקסט מושמט והשורה מסומנת.
   /// [vocalizedSearch] — חיפוש מנוקד: הטקסט נמסר עם הניקוד, כמו שהמנוע מחזיר.
+  /// [filterText] — הצגת שמות הקודש בתקציר.
   static Map<String, dynamic> resultToJson(
     engine.SearchResult result,
     Book? book, {
     Map<String, Book> booksByPath = const {},
     bool textRestricted = false,
     bool vocalizedSearch = false,
+    String Function(String text)? filterText,
   }) {
     // אינדקס שאינו מסונכרן ממפה את מפתח המסמך לספר אחר; עדיף להחזיר לתוסף
     // זהות ריקה מאשר לייחס לתוצאה את ה-id של ספר זר.
@@ -339,9 +341,10 @@ class PluginSearchApi {
       'reference': result.reference,
       'text': textRestricted
           ? ''
-          : vocalizedSearch
-          ? result.text
-          : removeAttachedMarks(result.text),
+          : _filtered(
+              vocalizedSearch ? result.text : removeAttachedMarks(result.text),
+              filterText,
+            ),
       if (textRestricted) 'error': 'forbidden',
       'textStatus': result.textStatus.name,
       'continuesToNextLine': result.continuesToNextLine,
@@ -354,6 +357,9 @@ class PluginSearchApi {
         ],
     };
   }
+
+  static String _filtered(String text, String Function(String)? filter) =>
+      filter?.call(text) ?? text;
 
   static Map<String, dynamic> _siblingToJson(
     engine.MergedSibling sibling,

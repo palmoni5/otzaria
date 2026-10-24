@@ -461,24 +461,28 @@ class TextBookLoaded extends TextBookState {
       showPageShapeView ? TextView.pageShape : TextView.regular;
 
   /// כל השכבות מהספציפי לכללי, בסדר שהרזולבר מצפה לו.
-  List<TextDisplayLayer> get displayLayers => [
+  List<TextDisplayLayer> get displayLayers => _layersWith(displayPolicy);
+
+  List<TextDisplayLayer> _layersWith(TextDisplayPolicy policy) => [
     displayOverrides,
     bookDisplayLayer,
-    ...displayPolicy.layersFor(isTanach: isTanach),
+    ...policy.layersFor(isTanach: isTanach),
   ];
 
   /// הפרופיל הפתור ליעד, לתצוגה ([view] ברירת מחדל: הפעילה) ולערוץ.
+  /// [policy] מחליף את [displayPolicy], שמתעדכן רק בטעינה מחדש של הכרטיסייה.
   TextDisplayProfile displayProfile({
     required TextTarget target,
     TextView? view,
     TextChannel channel = TextChannel.display,
+    TextDisplayPolicy? policy,
   }) => TextDisplayResolver.resolve(
     slot: TextDisplaySlot(
       target: target,
       view: view ?? activeView,
       channel: channel,
     ),
-    layers: displayLayers,
+    layers: _layersWith(policy ?? displayPolicy),
   );
 
   TextDisplayProfile get bodyDisplayProfile =>

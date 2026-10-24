@@ -7,9 +7,15 @@ import 'package:otzaria/models/books.dart';
 import 'package:otzaria/models/links.dart';
 import 'package:otzaria/plugins/models/plugin_context_menu_item.dart';
 import 'package:otzaria/book_common/utils/commentary_plugin_menu_entries.dart';
+import 'package:otzaria/settings/engine/app_settings_store.dart';
 import 'package:otzaria/widgets/misc/app_popup_menu.dart';
 
+import '../../helpers/memory_settings_cache.dart';
+
 void main() {
+  // הטקסט בלחיצה עובר את הגדרת שמות הקודש של המשתמש.
+  setUpAll(() => Settings.init(cacheProvider: MemorySettingsCache()));
+
   final CommentaryMainBook mainBook = (
     book: TextBook(title: 'בראשית', id: 7),
     currentRef: 'בראשית א, א',

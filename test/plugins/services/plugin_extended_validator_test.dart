@@ -329,6 +329,8 @@ void main() {
         'ui.exportPdf',
         'ui.setUnsavedChanges',
         'plugin.setRestoreState',
+        // הרשאת events.subscribe:<topic> תלויה בנושא ונבדקת באדפטר.
+        'events.setOptions',
       };
       final missing = PluginExtendedValidator.knownApiMethods
           .where((m) => !noManifestPermission.contains(m))

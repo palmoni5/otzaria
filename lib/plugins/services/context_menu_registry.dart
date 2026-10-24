@@ -88,6 +88,7 @@ class ContextMenuRegistry extends PluginItemRegistry<PluginContextMenuItem> {
     Map<String, dynamic> json, {
     required int depth,
     List<String>? inheritedContexts,
+    bool inheritedRawDivineNames = false,
   }) {
     if (depth > 2) {
       throw const PluginContextMenuException(
@@ -127,6 +128,16 @@ class ContextMenuRegistry extends PluginItemRegistry<PluginContextMenuItem> {
       },
     );
 
+    final declaredRawDivineNames = json['rawDivineNames'];
+    if (declaredRawDivineNames != null && declaredRawDivineNames is! bool) {
+      throw const PluginContextMenuException(
+        'error.invalid_params',
+        'rawDivineNames must be a boolean',
+      );
+    }
+    final rawDivineNames =
+        declaredRawDivineNames as bool? ?? inheritedRawDivineNames;
+
     final children = <PluginContextMenuItem>[];
     final childrenValue = json['children'];
     if (childrenValue != null) {
@@ -148,6 +159,7 @@ class ContextMenuRegistry extends PluginItemRegistry<PluginContextMenuItem> {
             Map<String, dynamic>.from(child),
             depth: depth + 1,
             inheritedContexts: contexts,
+            inheritedRawDivineNames: rawDivineNames,
           ),
         );
       }
@@ -227,6 +239,8 @@ class ContextMenuRegistry extends PluginItemRegistry<PluginContextMenuItem> {
       when: parseWhen(json['when'], nested: depth > 0),
       action: _parseAction(json),
       separatorBefore: _parseSeparatorBefore(json['separatorBefore'], depth),
+      declaredRawDivineNames: declaredRawDivineNames,
+      rawDivineNames: rawDivineNames,
     );
   }
 
