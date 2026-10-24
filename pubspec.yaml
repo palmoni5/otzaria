@@ -115,12 +115,13 @@ dependencies:
       url: https://github.com/Otzaria/otzaria_library_updater
       ref: a9257039324cf98c8be0648b35675b3be9ba3494
   # הפורק מסנן הודעות חלון לפי HWND, כדי שמצב החלון הראשי לא יחול על חלונות
-  # נוספים. ב-master של upstream הקוד הזה הוסר (שכתוב לקראת 0.6.0, שטרם שוחרר).
+  # נוספים, ומקבע את קצוות שינוי הגודל לפי המסך תחת RTL (#3187). ב-master של
+  # upstream הקוד הזה הוסר (שכתוב לקראת 0.6.0, שטרם שוחרר).
   # TODO: לחזור לגרסה הרשמית מ-pub.dev אחרי שחרור 0.6.0 (תמיכה בריבוי חלונות).
   window_manager:
     git:
       url: https://github.com/Otzaria/window_manager
-      ref: 38cb5a5f5f33ba6acffc3770dcd8aeec7ed5797d
+      ref: 4f37655288ce8b803a9bd50294c5d6983850f622
       path: packages/window_manager
   screen_retriever: ^0.2.2
   flutter_spinbox: ^0.13.1
