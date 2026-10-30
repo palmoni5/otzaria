@@ -230,10 +230,8 @@ class PdfBookSearchView extends StatefulWidget {
   /// תקרת מונחים ייחודיים לתבנית ההדגשה, כדי שהרגקס לא יתנפח.
   static const int _maxHighlightTerms = 50;
 
-  /// בונה תבנית הדגשה לעמודי ה-PDF. כשהמתאם של הקורא הטקסטואלי מוצא את
-  /// ההתאמות של [query] ב-[resultHtmls], התבנית מריצה אותו על כל עמוד ומדגישה
-  /// כל התאמה כרצף אחד. אחרת (מקורב, טווח פסקה) היא מאחדת את המונחים שהמנוע
-  /// סימן, עד [_maxHighlightTerms]. מחזיר null כשאין מה להדגיש.
+  /// תבנית הדגשה לעמודים: המתאם של הקורא הטקסטואלי כשהוא מוצא את [resultHtmls],
+  /// ואחרת (מקורב, טווח פסקה) המונחים שהמנוע סימן. null כשאין מה להדגיש.
   @visibleForTesting
   static RegExp? buildAdvancedHighlightPattern(
     Iterable<String> resultHtmls, {
@@ -452,6 +450,7 @@ class PdfBookSearchViewState extends State<PdfBookSearchView>
     return _goToMatchOnPage(
       pageNumber,
       (pageMatches) => _engineResultMatchIndex(result, pageNumber, pageMatches),
+      beforeNavigate: () => widget.onNavigationStarted?.call(pageNumber),
     );
   }
 
@@ -478,12 +477,10 @@ class PdfBookSearchViewState extends State<PdfBookSearchView>
     if (key != null) {
       var seen = 0;
       for (var i = 0; i < pageMatches.length; i++) {
-        final match = pageMatches[i];
-        final text = match.contextText.substring(
-          match.start - match.contextStart,
-          match.end - match.contextStart,
-        );
-        if (_normalizedSpan(text) == key && seen++ == sameSpanBefore) return i;
+        if (_normalizedSpan(pageMatches[i].text) == key &&
+            seen++ == sameSpanBefore) {
+          return i;
+        }
       }
     }
     return k;
@@ -514,13 +511,13 @@ class PdfBookSearchViewState extends State<PdfBookSearchView>
     if (waiter != null && !waiter.isCompleted) waiter.complete();
   }
 
-  /// ממרכז את ההתאמה שבוחר [pick] מבין התאמות העמוד, אחרי שהעמוד נסרק.
-  /// false כשאין בו התאמה, null כשמעבר או חיפוש חדש החליפו את המעבר הזה.
-  /// עם [onlyIfShown] — רק אם הקורא עדיין בעמוד.
+  /// ממרכז את ההתאמה ש-[pick] בוחר בעמוד אחרי שנסרק. false — אין בו התאמה;
+  /// null — מעבר או חיפוש חדש החליפו את המעבר הזה.
   Future<bool?> _goToMatchOnPage(
     int pageNumber,
     int Function(List<PdfTextSearchResult> pageMatches) pick, {
     bool onlyIfShown = false,
+    VoidCallback? beforeNavigate,
   }) async {
     _cancelPageScanWait();
     final searcher = widget.textSearcher;
@@ -556,6 +553,7 @@ class PdfBookSearchViewState extends State<PdfBookSearchView>
     }
     final pageMatches = searcher.matches.sublist(range.start, range.end);
     final index = pick(pageMatches).clamp(0, pageMatches.length - 1);
+    beforeNavigate?.call();
     await searcher.goToMatchOfIndex(range.start + index);
     return true;
   }
@@ -1213,7 +1211,6 @@ class PdfBookSearchViewState extends State<PdfBookSearchView>
                 result: result,
                 onTap: () async {
                   final pageNumber = _getPdfPageNumber(result);
-                  widget.onNavigationStarted?.call(pageNumber);
                   final controller = widget.textSearcher.controller;
                   final matchIndex = result.id.toInt();
                   if (_isSimpleSearch &&
@@ -1221,6 +1218,7 @@ class PdfBookSearchViewState extends State<PdfBookSearchView>
                       widget.textSearcher.matches[matchIndex].pageNumber ==
                           pageNumber) {
                     // גלילה למקום ההתאמה בעמוד וסימונה כהתאמה הנוכחית.
+                    widget.onNavigationStarted?.call(pageNumber);
                     await widget.textSearcher.goToMatchOfIndex(matchIndex);
                   } else {
                     final navigated = _isSimpleSearch
@@ -1231,6 +1229,7 @@ class PdfBookSearchViewState extends State<PdfBookSearchView>
                         controller != null &&
                         controller.isReady &&
                         controller.layout.pageLayouts.isNotEmpty) {
+                      widget.onNavigationStarted?.call(pageNumber);
                       final layout = controller.layout;
                       final safePage = pageNumber.clamp(
                         1,
