@@ -432,6 +432,31 @@ Future<void> main() async {
     );
 
     testWidgets(
+      '"בכל סדר" שמור נשאר אחרי הד ה-bloc של מילה אחת (issue #3690)',
+      (tester) async {
+        SearchDefaults.saveDistanceDefault(3);
+        SearchDefaults.saveAnyOrderDefault(true);
+        addTearDown(() => SearchDefaults.saveAnyOrderDefault(false));
+        final repository = _RecordingSearchRepository(results: const []);
+        final harness = await pumpSearchView(
+          tester,
+          searchRepository: repository,
+          simpleSearchRunner: (content, query) async => const [],
+        );
+
+        await harness.type('שמים');
+        await harness.rebuildFromBloc('שמים', 3, SearchMatchPolicy.standard);
+        await harness.settle();
+        await harness.type('שמים ארץ');
+        await harness.settle();
+
+        expect(repository.requests, isNotEmpty);
+        expect(repository.requests.last.anyOrder, isTrue);
+      },
+      skip: !engineReady,
+    );
+
+    testWidgets(
       'אפשרויות שנקבעו כברירת מחדל חלות על כל מילה בשאילתה שהוקלדה',
       (tester) async {
         SearchDefaults.saveExactDefaults(const {'קידומות דקדוקיות': true});
@@ -956,6 +981,7 @@ class _SearchRequest {
     required this.wordMatchMode,
     required this.wordMatchCount,
     this.searchOptions,
+    this.anyOrder = false,
   });
 
   final String query;
@@ -967,6 +993,7 @@ class _SearchRequest {
   final WordMatchMode wordMatchMode;
   final int? wordMatchCount;
   final Map<String, Map<String, bool>>? searchOptions;
+  final bool anyOrder;
 }
 
 class _RecordingSearchRepository extends SearchRepository {
@@ -988,6 +1015,7 @@ class _RecordingSearchRepository extends SearchRepository {
         wordMatchMode: request.wordMatchMode,
         wordMatchCount: request.wordMatchCount,
         searchOptions: request.searchOptions,
+        anyOrder: request.anyOrder,
       ),
     );
     return results;
