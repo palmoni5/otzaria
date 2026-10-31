@@ -233,7 +233,7 @@ class PdfBookSearchView extends StatefulWidget {
   /// תבנית הדגשה לעמודים: המתאם של הקורא הטקסטואלי כשהוא מוצא את [resultHtmls],
   /// ואחרת (מקורב, טווח פסקה) המונחים שהמנוע סימן. null כשאין מה להדגיש.
   @visibleForTesting
-  static RegExp? buildAdvancedHighlightPattern(
+  static Pattern? buildAdvancedHighlightPattern(
     Iterable<String> resultHtmls, {
     String query = '',
     InBookSearchSettings settings = const InBookSearchSettings(),
@@ -273,7 +273,7 @@ class PdfBookSearchView extends StatefulWidget {
     }
     final pattern = ProximityHighlightPattern(query, settings);
     for (final html in resultHtmls.take(_maxProximityProbes)) {
-      if (pattern.hasMatch(SnippetBuilder.htmlToPlainText(html))) {
+      if (pattern.spans(SnippetBuilder.htmlToPlainText(html)).isNotEmpty) {
         return pattern;
       }
     }
@@ -361,7 +361,7 @@ class PdfBookSearchViewState extends State<PdfBookSearchView>
   bool _simpleSearchReversed = false;
 
   /// התבנית שנבנתה מהמונחים שהמנוע מצא בפועל — לשימוש חוזר בלחיצה על תוצאה.
-  RegExp? _lastAdvancedHighlightPattern;
+  Pattern? _lastAdvancedHighlightPattern;
 
   /// השאילתה שעבורה תוזמנה גלילה לעמוד הנוכחי בסיום חיפוש פשוט.
   /// בחיפוש פשוט התוצאות מגיעות אסינכרונית דרך ה-listener של pdfrx, ולכן
@@ -405,8 +405,12 @@ class PdfBookSearchViewState extends State<PdfBookSearchView>
   int _getPdfPageNumber(SearchResult result) => result.segment.toInt() + 1;
 
   /// מדגיש מיד; [startPageNumber] מעביר גם סריקה שכבר רצה לאותו עמוד.
-  void _schedulePdfHighlight(RegExp? pattern, {int? startPageNumber}) {
-    final source = pattern?.pattern ?? '';
+  void _schedulePdfHighlight(Pattern? pattern, {int? startPageNumber}) {
+    final source = switch (pattern) {
+      RegExp regExp => regExp.pattern,
+      ProximityHighlightPattern proximity => proximity.key,
+      _ => '',
+    };
     if (source == _lastPdfHighlightSource && startPageNumber == null) return;
     _lastPdfHighlightSource = source;
     widget.textSearcher.startTextSearch(
@@ -491,8 +495,10 @@ class PdfBookSearchViewState extends State<PdfBookSearchView>
     SearchResult result,
   ) {
     final plain = SnippetBuilder.htmlToPlainText(result.text);
-    final match = pattern.firstMatch(plain);
-    return match == null ? null : _normalizedSpan(match.group(0)!);
+    final spans = pattern.spans(plain);
+    return spans.isEmpty
+        ? null
+        : _normalizedSpan(plain.substring(spans.first[0], spans.first[1]));
   }
 
   static final RegExp _nonWord = RegExp(r'[^\p{L}\p{N}]+', unicode: true);
