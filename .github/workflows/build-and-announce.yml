@@ -3585,6 +3585,15 @@ jobs:
       ref: ${{ needs.bump_version.outputs.sha }}
     secrets: inherit
 
+  # לא פעיל עד שמוגדר המשתנה MSSTORE_PRODUCT_ID במאגר.
+  trigger_microsoft_store_deploy:
+    if: "!cancelled() && vars.MSSTORE_PRODUCT_ID != '' && needs.build_windows.result == 'success' && needs.create_release.result == 'success' && needs.create_release.outputs.is_latest == 'true' && github.event_name != 'release' && github.event_name != 'pull_request'"
+    needs: [bump_version, build_windows, create_release]
+    uses: ./.github/workflows/deploy-microsoft-store.yml
+    with:
+      ref: ${{ needs.bump_version.outputs.sha }}
+    secrets: inherit
+
   # --- הכרזה על גרסה שפורסמה ---
   announce_release:
     needs: [bump_version, create_release]

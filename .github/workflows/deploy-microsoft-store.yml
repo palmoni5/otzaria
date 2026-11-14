@@ -1,0 +1,130 @@
+name: Deploy Windows to Microsoft Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: ריצה של Build, Release and Announce שממנה לקחת את otzaria-windows-zip
+        type: string
+        required: true
+      ref:
+        description: הקומיט של אותה ריצה (נדרש כדי לקרוא את pubspec.yaml)
+        type: string
+        required: true
+  workflow_call:
+    inputs:
+      ref:
+        description: הקומיט שנבנה בריצה הקוראת
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: microsoft-store-production
+  cancel-in-progress: false
+
+jobs:
+  deploy_store:
+    name: Package MSIX and submit to Microsoft Store
+    runs-on: windows-2025
+    timeout-minutes: 60
+    env:
+      MSSTORE_PRODUCT_ID: ${{ vars.MSSTORE_PRODUCT_ID }}
+      AZURE_AD_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
+      AZURE_AD_APPLICATION_CLIENT_ID: ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
+      AZURE_AD_APPLICATION_SECRET: ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
+      SELLER_ID: ${{ secrets.SELLER_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Verify checkout is the Latest release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tool/release/latest_release_policy.py --assert-current-checkout
+
+      - name: Verify Store configuration
+        shell: pwsh
+        run: |
+          $missing = 'MSSTORE_PRODUCT_ID', 'AZURE_AD_TENANT_ID', 'AZURE_AD_APPLICATION_CLIENT_ID',
+            'AZURE_AD_APPLICATION_SECRET', 'SELLER_ID' |
+            Where-Object { [string]::IsNullOrWhiteSpace((Get-Item "env:$_" -ErrorAction SilentlyContinue).Value) }
+          if ($missing) { throw "Missing configuration: $($missing -join ', ')" }
+
+      # החנות דורשת 0 בספרה הרביעית, ולכן X.Y.Z.H עולה כ-X.Y.(Z*10+H).0 (0.9.98.3 → 0.9.983.0).
+      # הנוסחה קבועה: שינוי שלה יוריד גרסאות מתחת למה שכבר פורסם בחנות.
+      - name: Compute Store package version
+        id: version
+        shell: pwsh
+        run: |
+          $m = Select-String -Path pubspec.yaml -Pattern '^\s*msix_version:\s*(\d+)\.(\d+)\.(\d+)\.(\d+)\s*$' |
+            Select-Object -First 1
+          if (-not $m) { throw 'msix_version (4 parts) not found in pubspec.yaml' }
+          $g = $m.Matches[0].Groups
+          $hotfix = [int]$g[4].Value
+          if ($hotfix -gt 9) { throw "hotfix $hotfix does not fit the Store version scheme (max 9)" }
+          $build = [int]$g[3].Value * 10 + $hotfix
+          "version=$($g[1].Value).$($g[2].Value).$build.0" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Download Windows app bundle
+        uses: actions/download-artifact@v8.0.2
+        with:
+          name: otzaria-windows-zip
+          path: store-inputs
+          run-id: ${{ inputs.run_id || github.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.7
+          cache: true
+
+      - name: Build MSIX from the released bundle
+        shell: pwsh
+        env:
+          STORE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $releaseDir = 'build\windows\x64\runner\Release'
+          New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
+          Expand-Archive -LiteralPath (Get-ChildItem store-inputs\*.zip).FullName -DestinationPath $releaseDir -Force
+          # portable.marker הופך את ההתקנה לניידת; בחבילת חנות אסור שיהיה.
+          Remove-Item "$releaseDir\portable.marker" -Force -ErrorAction SilentlyContinue
+
+          dart pub global activate msix 3.18.0
+          if ($LASTEXITCODE -ne 0) { throw 'msix activation failed' }
+          dart pub global run msix:create --build-windows false --store `
+            --version $env:STORE_VERSION --output-path "$PWD\store-out" --output-name otzaria
+          if ($LASTEXITCODE -ne 0) { throw 'msix:create failed' }
+          if (-not (Test-Path store-out\otzaria.msix)) { throw 'otzaria.msix was not produced' }
+
+      - name: Upload MSIX
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: otzaria-windows-msix
+          path: store-out/otzaria.msix
+          if-no-files-found: error
+
+      - name: Install Microsoft Store CLI
+        uses: microsoft/microsoft-store-apppublisher@v1.1
+
+      - name: Configure Store credentials
+        shell: pwsh
+        run: |
+          msstore reconfigure --tenantId $env:AZURE_AD_TENANT_ID --sellerId $env:SELLER_ID `
+            --clientId $env:AZURE_AD_APPLICATION_CLIENT_ID --clientSecret $env:AZURE_AD_APPLICATION_SECRET
+          if ($LASTEXITCODE -ne 0) { throw 'msstore reconfigure failed' }
+
+      - name: Submit to Microsoft Store
+        shell: pwsh
+        run: |
+          msstore publish "$PWD\store-out\otzaria.msix" -id $env:MSSTORE_PRODUCT_ID
+          if ($LASTEXITCODE -ne 0) { throw 'msstore publish failed' }
