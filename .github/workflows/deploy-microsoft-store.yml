@@ -122,6 +122,7 @@ jobs:
           Remove-Item "$releaseDir\portable.marker" -Force -ErrorAction SilentlyContinue
 
           # msix מאתר את קבצי התבנית שלו דרך package_config של הפרויקט; global run חוסך את ה-build hooks.
+          git config --global core.longpaths true
           flutter pub get --enforce-lockfile
           if ($LASTEXITCODE -ne 0) { throw 'flutter pub get failed' }
           dart pub global activate msix 3.18.0
