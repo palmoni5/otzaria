@@ -99,6 +99,9 @@ jobs:
           # portable.marker הופך את ההתקנה לניידת; בחבילת חנות אסור שיהיה.
           Remove-Item "$releaseDir\portable.marker" -Force -ErrorAction SilentlyContinue
 
+          # msix מאתר את קבצי התבנית שלו דרך package_config של הפרויקט; global run חוסך את ה-build hooks.
+          flutter pub get --enforce-lockfile
+          if ($LASTEXITCODE -ne 0) { throw 'flutter pub get failed' }
           dart pub global activate msix 3.18.0
           if ($LASTEXITCODE -ne 0) { throw 'msix activation failed' }
           dart pub global run msix:create --build-windows false --store `
